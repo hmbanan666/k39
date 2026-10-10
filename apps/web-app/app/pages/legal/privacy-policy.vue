@@ -1,22 +1,24 @@
 <template>
-  <UContainer class="mt-12 max-w-4xl">
-    <ContentRenderer v-if="page" :value="page" />
-  </UContainer>
+  <main class="legal">
+    <ContentRenderer
+      v-if="page"
+      :value="page"
+    />
+  </main>
 </template>
 
 <script setup lang="ts">
-const { data: page, error } = await useAsyncData('legal-privacy-policy', () => {
-  return queryCollection('legal').path('/legal/privacy-policy').first()
-})
+const { data: page } = await useAsyncData('privacy', () =>
+  queryCollection('legal').path('/legal/privacy-policy').first(),
+)
 
-if (!page.value || error.value) {
-  throw createError({
-    statusCode: 404,
-    message: 'Страница не найдена',
-  })
+if (!page.value) {
+  throw createError({ statusCode: 404, statusMessage: 'Страница не найдена', fatal: true })
 }
 
-useHead({
-  title: 'Политика конфиденциальности',
-})
+useSeoMeta({ title: 'Политика конфиденциальности' })
 </script>
+
+<style scoped>
+.legal { max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+</style>

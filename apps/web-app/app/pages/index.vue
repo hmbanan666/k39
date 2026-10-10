@@ -1,70 +1,41 @@
 <template>
-  <UPageHero
-    orientation="vertical"
-    :title="title"
-    :description="description"
-    :ui="{
-      wrapper: 'lg:px-8',
-      title: 'wrap-break-word',
-      description: 'mx-auto max-w-4xl',
-    }"
-  >
-    <template #headline>
-      <div class="group w-fit mx-auto">
-        <UBadge
-          size="lg"
-          color="neutral"
-          variant="soft"
-          :ui="{
-            base: 'px-4',
-          }"
-          class="group-hover:hidden"
-        >
-          Открытый код
-        </UBadge>
-        <UBadge
-          size="lg"
-          color="neutral"
-          variant="soft"
-          trailing-icon="fluent-emoji-flat:cat-face"
-          :ui="{
-            base: 'px-4 font-semibold',
-            trailingIcon: 'size-5',
-          }"
-          class="hidden group-hover:inline-flex cursor-pointer"
-          @click="openGithub()"
-        >
-          Открытый кот
-        </UBadge>
-      </div>
-    </template>
-  </UPageHero>
+  <main class="home">
+    <h1>Куда сходить в Калининградской области</h1>
+    <p>Страница на каждое место: статус, часы, источник и иллюстрированная карта. Не тайлы.</p>
+    <p class="links">
+      <NuxtLink to="/map/kaliningrad">
+        Карта фортов Кёнигсберга
+      </NuxtLink>
+      <NuxtLink to="/quest/five-forts">
+        Квест: 5 фортов
+      </NuxtLink>
+    </p>
+    <h2>С чего начать</h2>
+    <ul>
+      <li
+        v-for="place in featured"
+        :key="place.slug"
+      >
+        <NuxtLink :to="`/place/${place.slug}`">
+          {{ place.title }}
+        </NuxtLink>
+      </li>
+    </ul>
+  </main>
 </template>
 
 <script setup lang="ts">
-// If already logged in, redirect to feed
-const { loggedIn } = useUserSession()
+const { data } = await useAsyncData('home-places', () => queryCollection('places').all())
+const featured = computed(() => (data.value ?? []).filter((place) => place.featured))
 
-if (loggedIn.value) {
-  await navigateTo('/feed')
-}
-
-const { app } = useAppConfig()
-
-const title = 'Калининград онлайн: заведения, блоги и отзывы жителей области'
-const description = 'Найдите лучшие места Калининграда и области, читайте отзывы и публикуйте свои. Создавайте блог, делитесь постами и будьте в курсе событий региона. Всё о жизни в Калининграде.'
-
-useHead({
-  title,
-  meta: [
-    {
-      name: 'description',
-      content: description,
-    },
-  ],
+useSeoMeta({
+  title: 'Места Калининградской области',
+  description: 'Форты, ворота и маршруты Калининграда: статус, часы, источники и иллюстрированная карта.',
 })
-
-function openGithub() {
-  window.open(app.githubUrl, '_blank')
-}
 </script>
+
+<style scoped>
+.home { max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+h1 { font-family: "K39 Display", Georgia, serif; font-size: 2.2rem; line-height: 1.15; }
+.links { display: flex; gap: 1rem; flex-wrap: wrap; font-weight: 700; }
+</style>

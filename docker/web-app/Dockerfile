@@ -15,8 +15,10 @@ FROM base AS production
 RUN apk add --no-cache curl
 WORKDIR /app
 
-# Copy built artifacts from builder
+# Copy built artifacts from builder. Migrations stay beside the server so
+# the Nitro plugin can apply them on boot (Dokploy has no separate migrate step).
 COPY --from=builder /app/apps/web-app/.output .
+COPY --from=builder /app/packages/database/migrations /app/migrations
 COPY docker/web-app/health-check.sh ./
 
 # Running as non-root is a security best practice
@@ -34,7 +36,8 @@ LABEL maintainer="hmbanan666@hotmail.com" \
 ENV VERSION=${VERSION} \
     NODE_ENV=production \
     PORT=3000 \
-    HOST=0.0.0.0
+    HOST=0.0.0.0 \
+    MIGRATIONS_FOLDER=/app/migrations
 
 EXPOSE 3000
 

@@ -1,40 +1,38 @@
 import type { UserVK } from '#auth-utils'
 import { findOrCreateUserByEmail } from '../../services/auth'
+import { assertOAuthProvider } from '../../utils/oauth'
 
 const logger = useLogger('vk')
 
-export default defineOAuthVKEventHandler({
-  config: {
-    emailRequired: true,
-  },
-  async onSuccess(event, { user, tokens }) {
-    logger.success('New auth', user, tokens)
-
-    if (!user?.user?.user_id || !user.user?.email) {
+const handler = defineOAuthVKEventHandler({
+  config: { emailRequired: true },
+  async onSuccess(event, { user }) {
+    assertOAuthProvider('vk')
+    if (!user?.user?.user_id || !user.user.email) {
       logger.error('OAuth error: missing email')
       return sendRedirect(event, '/sign-in')
     }
 
-    const { user: vkUser } = user as unknown as UserVK
-    const name = `${vkUser?.first_name} ${vkUser?.last_name}`
-
-    const userInDB = await findOrCreateUserByEmail({
+    const vkUser = (user as unknown as UserVK).user
+    const userInDb = await findOrCreateUserByEmail({
       email: vkUser.email,
-      name,
+      name: `${vkUser.first_name} ${vkUser.last_name}`.trim(),
     })
 
     await setUserSession(event, {
-      user: {
-        id: userInDB.id,
-        email: userInDB.email,
-      },
+      user: { id: userInDb.id, email: userInDb.email },
     })
 
     const redirectTo = getCookie(event, 'redirectTo')
-    return sendRedirect(event, redirectTo ?? '/')
+    return sendRedirect(event, redirectTo || '/')
   },
   onError(event, error) {
     logger.error('OAuth error:', error)
     return sendRedirect(event, '/sign-in')
   },
+})
+
+export default defineEventHandler((event) => {
+  assertOAuthProvider('vk')
+  return handler(event)
 })

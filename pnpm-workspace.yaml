@@ -7,6 +7,11 @@ supportedArchitectures:
   cpu: [x64, arm64]
   os: [linux, darwin, win32]
 trustPolicy: no-downgrade
+# These releases predate provenance but sit after a later-published build that has it.
+# pnpm treats that as a trust downgrade. They are already in the lockfile.
+trustPolicyExclude:
+  - chokidar@4.0.3
+  - semver@6.3.1
 
 packages:
   - apps/*
@@ -17,55 +22,39 @@ catalogs:
     '@antfu/eslint-config': ^6.6.1
     '@commitlint/cli': ^20.2.0
     '@commitlint/config-conventional': ^20.2.0
-    '@iconify-json/circle-flags': ^1.2.10
-    '@iconify-json/fluent': ^1.2.36
-    '@iconify-json/fluent-emoji-flat': ^1.2.5
-    '@iconify-json/lucide': ^1.2.80
-    '@iconify-json/simple-icons': ^1.2.62
     '@nuxt/devtools': ^3.1.1
-    '@nuxt/hints': 1.0.0-alpha.3
-    '@nuxt/image': ^2.0.0
-    '@nuxtjs/i18n': ^10.2.1
     '@nuxtjs/seo': ^3.2.2
     bumpp: ^10.3.2
     drizzle-kit: 0.31.8
     eslint: ^9.39.1
     husky: ^9.1.7
     lint-staged: ^16.2.7
-    nitropack: ^2.12.9
     nuxt: ^4.2.2
     nuxt-auth-utils: ^0.5.26
-    tailwindcss-motion: ^1.1.1
     typescript: ^5.9.3
     vite: ^7.2.7
     vue-tsc: ^3.1.8
   integrations:
-    '@neoconfetti/vue': ^2.2.1
-    '@nextorders/avatar': ^1.0.3
     '@nuxt/content': ^3.9.0
     '@nuxt/ui': ^4.2.1
     '@paralleldrive/cuid2': 2.2.2
-    '@pinia/nuxt': ^0.11.3
     '@vueuse/core': ^14.1.0
     '@vueuse/nuxt': ^14.1.0
-    aws4fetch: ^1.0.20
-    date-fns: ^4.1.0
     drizzle-cuid2: 2.1.0
     drizzle-orm: 0.45.1
-    heic-convert: ^2.1.0
     pg: 8.16.3
-    pinia: ^3.0.4
-    sharp: ^0.34.5
     zod: ^4.1.13
   test:
     '@testcontainers/postgresql': ^11.10.0
+    '@vitejs/plugin-vue': ^6.0.1
     '@vitest/browser-playwright': ^4.0.15
     '@vitest/coverage-v8': ^4.0.15
+    '@vue/test-utils': ^2.4.6
+    happy-dom: ^20.0.10
     playwright: ^1.57.0
     vitest: ^4.0.15
     vitest-browser-vue: ^2.0.1
   types:
-    '@types/heic-convert': ^2.1.0
     '@types/node': ^25.0.0
     '@types/pg': 8.16.0
 
@@ -80,4 +69,3 @@ ignoredBuiltDependencies:
 
 onlyBuiltDependencies:
   - better-sqlite3
-  - sharp

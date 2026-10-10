@@ -1,50 +1,28 @@
-import type { UserDraft, User as UserType, UserWithData } from '../types'
+import type { UserDraft, User as UserRecord } from '../types'
 import { eq, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { users } from '../tables'
 
 export class User {
-  static async find(id: string): Promise<UserWithData | undefined> {
-    return useDatabase().query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, id),
-      with: {
-        badges: true,
-        badgeTasks: true,
-      },
-    })
+  static async find(id: string): Promise<UserRecord | undefined> {
+    const [user] = await useDatabase().select().from(users).where(eq(users.id, id)).limit(1)
+    return user
   }
 
-  static async findByEmail(email: string): Promise<UserWithData | undefined> {
-    return useDatabase().query.users.findFirst({
-      where: (users, { eq }) => eq(users.email, email),
-      with: {
-        badges: true,
-        badgeTasks: true,
-      },
-    })
+  static async findByEmail(email: string): Promise<UserRecord | undefined> {
+    const [user] = await useDatabase().select().from(users).where(eq(users.email, email)).limit(1)
+    return user
   }
 
-  static async findByUsername(username: string): Promise<UserWithData | undefined> {
-    return useDatabase().query.users.findFirst({
-      where: (users, { eq }) => eq(users.username, username),
-      with: {
-        badges: true,
-        badgeTasks: true,
-      },
-    })
-  }
-
-  static async create(data: UserDraft): Promise<UserType> {
-    const result = await useDatabase().insert(users).values(data).returning()
-
-    if (result.length === 0) {
-      throw new Error('User creation failed: no data returned from DB')
+  static async create(data: UserDraft): Promise<UserRecord> {
+    const [user] = await useDatabase().insert(users).values(data).returning()
+    if (!user) {
+      throw new Error('User creation failed')
     }
-
-    return result[0] as UserType
+    return user
   }
 
-  static async update(id: string, data: Omit<Partial<UserDraft>, 'id' | 'createdAt'>) {
+  static async update(id: string, data: Partial<Pick<UserDraft, 'name' | 'avatarUrl'>>) {
     const [user] = await useDatabase()
       .update(users)
       .set({
@@ -54,14 +32,5 @@ export class User {
       .where(eq(users.id, id))
       .returning()
     return user
-  }
-
-  static async updateOnline(id: string) {
-    const [user] = await useDatabase().update(users).set({ onlineAt: sql`now()` }).where(eq(users.id, id)).returning()
-    return user
-  }
-
-  static async delete(id: string) {
-    return useDatabase().delete(users).where(eq(users.id, id))
   }
 }

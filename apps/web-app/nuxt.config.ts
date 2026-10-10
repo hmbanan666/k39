@@ -1,62 +1,30 @@
 export default defineNuxtConfig({
   devServer: {
-    port: 3501,
-    host: 'app.local',
-    https: {
-      key: '../../.cert/localhost-key.pem',
-      cert: '../../.cert/localhost.pem',
-    },
+    port: 3000,
   },
+  css: ['~/assets/css/styles.css', '~/assets/css/forts-map.css'],
   site: {
     url: 'https://k39.online',
-    name: 'Калининград Онлайн 🏙️ K39',
-  },
-  css: ['~/assets/css/styles.css'],
-  i18n: {
-    strategy: 'prefix_except_default',
+    name: 'K39',
+    description: 'Места Калининградской области: форты, замки, пляжи, маршруты и квесты.',
     defaultLocale: 'ru',
-    detectBrowserLanguage: {
-      useCookie: true,
-      alwaysRedirect: true,
+  },
+  app: {
+    head: {
+      htmlAttrs: { lang: 'ru' },
+      titleTemplate: '%s | K39',
     },
-    locales: [
-      { code: 'ru', language: 'ru-RU', name: 'Русский', file: 'ru-RU.json' },
-    ],
   },
   ui: {
-    colorMode: true,
-    fonts: true,
+    colorMode: false,
+    fonts: false,
   },
-  fonts: {
-    provider: 'google',
-    families: [
-      {
-        name: 'Lora',
-        provider: 'google',
-      },
-      {
-        name: 'Noto Sans',
-        provider: 'google',
-      },
-    ],
-  },
-  colorMode: {
-    storageKey: 'color-mode',
-  },
-  icon: {
-    clientBundle: {
-      scan: {
-        globInclude: ['app/**/*.{vue,ts}'],
-        globExclude: ['node_modules', 'dist', 'build', 'coverage', 'test', 'tests', '.*'],
-      },
-    },
+  sitemap: {
+    exclude: ['/sign-in', '/api/**'],
+    sources: ['/api/__sitemap__/urls'],
   },
   runtimeConfig: {
     oauth: {
-      twitch: {
-        clientId: '',
-        clientSecret: '',
-      },
       yandex: {
         clientId: '',
         clientSecret: '',
@@ -65,40 +33,17 @@ export default defineNuxtConfig({
         clientId: '',
         clientSecret: '',
       },
-      github: {
-        clientId: '',
-        clientSecret: '',
-      },
-    },
-    s3: {
-      bucket: '',
-      region: '',
-      endpoint: '',
-      accessKeyId: '',
-      secretAccessKey: '',
-    },
-    public: {
-      photoUrl: '',
     },
   },
   modules: [
-    // @nuxt/content must be after @nuxt/ui
     'nuxt-auth-utils',
     '@nuxtjs/seo',
     '@nuxt/ui',
     '@nuxt/content',
-    '@nuxtjs/i18n',
-    '@nuxt/image',
     '@vueuse/nuxt',
-    '@pinia/nuxt',
-    '@nuxt/hints',
   ],
   content: {
     experimental: { nativeSqlite: true },
-  },
-  routeRules: {
-    '/api/**': { cors: true },
-    '/legal/**': { prerender: true },
   },
   experimental: {
     typedPages: true,

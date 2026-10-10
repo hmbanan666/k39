@@ -1,118 +1,58 @@
 <template>
-  <div class="w-full h-screen mx-auto grid grid-cols-1 lg:grid-cols-2">
+  <main class="sign-in">
+    <h1>Вход</h1>
+    <p v-if="pending">
+      Проверяем, какие входы подключены.
+    </p>
+    <p v-else-if="!providers.length">
+      Вход через Яндекс и ВКонтакте пока не подключен.
+    </p>
     <div
-      class="relative hidden lg:block bg-cover"
-      style="background-image: url('/img/bg-pattern-1.jpg')"
+      v-else
+      class="actions"
     >
-      <div class="absolute top-4 right-0">
-        <div class="-mr-4 py-3 pl-4 pr-8 w-fit bg-default rounded-md">
-          <Logo />
-        </div>
-      </div>
-
-      <div class="absolute bottom-4 left-4 right-4">
-        <div class="py-4 px-4 max-w-lg bg-default rounded-md flex flex-row gap-4">
-          <img
-            :src="quote.authorImage"
-            :alt="quote.author"
-            class="size-18 rounded-full"
-          >
-
-          <div class="flex flex-col gap-2">
-            <h3 class="text-lg/6 font-semibold">
-              &quot;{{ quote.text }}&quot;
-            </h3>
-
-            <p class="text-sm/5 text-muted">
-              &mdash; {{ quote.author }}
-            </p>
-          </div>
-        </div>
-      </div>
+      <a
+        v-for="provider in providers"
+        :key="provider.id"
+        :href="`/api/auth/provider?provider=${provider.id}&redirectTo=${encodeURIComponent(redirectTo)}`"
+      >{{ provider.label }}</a>
     </div>
-
-    <div class="my-4 flex flex-col justify-between items-center">
-      <div class="flex grow flex-col justify-center items-center">
-        <UContainer class="md:min-w-sm">
-          <h1 class="mb-10 text-3xl/6 font-bold text-center">
-            Мы вас заждались!
-          </h1>
-
-          <div class="flex flex-col gap-2">
-            <UButton
-              v-for="provider in providers"
-              :key="provider.name"
-              :to="`/api/auth/provider?provider=${provider.name}&redirectTo=${encodeURIComponent(redirectTo)}`"
-              :icon="provider.icon"
-              :label="provider.label"
-              size="xl"
-              external
-              block
-            />
-          </div>
-
-          <div class="mt-6 mx-auto max-w-80 text-sm/5 text-muted text-center">
-            Используя кнопку, вы соглашаетесь с <ULink
-              to="/legal/privacy-policy"
-              target="_blank"
-              class="text-info"
-            >
-              Политикой конфиденциальности
-            </ULink>
-          </div>
-        </UContainer>
-      </div>
-
-      <UButton
-        :to="redirectTo"
-        variant="link"
-        icon="i-lucide-undo-2"
-      >
+    <p class="fine">
+      Кнопка входа означает согласие с
+      <NuxtLink to="/legal/privacy-policy">
+        политикой конфиденциальности
+      </NuxtLink>.
+    </p>
+    <p>
+      <NuxtLink :to="redirectTo">
         Вернуться
-      </UButton>
-    </div>
-  </div>
+      </NuxtLink>
+    </p>
+  </main>
 </template>
 
 <script setup lang="ts">
 definePageMeta({
   layout: 'empty',
-  middleware: ['02-guest-only'],
+  middleware: ['guest-only'],
 })
 
 const route = useRoute()
-const redirectTo = computed(() => route.query.redirectTo as string ?? '/')
+const redirectTo = computed(() => typeof route.query.redirectTo === 'string' ? route.query.redirectTo : '/')
+const { data, pending } = await useFetch<{ providers: string[] }>('/api/auth/providers')
 
-useHead({
-  title: 'Войти как пользователь',
-})
-
-const providers = ref([
-  {
-    name: 'yandex',
-    icon: 'i-simple-icons:yandexcloud',
-    label: 'Войти через Яндекс',
-  },
-  {
-    name: 'vk',
-    icon: 'i-simple-icons:vk',
-    label: 'Войти через ВКонтакте',
-  },
-  {
-    name: 'github',
-    icon: 'i-simple-icons:github',
-    label: 'Войти через GitHub',
-  },
-  {
-    name: 'twitch',
-    icon: 'i-simple-icons:twitch',
-    label: 'Войти через Twitch',
-  },
-])
-
-const quote = {
-  text: 'Такой город, как Кенигсберг на Прегеле, можно признать подходящим местом для расширения знания и человека, и света. Здесь и без путешествия можно приобрести такое знание.',
-  author: 'Иммануил Кант, немецкий философ',
-  authorImage: '/img/famous/immanuel-kant.jpg',
+const labels: Record<string, string> = {
+  yandex: 'Войти через Яндекс',
+  vk: 'Войти через ВКонтакте',
 }
+const providers = computed(() => (data.value?.providers ?? []).map((id) => ({ id, label: labels[id] ?? id })))
+
+useSeoMeta({ title: 'Вход' })
 </script>
+
+<style scoped>
+.sign-in { max-width: 24rem; margin: 4rem auto; padding: 1rem; }
+.actions { display: flex; flex-direction: column; gap: 0.6rem; }
+.actions a { display: block; text-align: center; padding: 0.8rem; border-radius: 10px; background: #3a2e24; color: #fbf3e2; text-decoration: none; font-weight: 700; }
+.fine { font-size: 0.9rem; }
+</style>

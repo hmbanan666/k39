@@ -1,32 +1,27 @@
 <template>
-  <UApp>
-    <NuxtLayout>
-      <div class="flex flex-col max-w-sm mx-auto mt-16 text-center items-center">
-        <h1 class="text-4xl font-bold mb-4">
-          {{ $t('error.title') }} {{ error?.statusCode }}
-        </h1>
-        <p>{{ error?.message ?? error?.statusMessage }}</p>
-
-        <UButton
-          variant="solid"
-          size="xl"
-          class="mt-12 w-full justify-center"
-          :label="$t('common.to-home')"
-          @click="handleError"
-        />
-      </div>
-    </NuxtLayout>
-  </UApp>
+  <div class="error-page">
+    <h1>Ошибка {{ error?.statusCode }}</h1>
+    <p>{{ error?.statusMessage || error?.message || 'Страница не открылась' }}</p>
+    <button
+      type="button"
+      @click="handleError"
+    >
+      На главную
+    </button>
+  </div>
 </template>
 
 <script setup lang="ts">
-const { error } = defineProps<{ error: {
-  statusCode: number
-  statusMessage?: string
-  message?: string
-} }>()
+const props = defineProps<{ error: { statusCode: number, statusMessage?: string, message?: string } }>()
 
 function handleError() {
   clearError({ redirect: '/' })
 }
+
+useHead({ title: `Ошибка ${props.error.statusCode}` })
 </script>
+
+<style scoped>
+.error-page { max-width: 28rem; margin: 4rem auto; text-align: center; padding: 1rem; }
+button { margin-top: 1rem; border: 1.4px solid #3a2e24; background: #9b3d2a; color: #fbf3e2; border-radius: 999px; padding: 0.6rem 1rem; font-weight: 700; }
+</style>

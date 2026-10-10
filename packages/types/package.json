@@ -4,9 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    ".": "./src/index.ts",
-    "./client": "./src/schemas/client/index.ts",
-    "./server": "./src/schemas/server/index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "clean:modules": "rm -rf node_modules",
