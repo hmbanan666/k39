@@ -6,9 +6,16 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages ./packages
 COPY apps/web-app ./apps/web-app
-RUN npm install --ignore-scripts -g pnpm && \
-    pnpm i --frozen-lockfile && \
-    pnpm build --filter @k39/web-app
+
+# `npm install -g pnpm` installs current pnpm (12.x). That binary then
+# re-execs the packageManager pin (10.25.0). The old build line was
+# `pnpm build --filter @k39/web-app`, which runs the root script
+# `pnpm -r run build` and appends `--filter` onto `nuxt build`.
+# Corepack activates 10.25.0 directly. The filter belongs before the script.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable pnpm
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @k39/web-app build
 
 # Production stage
 FROM base AS production
@@ -21,10 +28,11 @@ COPY --from=builder /app/apps/web-app/.output .
 COPY --from=builder /app/packages/database/migrations /app/migrations
 COPY docker/web-app/health-check.sh ./
 
-# Running as non-root is a security best practice
-# Make the Health check script executable
+# The process runs as appuser. Nuxt Content opens a sqlite file under /app at
+# boot, so that user has to own the workdir or place pages 404.
 RUN addgroup -S appgroup && \
     adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app && \
     chmod +x ./health-check.sh
 USER appuser
 

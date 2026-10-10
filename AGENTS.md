@@ -67,6 +67,9 @@ Target: Dokploy.
 
 - Dockerfile: `docker/web-app/Dockerfile`
 - Build context: repository root
+- The image enables pnpm with Corepack at the version in `packageManager` (`pnpm@10.25.0`). Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`.
+- The container user owns `/app`. Nuxt Content creates a sqlite file there on boot. If that directory is not writable, place pages 404.
+- CI job `docker` in `.github/workflows/ci.yml` runs that image build on pull requests.
 - Port: 3000
 - Auto-deploy: push to `main`
 - Required env: `DATABASE_URL`, `NUXT_SESSION_PASSWORD` (32+ characters), `NODE_ENV=production`
