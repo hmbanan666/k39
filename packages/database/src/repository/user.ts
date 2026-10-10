@@ -22,7 +22,7 @@ export class User {
     return user
   }
 
-  static async update(id: string, data: Partial<Pick<UserDraft, 'name' | 'avatarUrl'>>) {
+  static async update(id: string, data: Partial<Pick<UserDraft, 'name' | 'avatarUrl' | 'role'>>) {
     const [user] = await useDatabase()
       .update(users)
       .set({

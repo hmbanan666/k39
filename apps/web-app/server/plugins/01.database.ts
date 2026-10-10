@@ -1,7 +1,6 @@
-import type { CatalogSnapshot } from '@k39/database'
+import { mkdir } from 'node:fs/promises'
 import process from 'node:process'
-import { db, useCreateDatabase, useMigrateDatabase } from '@k39/database'
-import catalog from '../../shared/data/catalog.json'
+import { applyInitialContent, useCreateDatabase, useMigrateDatabase } from '@k39/database'
 
 const logger = useLogger('db')
 
@@ -17,6 +16,10 @@ export default defineNitroPlugin(async () => {
 
   useCreateDatabase(databaseUrl)
   await useMigrateDatabase()
-  await db.catalog.apply(catalog as CatalogSnapshot)
+  await applyInitialContent()
+  const mediaDir = process.env.MEDIA_DIR || '/app/media'
+  await mkdir(mediaDir, { recursive: true }).catch((error: unknown) => {
+    logger.warn('MEDIA_DIR is not writable', mediaDir, error)
+  })
   logger.success('Database ready')
 })

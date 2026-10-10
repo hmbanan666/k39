@@ -52,9 +52,6 @@ catalogs:
       specifier: ^3.1.8
       version: 3.1.8
   integrations:
-    '@nuxt/content':
-      specifier: ^3.9.0
-      version: 3.9.0
     '@nuxt/ui':
       specifier: ^4.2.1
       version: 4.2.1
@@ -185,9 +182,6 @@ importers:
       '@k39/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@nuxt/content':
-        specifier: catalog:integrations
-        version: 3.9.0(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3))(magicast@0.5.1)
       '@nuxt/ui':
         specifier: catalog:integrations
         version: 4.2.1(@babel/parser@7.28.5)(@nuxt/content@3.9.0(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3))(magicast@0.5.1))(aws4fetch@1.0.20)(change-case@5.4.4)(db0@0.3.4(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)))(embla-carousel@8.6.0)(ioredis@5.8.2)(magicast@0.5.1)(typescript@5.9.3)(vite@7.2.7(@types/node@25.0.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(yaml@2.8.2))(vue-router@4.6.3(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3))(zod@4.1.13)
@@ -7198,6 +7192,7 @@ snapshots:
       '@jsdevtools/ono': 7.1.3
       '@types/json-schema': 7.0.15
       js-yaml: 4.1.0
+    optional: true
 
   '@babel/code-frame@7.27.1':
     dependencies:
@@ -7955,11 +7950,13 @@ snapshots:
 
   '@ioredis/commands@1.4.0': {}
 
-  '@isaacs/balanced-match@4.0.1': {}
+  '@isaacs/balanced-match@4.0.1':
+    optional: true
 
   '@isaacs/brace-expansion@5.0.0':
     dependencies:
       '@isaacs/balanced-match': 4.0.1
+    optional: true
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -8000,7 +7997,8 @@ snapshots:
 
   '@js-sdsl/ordered-map@4.4.2': {}
 
-  '@jsdevtools/ono@7.1.3': {}
+  '@jsdevtools/ono@7.1.3':
+    optional: true
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
@@ -8138,6 +8136,7 @@ snapshots:
       - mysql2
       - supports-color
       - utf-8-validate
+    optional: true
 
   '@nuxt/devalue@2.0.2': {}
 
@@ -8626,6 +8625,7 @@ snapshots:
     transitivePeerDependencies:
       - magicast
       - supports-color
+    optional: true
 
   '@nuxtjs/robots@5.5.6(h3@1.15.4)(magicast@0.5.1)(vue@3.5.25(typescript@5.9.3))':
     dependencies:
@@ -9192,37 +9192,45 @@ snapshots:
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.4
       hast-util-to-html: 9.0.5
+    optional: true
 
   '@shikijs/engine-javascript@3.19.0':
     dependencies:
       '@shikijs/types': 3.19.0
       '@shikijs/vscode-textmate': 10.0.2
       oniguruma-to-es: 4.3.4
+    optional: true
 
   '@shikijs/engine-oniguruma@3.19.0':
     dependencies:
       '@shikijs/types': 3.19.0
       '@shikijs/vscode-textmate': 10.0.2
+    optional: true
 
   '@shikijs/langs@3.19.0':
     dependencies:
       '@shikijs/types': 3.19.0
+    optional: true
 
   '@shikijs/themes@3.19.0':
     dependencies:
       '@shikijs/types': 3.19.0
+    optional: true
 
   '@shikijs/transformers@3.19.0':
     dependencies:
       '@shikijs/core': 3.19.0
       '@shikijs/types': 3.19.0
+    optional: true
 
   '@shikijs/types@3.19.0':
     dependencies:
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.4
+    optional: true
 
-  '@shikijs/vscode-textmate@10.0.2': {}
+  '@shikijs/vscode-textmate@10.0.2':
+    optional: true
 
   '@shuding/opentype.js@1.4.0-beta.0':
     dependencies:
@@ -9231,17 +9239,20 @@ snapshots:
 
   '@sindresorhus/base62@1.0.0': {}
 
-  '@sindresorhus/is@4.6.0': {}
+  '@sindresorhus/is@4.6.0':
+    optional: true
 
   '@sindresorhus/is@7.1.1': {}
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
-  '@socket.io/component-emitter@3.1.2': {}
+  '@socket.io/component-emitter@3.1.2':
+    optional: true
 
   '@speed-highlight/core@1.2.12': {}
 
-  '@sqlite.org/sqlite-wasm@3.50.4-build1': {}
+  '@sqlite.org/sqlite-wasm@3.50.4-build1':
+    optional: true
 
   '@standard-schema/spec@1.0.0': {}
 
@@ -9396,10 +9407,12 @@ snapshots:
   '@types/hast@3.0.4':
     dependencies:
       '@types/unist': 3.0.3
+    optional: true
 
   '@types/json-schema@7.0.15': {}
 
-  '@types/lodash@4.17.20': {}
+  '@types/lodash@4.17.20':
+    optional: true
 
   '@types/mdast@4.0.4':
     dependencies:
@@ -9442,7 +9455,8 @@ snapshots:
     dependencies:
       '@types/node': 18.19.130
 
-  '@types/unist@2.0.11': {}
+  '@types/unist@2.0.11':
+    optional: true
 
   '@types/unist@3.0.3': {}
 
@@ -9547,7 +9561,8 @@ snapshots:
       '@typescript-eslint/types': 8.49.0
       eslint-visitor-keys: 4.2.1
 
-  '@ungap/structured-clone@1.3.0': {}
+  '@ungap/structured-clone@1.3.0':
+    optional: true
 
   '@unhead/addons@2.0.19(rollup@4.52.5)':
     dependencies:
@@ -9967,7 +9982,8 @@ snapshots:
     dependencies:
       vue: 3.5.25(typescript@5.9.3)
 
-  '@webcontainer/env@1.1.1': {}
+  '@webcontainer/env@1.1.1':
+    optional: true
 
   JSONStream@1.3.5:
     dependencies:
@@ -10109,7 +10125,8 @@ snapshots:
 
   b4a@1.7.3: {}
 
-  bail@2.0.2: {}
+  bail@2.0.2:
+    optional: true
 
   balanced-match@1.0.2: {}
 
@@ -10293,15 +10310,19 @@ snapshots:
 
   change-case@5.4.4: {}
 
-  char-regex@1.0.2: {}
+  char-regex@1.0.2:
+    optional: true
 
-  character-entities-html4@2.1.0: {}
+  character-entities-html4@2.1.0:
+    optional: true
 
-  character-entities-legacy@3.0.0: {}
+  character-entities-legacy@3.0.0:
+    optional: true
 
   character-entities@2.0.2: {}
 
-  character-reference-invalid@2.0.1: {}
+  character-reference-invalid@2.0.1:
+    optional: true
 
   chokidar@4.0.3:
     dependencies:
@@ -10371,7 +10392,8 @@ snapshots:
 
   colortranslator@5.0.0: {}
 
-  comma-separated-tokens@2.0.3: {}
+  comma-separated-tokens@2.0.3:
+    optional: true
 
   commander@10.0.1: {}
 
@@ -10588,6 +10610,7 @@ snapshots:
   debug@4.3.7:
     dependencies:
       ms: 2.1.3
+    optional: true
 
   debug@4.4.3:
     dependencies:
@@ -10622,7 +10645,8 @@ snapshots:
 
   destr@2.0.5: {}
 
-  detab@3.0.2: {}
+  detab@3.0.2:
+    optional: true
 
   detect-libc@1.0.3: {}
 
@@ -10775,9 +10799,11 @@ snapshots:
 
   emoji-regex@9.2.2: {}
 
-  emojilib@2.4.0: {}
+  emojilib@2.4.0:
+    optional: true
 
-  emoticon@4.1.0: {}
+  emoticon@4.1.0:
+    optional: true
 
   empathic@2.0.0: {}
 
@@ -10798,8 +10824,10 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+    optional: true
 
-  engine.io-parser@5.2.3: {}
+  engine.io-parser@5.2.3:
+    optional: true
 
   enhanced-resolve@5.18.3:
     dependencies:
@@ -10808,7 +10836,8 @@ snapshots:
 
   entities@4.5.0: {}
 
-  entities@6.0.1: {}
+  entities@6.0.1:
+    optional: true
 
   entities@7.0.1: {}
 
@@ -11257,7 +11286,8 @@ snapshots:
 
   exsolve@1.0.8: {}
 
-  extend@3.0.2: {}
+  extend@3.0.2:
+    optional: true
 
   fast-deep-equal@3.1.3: {}
 
@@ -11329,7 +11359,8 @@ snapshots:
       flatted: 3.3.3
       keyv: 4.5.4
 
-  flat@6.0.1: {}
+  flat@6.0.1:
+    optional: true
 
   flatted@3.3.3: {}
 
@@ -11556,6 +11587,7 @@ snapshots:
     dependencies:
       '@types/hast': 3.0.4
       hast-util-is-element: 3.0.0
+    optional: true
 
   hast-util-format@1.1.0:
     dependencies:
@@ -11566,6 +11598,7 @@ snapshots:
       hast-util-whitespace: 3.0.0
       html-whitespace-sensitive-tag-names: 3.0.1
       unist-util-visit-parents: 6.0.2
+    optional: true
 
   hast-util-from-parse5@8.0.3:
     dependencies:
@@ -11577,22 +11610,27 @@ snapshots:
       vfile: 6.0.3
       vfile-location: 5.0.3
       web-namespaces: 2.0.1
+    optional: true
 
   hast-util-has-property@3.0.0:
     dependencies:
       '@types/hast': 3.0.4
+    optional: true
 
   hast-util-heading-rank@3.0.0:
     dependencies:
       '@types/hast': 3.0.4
+    optional: true
 
   hast-util-is-body-ok-link@3.0.1:
     dependencies:
       '@types/hast': 3.0.4
+    optional: true
 
   hast-util-is-element@3.0.0:
     dependencies:
       '@types/hast': 3.0.4
+    optional: true
 
   hast-util-minify-whitespace@1.0.1:
     dependencies:
@@ -11601,10 +11639,12 @@ snapshots:
       hast-util-is-element: 3.0.0
       hast-util-whitespace: 3.0.0
       unist-util-is: 6.0.1
+    optional: true
 
   hast-util-parse-selector@4.0.0:
     dependencies:
       '@types/hast': 3.0.4
+    optional: true
 
   hast-util-phrasing@3.0.1:
     dependencies:
@@ -11613,6 +11653,7 @@ snapshots:
       hast-util-has-property: 3.0.0
       hast-util-is-body-ok-link: 3.0.1
       hast-util-is-element: 3.0.0
+    optional: true
 
   hast-util-raw@9.1.0:
     dependencies:
@@ -11629,6 +11670,7 @@ snapshots:
       vfile: 6.0.3
       web-namespaces: 2.0.1
       zwitch: 2.0.4
+    optional: true
 
   hast-util-to-html@9.0.5:
     dependencies:
@@ -11643,6 +11685,7 @@ snapshots:
       space-separated-tokens: 2.0.2
       stringify-entities: 4.0.4
       zwitch: 2.0.4
+    optional: true
 
   hast-util-to-mdast@10.1.2:
     dependencies:
@@ -11660,6 +11703,7 @@ snapshots:
       trim-trailing-lines: 2.1.0
       unist-util-position: 5.0.0
       unist-util-visit: 5.0.0
+    optional: true
 
   hast-util-to-parse5@8.0.0:
     dependencies:
@@ -11670,10 +11714,12 @@ snapshots:
       space-separated-tokens: 2.0.2
       web-namespaces: 2.0.1
       zwitch: 2.0.4
+    optional: true
 
   hast-util-to-string@3.0.1:
     dependencies:
       '@types/hast': 3.0.4
+    optional: true
 
   hast-util-to-text@4.0.2:
     dependencies:
@@ -11681,10 +11727,12 @@ snapshots:
       '@types/unist': 3.0.3
       hast-util-is-element: 3.0.0
       unist-util-find-after: 5.0.0
+    optional: true
 
   hast-util-whitespace@3.0.0:
     dependencies:
       '@types/hast': 3.0.4
+    optional: true
 
   hastscript@9.0.1:
     dependencies:
@@ -11693,6 +11741,7 @@ snapshots:
       hast-util-parse-selector: 4.0.0
       property-information: 7.1.0
       space-separated-tokens: 2.0.2
+    optional: true
 
   hex-rgb@4.3.0: {}
 
@@ -11704,9 +11753,11 @@ snapshots:
 
   html-escaper@2.0.2: {}
 
-  html-void-elements@3.0.0: {}
+  html-void-elements@3.0.0:
+    optional: true
 
-  html-whitespace-sensitive-tag-names@3.0.1: {}
+  html-whitespace-sensitive-tag-names@3.0.1:
+    optional: true
 
   http-errors@2.0.0:
     dependencies:
@@ -11788,14 +11839,17 @@ snapshots:
 
   iron-webcrypto@1.2.1: {}
 
-  is-absolute-url@4.0.1: {}
+  is-absolute-url@4.0.1:
+    optional: true
 
-  is-alphabetical@2.0.1: {}
+  is-alphabetical@2.0.1:
+    optional: true
 
   is-alphanumerical@2.0.1:
     dependencies:
       is-alphabetical: 2.0.1
       is-decimal: 2.0.1
+    optional: true
 
   is-arrayish@0.2.1: {}
 
@@ -11807,7 +11861,8 @@ snapshots:
     dependencies:
       hasown: 2.0.2
 
-  is-decimal@2.0.1: {}
+  is-decimal@2.0.1:
+    optional: true
 
   is-docker@2.2.1: {}
 
@@ -11825,7 +11880,8 @@ snapshots:
     dependencies:
       is-extglob: 2.1.1
 
-  is-hexadecimal@2.0.1: {}
+  is-hexadecimal@2.0.1:
+    optional: true
 
   is-inside-container@1.0.0:
     dependencies:
@@ -11958,8 +12014,10 @@ snapshots:
       minimist: 1.2.8
       prettier: 3.6.2
       tinyglobby: 0.2.15
+    optional: true
 
-  json-schema-to-zod@2.7.0: {}
+  json-schema-to-zod@2.7.0:
+    optional: true
 
   json-schema-traverse@0.4.1: {}
 
@@ -12311,6 +12369,7 @@ snapshots:
       unist-util-position: 5.0.0
       unist-util-visit: 5.0.0
       vfile: 6.0.3
+    optional: true
 
   mdast-util-to-hast@13.2.1:
     dependencies:
@@ -12323,6 +12382,7 @@ snapshots:
       unist-util-position: 5.0.0
       unist-util-visit: 5.0.0
       vfile: 6.0.3
+    optional: true
 
   mdast-util-to-markdown@2.1.2:
     dependencies:
@@ -12567,11 +12627,13 @@ snapshots:
 
   mimic-function@5.0.1: {}
 
-  minimark@0.2.0: {}
+  minimark@0.2.0:
+    optional: true
 
   minimatch@10.1.1:
     dependencies:
       '@isaacs/brace-expansion': 5.0.0
+    optional: true
 
   minimatch@3.1.2:
     dependencies:
@@ -12612,7 +12674,8 @@ snapshots:
 
   mocked-exports@0.1.1: {}
 
-  modern-tar@0.7.2: {}
+  modern-tar@0.7.2:
+    optional: true
 
   motion-dom@12.23.12:
     dependencies:
@@ -12763,6 +12826,7 @@ snapshots:
       char-regex: 1.0.2
       emojilib: 2.4.0
       skin-tone: 2.0.0
+    optional: true
 
   node-fetch-native@1.6.7: {}
 
@@ -12834,6 +12898,7 @@ snapshots:
       vue-component-meta: 3.1.8(typescript@5.9.3)
     transitivePeerDependencies:
       - magicast
+    optional: true
 
   nuxt-link-checker@4.3.6(aws4fetch@1.0.20)(db0@0.3.4(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)))(h3@1.15.4)(ioredis@5.8.2)(magicast@0.5.1)(vite@7.2.7(@types/node@25.0.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(yaml@2.8.2))(vue@3.5.25(typescript@5.9.3)):
     dependencies:
@@ -13148,13 +13213,15 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  oniguruma-parser@0.12.1: {}
+  oniguruma-parser@0.12.1:
+    optional: true
 
   oniguruma-to-es@4.3.4:
     dependencies:
       oniguruma-parser: 0.12.1
       regex: 6.0.1
       regex-recursion: 6.0.2
+    optional: true
 
   open@10.2.0:
     dependencies:
@@ -13284,6 +13351,7 @@ snapshots:
       is-alphanumerical: 2.0.1
       is-decimal: 2.0.1
       is-hexadecimal: 2.0.1
+    optional: true
 
   parse-gitignore@2.0.0: {}
 
@@ -13314,10 +13382,12 @@ snapshots:
   parse5@7.3.0:
     dependencies:
       entities: 6.0.1
+    optional: true
 
   parse5@8.0.0:
     dependencies:
       entities: 6.0.1
+    optional: true
 
   parseurl@1.3.3: {}
 
@@ -13595,7 +13665,8 @@ snapshots:
 
   prelude-ls@1.2.1: {}
 
-  prettier@3.6.2: {}
+  prettier@3.6.2:
+    optional: true
 
   pretty-bytes@7.1.0: {}
 
@@ -13622,9 +13693,11 @@ snapshots:
     dependencies:
       mkdirp: 1.0.4
 
-  property-information@6.5.0: {}
+  property-information@6.5.0:
+    optional: true
 
-  property-information@7.1.0: {}
+  property-information@7.1.0:
+    optional: true
 
   proto-list@1.2.4: {}
 
@@ -13714,12 +13787,15 @@ snapshots:
   regex-recursion@6.0.2:
     dependencies:
       regex-utilities: 2.3.0
+    optional: true
 
-  regex-utilities@2.3.0: {}
+  regex-utilities@2.3.0:
+    optional: true
 
   regex@6.0.1:
     dependencies:
       regex-utilities: 2.3.0
+    optional: true
 
   regexp-ast-analysis@0.7.1:
     dependencies:
@@ -13740,17 +13816,20 @@ snapshots:
       is-absolute-url: 4.0.1
       space-separated-tokens: 2.0.2
       unist-util-visit: 5.0.0
+    optional: true
 
   rehype-minify-whitespace@6.0.2:
     dependencies:
       '@types/hast': 3.0.4
       hast-util-minify-whitespace: 1.0.1
+    optional: true
 
   rehype-raw@7.0.0:
     dependencies:
       '@types/hast': 3.0.4
       hast-util-raw: 9.1.0
       vfile: 6.0.3
+    optional: true
 
   rehype-remark@10.0.1:
     dependencies:
@@ -13759,6 +13838,7 @@ snapshots:
       hast-util-to-mdast: 10.1.2
       unified: 11.0.5
       vfile: 6.0.3
+    optional: true
 
   rehype-slug@6.0.0:
     dependencies:
@@ -13767,17 +13847,20 @@ snapshots:
       hast-util-heading-rank: 3.0.0
       hast-util-to-string: 3.0.1
       unist-util-visit: 5.0.0
+    optional: true
 
   rehype-sort-attribute-values@5.0.1:
     dependencies:
       '@types/hast': 3.0.4
       hast-util-is-element: 3.0.0
       unist-util-visit: 5.0.0
+    optional: true
 
   rehype-sort-attributes@5.0.1:
     dependencies:
       '@types/hast': 3.0.4
       unist-util-visit: 5.0.0
+    optional: true
 
   reka-ui@2.6.0(typescript@5.9.3)(vue@3.5.25(typescript@5.9.3)):
     dependencies:
@@ -13803,6 +13886,7 @@ snapshots:
       mdast-util-find-and-replace: 3.0.2
       node-emoji: 2.2.0
       unified: 11.0.5
+    optional: true
 
   remark-gfm@4.0.1:
     dependencies:
@@ -13814,6 +13898,7 @@ snapshots:
       unified: 11.0.5
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   remark-mdc@3.9.0:
     dependencies:
@@ -13837,6 +13922,7 @@ snapshots:
       yaml: 2.8.2
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   remark-parse@11.0.0:
     dependencies:
@@ -13846,6 +13932,7 @@ snapshots:
       unified: 11.0.5
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   remark-rehype@11.1.2:
     dependencies:
@@ -13854,12 +13941,14 @@ snapshots:
       mdast-util-to-hast: 13.2.1
       unified: 11.0.5
       vfile: 6.0.3
+    optional: true
 
   remark-stringify@11.0.0:
     dependencies:
       '@types/mdast': 4.0.4
       mdast-util-to-markdown: 2.1.2
       unified: 11.0.5
+    optional: true
 
   require-directory@2.1.1: {}
 
@@ -14032,6 +14121,7 @@ snapshots:
       '@shikijs/types': 3.19.0
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.4
+    optional: true
 
   siginfo@2.0.0: {}
 
@@ -14063,6 +14153,7 @@ snapshots:
   skin-tone@2.0.0:
     dependencies:
       unicode-emoji-modifier-base: 1.0.0
+    optional: true
 
   slash@5.1.0: {}
 
@@ -14085,6 +14176,7 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+    optional: true
 
   socket.io-parser@4.2.4:
     dependencies:
@@ -14092,6 +14184,7 @@ snapshots:
       debug: 4.3.7
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   source-map-js@1.2.1: {}
 
@@ -14104,7 +14197,8 @@ snapshots:
 
   source-map@0.7.6: {}
 
-  space-separated-tokens@2.0.2: {}
+  space-separated-tokens@2.0.2:
+    optional: true
 
   spdx-exceptions@2.5.0: {}
 
@@ -14194,6 +14288,7 @@ snapshots:
     dependencies:
       character-entities-html4: 2.1.0
       character-entities-legacy: 3.0.0
+    optional: true
 
   strip-ansi@6.0.1:
     dependencies:
@@ -14387,11 +14482,14 @@ snapshots:
 
   tr46@0.0.3: {}
 
-  trim-lines@3.0.1: {}
+  trim-lines@3.0.1:
+    optional: true
 
-  trim-trailing-lines@2.1.0: {}
+  trim-trailing-lines@2.1.0:
+    optional: true
 
-  trough@2.2.0: {}
+  trough@2.2.0:
+    optional: true
 
   truncatise@0.0.8: {}
 
@@ -14447,7 +14545,8 @@ snapshots:
     dependencies:
       hookable: 5.5.3
 
-  unicode-emoji-modifier-base@1.0.0: {}
+  unicode-emoji-modifier-base@1.0.0:
+    optional: true
 
   unicode-properties@1.4.1:
     dependencies:
@@ -14472,6 +14571,7 @@ snapshots:
       is-plain-obj: 4.1.0
       trough: 2.2.0
       vfile: 6.0.3
+    optional: true
 
   unifont@0.6.0:
     dependencies:
@@ -14499,11 +14599,13 @@ snapshots:
   unist-builder@4.0.0:
     dependencies:
       '@types/unist': 3.0.3
+    optional: true
 
   unist-util-find-after@5.0.0:
     dependencies:
       '@types/unist': 3.0.3
       unist-util-is: 6.0.1
+    optional: true
 
   unist-util-is@6.0.1:
     dependencies:
@@ -14512,6 +14614,7 @@ snapshots:
   unist-util-position@5.0.0:
     dependencies:
       '@types/unist': 3.0.3
+    optional: true
 
   unist-util-stringify-position@4.0.0:
     dependencies:
@@ -14653,6 +14756,7 @@ snapshots:
       mlly: 1.8.0
       pathe: 2.0.3
       pkg-types: 2.3.0
+    optional: true
 
   update-browserslist-db@1.1.4(browserslist@4.27.0):
     dependencies:
@@ -14682,16 +14786,19 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
       vfile: 6.0.3
+    optional: true
 
   vfile-message@4.0.3:
     dependencies:
       '@types/unist': 3.0.3
       unist-util-stringify-position: 4.0.0
+    optional: true
 
   vfile@6.0.3:
     dependencies:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
+    optional: true
 
   vite-dev-rpc@1.1.0(vite@7.2.7(@types/node@25.0.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(yaml@2.8.2)):
     dependencies:
@@ -14842,12 +14949,14 @@ snapshots:
       path-browserify: 1.0.1
       typescript: 5.9.3
       vue-component-type-helpers: 3.1.8
+    optional: true
 
   vue-component-type-helpers@2.2.12: {}
 
   vue-component-type-helpers@3.1.4: {}
 
-  vue-component-type-helpers@3.1.8: {}
+  vue-component-type-helpers@3.1.8:
+    optional: true
 
   vue-demi@0.14.10(vue@3.5.25(typescript@5.9.3)):
     dependencies:
@@ -14888,7 +14997,8 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  web-namespaces@2.0.1: {}
+  web-namespaces@2.0.1:
+    optional: true
 
   webidl-conversions@3.0.1: {}
 
@@ -14938,7 +15048,8 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.17.1: {}
+  ws@8.17.1:
+    optional: true
 
   ws@8.18.3: {}
 
@@ -14950,7 +15061,8 @@ snapshots:
 
   xml-name-validator@4.0.0: {}
 
-  xmlhttprequest-ssl@2.1.2: {}
+  xmlhttprequest-ssl@2.1.2:
+    optional: true
 
   xtend@4.0.2: {}
 
@@ -15009,8 +15121,10 @@ snapshots:
   zod-to-json-schema@3.25.0(zod@3.25.76):
     dependencies:
       zod: 3.25.76
+    optional: true
 
-  zod@3.25.76: {}
+  zod@3.25.76:
+    optional: true
 
   zod@4.1.13: {}
 

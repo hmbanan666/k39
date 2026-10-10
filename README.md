@@ -12,7 +12,7 @@ cp apps/web-app/.env.example apps/web-app/.env
 pnpm --filter @k39/web-app dev
 ```
 
-The app listens on port 3000. Postgres is optional in development: pages still render from Nuxt Content. Events, login, and `/api/health` need `DATABASE_URL`. On startup the server applies Drizzle migrations and upserts the forts catalog.
+The app listens on port 3000. Public pages are rendered from Postgres, so set `DATABASE_URL` before `pnpm dev`. On startup the server applies Drizzle migrations and upserts the initial place seed. Login needs the optional OAuth variables.
 
 ## Check
 

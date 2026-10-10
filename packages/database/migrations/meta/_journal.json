@@ -8,6 +8,20 @@
       "when": 1791636909973,
       "tag": "0000_perfect_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791653913275,
+      "tag": "0001_content_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791654666143,
+      "tag": "0002_seo_og_image",
+      "breakpoints": true
     }
   ]
 }

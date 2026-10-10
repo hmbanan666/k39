@@ -1,66 +1,28 @@
-import type { CatalogSnapshot } from '../../types'
 import { describe, expect, it } from 'vitest'
-import { Catalog } from '../catalog'
-import { EventLog } from '../event-log'
-import { Place } from '../place'
-import { User } from '../user'
+import { applyInitialContent } from '../../seed/apply'
+import { Content, Editor } from '../content'
 
-const snapshot: CatalogSnapshot = {
-  region: { slug: 'kaliningrad', title: 'Калининград' },
-  places: [{
-    slug: 'fort-11-denhoff',
-    title: 'Форт № 11 «Дёнхофф»',
-    type: 'fort',
-    latitude: 54.656847,
-    longitude: 20.567554,
-    status: 'open',
-    hours: '10:00-18:00',
-    sourceUrl: 'https://fortdonhoff.ru/',
-    regionSlug: 'kaliningrad',
-  }],
-  route: {
-    slug: 'five-forts',
-    title: 'Квест: 5 фортов',
-    summary: 'Короткий маршрут',
-    regionSlug: 'kaliningrad',
-    points: ['fort-11-denhoff'],
-  },
-  quest: {
-    slug: 'five-forts',
-    title: 'Квест: 5 фортов',
-    summary: 'Короткий маршрут',
-    routeSlug: 'five-forts',
-    steps: [{ placeSlug: 'fort-11-denhoff', title: 'Форт № 11', prompt: 'Отметьте визит' }],
-  },
-}
-
-describe('catalog and events', () => {
-  it('syncs a place twice and stores a consented event', async () => {
-    await Catalog.apply(snapshot)
-    await Catalog.apply(snapshot)
-
-    const place = await Place.findBySlug('fort-11-denhoff')
-    expect(place?.title).toContain('Дёнхофф')
-    expect(place?.status).toBe('open')
-
-    const event = await EventLog.create({
-      type: 'page_view',
-      placeId: place?.id,
-      placeSlug: 'fort-11-denhoff',
-      sessionId: 'sess-test',
-      consent: true,
+describe('initial content', () => {
+  it('publishes the fort seed and resolves a place', async () => {
+    await applyInitialContent()
+    await applyInitialContent()
+    const loaded = await Content.publishedPlace('fort-11-denhoff')
+    expect(loaded?.place.title).toContain('Дёнхофф')
+    expect(loaded?.place.publicationStatus).toBe('published')
+    expect(loaded?.nearest.length).toBeGreaterThan(0)
+    const hidden = await Content.publishedPlace('does-not-exist')
+    expect(hidden).toBeNull()
+    await Editor.savePlace({
+      slug: 'draft-only',
+      title: 'Черновик',
+      summary: 'Текст черновика, которого не должно быть в карте сайта.',
+      body: 'Черновик',
+      publicationStatus: 'draft',
     })
-    expect(event.consent).toBe(true)
-    expect(event.placeSlug).toBe('fort-11-denhoff')
-  })
-
-  it('creates a user from an email', async () => {
-    const created = await User.create({
-      email: `user-${crypto.randomUUID()}@example.com`,
-      name: 'Test User',
-    })
-    expect(created.id).toBeTruthy()
-    const found = await User.findByEmail(created.email)
-    expect(found?.name).toBe('Test User')
+    const map = await Content.sitemapRows()
+    expect(map.places.some((row) => row.loc === '/fort-11-denhoff')).toBe(true)
+    expect(map.places.some((row) => row.loc === '/draft-only')).toBe(false)
+    expect(map.routes.some((row) => row.loc === '/marshruty/pyat-fortov')).toBe(true)
+    expect(map.quests.some((row) => row.loc === '/kvesty/pyat-fortov')).toBe(true)
   })
 })

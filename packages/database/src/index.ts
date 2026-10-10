@@ -1,4 +1,5 @@
 export * from './database'
 export { repository as db } from './repository'
+export { applyInitialContent } from './seed/apply'
 export * as tables from './tables'
 export type * from './types'

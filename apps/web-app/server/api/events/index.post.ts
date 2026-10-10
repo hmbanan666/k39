@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
       maxAge: 60 * 60 * 24 * 365,
     })
 
-    const place = body.placeSlug ? await db.place.findBySlug(body.placeSlug) : undefined
+    const place = body.placeSlug ? await db.editor.placeBySlug(body.placeSlug) : undefined
     const row = await db.eventLog.create({
       type: body.type,
       placeId: place?.id,

@@ -1,10 +1,31 @@
-import { canonicalRedirect } from '../../shared/utils/canonical-redirect'
+import process from 'node:process'
+import { db, isDatabaseReady } from '@k39/database'
+import { decideRedirect } from '../../shared/redirects'
 
-export default defineEventHandler((event) => {
-  const host = getRequestHeader(event, 'x-forwarded-host') ?? getRequestHeader(event, 'host')
+export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
-  const target = canonicalRedirect(host, `${url.pathname}${url.search}`)
-  if (target) {
-    return sendRedirect(event, target, 301)
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_nuxt') || url.pathname.startsWith('/media/') || url.pathname.includes('.')) {
+    return
+  }
+  const stored = isDatabaseReady()
+    ? (await db.content.redirects()).map((row) => ({
+        fromPath: row.fromPath,
+        toPath: row.toPath,
+        statusCode: row.statusCode,
+      }))
+    : []
+  const decision = decideRedirect({
+    hostHeader: getRequestHeader(event, 'x-forwarded-host') ?? getRequestHeader(event, 'host'),
+    protoHeader: getRequestHeader(event, 'x-forwarded-proto'),
+    path: url.pathname,
+    search: url.search,
+    mapEnabled: process.env.FEATURE_MAP === 'true',
+    redirects: stored,
+  })
+  if (decision.kind === 'gone') {
+    throw createError({ statusCode: 410, statusMessage: 'Gone' })
+  }
+  if (decision.kind === 'redirect') {
+    return sendRedirect(event, decision.location, 301)
   }
 })

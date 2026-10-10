@@ -1,7 +1,7 @@
-import type { OfferCodeStatus, OfferKind, OfferStatus, PlaceStatus } from './types/entities'
+import type { AuthorKind, OfferCodeStatus, OfferKind, OfferStatus, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
 import { cuid2 } from 'drizzle-cuid2/postgres'
 import { sql } from 'drizzle-orm'
-import { boolean, check, doublePrecision, index, integer, pgTable, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
+import { boolean, check, doublePrecision, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
 
 function createdAt() {
   return timestamp('created_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow()
@@ -18,6 +18,7 @@ export const users = pgTable('users', {
   email: varchar('email').notNull().unique(),
   name: varchar('name').notNull(),
   avatarUrl: varchar('avatar_url'),
+  role: varchar('role').notNull().default('user').$type<UserRole>(),
 })
 
 export const regions = pgTable('regions', {
@@ -29,19 +30,66 @@ export const regions = pgTable('regions', {
   description: text('description'),
 })
 
+export const categories = pgTable('categories', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  slug: varchar('slug').notNull().unique(),
+  title: varchar('title').notNull(),
+  description: text('description').notNull(),
+  seoTitle: varchar('seo_title'),
+  seoDescription: varchar('seo_description'),
+  ogImage: varchar('og_image'),
+  noindex: boolean('noindex').notNull().default(false),
+})
+
 export const places = pgTable('places', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
   slug: varchar('slug').notNull().unique(),
   title: varchar('title').notNull(),
-  type: varchar('type').notNull(),
-  latitude: doublePrecision('latitude').notNull(),
-  longitude: doublePrecision('longitude').notNull(),
-  status: varchar('status').notNull().default('unknown').$type<PlaceStatus>(),
-  hours: varchar('hours'),
+  // Kept so the baseline migration can add columns instead of renaming `type`.
+  type: varchar('type'),
   sourceUrl: varchar('source_url'),
+  categoryId: cuid2('category_id').references(() => categories.id, { onUpdate: 'cascade' }),
   regionId: cuid2('region_id').references(() => regions.id, { onUpdate: 'cascade' }),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  status: varchar('status').notNull().default('unknown').$type<VisitStatus>(),
+  hours: varchar('hours'),
+  price: varchar('price'),
+  howToGet: text('how_to_get'),
+  summary: text('summary').notNull().default(''),
+  body: text('body').notNull().default(''),
+  sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
+  lastVerifiedAt: timestamp('last_verified_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  authorKind: varchar('author_kind').notNull().default('human').$type<AuthorKind>(),
+  seoTitle: varchar('seo_title'),
+  seoDescription: varchar('seo_description'),
+  ogImage: varchar('og_image'),
+  publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
+  noindex: boolean('noindex').notNull().default(false),
+  updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
+}, (table) => [
+  index('places_publication_idx').on(table.publicationStatus),
+  index('places_category_idx').on(table.categoryId),
+])
+
+export const media = pgTable('media', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  filename: varchar('filename').notNull(),
+  mime: varchar('mime').notNull(),
+  bytes: integer('bytes').notNull().default(0),
+  width: integer('width'),
+  height: integer('height'),
+  alt: varchar('alt').notNull().default(''),
+  credit: varchar('credit'),
+  sourceUrl: varchar('source_url'),
+  placeId: cuid2('place_id').references(() => places.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+  sortOrder: integer('sort_order').notNull().default(0),
 })
 
 export const routes = pgTable('routes', {
@@ -51,6 +99,13 @@ export const routes = pgTable('routes', {
   slug: varchar('slug').notNull().unique(),
   title: varchar('title').notNull(),
   summary: text('summary'),
+  body: text('body').notNull().default(''),
+  seoTitle: varchar('seo_title'),
+  seoDescription: varchar('seo_description'),
+  ogImage: varchar('og_image'),
+  publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
+  noindex: boolean('noindex').notNull().default(false),
+  updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
   regionId: cuid2('region_id').references(() => regions.id, { onUpdate: 'cascade' }),
 })
 
@@ -71,6 +126,13 @@ export const quests = pgTable('quests', {
   slug: varchar('slug').notNull().unique(),
   title: varchar('title').notNull(),
   summary: text('summary'),
+  body: text('body').notNull().default(''),
+  seoTitle: varchar('seo_title'),
+  seoDescription: varchar('seo_description'),
+  ogImage: varchar('og_image'),
+  publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
+  noindex: boolean('noindex').notNull().default(false),
+  updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
   routeId: cuid2('route_id').references(() => routes.id, { onUpdate: 'cascade' }),
 })
 
@@ -86,6 +148,58 @@ export const questSteps = pgTable('quest_steps', {
   uniqueIndex('quest_steps_quest_position').on(table.questId, table.position),
 ])
 
+export const collections = pgTable('collections', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  slug: varchar('slug').notNull().unique(),
+  title: varchar('title').notNull(),
+  summary: text('summary'),
+  body: text('body').notNull().default(''),
+  seoTitle: varchar('seo_title'),
+  seoDescription: varchar('seo_description'),
+  ogImage: varchar('og_image'),
+  publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
+  noindex: boolean('noindex').notNull().default(false),
+  updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
+})
+
+export const collectionItems = pgTable('collection_items', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  collectionId: cuid2('collection_id').notNull().references(() => collections.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  placeId: cuid2('place_id').notNull().references(() => places.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  position: integer('position').notNull(),
+}, (table) => [
+  uniqueIndex('collection_items_position').on(table.collectionId, table.position),
+])
+
+export const relatedLinks = pgTable('related_links', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  fromPlaceId: cuid2('from_place_id').notNull().references(() => places.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  toPlaceId: cuid2('to_place_id').notNull().references(() => places.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  anchor: varchar('anchor'),
+  position: integer('position').notNull().default(0),
+})
+
+export const slugRedirects = pgTable('slug_redirects', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  fromPath: varchar('from_path').notNull().unique(),
+  toPath: varchar('to_path'),
+  statusCode: integer('status_code').notNull().default(301),
+})
+
+export const revisions = pgTable('revisions', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  entityType: varchar('entity_type').notNull(),
+  entityId: varchar('entity_id').notNull(),
+  snapshot: jsonb('snapshot').notNull(),
+  updatedBy: cuid2('updated_by').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+})
+
 export const businesses = pgTable('businesses', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),
@@ -96,8 +210,6 @@ export const businesses = pgTable('businesses', {
   ownerUserId: cuid2('owner_user_id').references(() => users.id, { onUpdate: 'cascade' }),
 })
 
-// Pay-per-result offers. `bid` and `budget` are integer kopecks for a later auction.
-// A draft may omit place and route; an active offer should reference at least one.
 export const offers = pgTable('offers', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),
@@ -125,7 +237,6 @@ export const offerCodes = pgTable('offer_codes', {
   sessionId: varchar('session_id'),
 })
 
-// Anonymous product analytics. No IP, no account id. Consent must be true.
 export const events = pgTable('events', {
   id: cuid2('id').defaultRandom().primaryKey(),
   occurredAt: timestamp('occurred_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),

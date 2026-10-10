@@ -47,7 +47,7 @@ const labels: Record<string, string> = {
 }
 const providers = computed(() => (data.value?.providers ?? []).map((id) => ({ id, label: labels[id] ?? id })))
 
-useSeoMeta({ title: 'Вход' })
+useSeoMeta({ title: 'Вход | K39', robots: 'noindex, nofollow' })
 </script>
 
 <style scoped>
