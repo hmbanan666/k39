@@ -20,7 +20,7 @@ Published pages are server-rendered from Postgres. Place body is markdown text i
 
 URLs: `/{slug}` for a place, `/forty` `/zamki` `/plyazhi` `/kurorty` `/muzei` `/eda` for hubs, `/marshruty/{slug}`, `/podborki/{slug}`, `/kvesty/{slug}`. Regions are not in the path. Old `/place/*`, `/quest/*` and (while the map flag is off) `/map/*` 301 in one hop. Details and the crawl rules are in ADR 0008. Search console setup is in `docs/search-consoles.md`.
 
-On boot the Nitro plugin migrates, then `applyInitialContent()` upserts categories, the 27 fort pages, one route, one collection and the five-fort quest. Later edits happen in `/admin` or, for drafts only, `POST`/`PATCH /api/content/places` with `Authorization: Bearer $CONTENT_API_TOKEN`.
+On boot the Nitro plugin migrates, then `applyInitialContent()` inserts categories, the 27 fort pages, one route, one collection and the five-fort quest if `content_imports` does not already contain `initial-content-v1`. A second boot skips that import. An empty `ADMIN_EMAILS` is fine: the site still serves public pages, and nobody is promoted to admin until that list is set. Later edits happen in `/admin` or, for drafts only, `POST`/`PATCH /api/content/places` with `Authorization: Bearer $CONTENT_API_TOKEN`.
 
 The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`). It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve `/map/{region}` with `noindex`. Otherwise those URLs 301 to `/forty`.
 
@@ -70,7 +70,7 @@ Target: Dokploy.
 - Dockerfile: `docker/web-app/Dockerfile`
 - Build context: repository root
 - The image enables pnpm with Corepack at the version in `packageManager` (`pnpm@10.25.0`). Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`.
-- The container user is `appuser` (uid 1000) and owns `/app`, including `MEDIA_DIR` (`/app/media`). Mount a volume there or uploads disappear on redeploy.
+- The container runs as the image's `node` user (uid 1000). `node:24-alpine` already owns that uid, so the Dockerfile does not create another user. Mount a volume at `MEDIA_DIR` (`/app/media`) or uploads disappear on redeploy.
 - CI job `docker` in `.github/workflows/ci.yml` runs that image build on pull requests.
 - Port: 3000
 - Auto-deploy: push to `main`
@@ -78,7 +78,7 @@ Target: Dokploy.
 - Optional env: OAuth client id/secret pairs, `ADMIN_EMAILS`, `CONTENT_API_TOKEN`, `FEATURE_MAP`, `NUXT_PUBLIC_YANDEX_VERIFICATION`, `NUXT_PUBLIC_GOOGLE_VERIFICATION`
 - Volume: mount a writable directory at `MEDIA_DIR` (image default `/app/media`, process uid 1000). Without the volume, uploads vanish on redeploy.
 
-There is no separate migration job. On boot the Nitro plugin (`server/plugins/01.database.ts`) runs Drizzle migrations from `MIGRATIONS_FOLDER` (the image sets `/app/migrations`) and then upserts the initial place seed. The migrate is idempotent. Search console steps are documented in `docs/search-consoles.md` and are not configured from this repo.
+There is no separate migration job. On boot the Nitro plugin (`server/plugins/01.database.ts`) runs Drizzle migrations from `MIGRATIONS_FOLDER` (the image sets `/app/migrations`) and then applies the one-time content import. The migrate is idempotent. Search console steps are documented in `docs/search-consoles.md` and are not configured from this repo. Empty `NUXT_PUBLIC_YANDEX_VERIFICATION` and `NUXT_PUBLIC_GOOGLE_VERIFICATION` add no meta tags.
 
 `www.k39.online` returns 301 to `https://k39.online` plus the path and query. Other hosts are unchanged, so container health checks on localhost keep working.
 

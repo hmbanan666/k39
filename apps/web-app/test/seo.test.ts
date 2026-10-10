@@ -5,7 +5,7 @@ import seed from '../../../packages/database/src/seed/initial-content.json'
 import { findOrphans, haversineKm, homeLinks, HUBS, SECTION_LINKS } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
 import { decideRedirect } from '../shared/redirects'
-import { collectionDocument, countH1, homeDocument, pageTitle, placeDocument, placeSchemaType, tuneRobots } from '../shared/seo'
+import { collectionDocument, countH1, homeDocument, pageTitle, placeDocument, placeSchemaType, tuneRobots, verificationMeta } from '../shared/seo'
 
 function assertDocument(doc: ReturnType<typeof homeDocument>, htmlBody: string) {
   expect(doc.title.length).toBeGreaterThan(10)
@@ -175,6 +175,15 @@ describe('redirects', () => {
       ],
     })
     expect(chain).toEqual({ kind: 'redirect', location: 'https://k39.online/c' })
+  })
+})
+
+describe('verification meta', () => {
+  it('omits empty search-console tokens', () => {
+    expect(verificationMeta('', '')).toEqual([])
+    expect(verificationMeta('   ', undefined)).toEqual([])
+    expect(verificationMeta('ya-token', '')).toEqual([{ name: 'yandex-verification', content: 'ya-token' }])
+    expect(verificationMeta(null, 'google-token')).toEqual([{ name: 'google-site-verification', content: 'google-token' }])
   })
 })
 

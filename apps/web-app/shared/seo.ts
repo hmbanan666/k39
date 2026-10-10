@@ -55,6 +55,19 @@ export function slugError(slug: string) {
   return null
 }
 
+export function verificationMeta(yandex?: string | null, google?: string | null) {
+  const tags: Array<{ name: string, content: string }> = []
+  const yandexToken = yandex?.trim()
+  const googleToken = google?.trim()
+  if (yandexToken) {
+    tags.push({ name: 'yandex-verification', content: yandexToken })
+  }
+  if (googleToken) {
+    tags.push({ name: 'google-site-verification', content: googleToken })
+  }
+  return tags
+}
+
 export function absoluteUrl(path: string) {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path

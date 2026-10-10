@@ -183,6 +183,11 @@ export const relatedLinks = pgTable('related_links', {
   position: integer('position').notNull().default(0),
 })
 
+export const contentImports = pgTable('content_imports', {
+  id: varchar('id').primaryKey(),
+  appliedAt: timestamp('applied_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+})
+
 export const slugRedirects = pgTable('slug_redirects', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),

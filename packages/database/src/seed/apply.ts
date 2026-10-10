@@ -1,8 +1,10 @@
 import type { AuthorKind, SourceLink, VisitStatus } from '../types/entities'
 import { eq } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, places, quests, questSteps, regions, routePoints, routes, slugRedirects } from '../tables'
+import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, routePoints, routes, slugRedirects } from '../tables'
 import initialContent from './initial-content.json'
+
+export const INITIAL_CONTENT_IMPORT_ID = 'initial-content-v1'
 
 interface SeedPlace {
   slug: string
@@ -34,71 +36,78 @@ interface SeedFile {
 const seed = initialContent as SeedFile
 
 export async function applyInitialContent() {
-  const region = await upsertRegion(seed.region)
+  if (await importAlreadyApplied()) {
+    return { places: 0, skipped: true }
+  }
+  const region = await insertRegion(seed.region)
   const categoryIds = new Map<string, string>()
   for (const category of seed.categories) {
-    const row = await upsertCategory(category)
+    const row = await insertCategory(category)
     categoryIds.set(category.slug, row.id)
   }
   const placeIds = new Map<string, string>()
   for (const place of seed.places) {
-    const row = await upsertPlace(place, region.id, categoryIds.get(place.categorySlug) ?? null)
+    const row = await insertPlace(place, region.id, categoryIds.get(place.categorySlug) ?? null)
     placeIds.set(place.slug, row.id)
   }
-  const route = await upsertRoute(seed.route, region.id)
-  await replacePoints(routePoints, routePoints.routeId, route.id, seed.route.placeSlugs, placeIds)
-  const collection = await upsertCollection(seed.collection)
-  await replacePoints(collectionItems, collectionItems.collectionId, collection.id, seed.collection.placeSlugs, placeIds)
-  const quest = await upsertQuest(seed.quest, route.id)
-  await replaceQuestSteps(quest.id, seed.quest.placeSlugs, placeIds, seed.places)
+  const route = await insertRoute(seed.route, region.id)
+  await insertPoints(routePoints, routePoints.routeId, route.id, seed.route.placeSlugs, placeIds)
+  const collection = await insertCollection(seed.collection)
+  await insertPoints(collectionItems, collectionItems.collectionId, collection.id, seed.collection.placeSlugs, placeIds)
+  const quest = await insertQuest(seed.quest, route.id)
+  await insertQuestSteps(quest.id, seed.quest.placeSlugs, placeIds, seed.places)
   for (const redirect of seed.redirects) {
-    await upsertRedirect(redirect.fromPath, redirect.toPath, redirect.statusCode)
+    await insertRedirect(redirect.fromPath, redirect.toPath, redirect.statusCode)
   }
-  return { places: placeIds.size }
+  await useDatabase().insert(contentImports).values({ id: INITIAL_CONTENT_IMPORT_ID }).onConflictDoNothing()
+  return { places: placeIds.size, skipped: false }
 }
 
-async function upsertRegion(data: SeedFile['region']) {
+async function importAlreadyApplied() {
+  const [row] = await useDatabase().select({ id: contentImports.id }).from(contentImports).where(eq(contentImports.id, INITIAL_CONTENT_IMPORT_ID)).limit(1)
+  return Boolean(row)
+}
+
+async function insertRegion(data: SeedFile['region']) {
   const db = useDatabase()
   const [existing] = await db.select().from(regions).where(eq(regions.slug, data.slug)).limit(1)
-  if (!existing) {
-    const [created] = await db.insert(regions).values(data).returning()
-    if (!created) {
-      throw new Error('Region seed failed')
-    }
-    return created
+  if (existing) {
+    return existing
   }
-  const [updated] = await db.update(regions).set({
-    title: data.title,
-    description: data.description,
-    updatedAt: new Date().toISOString(),
-  }).where(eq(regions.id, existing.id)).returning()
-  return updated ?? existing
+  const [created] = await db.insert(regions).values(data).returning()
+  if (!created) {
+    throw new Error('Region seed failed')
+  }
+  return created
 }
 
-async function upsertCategory(data: SeedFile['categories'][number]) {
+async function insertCategory(data: SeedFile['categories'][number]) {
   const db = useDatabase()
   const [existing] = await db.select().from(categories).where(eq(categories.slug, data.slug)).limit(1)
-  const values = {
+  if (existing) {
+    return existing
+  }
+  const [created] = await db.insert(categories).values({
+    slug: data.slug,
     title: data.title,
     description: data.description,
     seoTitle: data.seoTitle,
     seoDescription: data.seoDescription,
-    updatedAt: new Date().toISOString(),
+  }).returning()
+  if (!created) {
+    throw new Error(`Category seed failed: ${data.slug}`)
   }
-  if (!existing) {
-    const [created] = await db.insert(categories).values({ slug: data.slug, ...values }).returning()
-    if (!created) {
-      throw new Error(`Category seed failed: ${data.slug}`)
-    }
-    return created
-  }
-  const [updated] = await db.update(categories).set(values).where(eq(categories.id, existing.id)).returning()
-  return updated ?? existing
+  return created
 }
 
-async function upsertPlace(place: SeedPlace, regionId: string, categoryId: string | null) {
+async function insertPlace(place: SeedPlace, regionId: string, categoryId: string | null) {
   const db = useDatabase()
-  const values = {
+  const [existing] = await db.select().from(places).where(eq(places.slug, place.slug)).limit(1)
+  if (existing) {
+    return existing
+  }
+  const [created] = await db.insert(places).values({
+    slug: place.slug,
     title: place.title,
     categoryId,
     regionId,
@@ -112,87 +121,74 @@ async function upsertPlace(place: SeedPlace, regionId: string, categoryId: strin
     body: place.body,
     sources: place.sources,
     authorKind: place.authorKind,
-    publicationStatus: 'published' as const,
-    updatedAt: new Date().toISOString(),
+    publicationStatus: 'published',
+  }).returning()
+  if (!created) {
+    throw new Error(`Place seed failed: ${place.slug}`)
   }
-  const [existing] = await db.select().from(places).where(eq(places.slug, place.slug)).limit(1)
-  if (!existing) {
-    const [created] = await db.insert(places).values({ slug: place.slug, ...values }).returning()
-    if (!created) {
-      throw new Error(`Place seed failed: ${place.slug}`)
-    }
-    return created
-  }
-  const [updated] = await db.update(places).set(values).where(eq(places.id, existing.id)).returning()
-  return updated ?? existing
+  return created
 }
 
-async function upsertRoute(data: SeedFile['route'], regionId: string) {
+async function insertRoute(data: SeedFile['route'], regionId: string) {
   const db = useDatabase()
-  const values = {
+  const [existing] = await db.select().from(routes).where(eq(routes.slug, data.slug)).limit(1)
+  if (existing) {
+    return existing
+  }
+  const [created] = await db.insert(routes).values({
+    slug: data.slug,
     title: data.title,
     summary: data.summary,
     body: data.body,
     regionId,
-    publicationStatus: 'published' as const,
-    updatedAt: new Date().toISOString(),
+    publicationStatus: 'published',
+  }).returning()
+  if (!created) {
+    throw new Error('Route seed failed')
   }
-  const [existing] = await db.select().from(routes).where(eq(routes.slug, data.slug)).limit(1)
-  if (!existing) {
-    const [created] = await db.insert(routes).values({ slug: data.slug, ...values }).returning()
-    if (!created) {
-      throw new Error('Route seed failed')
-    }
-    return created
-  }
-  const [updated] = await db.update(routes).set(values).where(eq(routes.id, existing.id)).returning()
-  return updated ?? existing
+  return created
 }
 
-async function upsertCollection(data: SeedFile['collection']) {
+async function insertCollection(data: SeedFile['collection']) {
   const db = useDatabase()
-  const values = {
+  const [existing] = await db.select().from(collections).where(eq(collections.slug, data.slug)).limit(1)
+  if (existing) {
+    return existing
+  }
+  const [created] = await db.insert(collections).values({
+    slug: data.slug,
     title: data.title,
     summary: data.summary,
     body: data.body,
-    publicationStatus: 'published' as const,
-    updatedAt: new Date().toISOString(),
+    publicationStatus: 'published',
+  }).returning()
+  if (!created) {
+    throw new Error('Collection seed failed')
   }
-  const [existing] = await db.select().from(collections).where(eq(collections.slug, data.slug)).limit(1)
-  if (!existing) {
-    const [created] = await db.insert(collections).values({ slug: data.slug, ...values }).returning()
-    if (!created) {
-      throw new Error('Collection seed failed')
-    }
-    return created
-  }
-  const [updated] = await db.update(collections).set(values).where(eq(collections.id, existing.id)).returning()
-  return updated ?? existing
+  return created
 }
 
-async function upsertQuest(data: SeedFile['quest'], routeId: string) {
+async function insertQuest(data: SeedFile['quest'], routeId: string) {
   const db = useDatabase()
-  const values = {
+  const [existing] = await db.select().from(quests).where(eq(quests.slug, data.slug)).limit(1)
+  if (existing) {
+    return existing
+  }
+  const [created] = await db.insert(quests).values({
+    slug: data.slug,
     title: data.title,
     summary: data.summary,
     body: data.body,
     routeId,
-    publicationStatus: 'published' as const,
-    updatedAt: new Date().toISOString(),
+    publicationStatus: 'published',
+  }).returning()
+  if (!created) {
+    throw new Error('Quest seed failed')
   }
-  const [existing] = await db.select().from(quests).where(eq(quests.slug, data.slug)).limit(1)
-  if (!existing) {
-    const [created] = await db.insert(quests).values({ slug: data.slug, ...values }).returning()
-    if (!created) {
-      throw new Error('Quest seed failed')
-    }
-    return created
-  }
-  const [updated] = await db.update(quests).set(values).where(eq(quests.id, existing.id)).returning()
-  return updated ?? existing
+  return created
 }
 
-async function replacePoints(
+async function insertPoints(
   table: typeof routePoints | typeof collectionItems,
   parentColumn: typeof routePoints.routeId | typeof collectionItems.collectionId,
   parentId: string,
@@ -200,7 +196,10 @@ async function replacePoints(
   placeIds: Map<string, string>,
 ) {
   const db = useDatabase()
-  await db.delete(table).where(eq(parentColumn, parentId))
+  const [existing] = await db.select({ id: table.id }).from(table).where(eq(parentColumn, parentId)).limit(1)
+  if (existing) {
+    return
+  }
   const rows = slugs.map((slug, position) => {
     const placeId = placeIds.get(slug)
     if (!placeId) {
@@ -215,9 +214,12 @@ async function replacePoints(
   }
 }
 
-async function replaceQuestSteps(questId: string, slugs: string[], placeIds: Map<string, string>, allPlaces: SeedPlace[]) {
+async function insertQuestSteps(questId: string, slugs: string[], placeIds: Map<string, string>, allPlaces: SeedPlace[]) {
   const db = useDatabase()
-  await db.delete(questSteps).where(eq(questSteps.questId, questId))
+  const [existing] = await db.select({ id: questSteps.id }).from(questSteps).where(eq(questSteps.questId, questId)).limit(1)
+  if (existing) {
+    return
+  }
   const rows = slugs.map((slug, position) => {
     const placeId = placeIds.get(slug)
     const place = allPlaces.find((item) => item.slug === slug)
@@ -231,12 +233,11 @@ async function replaceQuestSteps(questId: string, slugs: string[], placeIds: Map
   }
 }
 
-async function upsertRedirect(fromPath: string, toPath: string, statusCode: number) {
+async function insertRedirect(fromPath: string, toPath: string, statusCode: number) {
   const db = useDatabase()
-  const [existing] = await db.select().from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
-  if (!existing) {
-    await db.insert(slugRedirects).values({ fromPath, toPath, statusCode })
+  const [existing] = await db.select({ id: slugRedirects.id }).from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
+  if (existing) {
     return
   }
-  await db.update(slugRedirects).set({ toPath, statusCode }).where(eq(slugRedirects.id, existing.id))
+  await db.insert(slugRedirects).values({ fromPath, toPath, statusCode })
 }

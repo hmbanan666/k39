@@ -9,12 +9,13 @@
 
 <script setup lang="ts">
 import { ru } from '@nuxt/ui/locale'
+import { verificationMeta } from '~~/shared/seo'
 
 const config = useRuntimeConfig()
-const meta = [
-  config.public.yandexVerification ? { name: 'yandex-verification', content: String(config.public.yandexVerification) } : null,
-  config.public.googleVerification ? { name: 'google-site-verification', content: String(config.public.googleVerification) } : null,
-].filter((item) => item !== null)
+const meta = verificationMeta(
+  String(config.public.yandexVerification || ''),
+  String(config.public.googleVerification || ''),
+)
 
 useHead({
   htmlAttrs: { lang: 'ru' },

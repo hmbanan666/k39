@@ -28,14 +28,13 @@ COPY --from=builder /app/apps/web-app/.output .
 COPY --from=builder /app/packages/database/migrations /app/migrations
 COPY docker/web-app/health-check.sh ./
 
-# appuser (uid 1000) must be able to create MEDIA_DIR. Dokploy should mount
-# a volume there if uploads must survive a redeploy.
+# node:24-alpine already has user `node` (uid 1000). Adding another
+# uid 1000 fails the image build. Dokploy should mount a volume at
+# MEDIA_DIR if uploads must survive a redeploy.
 RUN mkdir -p /app/media && \
-    addgroup -S appgroup && \
-    adduser -S -u 1000 appuser -G appgroup && \
-    chown -R appuser:appgroup /app && \
+    chown -R node:node /app && \
     chmod +x ./health-check.sh
-USER appuser
+USER node
 
 # Configuration
 ARG VERSION=nightly
