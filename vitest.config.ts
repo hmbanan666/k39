@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+import vue from '@vitejs/plugin-vue'
 import { coverageConfigDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
@@ -9,15 +11,28 @@ export default defineConfig({
           root: './packages/database',
           environment: 'node',
           setupFiles: ['./test/setup.ts'],
-          hookTimeout: 25_000,
-          testTimeout: 15_000,
+          hookTimeout: 120_000,
+          testTimeout: 30_000,
+        },
+      },
+      {
+        plugins: [vue()],
+        resolve: {
+          alias: {
+            '~': fileURLToPath(new URL('./apps/web-app/app', import.meta.url)),
+          },
+        },
+        test: {
+          name: 'web-app',
+          root: './apps/web-app',
+          environment: 'happy-dom',
+          include: ['test/**/*.test.ts'],
         },
       },
     ],
     coverage: {
       exclude: [
         '**/{nitro,release,nuxt,app,drizzle}.config.*',
-        '**/{vue-i18n}.options.*',
         ...coverageConfigDefaults.exclude,
       ],
       thresholds: {

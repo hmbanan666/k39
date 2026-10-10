@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/k39space/k39.git"
+    "url": "git+https://github.com/hmbanan666/k39.git"
   },
   "engines": {
     "node": ">=24.11.0",
@@ -32,10 +32,13 @@
     "@commitlint/cli": "catalog:dev",
     "@commitlint/config-conventional": "catalog:dev",
     "@testcontainers/postgresql": "catalog:test",
+    "@vitejs/plugin-vue": "catalog:test",
     "@vitest/browser-playwright": "catalog:test",
     "@vitest/coverage-v8": "catalog:test",
+    "@vue/test-utils": "catalog:test",
     "bumpp": "catalog:dev",
     "eslint": "catalog:dev",
+    "happy-dom": "catalog:test",
     "husky": "catalog:dev",
     "lint-staged": "catalog:dev",
     "playwright": "catalog:test",

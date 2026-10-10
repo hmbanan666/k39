@@ -1,14 +1,7 @@
-export type UserBadgeTaskStatus = 'active' | 'completed' | 'failed' | 'expired'
+export type PlaceStatus = 'open' | 'ruins' | 'unknown'
 
-export type PagePinType = 'review_quote_with_image' | 'image' | 'video' | 'empty'
+export type OfferKind = 'discount' | 'booking'
 
-export type PageReviewStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'hidden'
+export type OfferStatus = 'draft' | 'active' | 'paused' | 'ended'
 
-export type PageReviewVoteType = 'like' | 'dislike'
-
-export type PageReviewPhotoType = 'public' | 'private'
-
-export type PageReviewModerationRequestStatus = 'pending' | 'approved' | 'rejected' | 'hidden'
-
-export type PhotoVersionFormat = 'jpeg' | 'webp'
-export type PhotoVersionSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+export type OfferCodeStatus = 'issued' | 'redeemed'

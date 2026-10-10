@@ -1,20 +1,13 @@
-export default defineEventHandler(async (event) => {
-  try {
-    const query = getQuery(event)
-    if (!query.provider) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Provider is required',
-      })
-    }
+import { assertOAuthProvider } from '../../utils/oauth'
 
-    // If redirectTo is provided, save it
-    if (query?.redirectTo) {
-      setCookie(event, 'redirectTo', query.redirectTo.toString())
-    }
+export default defineEventHandler((event) => {
+  const query = getQuery(event)
+  const provider = String(query.provider ?? '')
+  assertOAuthProvider(provider)
 
-    sendRedirect(event, `/api/auth/${query.provider}`)
-  } catch (error) {
-    throw errorResolver(error)
+  if (query.redirectTo) {
+    setCookie(event, 'redirectTo', query.redirectTo.toString(), { path: '/', httpOnly: true, sameSite: 'lax' })
   }
+
+  return sendRedirect(event, `/api/auth/${provider}`)
 })

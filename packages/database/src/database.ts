@@ -1,12 +1,16 @@
 import type { Database } from './connection'
-import { resolve } from 'node:path'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { createConnection } from './connection'
+import { resolveMigrationsFolder } from './migrations'
 
 let instance: Database | null = null
 
 export function useCreateDatabase(databaseURL: string) {
   instance = createConnection(databaseURL)
+}
+
+export function isDatabaseReady() {
+  return instance !== null
 }
 
 export async function useMigrateDatabase() {
@@ -15,7 +19,7 @@ export async function useMigrateDatabase() {
   }
 
   await migrate(instance, {
-    migrationsFolder: resolve(__dirname, '../migrations'),
+    migrationsFolder: resolveMigrationsFolder(),
   })
 }
 

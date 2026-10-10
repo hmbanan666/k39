@@ -1,0 +1,21 @@
+# ADR 0001: Place copy in Nuxt Content, operations in Postgres
+
+## Status
+
+Accepted
+
+## Context
+
+Place pages must be crawlable without a database round trip, and editors will write them as markdown. Offers, redemptions, and analytics events are transactional and need foreign keys.
+
+## Decision
+
+Editorial pages live in `@nuxt/content` (`content/places`, `content/quests`) with frontmatter for slug, type, coordinates, status (`open`, `ruins`, `unknown`), hours, source URL, and region.
+
+Postgres holds `regions`, `places`, `routes`, `route_points`, `quests`, `quest_steps`, `businesses`, `offers`, `offer_codes`, and `events`. The web app upserts the forts catalog from `shared/data/catalog.json` after migrations so those rows exist for events and future offers. Offer money fields are integer kopecks (`bid`, `budget`, `spent`). There is no payment flow yet.
+
+The prototype's richer visit status (museum, military, restoration, and so on) is kept as Russian `statusLabel` text. The canonical column only stores `open`, `ruins`, or `unknown`.
+
+## Consequences
+
+Markdown and the catalog JSON can drift if someone edits only one of them. `tools/build-place-content.mjs` regenerates both from `app/data/forts/objects.json`. A business offer cannot point at a place until that place is in the catalog snapshot.

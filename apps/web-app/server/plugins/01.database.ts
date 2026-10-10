@@ -1,13 +1,22 @@
+import type { CatalogSnapshot } from '@k39/database'
 import process from 'node:process'
-import { useCreateDatabase } from '@k39/database'
+import { db, useCreateDatabase, useMigrateDatabase } from '@k39/database'
+import catalog from '../../shared/data/catalog.json'
 
-/**
- * DB init
- */
+const logger = useLogger('db')
+
 export default defineNitroPlugin(async () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not defined')
+  const databaseUrl = process.env.DATABASE_URL
+  if (!databaseUrl) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('DATABASE_URL is not defined')
+    }
+    logger.warn('DATABASE_URL is not defined. Database features are off.')
+    return
   }
 
-  useCreateDatabase(process.env.DATABASE_URL)
+  useCreateDatabase(databaseUrl)
+  await useMigrateDatabase()
+  await db.catalog.apply(catalog as CatalogSnapshot)
+  logger.success('Database ready')
 })

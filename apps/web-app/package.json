@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev --port 3501",
-    "preview": "PORT=3501 nuxt preview",
+    "dev": "nuxt dev --port 3000",
+    "preview": "nuxt preview",
     "generate": "nuxt generate",
     "clean": "rm -rf .output",
     "clean:modules": "rm -rf .nuxt .output .data node_modules",
@@ -16,33 +16,18 @@
   "dependencies": {
     "@k39/database": "workspace:*",
     "@k39/types": "workspace:*",
-    "@neoconfetti/vue": "catalog:integrations",
     "@nuxt/content": "catalog:integrations",
     "@nuxt/ui": "catalog:integrations",
     "@paralleldrive/cuid2": "catalog:integrations",
-    "@pinia/nuxt": "catalog:integrations",
     "@vueuse/core": "catalog:integrations",
     "@vueuse/nuxt": "catalog:integrations",
-    "aws4fetch": "catalog:integrations",
-    "date-fns": "catalog:integrations",
-    "pinia": "catalog:integrations",
-    "sharp": "catalog:integrations",
     "zod": "catalog:integrations"
   },
   "devDependencies": {
-    "@iconify-json/circle-flags": "catalog:dev",
-    "@iconify-json/fluent": "catalog:dev",
-    "@iconify-json/fluent-emoji-flat": "catalog:dev",
-    "@iconify-json/lucide": "catalog:dev",
-    "@iconify-json/simple-icons": "catalog:dev",
     "@nuxt/devtools": "catalog:dev",
-    "@nuxt/hints": "catalog:dev",
-    "@nuxt/image": "catalog:dev",
-    "@nuxtjs/i18n": "catalog:dev",
     "@nuxtjs/seo": "catalog:dev",
     "@types/node": "catalog:types",
     "nuxt": "catalog:dev",
-    "nuxt-auth-utils": "catalog:dev",
-    "tailwindcss-motion": "catalog:dev"
+    "nuxt-auth-utils": "catalog:dev"
   }
 }

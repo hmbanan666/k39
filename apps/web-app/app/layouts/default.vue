@@ -1,6 +1,7 @@
 <template>
-  <Confetti />
-  <Header />
-  <slot />
-  <Footer />
+  <div>
+    <AppHeader />
+    <slot />
+    <AppFooter />
+  </div>
 </template>
