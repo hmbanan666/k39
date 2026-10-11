@@ -4,6 +4,7 @@
     :href="href"
     class="btn"
     :class="[`btn-${variant}`]"
+    v-bind="externalLinkAttrs(href)"
   >
     <slot />
   </a>
@@ -19,6 +20,8 @@
 </template>
 
 <script setup lang="ts">
+import { externalLinkAttrs } from '~~/shared/links'
+
 withDefaults(defineProps<{
   href?: string
   type?: 'button' | 'submit'

@@ -7,13 +7,15 @@
         :key="link.href"
       >
         <a :href="link.href">{{ link.text }}</a>
-        <span v-if="link.distanceKm != null">{{ link.distanceKm.toFixed(1) }} км</span>
+        <span v-if="link.distanceKm != null">{{ formatDistance(link.distanceKm) }}</span>
       </li>
     </ul>
   </section>
 </template>
 
 <script setup lang="ts">
+import { formatDistance } from '~~/shared/links'
+
 defineProps<{
   title: string
   links: Array<{ href: string, text: string, distanceKm?: number | null }>

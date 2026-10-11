@@ -22,10 +22,11 @@
           v-if="page.cover"
           #art
         >
-          <MediaImage
+          <PlacePhoto
             :media="page.cover"
             priority
             sizes="(min-width: 1000px) 720px, 100vw"
+            @open="openPhoto(page.cover.id)"
           />
         </template>
       </Postcard>
@@ -75,28 +76,17 @@
           class="prose"
           v-html="page.html"
         />
-        <h2 v-if="page.sources.length">
-          Источники
-        </h2>
-        <ul
-          v-if="page.sources.length"
-          class="sources"
-        >
-          <li
-            v-for="source in page.sources"
-            :key="source.url"
-          >
-            <a
-              :href="source.url"
-              rel="noopener"
-            >{{ source.title }}</a>
-          </li>
-        </ul>
       </div>
       <aside class="aside">
-        <section class="facts">
+        <section
+          v-if="hasFacts"
+          class="facts"
+        >
           <h2>Коротко</h2>
-          <div class="fact">
+          <div
+            v-if="hours"
+            class="fact"
+          >
             <svg
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -109,10 +99,13 @@
               <p class="label">
                 Часы
               </p>
-              <p>{{ page.place.hours || 'уточните' }}</p>
+              <p>{{ hours }}</p>
             </div>
           </div>
-          <div class="fact">
+          <div
+            v-if="price"
+            class="fact"
+          >
             <svg
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -121,11 +114,11 @@
               <p class="label">
                 Цена
               </p>
-              <p>{{ page.place.price || 'уточните' }}</p>
+              <p>{{ price }}</p>
             </div>
           </div>
           <div
-            v-if="page.place.howToGet"
+            v-if="page.place.howToGet?.trim()"
             class="fact"
           >
             <svg
@@ -161,10 +154,12 @@
               </p>
               <p>
                 {{ page.place.latitude.toFixed(5) }}, {{ page.place.longitude.toFixed(5) }}
-                <a
+                <UiLink
                   v-if="yandex"
                   :href="yandex"
-                >Яндекс Карты</a>
+                >
+                  Яндекс Карты
+                </UiLink>
               </p>
             </div>
           </div>
@@ -188,11 +183,12 @@
     >
       <h2>Фотографии</h2>
       <div class="gallery-grid">
-        <MediaImage
+        <PlacePhoto
           v-for="item in morePhotos"
           :key="item.id"
           :media="item"
           sizes="(min-width: 900px) 360px, 100vw"
+          @open="openPhoto(item.id)"
         />
       </div>
     </section>
@@ -223,12 +219,34 @@
       :next="page.routeBand.next"
       action="К маршруту"
     />
+    <PhotoViewer
+      v-if="photos.length"
+      v-model:open="viewerOpen"
+      v-model:index="viewerIndex"
+      :photos="photos"
+    />
     <LinkList
       v-for="group in otherGroups"
       :key="group.title"
       :title="group.title"
       :links="group.links"
     />
+    <details
+      v-if="page.sources.length"
+      class="sources"
+    >
+      <summary>Источники</summary>
+      <ul>
+        <li
+          v-for="source in page.sources"
+          :key="source.url"
+        >
+          <UiLink :href="source.url">
+            {{ source.title }}
+          </UiLink>
+        </li>
+      </ul>
+    </details>
   </article>
 </template>
 
@@ -281,6 +299,16 @@ const page = await fetchPublic<PlacePage>(`/api/public/places/${slug}`, { page: 
 const heroSrc = page.cover?.src || illustrationFor(page.categorySlug, slug)
 const heroAlt = page.cover?.alt || page.doc.h1
 const morePhotos = page.gallery.filter((item) => item.id !== page.cover?.id)
+const photos = page.cover && !page.gallery.some((item) => item.id === page.cover?.id)
+  ? [page.cover, ...page.gallery]
+  : page.gallery
+const viewerOpen = ref(false)
+const viewerIndex = ref(0)
+function openPhoto(id: string) {
+  const found = photos.findIndex((item) => item.id === id)
+  viewerIndex.value = found >= 0 ? found : 0
+  viewerOpen.value = true
+}
 const statusLabel = ({ open: 'открыт', ruins: 'руины', closed: 'закрыт', unknown: 'статус неизвестен' } as Record<string, string>)[page.place.status] || page.place.status
 const statusHint = ({
   open: 'По источникам сюда пускают посетителей.',
@@ -291,6 +319,14 @@ const statusHint = ({
 const yandex = page.place.latitude != null
   ? `https://yandex.ru/maps/?rtext=~${page.place.latitude}%2C${page.place.longitude}&rtt=mt`
   : ''
+const hours = page.place.hours?.trim() || ''
+const price = page.place.price?.trim() || ''
+const hasFacts = Boolean(
+  hours
+  || price
+  || page.place.howToGet?.trim()
+  || (page.place.latitude != null && page.place.longitude != null),
+)
 const nearby = page.groups.find((group) => group.title === 'Рядом')
 const otherGroups = page.groups.filter((group) => group.title !== 'Рядом' && group.title !== 'Маршруты')
 usePublicHead(page.doc)
@@ -393,25 +429,28 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   scroll-snap-align: start;
 }
 .sources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0;
+  margin-top: 2.8rem;
+  border-top: 1px solid var(--color-line);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.sources summary {
+  width: fit-content;
+  padding: 0.75rem 0;
+  color: var(--color-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sources ul {
+  margin: 0 0 0.4rem;
   padding: 0;
   list-style: none;
 }
-.sources a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2rem;
-  padding: 0.15rem 0.75rem;
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--text);
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-decoration: none;
+.sources li { padding: 0.15rem 0; }
+.sources :deep(a) {
+  color: var(--muted);
+  font-weight: 500;
+  text-underline-offset: 0.15em;
 }
 @media (max-width: 999px) {
   .aside { display: contents; }

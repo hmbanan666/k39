@@ -1,3 +1,5 @@
+import { licenseHref } from './media'
+
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
 export const DEFAULT_OG_IMAGE = {
@@ -139,6 +141,9 @@ export interface SeoImage {
   height: number | null
   alt: string
   type?: string
+  author?: string | null
+  license?: string | null
+  sourceUrl?: string | null
 }
 
 export interface SeoDocument {
@@ -213,6 +218,32 @@ export function placeSchemaType(categorySlug: string) {
   return SCHEMA_BY_CATEGORY[categorySlug] ?? 'TouristAttraction'
 }
 
+function imageObject(image: SeoImage) {
+  const node: Record<string, unknown> = {
+    '@type': 'ImageObject',
+    'url': image.url,
+    'contentUrl': image.url,
+    'caption': image.alt,
+  }
+  if (image.width) {
+    node.width = image.width
+  }
+  if (image.height) {
+    node.height = image.height
+  }
+  if (image.author) {
+    node.creator = { '@type': 'Person', 'name': image.author }
+  }
+  const license = licenseHref(image.license)
+  if (license) {
+    node.license = license
+  }
+  if (image.sourceUrl) {
+    node.acquireLicensePage = image.sourceUrl
+  }
+  return node
+}
+
 export interface PlaceSeoInput {
   slug: string
   title: string
@@ -230,6 +261,7 @@ export interface PlaceSeoInput {
   image?: SeoImage | null
   images?: SeoImage[]
   page?: number
+  body?: string | null
 }
 
 export function placeDocument(input: PlaceSeoInput): SeoDocument {
@@ -248,7 +280,7 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     'name': input.title,
     'description': description,
     'url': absoluteUrl(path),
-    'image': input.images?.length ? input.images.map((item) => item.url) : image.url,
+    'image': input.images?.length ? input.images.map((item) => imageObject(item)) : image.url,
   }
   if (input.latitude != null && input.longitude != null) {
     node.geo = {
@@ -269,7 +301,26 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   if (sameAs.length) {
     node.sameAs = sameAs
   }
+  if (input.sources.length) {
+    node.citation = input.sources.map((source) => ({
+      '@type': 'CreativeWork',
+      'name': source.title,
+      'url': source.url,
+    }))
+  }
   const noindex = Boolean(input.noindex) || page > 1
+  const faq = faqFromBody(input.body || '')
+  const jsonLd = [breadcrumbNode(crumbs), node]
+  if (faq.length) {
+    jsonLd.push({
+      '@type': 'FAQPage',
+      'mainEntity': faq.map((item) => ({
+        '@type': 'Question',
+        'name': item.question,
+        'acceptedAnswer': { '@type': 'Answer', 'text': item.answer },
+      })),
+    })
+  }
   return {
     title,
     description,
@@ -278,8 +329,55 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     h1: input.title,
     crumbs,
     ogImage: image,
-    jsonLd: [breadcrumbNode(crumbs), node],
+    jsonLd,
   }
+}
+
+export function faqFromBody(body: string) {
+  const lines = body.replace(/\r\n/g, '\n').split('\n')
+  let inFaq = false
+  const items: Array<{ question: string, answer: string }> = []
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (/^##[ \t]+Частые вопросы\s*$/.test(trimmed)) {
+      inFaq = true
+      continue
+    }
+    if (inFaq && /^##[ \t]+/.test(trimmed)) {
+      break
+    }
+    if (!inFaq || !trimmed) {
+      continue
+    }
+    const match = /^\*\*([^*]+)\?\*\*(.*)$/.exec(trimmed)
+    const answer = match?.[2]?.trim() ?? ''
+    if (!match?.[1] || !answer) {
+      continue
+    }
+    items.push({ question: `${match[1].trim()}?`, answer })
+  }
+  return items
+}
+
+export function stripRepeatedLead(summary: string, body: string) {
+  const lead = summary.replace(/\s+/g, ' ').trim()
+  if (!lead) {
+    return body
+  }
+  const normalized = body.replace(/\r\n/g, '\n').trimStart()
+  const parts = normalized.split(/\n[ \t]*\n/)
+  const firstBlock = parts[0] ?? ''
+  const afterBlock = parts.slice(1).join('\n\n')
+  const first = firstBlock.replace(/\s+/g, ' ').trim()
+  if (first === lead) {
+    return afterBlock.trimStart()
+  }
+  if (!first.startsWith(`${lead} `)) {
+    return body
+  }
+  const rest = first.slice(lead.length).trim()
+  const after = afterBlock.trimStart()
+  return [rest, after].filter(Boolean).join('\n\n')
 }
 
 export function collectionDocument(input: {

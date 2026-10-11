@@ -1,3 +1,5 @@
+import { externalLinkAttrs } from './links'
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')
@@ -6,12 +8,40 @@ function escapeHtml(value: string) {
     .replace(/"/g, '&quot;')
 }
 
+function anchor(label: string, href: string) {
+  const attrs = externalLinkAttrs(href)
+  const extra = attrs.target ? ` target="${attrs.target}" rel="${attrs.rel}"` : ''
+  return `<a href="${href}"${extra}>${label}</a>`
+}
+
 function inline(value: string) {
   const safe = escapeHtml(value)
   return safe
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, (_match, label: string, href: string) => anchor(label, href))
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
+}
+
+function tableCells(line: string) {
+  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
+}
+
+function isTableSeparator(line: string) {
+  const cells = tableCells(line)
+  return cells.length > 1 && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
+}
+
+function isTableRow(line: string) {
+  const trimmed = line.trim()
+  return trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 2
+}
+
+function renderTable(rows: string[]) {
+  const header = tableCells(rows[0] ?? '')
+  const body = rows.slice(2).map(tableCells)
+  const head = `<thead><tr>${header.map((cell) => `<th>${inline(cell)}</th>`).join('')}</tr></thead>`
+  const cells = body.map((row) => `<tr>${row.map((cell) => `<td>${inline(cell)}</td>`).join('')}</tr>`).join('')
+  return `<div class="table-scroll"><table>${head}<tbody>${cells}</tbody></table></div>`
 }
 
 export function renderMarkdown(source: string) {
@@ -24,10 +54,23 @@ export function renderMarkdown(source: string) {
       list = null
     }
   }
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? ''
     const trimmed = line.trim()
     if (!trimmed) {
       closeList()
+      continue
+    }
+    if (isTableRow(trimmed) && isTableSeparator(lines[index + 1] ?? '')) {
+      closeList()
+      const rows = [trimmed]
+      index += 1
+      rows.push((lines[index] ?? '').trim())
+      while (isTableRow(lines[index + 1] ?? '')) {
+        index += 1
+        rows.push((lines[index] ?? '').trim())
+      }
+      html.push(renderTable(rows))
       continue
     }
     const heading = /^(#{2,3})[ \t]+(\S.*)$/.exec(trimmed)

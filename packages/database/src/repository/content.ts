@@ -45,7 +45,7 @@ export class Content {
     const gallery = await Content.galleryFor(place.id)
     const images = gallery.map((item) => item.media)
     const nearest = place.latitude != null && place.longitude != null
-      ? await this.nearest(place.latitude, place.longitude, place.slug, 5)
+      ? await this.nearest(place.latitude, place.longitude, place.slug, 6)
       : []
     const sameRegion = place.regionId
       ? await db.select({ slug: places.slug, title: places.title }).from(places).where(and(
