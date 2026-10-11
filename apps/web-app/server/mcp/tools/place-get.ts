@@ -20,6 +20,9 @@ export default defineMcpTool({
     const category = place.categoryId
       ? (await db.content.categories()).find((item) => item.id === place.categoryId)
       : null
+    const region = place.regionId
+      ? (await db.editor.listRegions()).find((item) => item.id === place.regionId)
+      : null
     return {
       id: place.id,
       slug: place.slug,
@@ -34,6 +37,7 @@ export default defineMcpTool({
       latitude: place.latitude,
       longitude: place.longitude,
       categorySlug: category?.slug ?? null,
+      regionSlug: region?.slug ?? null,
       sources: place.sources ?? [],
       seoTitle: place.seoTitle,
       seoDescription: place.seoDescription,

@@ -1,7 +1,10 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { applyInitialContent, INITIAL_CONTENT_IMPORT_ID } from '../../seed/apply'
+import { CASTLE_REGIONS } from '../../seed/castle-regions'
 import seed from '../../seed/initial-content.json'
 import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects } from '../../tables'
 import { Content, Editor } from '../content'
@@ -21,6 +24,20 @@ async function wipeContent() {
   await db.delete(slugRedirects)
   await db.delete(contentImports)
 }
+
+describe('castle regions', () => {
+  it('points each named castle at its town in the migration', () => {
+    const path = [
+      resolve(process.cwd(), 'migrations/0006_castle_regions.sql'),
+      resolve(process.cwd(), 'packages/database/migrations/0006_castle_regions.sql'),
+    ].find((item) => existsSync(item))
+    const sql = readFileSync(path ?? '', 'utf8')
+    for (const [place, region] of CASTLE_REGIONS) {
+      expect(sql).toContain(`'${place}'`)
+      expect(sql).toContain(`'${region}'`)
+    }
+  })
+})
 
 describe('initial content', () => {
   beforeEach(async () => {

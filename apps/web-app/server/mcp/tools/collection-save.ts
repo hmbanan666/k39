@@ -6,7 +6,7 @@ import { normalizePublication } from '../../utils/mcp/draft'
 
 export default defineMcpTool({
   name: 'collection_save',
-  description: 'Create or update a collection (podborka). publicationStatus may be draft, review, or published. A slug rename writes a 301 from /podborki/old.',
+  description: 'Create or update a collection in place. Omitting publicationStatus leaves a published collection published. A slug rename writes a 301 from /podborki/old.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string(),

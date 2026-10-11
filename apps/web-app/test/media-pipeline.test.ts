@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import sharp from 'sharp'
 import { afterEach, describe, expect, it } from 'vitest'
-import { mapCommonsLicense } from '../server/media/commons'
+import { categoryNames, fallbackQueries, mapCommonsLicense, plainText } from '../server/media/commons'
+import { coverSizeWarning } from '../server/media/ingest'
 import { processImage } from '../server/media/process'
 import { mediaSlotDepth, withMediaSlot } from '../server/media/semaphore'
 import { createLocalMediaStorage } from '../server/media/storage'
@@ -94,5 +95,20 @@ describe('commons licenses', () => {
     expect(mapCommonsLicense('CC BY-SA 4.0')).toBe('cc-by-sa')
     expect(mapCommonsLicense('CC BY 4.0')).toBe('cc-by')
     expect(mapCommonsLicense('CC BY-NC')).toBeNull()
+  })
+
+  it('trims a description and lists category names', () => {
+    expect(plainText('<p>Fort&nbsp;III</p>')).toBe('Fort III')
+    expect(categoryNames({ categories: [{ title: 'Category:Fort VII in Kaliningrad' }, { title: '  ' }] })).toEqual(['Fort VII in Kaliningrad'])
+  })
+
+  it('searches an English fort title when the Russian name has a number', () => {
+    expect(fallbackQueries('Форт № 7 «Герцог фон Гольштейн»')).toContain('Fort VII Kaliningrad')
+  })
+
+  it('warns about a small cover and stays quiet for a gallery photo', () => {
+    expect(coverSizeWarning(800, true)).toContain('1200')
+    expect(coverSizeWarning(800, false)).toBe('')
+    expect(coverSizeWarning(1600, true)).toBe('')
   })
 })

@@ -43,6 +43,13 @@
       "when": 1791750000000,
       "tag": "0005_mcp_audits",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791760000000,
+      "tag": "0006_castle_regions",
+      "breakpoints": true
     }
   ]
 }

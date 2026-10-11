@@ -6,7 +6,7 @@ import { normalizePublication } from '../../utils/mcp/draft'
 
 export default defineMcpTool({
   name: 'route_draft_update',
-  description: 'Update a route, including one that is already published.',
+  description: 'Update a route in place. Omitting publicationStatus leaves a published route published. A slug change writes a 301 from /marshruty/old.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string().optional(),

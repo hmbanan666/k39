@@ -45,25 +45,36 @@ export async function processImage(input: Buffer, mediaId: string, storage: Medi
     bytes: masterBuf.length,
     file: 'master.webp',
   }]
-  for (const width of WIDTHS) {
-    if (width >= baseWidth) {
-      continue
-    }
-    const height = Math.max(1, Math.round(baseHeight * (width / baseWidth)))
-    const avif = await sharp(masterBuf).resize({ width, withoutEnlargement: true }).avif({ quality: 50 }).toBuffer()
-    const webp = await sharp(masterBuf).resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer()
-    await storage.put(`${mediaId}/${width}.avif`, avif)
-    await storage.put(`${mediaId}/${width}.webp`, webp)
-    variants.push({ format: 'avif', width, height, bytes: avif.length, file: `${width}.avif` })
-    variants.push({ format: 'webp', width, height, bytes: webp.length, file: `${width}.webp` })
+  const sized = WIDTHS.filter((width) => width < baseWidth)
+  const [groups, og, lqipBuf, stats] = await Promise.all([
+    Promise.all(sized.map(async (width) => {
+      const height = Math.max(1, Math.round(baseHeight * (width / baseWidth)))
+      const [avif, webp] = await Promise.all([
+        sharp(masterBuf).resize({ width, withoutEnlargement: true }).avif({ quality: 50 }).toBuffer(),
+        sharp(masterBuf).resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer(),
+      ])
+      await Promise.all([
+        storage.put(`${mediaId}/${width}.avif`, avif),
+        storage.put(`${mediaId}/${width}.webp`, webp),
+      ])
+      return [
+        { format: 'avif' as const, width, height, bytes: avif.length, file: `${width}.avif` },
+        { format: 'webp' as const, width, height, bytes: webp.length, file: `${width}.webp` },
+      ]
+    })),
+    sharp(masterBuf).resize({
+      width: Math.min(1200, baseWidth),
+      height: Math.min(630, baseHeight),
+      fit: 'cover',
+      position: 'centre',
+      withoutEnlargement: true,
+    }).jpeg({ quality: 90 }).toBuffer(),
+    sharp(masterBuf).resize({ width: 16, withoutEnlargement: true }).blur(1).webp({ quality: 40 }).toBuffer(),
+    sharp(masterBuf).stats(),
+  ])
+  for (const pair of groups) {
+    variants.push(...pair)
   }
-  const og = await sharp(masterBuf).resize({
-    width: Math.min(1200, baseWidth),
-    height: Math.min(630, baseHeight),
-    fit: 'cover',
-    position: 'centre',
-    withoutEnlargement: true,
-  }).jpeg({ quality: 90 }).toBuffer()
   const ogMeta = await sharp(og).metadata()
   await storage.put(`${mediaId}/og.jpg`, og)
   variants.push({
@@ -73,8 +84,6 @@ export async function processImage(input: Buffer, mediaId: string, storage: Medi
     bytes: og.length,
     file: 'og.jpg',
   })
-  const lqipBuf = await sharp(masterBuf).resize({ width: 16, withoutEnlargement: true }).blur(1).webp({ quality: 40 }).toBuffer()
-  const stats = await sharp(masterBuf).stats()
   const { r: red, g: green, b: blue } = stats.dominant
   const dominantColor = `#${[red, green, blue].map((part) => Math.max(0, Math.min(255, part)).toString(16).padStart(2, '0')).join('')}`
   return {

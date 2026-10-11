@@ -20,6 +20,7 @@ export interface PlaceDraftInput {
   howToGet?: string | null
   latitude?: number | null
   longitude?: number | null
+  regionSlug?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   ogImage?: string | null
@@ -43,6 +44,20 @@ function compactPlace(row: {
     publicationStatus: row.publicationStatus,
     updatedAt: row.updatedAt,
   }
+}
+
+async function regionIdOf(slug: string | null | undefined, fallback: string | null) {
+  if (slug === undefined) {
+    return fallback
+  }
+  if (!slug) {
+    return null
+  }
+  const region = (await db.editor.listRegions()).find((item) => item.slug === slug)
+  if (!region) {
+    throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
+  }
+  return region.id
 }
 
 async function categoryId(slug: string | undefined, fallback: string | null) {
@@ -75,6 +90,7 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     latitude: input.latitude ?? null,
     longitude: input.longitude ?? null,
     categoryId: await categoryId(input.categorySlug || 'forty', null),
+    regionId: await regionIdOf(input.regionSlug, null),
     sources: input.sources || [],
     seoTitle: input.seoTitle || null,
     seoDescription: input.seoDescription || null,
@@ -115,7 +131,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     latitude: input.latitude === undefined ? current.latitude : input.latitude,
     longitude: input.longitude === undefined ? current.longitude : input.longitude,
     categoryId: await categoryId(input.categorySlug, current.categoryId),
-    regionId: current.regionId,
+    regionId: await regionIdOf(input.regionSlug, current.regionId),
     sources: input.sources ?? current.sources ?? [],
     seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
     seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
