@@ -525,6 +525,18 @@ export class Editor {
     return useDatabase().select().from(media).orderBy(asc(media.createdAt))
   }
 
+  static async mediaForPlaceSource(placeId: string, urls: string[]) {
+    const wanted = urls.filter(Boolean)
+    if (!wanted.length) {
+      return undefined
+    }
+    const [row] = await useDatabase().select({ media }).from(placeMedia).innerJoin(media, eq(placeMedia.mediaId, media.id)).where(and(
+      eq(placeMedia.placeId, placeId),
+      inArray(media.sourceUrl, wanted),
+    )).limit(1)
+    return row?.media
+  }
+
   static async mediaById(id: string) {
     const [row] = await useDatabase().select().from(media).where(eq(media.id, id)).limit(1)
     return row

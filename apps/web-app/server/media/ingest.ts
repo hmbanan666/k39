@@ -8,6 +8,13 @@ import { createLocalMediaStorage } from './storage'
 
 const VARIANT_FILES = ['master.webp', 'og.jpg', '320.avif', '320.webp', '640.avif', '640.webp', '960.avif', '960.webp', '1280.avif', '1280.webp', '1920.avif', '1920.webp']
 
+export function coverSizeWarning(sourceWidth: number, isCover: boolean) {
+  if (!isCover || sourceWidth >= 1200) {
+    return ''
+  }
+  return 'Исходник уже 1200 пикселей. Для крупной обложки лучше фото шире.'
+}
+
 export async function removeStoredMedia(mediaId: string) {
   const storage = createLocalMediaStorage()
   await Promise.all(VARIANT_FILES.map((file) => storage.delete(`${mediaId}/${file}`)))
@@ -87,14 +94,14 @@ export async function ingestImage(input: {
     if (!row) {
       throw new Error('Media insert failed')
     }
+    let isCover = input.isCover
     if (input.placeId) {
-      await db.editor.attachMedia(input.placeId, row.id, { isCover: input.isCover })
+      const attached = await db.editor.attachMedia(input.placeId, row.id, { isCover: input.isCover })
+      isCover = attached?.isCover ?? false
     }
     return {
       row,
-      warning: processed.sourceWidth < 1200
-        ? 'Исходник уже 1200 пикселей. Для крупной обложки лучше фото шире.'
-        : '',
+      warning: coverSizeWarning(processed.sourceWidth, Boolean(isCover)),
     }
   } catch (error) {
     await removeStoredMedia(id)
