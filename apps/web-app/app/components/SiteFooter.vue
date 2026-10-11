@@ -54,16 +54,27 @@ const sections = SECTION_LINKS
   padding: var(--space-6) 0;
 }
 .mark {
+  position: relative;
   display: inline-grid;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
+  border: 2px solid var(--color-amber);
   border-radius: 50%;
-  background: var(--color-brick);
-  color: var(--color-surface);
-  font-family: var(--font-stamp);
-  font-size: 0.75rem;
+  background: transparent;
+  color: var(--color-amber);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
   text-decoration: none;
+}
+.mark::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px dashed var(--color-amber);
+  border-radius: 50%;
+  opacity: 0.7;
 }
 p { max-width: 18rem; color: #e7dccb; font-size: var(--step--1); }
 .label {

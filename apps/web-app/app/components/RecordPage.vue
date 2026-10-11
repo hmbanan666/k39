@@ -11,7 +11,6 @@
     <RouteSteps
       :title="listTitle"
       :steps="page.items"
-      band
     />
   </ArticleShell>
 </template>

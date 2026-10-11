@@ -16,8 +16,8 @@
         :href="place.href"
         :title="place.title"
         :summary="place.summary"
-        :hub="place.hub"
-        :hub-href="place.hubHref"
+        :kind="place.kind"
+        :image="place.image"
       />
     </div>
     <LinkList
@@ -34,7 +34,7 @@ const props = defineProps<{ slug: string }>()
 const page = await fetchPublic<{
   doc: SeoDocument
   html: string
-  places: Array<{ href: string, title: string, summary: string, hub: string, hubHref: string }>
+  places: Array<{ href: string, title: string, summary: string, hub: string, hubHref: string, kind: string, image: { src: string, alt: string, width: number | null, height: number | null } | null }>
   routes: { href: string, text: string }[]
 }>(`/api/public/hubs/${props.slug}`)
 usePublicHead(page.doc)

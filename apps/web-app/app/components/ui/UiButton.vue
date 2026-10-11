@@ -22,7 +22,7 @@
 withDefaults(defineProps<{
   href?: string
   type?: 'button' | 'submit'
-  variant?: 'primary' | 'quiet' | 'sea'
+  variant?: 'primary' | 'quiet' | 'sea' | 'amber' | 'line'
   disabled?: boolean
 }>(), {
   type: 'button',

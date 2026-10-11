@@ -1,63 +1,49 @@
 <template>
   <header class="site-header">
-    <a
-      href="/"
-      class="brand"
-    >
-      <span class="mark">K39</span>
-      <span class="region">Калининградская область</span>
-    </a>
+    <div class="in">
+      <a
+        href="/"
+        class="logo"
+      >
+        <span class="logo-mark">K39</span>
+        <span class="logo-word">
+          K39
+          <small>Калининградская область</small>
+        </span>
+      </a>
+    </div>
     <nav
-      class="desktop"
+      class="nav"
       aria-label="Разделы"
     >
       <a
         v-for="link in hubs"
         :key="link.href"
         :href="link.href"
+        :class="{ active: path === link.href }"
       >{{ link.text }}</a>
       <a
         v-if="!loggedIn"
         href="/sign-in"
+        :class="{ active: path === '/sign-in' }"
       >Войти</a>
       <a
-        v-else
+        v-else-if="isAdmin"
         href="/admin"
+        :class="{ active: path.startsWith('/admin') }"
       >Админка</a>
     </nav>
-    <div class="mobile">
-      <UiDialog title="Разделы">
-        <template #trigger>
-          Меню
-        </template>
-        <nav
-          class="sheet-nav"
-          aria-label="Разделы"
-        >
-          <a
-            v-for="link in hubs"
-            :key="link.href"
-            :href="link.href"
-          >{{ link.text }}</a>
-          <a
-            v-if="!loggedIn"
-            href="/sign-in"
-          >Войти</a>
-          <a
-            v-else
-            href="/admin"
-          >Админка</a>
-        </nav>
-      </UiDialog>
-    </div>
   </header>
 </template>
 
 <script setup lang="ts">
 import { HUBS } from '~~/shared/links'
 
-const { loggedIn } = useUserSession()
+const route = useRoute()
+const { loggedIn, user } = useUserSession()
 const hubs = HUBS
+const path = computed(() => route.path)
+const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
 </script>
 
 <style scoped>
@@ -67,55 +53,98 @@ const hubs = HUBS
   z-index: var(--z-header);
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: 0.7rem 1.25rem;
+  gap: 2rem;
+  min-height: 72px;
+  padding: 0 1.25rem;
   border-bottom: 1px solid var(--color-line);
-  background: rgb(255 251 243 / 94%);
+  background: rgb(255 251 243 / 92%);
 }
-.brand {
+.logo {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  color: var(--text);
+  gap: 0.6rem;
+  color: inherit;
   text-decoration: none;
 }
-.mark {
+.logo-mark {
+  position: relative;
   display: grid;
-  width: 2.3rem;
-  height: 2.3rem;
+  width: 44px;
+  height: 44px;
   place-items: center;
+  border: 2px solid var(--color-brick);
   border-radius: 50%;
-  background: var(--color-brick);
-  color: var(--color-surface);
-  font-family: var(--font-stamp);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  color: var(--color-brick);
+  font: 700 17px/1 var(--font-display);
 }
-.region {
-  font-family: var(--font-stamp);
-  font-size: 0.68rem;
+.logo-mark::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px dashed var(--color-brick);
+  border-radius: 50%;
+  opacity: 0.55;
+}
+.logo-word {
+  color: var(--text);
+  font: 700 1.5rem/1 var(--font-display);
+}
+.logo-word small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font: 500 11px/1.2 var(--font-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.desktop {
-  display: none;
+.nav {
+  display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.9rem;
-  margin-left: auto;
+  gap: 0.25rem;
 }
-.desktop a {
+.nav a {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
   color: var(--text);
-  font-size: 0.95rem;
+  font: 500 0.95rem/1 var(--font-body);
   text-decoration: none;
 }
-.sheet-nav { display: flex; flex-direction: column; gap: 0.8rem; margin: var(--space-4) 0; }
-.sheet-nav a { color: var(--text); font-weight: 700; text-decoration: none; }
-.mobile { margin-left: auto; }
-@media (min-width: 900px) {
-  .desktop { display: flex; }
-  .mobile { display: none; }
+.nav a.active {
+  background: rgb(163 64 42 / 8%);
+  color: var(--color-brick);
 }
-@media (max-width: 520px) {
-  .region { display: none; }
+@media (max-width: 899px) {
+  .site-header {
+    display: block;
+    padding: 0;
+  }
+  .in {
+    display: flex;
+    align-items: center;
+    height: 60px;
+    padding: 0 1rem;
+  }
+  .logo-mark { width: 38px; height: 38px; font-size: 15px; }
+  .logo-word { font-size: 1.3rem; }
+  .logo-word small { display: none; }
+  .nav {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0 1rem 0.7rem;
+  }
+  .nav a {
+    flex: none;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+    font-size: 0.875rem;
+  }
+  .nav a.active {
+    border-color: var(--color-brick);
+    background: var(--color-brick);
+    color: #fff;
+  }
 }
 </style>

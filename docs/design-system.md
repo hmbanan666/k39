@@ -39,7 +39,7 @@ Z-index: header 20, dropdown 30, dialog 40, consent 50, tooltip 60.
 
 ## Breakpoints
 
-Layout shifts at 720px (two cards) and 900px (desktop nav). 1100px is an optional third card column. Screenshots are checked at 390px and 1440px.
+Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). Phone hub links scroll in one row. Screenshots are checked at 390px and 1440px.
 
 ## Components
 
@@ -48,20 +48,28 @@ Layout shifts at 720px (two cards) and 900px (desktop nav). 1100px is an optiona
 | `UiButton` | Primary, quiet, or sea. An `href` renders a plain `<a>`. |
 | `UiLink` | Text link, always an `<a href>`. |
 | `UiBadge` | Hub or status chip. Pass `href` when it navigates. |
-| `PlaceCard` | Place name is the link. Hub and distance are separate text. No "подробнее". |
-| `PostcardHero` | One `h1`, optional kicker and lede, breadcrumb nav. |
+| `Stamp` | Perforated postage frame (CSS mask). Optional picture and a short label. |
+| `Postcard` | Paper card: picture, caption strip, shadow. Tilt, corner stamp, and postmark only when those props are set. |
+| `PlaceCard` | A postcard for a place. Real media wins; otherwise the category SVG. No tilt and no stamp, so long lists stay quiet. |
+| `PostcardHero` | One `h1`, optional kicker and lede, breadcrumb nav. Text pages, not the place hero. |
 | `UiBreadcrumbs` | Visible crumbs. The same list is the BreadcrumbList JSON-LD. |
-| `SiteHeader` / `SiteFooter` | Hub links in HTML. Mobile menu is a Reka dialog; the desktop nav is still in the document. |
+| `SiteHeader` / `SiteFooter` | Logo mark, wordmark, hub pills. The active hub is highlighted. Админка is shown only to a logged-in admin. |
 | `NearbyList` | Nearest places, name plus kilometres. |
 | `RouteSteps` | Ordered stops. Each step is the place name. |
 | `PartnerOffer` | Only for a real active offer. |
-| `ConsentBanner` | Fixed, so it does not shift layout. |
+| `ConsentBanner` | Fixed toast at the bottom-left on desktop, a slim bar on a phone. It does not shift layout. |
 | `UiAccordion` | Reka accordion. Default open when the copy must be read immediately. Content stays in the HTML. |
-| `UiDialog` | Reka dialog for the mobile nav. |
+| `UiDialog` | Reka dialog. The public header uses a pill row instead of a menu button. |
 | `UiTooltip` | Extra hint. The visible label still states the fact. |
 | `UiField`, `UiInput`, `UiTextarea`, `UiSelect`, `UiSwitch` | Admin. Select and switch use Reka. Counters sit on the field. |
 
 Do not add tabs for primary content. Closed panels must not be the only place a fact exists.
+
+## Illustrations and stamps
+
+Category art lives in `apps/web-app/public/illustrations/` and is the approved moodboard SVG, unchanged: `fort.svg` (default), `castle.svg`, `beach.svg`, `dunes.svg`, `museum.svg`, `cathedral.svg`, `food.svg`, `postmark.svg`. `illustrationFor()` maps a hub slug to a file. A place photo from `media` replaces that file. `kafedralnyi-sobor` uses `cathedral.svg` because the cathedral sits in the museum category.
+
+`Stamp` is the perforated frame (radial-gradient mask). `Postcard` is the paper card. The place hero and the home collage tilt and carry a stamp with `postmark.svg` over that corner. Home hub tiles get a small numeral stamp. Nearby cards and hub lists do not, so a long list is not a sheet of stamps.
 
 ## Partner offers
 

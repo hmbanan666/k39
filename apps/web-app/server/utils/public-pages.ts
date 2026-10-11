@@ -76,6 +76,7 @@ export async function loadHub(slug: string) {
     return null
   }
   const rows = await db.content.publishedPlacesByCategory(category.id)
+  const covers = await db.content.coversFor(rows.map((place) => place.id))
   const routes = slug === 'forty' ? await db.content.listPublishedRoutes() : []
   const doc = collectionDocument({
     path: `/${category.slug}`,
@@ -92,13 +93,20 @@ export async function loadHub(slug: string) {
   return {
     doc,
     html: renderMarkdown(category.description),
-    places: rows.map((place) => ({
-      href: `/${place.slug}`,
-      title: place.title,
-      summary: place.summary,
-      hub: category.title,
-      hubHref: `/${category.slug}`,
-    })),
+    places: rows.map((place) => {
+      const cover = covers.get(place.id)
+      return {
+        href: `/${place.slug}`,
+        title: place.title,
+        summary: place.summary,
+        hub: category.title,
+        hubHref: `/${category.slug}`,
+        kind: category.slug,
+        image: cover
+          ? mediaImage({ filename: cover.filename, alt: cover.alt, width: cover.width, height: cover.height })
+          : null,
+      }
+    }),
     routes: routes.map((route) => ({ href: `/marshruty/${route.slug}`, text: route.title })),
   }
 }
@@ -143,7 +151,20 @@ export async function loadPlace(slug: string, page = 1) {
   })
   const groups = [
     { title: loaded.category.title, links: [{ href: `/${loaded.category.slug}`, text: loaded.category.title }] },
-    { title: 'Рядом', links: loaded.nearest.slice(0, 5).map((item) => ({ href: `/${item.slug}`, text: item.title, distanceKm: Number(item.distance_km) })) },
+    { title: 'Рядом', links: loaded.nearest.slice(0, 3).map((item) => ({
+      href: `/${item.slug}`,
+      text: item.title,
+      distanceKm: Number(item.distance_km),
+      kind: item.category_slug,
+      image: item.image_filename
+        ? {
+            src: `/media/${item.image_filename}`,
+            alt: item.image_alt || item.title,
+            width: item.image_width,
+            height: item.image_height,
+          }
+        : null,
+    })) },
     loaded.region
       ? { title: `Ещё в регионе ${loaded.region.title}`, links: loaded.sameRegion.map((item) => ({ href: `/${item.slug}`, text: item.title })) }
       : null,

@@ -1,6 +1,6 @@
 <template>
-  <article class="page page-wide">
-    <header class="hero">
+  <article class="page page-wide home">
+    <header class="home-hero">
       <div>
         <p class="kicker">
           Путеводитель K39
@@ -11,67 +11,93 @@
         </p>
       </div>
       <div
-        class="stamps"
+        class="collage"
         aria-hidden="true"
       >
-        <div class="stamp">
-          <PostcardSketch
-            label=""
-            :width="280"
-            :height="175"
-          />
-        </div>
-        <span class="postmark">K39</span>
+        <Postcard
+          class="shot a"
+          :src="illustrationFor('forty')"
+          alt=""
+          caption="Форты"
+          meta="K39"
+          tilt="-5deg"
+          ratio="4 / 3"
+          priority
+        />
+        <Postcard
+          class="shot b"
+          :src="illustrationFor('kurorty')"
+          alt=""
+          caption="Курорты"
+          meta="K39"
+          tilt="4deg"
+          ratio="4 / 3"
+        />
+        <Postcard
+          class="shot c"
+          :src="illustrationFor('plyazhi')"
+          alt=""
+          caption="Пляжи"
+          meta="K39"
+          tilt="-2deg"
+          ratio="4 / 3"
+        />
+        <Stamp
+          class="float-stamp"
+          :src="illustrationFor('forty')"
+          label="K39"
+        />
+        <img
+          class="pm"
+          :src="POSTMARK_SRC"
+          alt=""
+          width="260"
+          height="140"
+        >
       </div>
     </header>
-    <h2>Куда поехать</h2>
+    <div class="sh">
+      <h2>Куда поехать</h2>
+    </div>
     <div class="hub-grid">
-      <a
-        v-for="hub in page.hubs"
+      <Postcard
+        v-for="(hub, index) in page.hubs"
         :key="hub.href"
         :href="hub.href"
-        class="hub-card"
-      >
-        <PostcardSketch
-          :label="hub.title"
-          :width="320"
-          :height="180"
-        />
-        <h3>{{ hub.title }}</h3>
-        <p>{{ hub.summary }}</p>
-      </a>
+        :src="illustrationFor(hub.href.slice(1))"
+        :alt="hub.title"
+        caption-tag="h3"
+        caption-style="title"
+        meta-place="below"
+        :caption="hub.title"
+        :meta="hub.summary"
+        :stamp-label="romans[index] || String(index + 1)"
+        stamp-size="sm"
+        stamp-place="in"
+        ratio="16 / 9"
+      />
     </div>
-    <section
+    <RouteSteps
       v-if="page.route"
-      class="sea-band"
-    >
-      <p class="band-kicker">
-        Маршрут
-      </p>
-      <h2>{{ page.route.title }}</h2>
-      <p v-if="page.route.summary">
-        {{ page.route.summary }}
-      </p>
-      <ol>
-        <li
-          v-for="(step, index) in page.route.steps"
-          :key="step.href"
-        >
-          <span>{{ index + 1 }}</span>
-          <a :href="step.href">{{ step.text }}</a>
-        </li>
-      </ol>
-      <UiButton
-        :href="page.route.href"
-        variant="quiet"
-      >
-        Открыть маршрут
-      </UiButton>
-    </section>
+      variant="feature"
+      kicker="Маршрут"
+      :title="page.route.title"
+      :summary="page.route.summary"
+      :href="page.route.href"
+      :steps="page.route.steps"
+      :art="illustrationFor('forty')"
+      action="Открыть маршрут"
+    />
     <section
       v-if="page.quest"
       class="quest"
     >
+      <div
+        class="seal"
+        aria-hidden="true"
+      >
+        <b>K39<small>квест</small></b>
+      </div>
       <div>
         <p class="kicker">
           Квест
@@ -90,7 +116,9 @@
 
 <script setup lang="ts">
 import type { SeoDocument } from '~~/shared/seo'
+import { illustrationFor, POSTMARK_SRC } from '~~/shared/illustrations'
 
+const romans = ['I', 'II', 'III', 'IV', 'V', 'VI']
 const page = await fetchPublic<{
   doc: SeoDocument
   hubs: Array<{ href: string, title: string, summary: string }>
@@ -102,92 +130,144 @@ onMounted(() => useTrack().track('page_view'))
 </script>
 
 <style scoped>
-.hero {
+.home-hero {
   display: grid;
-  gap: var(--space-5);
+  gap: 1.5rem;
   align-items: center;
-  margin-bottom: var(--space-6);
+  margin-bottom: 1rem;
+  padding-top: 0.5rem;
 }
 .kicker {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 0.6rem;
   color: var(--color-brick);
   font-family: var(--font-stamp);
   font-size: 0.75rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.lede { max-width: 36rem; color: var(--muted); }
-.stamps { position: relative; }
-.stamp {
-  overflow: hidden;
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
+.home-hero h1 {
+  margin: 0.4rem 0 0.8rem;
+  font-size: clamp(2.4rem, 1.2rem + 3.1vw, 4.15rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
 }
-.postmark {
+.lede {
+  max-width: 36ch;
+  margin: 0;
+  color: #433832;
+  font-size: 1.15rem;
+  line-height: 1.5;
+}
+.collage {
+  position: relative;
+  height: 32rem;
+}
+.shot { position: absolute; }
+.a { top: 3.6rem; left: 0; z-index: 2; width: 68%; }
+.b { top: 0; right: 0; z-index: 1; width: 54%; }
+.c { right: 0.2rem; bottom: 0; z-index: 3; width: 48%; }
+.float-stamp {
   position: absolute;
-  right: 8%;
-  bottom: -0.6rem;
-  display: grid;
-  width: 4.2rem;
-  height: 4.2rem;
-  place-items: center;
-  border: 2px dashed var(--color-brick);
-  border-radius: 50%;
-  color: var(--color-brick);
-  font-family: var(--font-stamp);
-  transform: rotate(-12deg);
-  background: var(--color-paper);
+  top: 0.2rem;
+  left: 58%;
+  z-index: 4;
+  width: 6.4rem;
+  transform: rotate(8deg);
 }
+.pm {
+  position: absolute;
+  bottom: 0.4rem;
+  left: 0;
+  z-index: 5;
+  width: 11rem;
+  height: auto;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  transform: rotate(-10deg);
+  opacity: 0.85;
+}
+.sh { margin: 3.2rem 0 1.2rem; }
+.sh h2 { margin: 0; font-size: clamp(1.8rem, 1.3rem + 1vw, 2.4rem); }
 .hub-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-4);
+  gap: 1.2rem;
 }
-.hub-card {
-  overflow: hidden;
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  background: var(--surface);
-  color: inherit;
-  text-decoration: none;
-  box-shadow: var(--shadow-card);
-}
-.hub-card h3,
-.hub-card p { margin: 0.7rem 0.9rem; }
-.hub-card p { color: var(--muted); font-size: var(--step--1); }
-.sea-band {
-  margin-top: var(--space-7);
-  padding: var(--space-5);
-  border-radius: 20px;
-  background: var(--color-sea);
-  color: var(--color-surface);
-}
-.sea-band h2,
-.sea-band p { color: inherit; }
-.band-kicker {
-  font-family: var(--font-stamp);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-}
-.sea-band ol { margin: 0 0 var(--space-4); padding: 0; list-style: none; }
-.sea-band li { display: flex; gap: 0.6rem; padding: 0.35rem 0; }
-.sea-band a { color: var(--color-surface); }
 .quest {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
   align-items: center;
-  justify-content: space-between;
-  margin-top: var(--space-5);
-  padding: var(--space-5);
+  margin-top: 3.2rem;
+  padding: 1.4rem;
+  border: 1.5px dashed #e2b46a;
   border-radius: 18px;
-  background: var(--color-amber-soft);
+  background-color: var(--color-amber-soft);
+  background-image: var(--noise);
+}
+.quest h2 { margin: 0.3rem 0 0.45rem; font-size: clamp(1.6rem, 1.2rem + 1vw, 2.15rem); }
+.quest p { max-width: 52ch; margin: 0; color: #4a3e35; }
+.quest .kicker { margin-bottom: 0.2rem; }
+.seal {
+  display: grid;
+  width: 7.5rem;
+  height: 7.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-brick);
+  box-shadow: inset 0 0 0 6px var(--color-brick), inset 0 0 0 8px rgb(255 255 255 / 35%);
+  isolation: isolate;
+  position: relative;
+}
+.seal::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -8px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(var(--color-brick) 0 6deg, transparent 6deg 12deg);
+  -webkit-mask: radial-gradient(circle, transparent 68px, #000 69px);
+  mask: radial-gradient(circle, transparent 68px, #000 69px);
+}
+.seal b {
+  color: #fff;
+  font: 800 1.6rem/1 var(--font-display);
+  text-align: center;
+}
+.seal small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--color-amber-soft);
+  font: 600 0.68rem/1.2 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 @media (min-width: 720px) {
-  .hero { grid-template-columns: 1.1fr 0.9fr; }
+  .hub-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 980px) {
+  .collage {
+    display: grid;
+    height: auto;
+    gap: 0.85rem;
+    padding-top: 0.4rem;
+  }
+  .shot,
+  .float-stamp,
+  .pm {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+  }
+  .float-stamp { justify-self: end; width: 5.2rem; margin-top: -1.4rem; }
+  .pm { width: 8.5rem; margin-top: -2.2rem; }
+}
+@media (min-width: 981px) {
+  .home-hero { grid-template-columns: 1fr 1.05fr; gap: 2rem; padding: 1.2rem 0 0.4rem; }
   .hub-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .quest { grid-template-columns: 9rem 1fr auto; gap: 2rem; padding: 2rem 2.4rem; }
 }
 </style>
