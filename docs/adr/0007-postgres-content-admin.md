@@ -18,7 +18,9 @@ Production already had those place slugs from the earlier catalog sync. Migratio
 
 The old catalog route and quest use slug `five-forts`. The new pages are `pyat-fortov`. Those legacy rows stay drafts: deleting them can fail while a quest, route point, or offer still points at them. v2 adds 301s from `/marshruty/five-forts` and `/kvesty/five-forts` to the new slugs, and only when the legacy row is still an untouched empty draft. After the marker is written, Postgres is the editorial source of truth.
 
-Humans edit through `/admin`, gated by Yandex or VK login and `users.role` (`editor` or `admin`). Emails in `ADMIN_EMAILS` are promoted to admin on login. An agent may create and update drafts through `/api/content/*` with `CONTENT_API_TOKEN`. That API cannot set `published`.
+Humans edit through `/admin`, gated by Yandex or VK login and `users.role` (`editor` or `admin`). Emails in `ADMIN_EMAILS` are promoted to admin on login.
+
+On 2026-10-11 Nick decided the content token has the same content rights as an editor: publish, unpublish, and edit live places, routes, collections, quests, hubs, and media. `/api/content/*` and the MCP server share that role. The earlier rule that the API cannot set `published` is superseded. The token still cannot manage users, roles, or site settings. See ADR 0012.
 
 Each place update stores the previous row in `revisions` and sets `updated_by`.
 

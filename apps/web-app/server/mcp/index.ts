@@ -1,8 +1,8 @@
 import { requireContentToken } from '../utils/access'
 
 export default defineMcpHandler({
-  description: 'K39 content drafts. Publishing stays in /admin.',
-  instructions: 'Write place pages in Russian using the content_guide resource. You may create and update drafts and submit them for review. You cannot set publicationStatus to published.',
+  description: 'K39 content. The token can publish and edit live pages. No users or settings.',
+  instructions: 'Write place pages in Russian using the content_guide resource. You may publish, unpublish, and edit published places, routes, collections, quests, and hubs. Publish only sourced facts and licensed photos. Do not manage users, roles, or site settings.',
   middleware: (event) => {
     requireContentToken(event)
   },

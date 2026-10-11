@@ -168,4 +168,51 @@ describe('initial content', () => {
     expect(again.skipped).toBe(true)
     expect((await Editor.placeBySlug('fort-11-denhoff'))?.updatedAt).toBe(stamp)
   })
+
+  it('publishes, unpublishes, and redirects a renamed slug', async () => {
+    const created = await Editor.savePlace({
+      slug: 'mcp-fort',
+      title: 'Форт для проверки',
+      summary: '',
+      body: '',
+      publicationStatus: 'draft',
+    })
+    const published = await Editor.savePlace({
+      id: created.id,
+      slug: created.slug,
+      title: created.title,
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
+    expect(published.publicationStatus).toBe('published')
+    const live = await Content.sitemapRows()
+    expect(live.places.some((row) => row.loc === '/mcp-fort')).toBe(true)
+
+    const renamed = await Editor.savePlace({
+      id: created.id,
+      slug: 'mcp-fort-new',
+      title: created.title,
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
+    const redirects = await Content.redirects()
+    expect(redirects).toEqual(expect.arrayContaining([
+      expect.objectContaining({ fromPath: '/mcp-fort', toPath: '/mcp-fort-new', statusCode: 301 }),
+    ]))
+
+    const unpublished = await Editor.savePlace({
+      id: renamed.id,
+      slug: renamed.slug,
+      title: renamed.title,
+      summary: '',
+      body: '',
+      publicationStatus: 'draft',
+    })
+    expect(unpublished.publicationStatus).toBe('draft')
+    const after = await Content.sitemapRows()
+    expect(after.places.some((row) => row.loc === '/mcp-fort-new')).toBe(false)
+    expect(after.places.some((row) => row.loc === '/mcp-fort')).toBe(false)
+  })
 })

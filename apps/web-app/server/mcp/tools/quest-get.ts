@@ -3,24 +3,28 @@ import { z } from 'zod'
 
 export default defineMcpTool({
   name: 'quest_get',
-  description: 'Load one published quest by slug, including steps.',
+  description: 'Load one quest by id or slug, including drafts and steps.',
   annotations: { readOnlyHint: true },
   inputSchema: {
-    slug: z.string(),
+    id: z.string().optional(),
+    slug: z.string().optional(),
   },
-  handler: async ({ slug }) => {
-    const loaded = await db.content.publishedQuest(slug)
-    if (!loaded) {
+  handler: async ({ id, slug }) => {
+    const quest = id ? await db.editor.questById(id) : slug ? await db.editor.questBySlug(slug) : null
+    if (!quest) {
       throw createError({ statusCode: 404, statusMessage: 'Квест не найден' })
     }
     return {
-      id: loaded.quest.id,
-      slug: loaded.quest.slug,
-      title: loaded.quest.title,
-      summary: loaded.quest.summary,
-      body: loaded.quest.body,
-      publicationStatus: loaded.quest.publicationStatus,
-      steps: loaded.steps,
+      id: quest.id,
+      slug: quest.slug,
+      title: quest.title,
+      summary: quest.summary,
+      body: quest.body,
+      publicationStatus: quest.publicationStatus,
+      seoTitle: quest.seoTitle,
+      seoDescription: quest.seoDescription,
+      noindex: quest.noindex,
+      steps: await db.editor.questStepsFor(quest.id),
     }
   },
 })

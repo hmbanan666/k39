@@ -2,11 +2,11 @@ import { db } from '@k39/database'
 
 export default defineMcpTool({
   name: 'quests_list',
-  description: 'List published quests. Quest drafts are not writable through MCP.',
+  description: 'List quests, including drafts.',
   annotations: { readOnlyHint: true },
   inputSchema: {},
   handler: async () => {
-    const rows = await db.content.listPublishedQuests()
+    const rows = await db.editor.listQuests()
     return rows.map((row) => ({
       id: row.id,
       slug: row.slug,

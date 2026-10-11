@@ -4,7 +4,7 @@ import { placeFields } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'place_draft_create',
-  description: 'Create a place draft. publicationStatus published is rejected. Publishing stays in /admin.',
+  description: 'Create a place. publicationStatus may be draft, review, or published. A slug rename writes a 301 slug redirect.',
   annotations: { destructiveHint: false },
   inputSchema: {
     ...placeFields,

@@ -13,6 +13,19 @@ export async function removeStoredMedia(mediaId: string) {
   await Promise.all(VARIANT_FILES.map((file) => storage.delete(`${mediaId}/${file}`)))
 }
 
+export async function deleteMediaCompletely(id: string) {
+  const current = await db.editor.mediaById(id)
+  if (!current) {
+    return null
+  }
+  await removeStoredMedia(id)
+  if (current.filename && !current.filename.includes('/')) {
+    await createLocalMediaStorage().delete(current.filename)
+  }
+  await db.editor.deleteMedia(id)
+  return current
+}
+
 export async function ingestImage(input: {
   bytes: Buffer
   mime: string

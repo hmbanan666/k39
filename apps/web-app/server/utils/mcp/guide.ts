@@ -10,7 +10,9 @@ Structure:
 
 Facts: if a source does not state it, do not write it. Coordinates, names, and dates come from the source list. Put each source in sources as { title, url }.
 
-SEO: seoTitle stays under 70 characters, seoDescription under 170. The visible H1 is the place title. Do not keyword-stuff. publicationStatus may be draft or review. Publishing is human-only in /admin.
+SEO: seoTitle stays under 70 characters, seoDescription under 170. The visible H1 is the place title. Do not keyword-stuff.
+
+Publishing: you may set publicationStatus to published, or call content_set_publication. Publish only when the facts are in sources and every photo has alt, author, license, and sourceUrl. Unpublish by setting draft. noindex hides a live page from the sitemap, the same checkbox as in /admin. Do not invent a fact in order to publish.
 
 Photos: alt is required and describes the picture. author, license, and sourceUrl are required for an upload. Do not attach a photo whose license is not own, cc-by, cc-by-sa, cc0, pd, or permission.
 `

@@ -1,17 +1,16 @@
 import { createError } from 'h3'
 
-export function draftStatus(requested: string | undefined, current?: string | null): 'draft' | 'review' {
-  if (current === 'published' || requested === 'published') {
-    throw createError({
-      statusCode: current === 'published' ? 409 : 400,
-      statusMessage: 'API не публикует страницы',
-    })
+const STATUSES = new Set(['draft', 'review', 'published'])
+
+export function normalizePublication(requested: string | undefined, current?: string | null): 'draft' | 'review' | 'published' {
+  if (requested) {
+    if (!STATUSES.has(requested)) {
+      throw createError({ statusCode: 400, statusMessage: 'Неизвестный статус публикации' })
+    }
+    return requested as 'draft' | 'review' | 'published'
   }
-  if (requested === 'review') {
-    return 'review'
+  if (current === 'published' || current === 'review' || current === 'draft') {
+    return current
   }
-  if (requested === 'draft') {
-    return 'draft'
-  }
-  return current === 'review' ? 'review' : 'draft'
+  return 'draft'
 }
