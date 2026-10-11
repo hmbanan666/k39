@@ -45,7 +45,7 @@ Tools: `places_list`, `place_get`, `place_draft_create`, `place_draft_update`, `
 
 The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`). It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve `/map/{region}` with `noindex`. Otherwise those URLs 301 to `/forty`.
 
-Auth is Yandex and VK OAuth. Empty client id or secret disables that provider. `ADMIN_EMAILS` promotes those accounts to `admin` on login. Editors and admins can open `/admin`.
+Auth is `nuxt-auth-utils`: Yandex and VK use `defineOAuthYandexEventHandler` and `defineOAuthVKEventHandler`, and the admin session is `requireUserSession` / `setUserSession`. Empty client id or secret disables that provider. `ADMIN_EMAILS` promotes those accounts to `admin` on login. Editors and admins can open `/admin`. Anonymous visitors go to `/sign-in?redirectTo=/admin`. The session cookie is sealed with `NUXT_SESSION_PASSWORD` (32+ characters). `nuxt-auth-utils` does not read `NUXT_APP_SECRET`; switch to that when the library supports `appSecret` natively. See ADR 0005.
 
 `POST /api/events` records an event. `useTrack()` sends one only after the visitor accepts the consent banner. The banner is `position: fixed` so it does not shift the page. Rows require `consent = true`. The table has no IP address and no account id.
 

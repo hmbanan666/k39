@@ -14,7 +14,9 @@ OAuth client id and secret default to empty strings. `/api/auth/providers` lists
 
 A Nitro middleware redirects `www.k39.online` to `https://k39.online` with status 301, preserving path and query. It reads `X-Forwarded-Host` first. Other hosts, including localhost health checks, are not redirected.
 
-Login providers are Yandex and VK only.
+Login providers are Yandex and VK only, through `nuxt-auth-utils` (`defineOAuthYandexEventHandler`, `defineOAuthVKEventHandler`, `setUserSession`, `requireUserSession`). There is no second session implementation.
+
+`nuxt-auth-utils` seals the cookie with `NUXT_SESSION_PASSWORD` (32+ characters). It does not read `NUXT_APP_SECRET`. This app does not derive a session password from the app secret. Switch when the library supports `appSecret` natively.
 
 ## Consequences
 

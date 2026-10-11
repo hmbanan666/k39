@@ -1,13 +1,11 @@
 import process from 'node:process'
 import { db } from '@k39/database'
+import { adminRedirect } from '../../shared/auth'
 
-export async function requireEditor(event: Parameters<typeof getUserSession>[0]) {
-  const session = await getUserSession(event)
-  if (!session.user) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  }
+export async function requireEditor(event: Parameters<typeof requireUserSession>[0]) {
+  const session = await requireUserSession(event)
   const user = await db.user.find(session.user.id)
-  if (!user || (user.role !== 'admin' && user.role !== 'editor')) {
+  if (!user || adminRedirect(user) !== null) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
   return user
