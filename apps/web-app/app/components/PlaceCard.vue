@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 import { illustrationFor } from '~~/shared/illustrations'
-import { HUBS } from '~~/shared/links'
+import { formatDistance, HUBS } from '~~/shared/links'
 
 const props = withDefaults(defineProps<{
   href: string
@@ -67,7 +67,7 @@ const meta = computed(() => {
     bits.push(props.hub)
   }
   if (props.distanceKm != null) {
-    bits.push(`${props.distanceKm.toFixed(1)} км`)
+    bits.push(formatDistance(props.distanceKm))
   }
   return bits.join(' · ')
 })

@@ -2,7 +2,7 @@ import { db } from '@k39/database'
 import { homeLinks, HUBS } from '../../shared/links'
 import { renderMarkdown } from '../../shared/markdown'
 import { ogPath, toPublicMedia } from '../../shared/media'
-import { absoluteUrl, collectionDocument, homeDocument, placeDocument } from '../../shared/seo'
+import { absoluteUrl, collectionDocument, homeDocument, placeDocument, stripRepeatedLead } from '../../shared/seo'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
   return {
@@ -164,11 +164,12 @@ export async function loadPlace(slug: string, page = 1) {
       alt: item.alt || loaded.place.title,
     })),
     page,
+    body: loaded.place.body,
   })
   const nearCovers = await db.content.coversFor(loaded.nearest.map((item) => item.place_id))
   const groups = [
     { title: loaded.category.title, links: [{ href: `/${loaded.category.slug}`, text: loaded.category.title }] },
-    { title: 'Рядом', links: loaded.nearest.slice(0, 3).map((item) => ({
+    { title: 'Рядом', links: loaded.nearest.slice(0, 6).map((item) => ({
       href: `/${item.slug}`,
       text: item.title,
       distanceKm: Number(item.distance_km),
@@ -198,10 +199,11 @@ export async function loadPlace(slug: string, page = 1) {
         next: nextStep ? { href: `/${nextStep.slug}`, text: nextStep.title } : null,
       }
     : null
+  const article = stripRepeatedLead(loaded.place.summary, loaded.place.body)
   const howToGet = loaded.place.howToGet?.trim()
-  const body = howToGet && !loaded.place.body.includes(howToGet)
-    ? `${loaded.place.body}\n\n## Как добраться\n\n${howToGet}`
-    : loaded.place.body
+  const body = howToGet && !article.includes(howToGet)
+    ? `${article}\n\n## Как добраться\n\n${howToGet}`
+    : article
   return {
     doc,
     html: renderMarkdown(body),

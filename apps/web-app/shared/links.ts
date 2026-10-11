@@ -52,6 +52,22 @@ export function findOrphans(pages: GraphPage[]) {
     .map(([path]) => path)
 }
 
+export function formatDistance(km: number) {
+  if (!Number.isFinite(km) || km < 0) {
+    return ''
+  }
+  if (km < 1) {
+    const meters = Math.max(50, Math.round((km * 1000) / 50) * 50)
+    return `около ${meters} м`
+  }
+  if (km >= 10) {
+    return `${Math.round(km)} км`
+  }
+  const rounded = Math.round(km * 10) / 10
+  const text = rounded.toFixed(1).replace('.', ',').replace(/,0$/, '')
+  return `${text} км`
+}
+
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
   const toRad = (value: number) => value * Math.PI / 180
   const dLat = toRad(bLat - aLat)

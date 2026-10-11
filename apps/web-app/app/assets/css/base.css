@@ -98,6 +98,31 @@ img {
 
 .prose ul,
 .prose ol { padding-left: 1.2rem; }
+.prose .table-scroll {
+  overflow-x: auto;
+  margin: 1.2rem 0 1.6rem;
+  -webkit-overflow-scrolling: touch;
+}
+.prose table {
+  width: 100%;
+  min-width: 28rem;
+  border-collapse: collapse;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.prose th,
+.prose td {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-line);
+  text-align: left;
+  vertical-align: top;
+}
+.prose th {
+  background: var(--color-paper-2);
+  font-weight: 700;
+}
 
 .btn {
   display: inline-flex;

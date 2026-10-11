@@ -94,9 +94,15 @@
         </ul>
       </div>
       <aside class="aside">
-        <section class="facts">
+        <section
+          v-if="hasFacts"
+          class="facts"
+        >
           <h2>Коротко</h2>
-          <div class="fact">
+          <div
+            v-if="hours"
+            class="fact"
+          >
             <svg
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -109,10 +115,13 @@
               <p class="label">
                 Часы
               </p>
-              <p>{{ page.place.hours || 'уточните' }}</p>
+              <p>{{ hours }}</p>
             </div>
           </div>
-          <div class="fact">
+          <div
+            v-if="price"
+            class="fact"
+          >
             <svg
               viewBox="0 0 24 24"
               aria-hidden="true"
@@ -121,11 +130,11 @@
               <p class="label">
                 Цена
               </p>
-              <p>{{ page.place.price || 'уточните' }}</p>
+              <p>{{ price }}</p>
             </div>
           </div>
           <div
-            v-if="page.place.howToGet"
+            v-if="page.place.howToGet?.trim()"
             class="fact"
           >
             <svg
@@ -291,6 +300,14 @@ const statusHint = ({
 const yandex = page.place.latitude != null
   ? `https://yandex.ru/maps/?rtext=~${page.place.latitude}%2C${page.place.longitude}&rtt=mt`
   : ''
+const hours = page.place.hours?.trim() || ''
+const price = page.place.price?.trim() || ''
+const hasFacts = Boolean(
+  hours
+  || price
+  || page.place.howToGet?.trim()
+  || (page.place.latitude != null && page.place.longitude != null),
+)
 const nearby = page.groups.find((group) => group.title === 'Рядом')
 const otherGroups = page.groups.filter((group) => group.title !== 'Рядом' && group.title !== 'Маршруты')
 usePublicHead(page.doc)

@@ -230,6 +230,7 @@ export interface PlaceSeoInput {
   image?: SeoImage | null
   images?: SeoImage[]
   page?: number
+  body?: string | null
 }
 
 export function placeDocument(input: PlaceSeoInput): SeoDocument {
@@ -270,6 +271,18 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     node.sameAs = sameAs
   }
   const noindex = Boolean(input.noindex) || page > 1
+  const faq = faqFromBody(input.body || '')
+  const jsonLd = [breadcrumbNode(crumbs), node]
+  if (faq.length) {
+    jsonLd.push({
+      '@type': 'FAQPage',
+      'mainEntity': faq.map((item) => ({
+        '@type': 'Question',
+        'name': item.question,
+        'acceptedAnswer': { '@type': 'Answer', 'text': item.answer },
+      })),
+    })
+  }
   return {
     title,
     description,
@@ -278,8 +291,55 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     h1: input.title,
     crumbs,
     ogImage: image,
-    jsonLd: [breadcrumbNode(crumbs), node],
+    jsonLd,
   }
+}
+
+export function faqFromBody(body: string) {
+  const lines = body.replace(/\r\n/g, '\n').split('\n')
+  let inFaq = false
+  const items: Array<{ question: string, answer: string }> = []
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (/^##[ \t]+Частые вопросы\s*$/.test(trimmed)) {
+      inFaq = true
+      continue
+    }
+    if (inFaq && /^##[ \t]+/.test(trimmed)) {
+      break
+    }
+    if (!inFaq || !trimmed) {
+      continue
+    }
+    const match = /^\*\*([^*]+)\?\*\*(.*)$/.exec(trimmed)
+    const answer = match?.[2]?.trim() ?? ''
+    if (!match?.[1] || !answer) {
+      continue
+    }
+    items.push({ question: `${match[1].trim()}?`, answer })
+  }
+  return items
+}
+
+export function stripRepeatedLead(summary: string, body: string) {
+  const lead = summary.replace(/\s+/g, ' ').trim()
+  if (!lead) {
+    return body
+  }
+  const normalized = body.replace(/\r\n/g, '\n').trimStart()
+  const parts = normalized.split(/\n[ \t]*\n/)
+  const firstBlock = parts[0] ?? ''
+  const afterBlock = parts.slice(1).join('\n\n')
+  const first = firstBlock.replace(/\s+/g, ' ').trim()
+  if (first === lead) {
+    return afterBlock.trimStart()
+  }
+  if (!first.startsWith(`${lead} `)) {
+    return body
+  }
+  const rest = first.slice(lead.length).trim()
+  const after = afterBlock.trimStart()
+  return [rest, after].filter(Boolean).join('\n\n')
 }
 
 export function collectionDocument(input: {
