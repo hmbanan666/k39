@@ -5,7 +5,22 @@
         href="/"
         class="logo"
       >
-        <span class="logo-mark">K39</span>
+        <picture class="logo-mark">
+          <source
+            type="image/webp"
+            srcset="/logo/moose-head.webp 1x, /logo/moose-head@2x.webp 2x"
+          >
+          <source
+            type="image/png"
+            srcset="/logo/moose-head.png 1x, /logo/moose-head@2x.png 2x"
+          >
+          <img
+            src="/logo/moose-head.png"
+            alt=""
+            width="108"
+            height="96"
+          >
+        </picture>
         <span class="logo-word">
           K39
           <small>Калининградская область</small>
@@ -67,23 +82,14 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
   text-decoration: none;
 }
 .logo-mark {
-  position: relative;
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 2px solid var(--color-brick);
-  border-radius: 50%;
-  color: var(--color-brick);
-  font: 700 17px/1 var(--font-display);
+  display: block;
+  flex: none;
+  height: 40px;
 }
-.logo-mark::after {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  border: 1px dashed var(--color-brick);
-  border-radius: 50%;
-  opacity: 0.55;
+.logo-mark img {
+  display: block;
+  width: auto;
+  height: 40px;
 }
 .logo-word {
   color: var(--text);
@@ -124,7 +130,6 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
     height: 60px;
     padding: 0 1rem;
   }
-  .logo-mark { width: 38px; height: 38px; font-size: 15px; }
   .logo-word { font-size: 1.3rem; }
   .logo-word small { display: none; }
   .nav {
@@ -145,6 +150,12 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
     border-color: var(--color-brick);
     background: var(--color-brick);
     color: #fff;
+  }
+}
+@media (min-width: 900px) {
+  .logo-mark,
+  .logo-mark img {
+    height: 48px;
   }
 }
 </style>

@@ -18,6 +18,7 @@ Behavior and accessibility come from [Reka UI](https://reka-ui.com) (`reka-ui`).
 - Fonts are Alegreya (headings), Alegreya SC (stamps and labels) and Golos Text (body). `@nuxt/fonts` uses the Google provider only as a build-time source: it downloads Cyrillic and Latin subsets for the weights we list, writes them into the build, and the browser loads them from this origin. `font-display` is `swap`. Main weights are preloaded. Fontaine fallback metrics (size-adjust and related overrides) keep the fallback from shifting the page. There is no runtime request to fonts.googleapis.com. The image build needs network on the first fetch; Nuxt caches the files for later builds in the same environment.
 - Light theme is the default. Dark tokens exist under `[data-theme="dark"]` and are not switched on.
 - The component list, type scale, and the partner-offer label rule are in `docs/design-system.md`.
+- The moose head, favicons, touch icon, manifest, and default social image are the binaries in `apps/web-app/public/` listed in `AGENTS.md`. The source master is kept outside the repo. Do not regenerate or re-encode them. The header places that moose before the plain-text wordmark K39. Browser `theme-color` is the brick token `#a3402a`, the same value as `site.webmanifest`.
 
 ## Consequences
 

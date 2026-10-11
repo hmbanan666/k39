@@ -13,6 +13,19 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: 'ru' },
       titleTemplate: '%s',
+      meta: [
+        // Brick token --color-brick, same value as site.webmanifest theme_color.
+        { name: 'theme-color', content: '#a3402a' },
+      ],
+      link: [
+        // Unhead dedupes <link> on rel+href. The ico is linked twice (48x48 and any), so each needs its own key.
+        { key: 'icon-ico-48', rel: 'icon', href: '/favicon.ico', sizes: '48x48' },
+        { key: 'icon-ico-any', rel: 'icon', href: '/favicon.ico', sizes: 'any' },
+        { key: 'icon-32', rel: 'icon', type: 'image/png', href: '/favicon-32.png', sizes: '32x32' },
+        { key: 'icon-16', rel: 'icon', type: 'image/png', href: '/favicon-16.png', sizes: '16x16' },
+        { key: 'apple-touch-icon', rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+        { key: 'manifest', rel: 'manifest', href: '/site.webmanifest' },
+      ],
     },
   },
   fonts: {
@@ -45,6 +58,21 @@ export default defineNuxtConfig({
     '/sitemap-urls': { headers: { 'x-robots-tag': 'noindex' } },
     '/media/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+    // Brand URLs stay stable, so they are not immutable. A week lets a deploy replace them.
+    // The manifest is a day so a theme or icon change is not stuck behind the image cache.
+    ...Object.fromEntries([
+      '/favicon.ico',
+      '/favicon-16.png',
+      '/favicon-32.png',
+      '/apple-touch-icon.png',
+      '/icon-192.png',
+      '/icon-512.png',
+      '/icon-maskable-512.png',
+      '/logo/**',
+      '/og-default.jpg',
+      '/og-default.png',
+    ].map((path) => [path, { headers: { 'cache-control': 'public, max-age=604800' } }])),
+    '/site.webmanifest': { headers: { 'cache-control': 'public, max-age=86400' } },
   },
   runtimeConfig: {
     public: {
