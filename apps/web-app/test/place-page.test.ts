@@ -110,12 +110,17 @@ describe('place page', () => {
         sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sobor.jpg',
       }],
     })
-    const node = doc.jsonLd.find((item) => item['@type'] === 'LandmarksOrHistoricalBuildings') as { image?: Array<Record<string, unknown>> }
+    const node = doc.jsonLd.find((item) => item['@type'] === 'LandmarksOrHistoricalBuildings') as { image?: Array<Record<string, unknown>>, citation?: unknown }
     const image = node.image?.[0]
     expect(image?.['@type']).toBe('ImageObject')
     expect(image?.creator).toEqual({ '@type': 'Person', 'name': 'Julian Nyča' })
     expect(image?.license).toBe('https://creativecommons.org/licenses/by-sa/4.0/deed.ru')
     expect(image?.acquireLicensePage).toBe('https://commons.wikimedia.org/wiki/File:Sobor.jpg')
+    expect(node.citation).toEqual([{
+      '@type': 'CreativeWork',
+      'name': 'Википедия',
+      'url': 'https://ru.wikipedia.org/wiki/sobor',
+    }])
   })
 
   it('formats nearby distance in metres and kilometres', () => {

@@ -301,6 +301,13 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   if (sameAs.length) {
     node.sameAs = sameAs
   }
+  if (input.sources.length) {
+    node.citation = input.sources.map((source) => ({
+      '@type': 'CreativeWork',
+      'name': source.title,
+      'url': source.url,
+    }))
+  }
   const noindex = Boolean(input.noindex) || page > 1
   const faq = faqFromBody(input.body || '')
   const jsonLd = [breadcrumbNode(crumbs), node]

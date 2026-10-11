@@ -76,22 +76,6 @@
           class="prose"
           v-html="page.html"
         />
-        <h2 v-if="page.sources.length">
-          Источники
-        </h2>
-        <ul
-          v-if="page.sources.length"
-          class="sources"
-        >
-          <li
-            v-for="source in page.sources"
-            :key="source.url"
-          >
-            <UiLink :href="source.url">
-              {{ source.title }}
-            </UiLink>
-          </li>
-        </ul>
       </div>
       <aside class="aside">
         <section
@@ -247,6 +231,22 @@
       :title="group.title"
       :links="group.links"
     />
+    <details
+      v-if="page.sources.length"
+      class="sources"
+    >
+      <summary>Источники</summary>
+      <ul>
+        <li
+          v-for="source in page.sources"
+          :key="source.url"
+        >
+          <UiLink :href="source.url">
+            {{ source.title }}
+          </UiLink>
+        </li>
+      </ul>
+    </details>
   </article>
 </template>
 
@@ -429,25 +429,28 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   scroll-snap-align: start;
 }
 .sources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0;
+  margin-top: 2.8rem;
+  border-top: 1px solid var(--color-line);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.sources summary {
+  width: fit-content;
+  padding: 0.75rem 0;
+  color: var(--color-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sources ul {
+  margin: 0 0 0.4rem;
   padding: 0;
   list-style: none;
 }
-.sources a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2rem;
-  padding: 0.15rem 0.75rem;
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--text);
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-decoration: none;
+.sources li { padding: 0.15rem 0; }
+.sources :deep(a) {
+  color: var(--muted);
+  font-weight: 500;
+  text-underline-offset: 0.15em;
 }
 @media (max-width: 999px) {
   .aside { display: contents; }
