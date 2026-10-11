@@ -183,13 +183,13 @@
       </aside>
     </div>
     <section
-      v-if="page.gallery.length"
+      v-if="morePhotos.length"
       class="gallery"
     >
       <h2>Фотографии</h2>
       <div class="gallery-grid">
         <MediaImage
-          v-for="item in page.gallery"
+          v-for="item in morePhotos"
           :key="item.id"
           :media="item"
           sizes="(min-width: 900px) 360px, 100vw"
@@ -280,6 +280,7 @@ const pageQuery = Number(route.query.page ?? 1)
 const page = await fetchPublic<PlacePage>(`/api/public/places/${slug}`, { page: Number.isFinite(pageQuery) ? pageQuery : 1 })
 const heroSrc = page.cover?.src || illustrationFor(page.categorySlug, slug)
 const heroAlt = page.cover?.alt || page.doc.h1
+const morePhotos = page.gallery.filter((item) => item.id !== page.cover?.id)
 const statusLabel = ({ open: 'открыт', ruins: 'руины', closed: 'закрыт', unknown: 'статус неизвестен' } as Record<string, string>)[page.place.status] || page.place.status
 const statusHint = ({
   open: 'По источникам сюда пускают посетителей.',

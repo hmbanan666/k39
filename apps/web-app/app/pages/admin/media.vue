@@ -23,13 +23,25 @@
         @dragover.prevent
         @drop.prevent="onDrop"
       >
-        Перетащите JPEG, PNG или WebP
+        <p>Перетащите JPEG, PNG или WebP</p>
+        <button
+          type="button"
+          class="pick"
+          @click="picker?.click()"
+        >
+          Выбрать файлы
+        </button>
         <input
+          ref="picker"
+          class="sr"
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
           @change="onFile"
         >
+        <p v-if="queue.length">
+          {{ queue.map((item) => item.name).join(', ') }}
+        </p>
       </div>
       <label>Alt <input
         v-model="alt"
@@ -189,6 +201,7 @@ const busy = ref(false)
 const gallery = ref<GalleryItem[]>([])
 const commons = ref<CommonsHit[]>([])
 const dragIndex = ref(-1)
+const picker = ref<HTMLInputElement | null>(null)
 const licenses = [
   { value: 'own', label: 'Своё фото' },
   { value: 'cc-by', label: 'CC BY' },
@@ -326,7 +339,19 @@ async function importHit(hit: CommonsHit) {
 <style scoped>
 .admin { max-width: 52rem; margin: 0 auto; padding: 1.5rem; }
 .upload, .admin { display: flex; flex-direction: column; gap: 0.7rem; }
-.drop { padding: 1rem; border: 1px dashed var(--color-line); border-radius: 12px; background: var(--color-surface); }
+.drop { position: relative; padding: 1rem; border: 1px dashed var(--color-line); border-radius: 12px; background: var(--color-surface); }
+.drop p { margin: 0 0 0.6rem; }
+.pick { font: inherit; cursor: pointer; }
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 .gallery, .commons { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 0.8rem; padding: 0; list-style: none; }
 .gallery li, .commons li { padding: 0.5rem; border: 1px solid var(--color-line); border-radius: 12px; background: var(--color-surface); }
 img { display: block; width: 100%; height: 8rem; object-fit: cover; cursor: crosshair; }
