@@ -1,8 +1,8 @@
 import type { PlaceDraft } from '../types'
 import type { PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
-import { and, asc, eq, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, media, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
+import { categories, collectionItems, collections, media, offers, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
 
 const published = 'published' as const
 
@@ -59,24 +59,60 @@ export class Content {
     return { place, category, region, images, nearest, sameRegion, routeRows, collectionRows, related }
   }
 
+  static async coversFor(placeIds: string[]) {
+    const ids = placeIds.filter(Boolean)
+    if (!ids.length) {
+      return new Map<string, { filename: string, alt: string, width: number | null, height: number | null }>()
+    }
+    const rows = await useDatabase().select({
+      placeId: media.placeId,
+      filename: media.filename,
+      alt: media.alt,
+      width: media.width,
+      height: media.height,
+    }).from(media).where(inArray(media.placeId, ids)).orderBy(asc(media.sortOrder))
+    const map = new Map<string, { filename: string, alt: string, width: number | null, height: number | null }>()
+    for (const row of rows) {
+      if (row.placeId && !map.has(row.placeId)) {
+        map.set(row.placeId, row)
+      }
+    }
+    return map
+  }
+
   static async nearest(lat: number, lng: number, excludeSlug: string, limit: number) {
     const result = await useDatabase().execute(sql`
-      select slug, title,
+      select p.slug, p.title, c.slug as category_slug,
+        (select m.filename from media m where m.place_id = p.id order by m.sort_order asc limit 1) as image_filename,
+        (select m.alt from media m where m.place_id = p.id order by m.sort_order asc limit 1) as image_alt,
+        (select m.width from media m where m.place_id = p.id order by m.sort_order asc limit 1) as image_width,
+        (select m.height from media m where m.place_id = p.id order by m.sort_order asc limit 1) as image_height,
         (6371 * acos(least(1::float8, greatest(-1::float8,
-          cos(radians(${lat})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${lng}))
-          + sin(radians(${lat})) * sin(radians(latitude))
+          cos(radians(${lat})) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(${lng}))
+          + sin(radians(${lat})) * sin(radians(p.latitude))
         )))) as distance_km
-      from places
-      where publication_status = 'published'
-        and slug <> ${excludeSlug}
-        and latitude is not null
-        and longitude is not null
+      from places p
+      left join categories c on c.id = p.category_id
+      where p.publication_status = 'published'
+        and p.slug <> ${excludeSlug}
+        and p.latitude is not null
+        and p.longitude is not null
       order by distance_km asc
       limit ${limit}
     `)
+    type NearestRow = {
+      slug: string
+      title: string
+      distance_km: number
+      category_slug: string | null
+      image_filename: string | null
+      image_alt: string | null
+      image_width: number | null
+      image_height: number | null
+    }
     const rows = Array.isArray(result)
-      ? result as Array<{ slug: string, title: string, distance_km: number }>
-      : (result as unknown as { rows?: Array<{ slug: string, title: string, distance_km: number }> }).rows
+      ? result as NearestRow[]
+      : (result as unknown as { rows?: NearestRow[] }).rows
     return rows ?? []
   }
 
@@ -149,6 +185,13 @@ export class Content {
       collections: collectionRows.map((row) => ({ loc: `/podborki/${row.slug}`, lastmod: row.updatedAt })),
       quests: questRows.map((row) => ({ loc: `/kvesty/${row.slug}`, lastmod: row.updatedAt })),
     }
+  }
+
+  static async activeOffers(placeId: string) {
+    return useDatabase().select({
+      title: offers.title,
+      terms: offers.terms,
+    }).from(offers).where(and(eq(offers.placeId, placeId), eq(offers.status, 'active')))
   }
 }
 

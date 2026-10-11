@@ -2,28 +2,25 @@
   <div
     v-if="!decided"
     class="consent"
+    role="dialog"
+    aria-label="Аналитика"
   >
     <p>
-      Можно записать обезличенные события: какое место вы открыли, без имени и почты.
-      Идентификатор сессии появится только после согласия. Это требование 152-ФЗ.
-      <NuxtLink to="/legal/privacy-policy">
-        Политика
-      </NuxtLink>
+      Можно записать, какое место вы открыли, без имени и почты.
+      <UiLink href="/legal/privacy-policy">
+        Подробнее
+      </UiLink>
     </p>
     <div class="actions">
-      <button
-        type="button"
-        @click="grant"
-      >
-        Разрешить аналитику
-      </button>
-      <button
-        type="button"
-        class="quiet"
+      <UiButton @click="grant">
+        Разрешить
+      </UiButton>
+      <UiButton
+        variant="quiet"
         @click="deny"
       >
         Не записывать
-      </button>
+      </UiButton>
     </div>
   </div>
 </template>
@@ -35,20 +32,55 @@ const { decided, grant, deny } = useConsent()
 <style scoped>
 .consent {
   position: fixed;
-  z-index: 70;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 0.9rem 1rem;
-  background: #fbf6ec;
-  color: #3a2e24;
-  border: 1.5px solid #3a2e24;
-  border-radius: 10px;
-  box-shadow: 3px 3px 0 rgba(58, 46, 36, 0.25);
+  z-index: var(--z-consent);
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 0.85rem;
+  align-items: center;
+  width: min(26rem, calc(100% - 2rem));
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #5a4c42;
+  border-radius: 14px;
+  background: var(--color-ink);
+  color: #f1e8d9;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  box-shadow: 0 12px 30px -10px rgb(0 0 0 / 40%);
 }
-.actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-button { border: 1.4px solid #3a2e24; background: #9b3d2a; color: #fbf3e2; border-radius: 999px; padding: 0.45rem 0.8rem; font-weight: 700; cursor: pointer; }
-button.quiet { background: transparent; color: #3a2e24; }
+p { margin: 0; flex: 1 1 12rem; }
+.consent :deep(a) { color: var(--color-amber-soft); }
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.consent :deep(.btn) {
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  font-size: 0.82rem;
+}
+.consent :deep(.btn-primary) {
+  border-color: var(--color-amber);
+  background: var(--color-amber);
+  color: var(--color-ink);
+  box-shadow: none;
+}
+.consent :deep(.btn-quiet) {
+  border-color: #8a7568;
+  background: transparent;
+  color: #f1e8d9;
+}
+@media (max-width: 720px) {
+  .consent {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    padding: 0.4rem 0.7rem;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    font-size: 0.75rem;
+    gap: 0.4rem 0.6rem;
+  }
+  p { flex-basis: 8rem; }
+  .consent :deep(.btn) { min-height: 1.8rem; padding: 0 0.55rem; font-size: 0.75rem; }
+}
 </style>

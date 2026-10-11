@@ -1,14 +1,14 @@
 <template>
-  <UApp :locale="ru">
+  <TooltipProvider :delay-duration="280">
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
     <ConsentBanner />
-  </UApp>
+  </TooltipProvider>
 </template>
 
 <script setup lang="ts">
-import { ru } from '@nuxt/ui/locale'
+import { TooltipProvider } from 'reka-ui'
 import { verificationMeta } from '~~/shared/seo'
 
 const config = useRuntimeConfig()

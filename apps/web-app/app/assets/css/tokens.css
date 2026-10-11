@@ -1,0 +1,92 @@
+:root {
+  --color-paper: #f5eee1;
+  --color-surface: #fffbf3;
+  --color-ink: #2b2420;
+  --color-muted: #6a5d52;
+  --color-line: #e2d5bf;
+  --color-brick: #a3402a;
+  --color-brick-dark: #7a2e1f;
+  --color-sea: #355468;
+  --color-sea-light: #dce5e8;
+  --color-amber: #d68a22;
+  --color-amber-soft: #f6e2be;
+  --color-partner: #7a4c0b;
+  --color-sand: #e9d8b4;
+  --color-pine: #2e5743;
+  --color-focus: #1f6a8c;
+  --color-success: #2e6b3d;
+  --color-warn: #8f5a00;
+  --color-danger: #b0281f;
+  --bg: var(--color-paper);
+  --surface: var(--color-surface);
+  --text: var(--color-ink);
+  --muted: var(--color-muted);
+  --accent: var(--color-brick);
+  --focus: var(--color-focus);
+  --font-display: Alegreya, Georgia, serif;
+  --font-stamp: "Alegreya SC", Alegreya, serif;
+  --font-body: "Golos Text", Arial, sans-serif;
+  --step--1: clamp(0.78rem, 0.74rem + 0.15vw, 0.88rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --step-1: clamp(1.25rem, 1.08rem + 0.7vw, 1.6rem);
+  --step-2: clamp(1.7rem, 1.25rem + 1.5vw, 2.5rem);
+  --step-3: clamp(2.15rem, 1.4rem + 2.4vw, 3.4rem);
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --shadow-card: 0 1px 0 rgb(43 36 32 / 5%), 0 10px 24px rgb(43 36 32 / 6%);
+  --shadow-pop: 0 12px 28px rgb(43 36 32 / 14%);
+  --z-header: 20;
+  --z-dropdown: 30;
+  --z-dialog: 40;
+  --z-consent: 50;
+  --z-tooltip: 60;
+  --duration-fast: 120ms;
+  --duration: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .15 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --page: 72rem;
+  --wide: 76rem;
+}
+
+[data-theme="dark"] {
+  --color-paper: #1c1816;
+  --color-surface: #26211e;
+  --color-ink: #f5eee1;
+  --color-muted: #d7cbbd;
+  --color-line: #4a4038;
+  --color-brick: #e7b2a4;
+  --color-brick-dark: #f3d2c8;
+  --color-sea: #dce5e8;
+  --color-sea-light: #2a3c44;
+  --color-amber: #f0c27a;
+  --color-amber-soft: #3a2e22;
+  --color-partner: #f0c27a;
+  --color-sand: #3a3228;
+  --color-pine: #b7d0c2;
+  --color-focus: #9fd0e4;
+  --color-success: #b7d7c0;
+  --color-warn: #f0c27a;
+  --color-danger: #f0b2a8;
+  --bg: var(--color-paper);
+  --surface: var(--color-surface);
+  --text: var(--color-ink);
+  --muted: var(--color-muted);
+  --accent: var(--color-brick);
+  --focus: var(--color-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration: 0ms;
+  }
+}

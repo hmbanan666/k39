@@ -1,91 +1,403 @@
 <template>
-  <ArticleShell
-    :h1="page.doc.h1"
-    :crumbs="page.doc.crumbs"
-  >
-    <p>{{ page.place.summary }}</p>
-    <ul class="facts">
-      <li>Статус: {{ statusLabel }}</li>
-      <li>Часы: {{ page.place.hours || 'уточнить' }}</li>
-      <li v-if="page.place.price">
-        Цена: {{ page.place.price }}
-      </li>
-      <li v-if="page.region">
-        Регион: {{ page.region.title }}
-      </li>
-      <li v-if="page.place.latitude != null && page.place.longitude != null">
-        Координаты: {{ page.place.latitude.toFixed(5) }}, {{ page.place.longitude.toFixed(5) }}
-      </li>
-    </ul>
-    <figure
-      v-for="(image, index) in page.images"
-      :key="image.src"
+  <article class="page page-wide place">
+    <UiBreadcrumbs :crumbs="page.doc.crumbs" />
+    <header class="hero">
+      <Postcard
+        class="hero-card"
+        :src="heroSrc"
+        :alt="heroAlt"
+        :caption="page.doc.h1"
+        :meta="page.categoryTitle"
+        tilt="-1.2deg"
+        ratio="16 / 10"
+        :stamp-src="illustrationFor(page.categorySlug, slug)"
+        :stamp-label="page.categoryTitle"
+        stamp-place="out"
+        postmark
+        priority
+        :width="page.images[0]?.width || 1200"
+        :height="page.images[0]?.height || 700"
+      />
+      <div class="hero-copy">
+        <p class="kicker">
+          {{ page.categoryTitle }}<template v-if="page.region">
+            · {{ page.region.title }}
+          </template>
+        </p>
+        <h1>{{ page.doc.h1 }}</h1>
+        <p class="lede">
+          {{ page.place.summary }}
+        </p>
+        <p class="tags">
+          <UiBadge
+            :href="`/${page.categorySlug}`"
+            tone="brick"
+          >
+            {{ page.categoryTitle }}
+          </UiBadge>
+          <UiTooltip :text="statusHint">
+            <UiBadge tone="pine">
+              {{ statusLabel }}
+            </UiBadge>
+          </UiTooltip>
+        </p>
+        <p class="actions">
+          <UiButton
+            v-if="yandex"
+            :href="yandex"
+          >
+            Как добраться
+          </UiButton>
+          <UiButton
+            v-if="page.routeBand"
+            :href="page.routeBand.href"
+            variant="line"
+          >
+            В маршрут
+          </UiButton>
+        </p>
+      </div>
+    </header>
+    <div class="columns">
+      <div class="article">
+        <div
+          class="prose"
+          v-html="page.html"
+        />
+        <h2 v-if="page.sources.length">
+          Источники
+        </h2>
+        <ul
+          v-if="page.sources.length"
+          class="sources"
+        >
+          <li
+            v-for="source in page.sources"
+            :key="source.url"
+          >
+            <a
+              :href="source.url"
+              rel="noopener"
+            >{{ source.title }}</a>
+          </li>
+        </ul>
+      </div>
+      <aside class="aside">
+        <section class="facts">
+          <h2>Коротко</h2>
+          <div class="fact">
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            ><circle
+              cx="12"
+              cy="12"
+              r="8"
+            /><path d="M12 8v5l3 2" /></svg>
+            <div>
+              <p class="label">
+                Часы
+              </p>
+              <p>{{ page.place.hours || 'уточните' }}</p>
+            </div>
+          </div>
+          <div class="fact">
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            ><path d="M4 8h16v10H4z" /><path d="M8 8V6h8v2" /></svg>
+            <div>
+              <p class="label">
+                Цена
+              </p>
+              <p>{{ page.place.price || 'уточните' }}</p>
+            </div>
+          </div>
+          <div
+            v-if="page.place.howToGet"
+            class="fact"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            ><circle
+              cx="12"
+              cy="12"
+              r="8"
+            /><path d="M12 8l3 7-3-1.2L9 15z" /></svg>
+            <div>
+              <p class="label">
+                Как добраться
+              </p>
+              <p>{{ page.place.howToGet }}</p>
+            </div>
+          </div>
+          <div
+            v-if="page.place.latitude != null && page.place.longitude != null"
+            class="fact"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            ><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z" /><circle
+              cx="12"
+              cy="11"
+              r="1.6"
+            /></svg>
+            <div>
+              <p class="label">
+                Координаты
+              </p>
+              <p>
+                {{ page.place.latitude.toFixed(5) }}, {{ page.place.longitude.toFixed(5) }}
+                <a
+                  v-if="yandex"
+                  :href="yandex"
+                >Яндекс Карты</a>
+              </p>
+            </div>
+          </div>
+        </section>
+        <div
+          v-if="page.offers.length"
+          class="offers"
+        >
+          <PartnerOffer
+            v-for="offer in page.offers"
+            :key="offer.title"
+            :title="offer.title"
+            :terms="offer.terms"
+          />
+        </div>
+      </aside>
+    </div>
+    <section
+      v-if="nearby"
+      class="nearby-block"
     >
-      <img
-        :src="image.src"
-        :alt="image.alt"
-        :width="image.width || undefined"
-        :height="image.height || undefined"
-        :loading="index === 0 ? 'eager' : 'lazy'"
-        :fetchpriority="index === 0 ? 'high' : 'auto'"
-      >
-    </figure>
-    <div v-html="page.html" />
-    <h2 v-if="page.sources.length">
-      Источники
-    </h2>
-    <ul v-if="page.sources.length">
-      <li
-        v-for="source in page.sources"
-        :key="source.url"
-      >
-        <a
-          :href="source.url"
-          rel="noopener"
-        >{{ source.title }}</a>
-      </li>
-    </ul>
-    <p v-if="page.place.latitude != null && page.place.longitude != null">
-      <a
-        :href="yandex"
-        rel="noopener"
-      >Маршрут в Яндекс Картах</a>
-    </p>
+      <h2>Рядом</h2>
+      <div class="nearby">
+        <PlaceCard
+          v-for="link in nearby.links"
+          :key="link.href"
+          :href="link.href"
+          :title="link.text"
+          :distance-km="link.distanceKm"
+          :kind="link.kind || ''"
+          :image="link.image"
+        />
+      </div>
+    </section>
+    <RouteSteps
+      v-if="page.routeBand"
+      kicker="Маршрут"
+      :title="page.routeBand.title"
+      :summary="page.routeBand.summary"
+      :href="page.routeBand.href"
+      :steps="page.routeBand.steps"
+      :next="page.routeBand.next"
+      action="К маршруту"
+    />
     <LinkList
-      v-for="group in page.groups"
+      v-for="group in otherGroups"
       :key="group.title"
       :title="group.title"
       :links="group.links"
     />
-  </ArticleShell>
+  </article>
 </template>
 
 <script setup lang="ts">
 import type { SeoDocument } from '~~/shared/seo'
+import { illustrationFor } from '~~/shared/illustrations'
 
+interface PlaceLink {
+  href: string
+  text: string
+  distanceKm?: number | null
+  kind?: string | null
+  image?: { src: string, alt: string, width: number | null, height: number | null } | null
+}
 interface PlacePage {
   doc: SeoDocument
   html: string
-  place: { summary: string, status: string, hours: string | null, price: string | null, latitude: number | null, longitude: number | null }
+  place: {
+    summary: string
+    status: string
+    hours: string | null
+    price: string | null
+    howToGet: string | null
+    latitude: number | null
+    longitude: number | null
+  }
+  categoryTitle: string
+  categorySlug: string
   region: { title: string } | null
   images: Array<{ src: string, alt: string, width: number | null, height: number | null }>
-  groups: Array<{ title: string, links: Array<{ href: string, text: string }> }>
+  groups: Array<{ title: string, links: PlaceLink[] }>
   sources: Array<{ title: string, url: string }>
+  offers: Array<{ title: string, terms: string }>
+  routeBand: null | {
+    href: string
+    title: string
+    summary: string
+    steps: Array<{ href: string, text: string, current: boolean }>
+    next: { href: string, text: string } | null
+  }
 }
 
 const route = useRoute()
 const slug = String(route.params.slug || '')
 const pageQuery = Number(route.query.page ?? 1)
 const page = await fetchPublic<PlacePage>(`/api/public/places/${slug}`, { page: Number.isFinite(pageQuery) ? pageQuery : 1 })
+const heroSrc = page.images[0]?.src || illustrationFor(page.categorySlug, slug)
+const heroAlt = page.images[0]?.alt || page.doc.h1
 const statusLabel = ({ open: 'открыт', ruins: 'руины', closed: 'закрыт', unknown: 'статус неизвестен' } as Record<string, string>)[page.place.status] || page.place.status
+const statusHint = ({
+  open: 'По источникам сюда пускают посетителей.',
+  ruins: 'Сохранились руины. Уточните, можно ли подойти.',
+  closed: 'По источникам место закрыто для визита.',
+  unknown: 'Статус визита в источниках не указан.',
+} as Record<string, string>)[page.place.status] || 'Статус визита.'
 const yandex = page.place.latitude != null
   ? `https://yandex.ru/maps/?rtext=~${page.place.latitude}%2C${page.place.longitude}&rtt=mt`
   : ''
+const nearby = page.groups.find((group) => group.title === 'Рядом')
+const otherGroups = page.groups.filter((group) => group.title !== 'Рядом' && group.title !== 'Маршруты')
 usePublicHead(page.doc)
 onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 </script>
 
 <style scoped>
-.facts { padding-left: 1.1rem; }
-img { max-width: 100%; height: auto; }
+.hero {
+  display: grid;
+  gap: 1.6rem;
+  align-items: center;
+  padding-top: 0.4rem;
+}
+.hero-card { margin: 0.8rem 0.7rem 0.2rem 0.15rem; }
+.kicker {
+  margin: 0 0 0.45rem;
+  color: var(--color-brick);
+  font-family: var(--font-stamp);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.hero-copy h1 {
+  margin: 0.35rem 0 0.7rem;
+  font-size: clamp(2.35rem, 1.15rem + 2.5vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.lede {
+  max-width: 38ch;
+  color: #433832;
+  font-size: 1.12rem;
+  line-height: 1.55;
+}
+.tags,
+.actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.tags { margin: 1rem 0 1.1rem; }
+.columns { display: grid; gap: 1.6rem; margin-top: 2.4rem; }
+.aside { display: grid; gap: 1.2rem; align-content: start; }
+.facts {
+  position: relative;
+  overflow: hidden;
+  padding: 1.2rem 1.15rem 0.4rem;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+.facts::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 6px;
+  background: repeating-linear-gradient(90deg, var(--color-brick) 0 18px, transparent 18px 26px, var(--color-sea) 26px 44px, transparent 44px 52px);
+}
+.facts h2 { margin: 0.35rem 0 0.3rem; font-size: 1.35rem; }
+.fact {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 0.7rem;
+  padding: 0.8rem 0;
+  border-top: 1px dashed var(--color-line);
+}
+.fact:first-of-type { border-top: 0; }
+.fact svg {
+  width: 22px;
+  height: 22px;
+  margin-top: 0.15rem;
+  fill: none;
+  stroke: var(--color-brick);
+  stroke-width: 1.7;
+}
+.fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
+.fact .label {
+  margin-bottom: 0.3rem;
+  color: var(--muted);
+  font: 600 0.72rem/1 var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.fact a { font-weight: 600; }
+.offers { display: flex; flex-direction: column; gap: 1rem; }
+.nearby-block { margin-top: 3rem; }
+.nearby-block h2 { margin-bottom: 1rem; }
+.nearby {
+  display: flex;
+  gap: 0.8rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 0.3rem;
+}
+.nearby > * {
+  flex: 0 0 min(78%, 16rem);
+  scroll-snap-align: start;
+}
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sources a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.15rem 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+@media (max-width: 999px) {
+  .aside { display: contents; }
+  .facts { order: -1; }
+}
+@media (min-width: 900px) {
+  .nearby {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    overflow: visible;
+  }
+  .nearby > * { flex: none; }
+}
+@media (min-width: 1000px) {
+  .hero { grid-template-columns: 1.2fr 0.95fr; gap: 3rem; }
+  .columns {
+    grid-template-columns: 1fr 22.5rem;
+    gap: 3.5rem;
+    margin-top: 4rem;
+    align-items: start;
+  }
+}
 </style>

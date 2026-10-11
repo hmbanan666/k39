@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 140">
+<g fill="none" stroke="#7A2E1F" stroke-width="2.2" opacity=".85">
+<circle cx="70" cy="70" r="58"/><circle cx="70" cy="70" r="40"/>
+<path d="M134 46 q16 -10 32 0 t32 0 t32 0 t28 0 M134 70 q16 -10 32 0 t32 0 t32 0 t28 0 M134 94 q16 -10 32 0 t32 0 t32 0 t28 0"/>
+</g>
+<defs><path id="c" d="M70 70 m-49 0 a49 49 0 1 1 98 0 a49 49 0 1 1 -98 0"/></defs>
+<text font-family="Alegreya SC, serif" font-weight="700" font-size="13" fill="#7A2E1F" letter-spacing="2.2" opacity=".9"><textPath href="#c" startOffset="2%">КАЛИНИНГРАД · K39 · ФОРТЫ ·</textPath></text>
+<text x="70" y="66" text-anchor="middle" font-family="Alegreya, serif" font-weight="800" font-size="20" fill="#7A2E1F" opacity=".9">XI</text>
+<text x="70" y="86" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="600" font-size="10" fill="#7A2E1F" letter-spacing="1" opacity=".9">ФОРТ</text>
+</svg>

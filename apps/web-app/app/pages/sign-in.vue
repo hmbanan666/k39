@@ -1,6 +1,9 @@
 <template>
-  <main class="sign-in">
-    <h1>Вход</h1>
+  <main class="page">
+    <PostcardHero
+      h1="Вход"
+      kicker="K39"
+    />
     <p v-if="pending">
       Проверяем, какие входы подключены.
     </p>
@@ -11,22 +14,24 @@
       v-else
       class="actions"
     >
-      <a
+      <UiButton
         v-for="provider in providers"
         :key="provider.id"
         :href="`/api/auth/provider?provider=${provider.id}&redirectTo=${encodeURIComponent(redirectTo)}`"
-      >{{ provider.label }}</a>
+      >
+        {{ provider.label }}
+      </UiButton>
     </div>
     <p class="fine">
       Кнопка входа означает согласие с
-      <NuxtLink to="/legal/privacy-policy">
+      <UiLink href="/legal/privacy-policy">
         политикой конфиденциальности
-      </NuxtLink>.
+      </UiLink>.
     </p>
     <p>
-      <NuxtLink :to="redirectTo">
+      <UiLink :href="redirectTo">
         Вернуться
-      </NuxtLink>
+      </UiLink>
     </p>
   </main>
 </template>
@@ -51,8 +56,6 @@ useSeoMeta({ title: 'Вход | K39', robots: 'noindex, nofollow' })
 </script>
 
 <style scoped>
-.sign-in { max-width: 24rem; margin: 4rem auto; padding: 1rem; }
-.actions { display: flex; flex-direction: column; gap: 0.6rem; }
-.actions a { display: block; text-align: center; padding: 0.8rem; border-radius: 10px; background: #3a2e24; color: #fbf3e2; text-decoration: none; font-weight: 700; }
-.fine { font-size: 0.9rem; }
+.actions { display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start; }
+.fine { font-size: var(--step--1); }
 </style>

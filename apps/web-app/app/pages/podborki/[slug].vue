@@ -2,6 +2,7 @@
   <RecordPage
     :page="page"
     list-title="Места подборки"
+    kicker="Подборка"
   />
 </template>
 

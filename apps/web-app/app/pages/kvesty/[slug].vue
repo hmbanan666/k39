@@ -2,6 +2,7 @@
   <RecordPage
     :page="page"
     list-title="Точки квеста"
+    kicker="Квест"
   />
 </template>
 
