@@ -12,7 +12,7 @@ A sibling app (kosarev.space) builds with `corepack enable pnpm`, a separate ins
 
 ## Decision
 
-The web image enables pnpm through Corepack so the version is the pin in `packageManager`, not npm's latest. Install and build are separate `RUN` steps. The build command is `pnpm --filter @k39/web-app build`. CI builds the same Dockerfile on pull requests. The base image stays `node:24.11.1-alpine` so the existing `apk` healthcheck curl stays valid. The runtime user owns `/app`, because Nuxt Content creates a sqlite database in the workdir on boot.
+The web image enables pnpm through Corepack so the version is the pin in `packageManager`, not npm's latest. Install and build are separate `RUN` steps. The build command is `pnpm --filter @k39/web-app build`. CI builds the same Dockerfile on pull requests. The base image is `node:24.21.0-alpine` so it satisfies Nuxt 4.6 (`^24.15.0`) and the `apk` healthcheck curl stays valid. The runtime user owns `/app`, because Nuxt Content creates a sqlite database in the workdir on boot.
 
 ## Consequences
 

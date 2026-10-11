@@ -14,7 +14,8 @@ function isPrivateAddress(address: string) {
   if (parts.length !== 4 || parts.some((part) => Number.isNaN(part))) {
     return false
   }
-  const [a, b] = parts
+  const a = parts[0] ?? -1
+  const b = parts[1] ?? -1
   return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
 }
 

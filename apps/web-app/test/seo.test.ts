@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { createHead, renderSSRHead } from 'unhead/server'
 import { describe, expect, it } from 'vitest'
 import seed from '../../../packages/database/src/seed/initial-content.json'
 import { findOrphans, haversineKm, homeLinks, HUBS, SECTION_LINKS } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
 import { decideRedirect } from '../shared/redirects'
-import { collectionDocument, countH1, headFromDocument, homeDocument, pageTitle, placeDocument, placeSchemaType, tuneRobots, verificationMeta } from '../shared/seo'
+import { brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, pageTitle, placeDocument, placeSchemaType, tuneRobots, verificationMeta } from '../shared/seo'
 
 function assertDocument(doc: ReturnType<typeof homeDocument>, htmlBody: string) {
   expect(doc.title.length).toBeGreaterThan(10)
@@ -212,6 +213,27 @@ describe('default social image', () => {
     expect(existsSync(resolve(pub, 'favicon.png'))).toBe(false)
     expect(existsSync(resolve(pub, 'favicon.svg'))).toBe(false)
     expect(existsSync(resolve(pub, 'og-default.jpg'))).toBe(true)
+  })
+
+  it('keeps both favicon.ico links because each has its own key', async () => {
+    const head = createHead()
+    head.push({ link: [...brandHeadLinks] })
+    const rendered = await renderSSRHead(head)
+    const icons = [...rendered.headTags.matchAll(/<link[^>]*href="\/favicon\.ico"[^>]*>/g)].map((match) => match[0])
+    expect(icons).toHaveLength(2)
+    expect(icons.some((tag) => tag.includes('sizes="48x48"'))).toBe(true)
+    expect(icons.some((tag) => tag.includes('sizes="any"'))).toBe(true)
+    expect(rendered.headTags).toContain('rel="apple-touch-icon"')
+    expect(rendered.headTags).toContain('href="/site.webmanifest"')
+
+    const collapsed = createHead()
+    collapsed.push({
+      link: brandHeadLinks
+        .filter((link) => link.href === '/favicon.ico')
+        .map(({ key: _key, ...link }) => link),
+    })
+    const withoutKeys = await renderSSRHead(collapsed)
+    expect([...withoutKeys.headTags.matchAll(/href="\/favicon\.ico"/g)]).toHaveLength(1)
   })
 })
 

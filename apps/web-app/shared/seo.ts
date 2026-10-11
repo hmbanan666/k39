@@ -8,6 +8,17 @@ export const DEFAULT_OG_IMAGE = {
   type: 'image/jpeg',
 }
 
+// Unhead dedupes <link> on rel+href unless each tag has its own key.
+// favicon.ico is linked twice (48x48 and any), so the keys must stay distinct.
+export const brandHeadLinks = [
+  { key: 'icon-ico-48', rel: 'icon', href: '/favicon.ico', sizes: '48x48' },
+  { key: 'icon-ico-any', rel: 'icon', href: '/favicon.ico', sizes: 'any' },
+  { key: 'icon-32', rel: 'icon', type: 'image/png', href: '/favicon-32.png', sizes: '32x32' },
+  { key: 'icon-16', rel: 'icon', type: 'image/png', href: '/favicon-16.png', sizes: '16x16' },
+  { key: 'apple-touch-icon', rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+  { key: 'manifest', rel: 'manifest', href: '/site.webmanifest' },
+] as const
+
 export const RESERVED_SLUGS = [
   'admin',
   'api',
@@ -359,15 +370,15 @@ export function headFromDocument(doc: SeoDocument) {
       { property: 'og:image:alt', content: doc.ogImage.alt },
       ...(doc.ogImage.width ? [{ property: 'og:image:width', content: String(doc.ogImage.width) }] : []),
       ...(doc.ogImage.height ? [{ property: 'og:image:height', content: String(doc.ogImage.height) }] : []),
-      ...(doc.ogImage.type ? [{ property: 'og:image:type', content: doc.ogImage.type }] : []),
+      ...(doc.ogImage.type ? [{ property: 'og:image:type' as const, content: doc.ogImage.type }] : []),
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: doc.title },
       { name: 'twitter:description', content: doc.description },
       { name: 'twitter:image', content: doc.ogImage.url },
     ],
-    link: [{ rel: 'canonical', href: doc.canonical }],
+    link: [{ rel: 'canonical' as const, href: doc.canonical }],
     script: [{
-      type: 'application/ld+json',
+      type: 'application/ld+json' as const,
       innerHTML: JSON.stringify({ '@context': 'https://schema.org', '@graph': doc.jsonLd }),
     }],
   }
