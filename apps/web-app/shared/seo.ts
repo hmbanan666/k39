@@ -18,6 +18,7 @@ export const RESERVED_SLUGS = [
   'legal',
   'map',
   'marshruty',
+  'mcp',
   'media',
   'muzei',
   'place',

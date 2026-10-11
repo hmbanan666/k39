@@ -27,6 +27,7 @@
   "devDependencies": {
     "@nuxt/devtools": "catalog:dev",
     "@nuxt/fonts": "catalog:dev",
+    "@nuxtjs/mcp-toolkit": "catalog:dev",
     "@nuxtjs/seo": "catalog:dev",
     "@types/node": "catalog:types",
     "nuxt": "catalog:dev",

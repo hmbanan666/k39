@@ -22,6 +22,23 @@ URLs: `/{slug}` for a place, `/forty` `/zamki` `/plyazhi` `/kurorty` `/muzei` `/
 
 On boot the Nitro plugin migrates, then `applyInitialContent()` inserts categories, the 27 fort pages, one route, one collection and the five-fort quest if `content_imports` does not already contain `initial-content-v1`. `initial-content-v2` then fills seeded slugs that are still empty drafts from the old catalog and publishes them. A later boot skips both. An empty `ADMIN_EMAILS` is fine: the site still serves public pages, and nobody is promoted to admin until that list is set. Later edits happen in `/admin` or, for drafts only, `POST`/`PATCH /api/content/places` with `Authorization: Bearer $CONTENT_API_TOKEN`.
 
+## Content MCP
+
+Streamable HTTP: `https://k39.online/mcp` (`@nuxtjs/mcp-toolkit`, ADR 0012). Same bearer token as the content API. Missing or wrong token: 401. Unset token: 503. Sixty calls per minute per token. Writes cannot publish. Quest drafts are not writable.
+
+Tools: `places_list`, `place_get`, `place_draft_create`, `place_draft_update`, `place_submit_review`, `hubs_list`, `routes_list`, `route_get`, `route_draft_create`, `route_draft_update`, `quests_list`, `quest_get`, `media_upload_from_url`, `media_attach_to_place`, `media_list_for_place`, `commons_search`, `commons_import`. Resource and prompt: `content_guide`.
+
+```json
+{
+  "mcpServers": {
+    "k39": {
+      "url": "https://k39.online/mcp",
+      "headers": { "Authorization": "Bearer $CONTENT_API_TOKEN" }
+    }
+  }
+}
+```
+
 The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`). It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve `/map/{region}` with `noindex`. Otherwise those URLs 301 to `/forty`.
 
 Auth is Yandex and VK OAuth. Empty client id or secret disables that provider. `ADMIN_EMAILS` promotes those accounts to `admin` on login. Editors and admins can open `/admin`.

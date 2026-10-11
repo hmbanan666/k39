@@ -2,7 +2,7 @@ import type { PlaceDraft } from '../types'
 import type { MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
+import { categories, collectionItems, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
 
 const published = 'published' as const
 
@@ -227,6 +227,17 @@ export class Content {
     }
   }
 
+  static async relatedFor(placeId: string) {
+    return useDatabase().select({
+      slug: places.slug,
+      title: places.title,
+      anchor: relatedLinks.anchor,
+    }).from(relatedLinks).innerJoin(places, eq(relatedLinks.toPlaceId, places.id)).where(and(
+      eq(relatedLinks.fromPlaceId, placeId),
+      eq(places.publicationStatus, published),
+    )).orderBy(asc(relatedLinks.position))
+  }
+
   static async activeOffers(placeId: string) {
     return useDatabase().select({
       title: offers.title,
@@ -238,6 +249,58 @@ export class Content {
 export class Editor {
   static async listPlaces() {
     return useDatabase().select().from(places).orderBy(asc(places.title))
+  }
+
+  static async searchPlaces(input: {
+    categorySlug?: string
+    regionSlug?: string
+    publicationStatus?: PublicationStatus
+    visitStatus?: VisitStatus
+    query?: string
+    page: number
+    pageSize: number
+  }) {
+    const db = useDatabase()
+    const filters = []
+    if (input.categorySlug) {
+      filters.push(eq(categories.slug, input.categorySlug))
+    }
+    if (input.regionSlug) {
+      filters.push(eq(regions.slug, input.regionSlug))
+    }
+    if (input.publicationStatus) {
+      filters.push(eq(places.publicationStatus, input.publicationStatus))
+    }
+    if (input.visitStatus) {
+      filters.push(eq(places.status, input.visitStatus))
+    }
+    if (input.query) {
+      const safe = `%${input.query.replace(/[%_\\]/g, '\\$&')}%`
+      filters.push(sql`(${places.title} ilike ${safe} or ${places.slug} ilike ${safe} or ${places.summary} ilike ${safe})`)
+    }
+    const where = filters.length ? and(...filters) : undefined
+    const rows = await db.select({
+      id: places.id,
+      slug: places.slug,
+      title: places.title,
+      summary: places.summary,
+      status: places.status,
+      publicationStatus: places.publicationStatus,
+      categorySlug: categories.slug,
+      regionSlug: regions.slug,
+    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(where).orderBy(asc(places.title)).limit(input.pageSize).offset((input.page - 1) * input.pageSize)
+    const [countRow] = await db.select({ value: sql<number>`count(*)::int` }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(where)
+    return { items: rows, total: countRow?.value ?? 0 }
+  }
+
+  static async recordMcpAudit(data: { tool: string, entityType?: string | null, entityId?: string | null }) {
+    const [row] = await useDatabase().insert(mcpAudits).values({
+      actor: 'mcp',
+      tool: data.tool,
+      entityType: data.entityType ?? null,
+      entityId: data.entityId ?? null,
+    }).returning({ id: mcpAudits.id })
+    return row
   }
 
   static async placeById(id: string) {
