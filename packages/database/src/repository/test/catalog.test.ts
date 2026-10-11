@@ -1,11 +1,32 @@
 import { eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { applyInitialContent, INITIAL_CONTENT_IMPORT_ID } from '../../seed/apply'
-import { contentImports, routePoints } from '../../tables'
+import seed from '../../seed/initial-content.json'
+import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects } from '../../tables'
 import { Content, Editor } from '../content'
 
+async function wipeContent() {
+  const db = useDatabase()
+  await db.delete(questSteps)
+  await db.delete(routePoints)
+  await db.delete(collectionItems)
+  await db.delete(revisions)
+  await db.delete(quests)
+  await db.delete(routes)
+  await db.delete(collections)
+  await db.delete(places)
+  await db.delete(categories)
+  await db.delete(regions)
+  await db.delete(slugRedirects)
+  await db.delete(contentImports)
+}
+
 describe('initial content', () => {
+  beforeEach(async () => {
+    await wipeContent()
+  })
+
   it('imports once, then leaves admin edits and timestamps alone', async () => {
     const first = await applyInitialContent()
     expect(first.skipped).toBe(false)
@@ -66,5 +87,85 @@ describe('initial content', () => {
     expect(still?.title).toBe('Правка редактора')
     expect(still?.publicationStatus).toBe('draft')
     expect(still?.updatedAt).toBe(edited.updatedAt)
+  })
+
+  it('publishes empty legacy drafts and leaves an edited row alone', async () => {
+    const db = useDatabase()
+    expect(seed.places).toHaveLength(27)
+    for (const place of seed.places) {
+      await db.insert(places).values({
+        slug: place.slug,
+        title: place.slug,
+        latitude: 0,
+        longitude: 0,
+        summary: '',
+        body: '',
+        publicationStatus: 'draft',
+      })
+    }
+    const [oldRoute] = await db.insert(routes).values({
+      slug: 'five-forts',
+      title: 'Старый маршрут',
+      summary: 'Сводка из прежней схемы',
+      body: '',
+      publicationStatus: 'draft',
+    }).returning()
+    await db.insert(quests).values({
+      slug: 'five-forts',
+      title: 'Старый квест',
+      body: '',
+      publicationStatus: 'draft',
+      routeId: oldRoute?.id,
+    })
+    await db.insert(contentImports).values({ id: INITIAL_CONTENT_IMPORT_ID })
+    const [edited] = await db.insert(places).values({
+      slug: 'redaktorskaya-pravka',
+      title: 'Оставить как есть',
+      summary: 'Коротко от редактора',
+      body: 'Текст редактора, который сид не затирает.',
+      publicationStatus: 'draft',
+    }).returning()
+
+    const result = await applyInitialContent()
+    expect(result.skipped).toBe(false)
+    expect(result.filled).toBe(27)
+
+    const map = await Content.sitemapRows()
+    for (const place of seed.places) {
+      const row = await Editor.placeBySlug(place.slug)
+      expect(row?.publicationStatus).toBe('published')
+      expect(row?.title).toBe(place.title)
+      expect(row?.summary).toBe(place.summary)
+      expect(row?.body).toBe(place.body)
+      expect(row?.latitude).toBe(place.latitude)
+      expect(row?.categoryId).toBeTruthy()
+      expect(map.places.some((item) => item.loc === `/${place.slug}`)).toBe(true)
+      expect(await Content.publishedPlace(place.slug)).not.toBeNull()
+    }
+
+    const kept = await Editor.placeById(edited?.id ?? '')
+    expect(kept?.title).toBe('Оставить как есть')
+    expect(kept?.body).toBe('Текст редактора, который сид не затирает.')
+    expect(kept?.publicationStatus).toBe('draft')
+    expect(kept?.updatedAt).toBe(edited?.updatedAt)
+    expect(map.places.some((item) => item.loc === '/redaktorskaya-pravka')).toBe(false)
+
+    const parkedRoute = await Editor.listRoutes()
+    expect(parkedRoute.find((row) => row.slug === 'five-forts')?.publicationStatus).toBe('draft')
+    const parkedQuest = await db.select().from(quests).where(eq(quests.slug, 'five-forts'))
+    expect(parkedQuest[0]?.publicationStatus).toBe('draft')
+    expect(parkedQuest[0]?.routeId).toBe(oldRoute?.id)
+    const redirects = await db.select().from(slugRedirects)
+    expect(redirects).toEqual(expect.arrayContaining([
+      expect.objectContaining({ fromPath: '/marshruty/five-forts', toPath: '/marshruty/pyat-fortov', statusCode: 301 }),
+      expect.objectContaining({ fromPath: '/kvesty/five-forts', toPath: '/kvesty/pyat-fortov', statusCode: 301 }),
+    ]))
+    expect(map.routes.some((item) => item.loc.includes('five-forts'))).toBe(false)
+    expect(map.quests.some((item) => item.loc.includes('five-forts'))).toBe(false)
+
+    const stamp = (await Editor.placeBySlug('fort-11-denhoff'))?.updatedAt
+    const again = await applyInitialContent()
+    expect(again.skipped).toBe(true)
+    expect((await Editor.placeBySlug('fort-11-denhoff'))?.updatedAt).toBe(stamp)
   })
 })
