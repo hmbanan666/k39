@@ -12,7 +12,7 @@ The UI and place articles are Russian. Docs, ADRs, and code comments are English
 
 Monorepo (pnpm):
 
-- `apps/web-app`: Nuxt 4, `@nuxt/ui`, `@nuxtjs/seo`, `nuxt-auth-utils`. No external CMS and no `@nuxt/content`.
+- `apps/web-app`: Nuxt 4, Reka UI (headless only), `@nuxtjs/seo`, `nuxt-auth-utils`. Styling is local CSS tokens, not Tailwind and not `@nuxt/ui`. See ADR 0010 and `docs/design-system.md`.
 - `packages/database`: Drizzle ORM and Postgres. Schema, repositories, SQL migrations, initial seed.
 - `packages/types`: Zod schemas shared by the API.
 

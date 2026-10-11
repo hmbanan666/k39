@@ -1,5 +1,5 @@
 import { db } from '@k39/database'
-import { homeLinks } from '../../shared/links'
+import { homeLinks, HUBS } from '../../shared/links'
 import { renderMarkdown } from '../../shared/markdown'
 import { absoluteUrl, collectionDocument, homeDocument, placeDocument } from '../../shared/seo'
 
@@ -30,10 +30,43 @@ export async function loadHome() {
   const cats = await db.content.categories()
   const forty = cats.find((item) => item.slug === 'forty')
   const featured = forty ? (await db.content.publishedPlacesByCategory(forty.id)).slice(0, 6) : []
+  const routes = await db.content.listPublishedRoutes()
+  const firstRoute = routes[0] ? await db.content.publishedRoute(routes[0].slug) : null
+  const quests = await db.content.listPublishedQuests()
+  const quest = quests[0]
   return {
     doc: homeDocument(),
     links: homeLinks(featured.map((place) => ({ href: `/${place.slug}`, text: place.title }))),
-    featured: featured.map((place) => ({ href: `/${place.slug}`, text: place.title })),
+    hubs: HUBS.map((link) => {
+      const category = cats.find((item) => `/${item.slug}` === link.href)
+      return {
+        href: link.href,
+        title: link.text,
+        summary: category?.description || '',
+      }
+    }),
+    featured: featured.map((place) => ({
+      href: `/${place.slug}`,
+      title: place.title,
+      summary: place.summary,
+      hub: 'Форты',
+      hubHref: '/forty',
+    })),
+    route: firstRoute
+      ? {
+          href: `/marshruty/${firstRoute.route.slug}`,
+          title: firstRoute.route.title,
+          summary: firstRoute.route.summary || '',
+          steps: firstRoute.points.map((point) => ({ href: `/${point.slug}`, text: point.title })),
+        }
+      : null,
+    quest: quest
+      ? {
+          href: `/kvesty/${quest.slug}`,
+          title: quest.title,
+          summary: quest.summary || '',
+        }
+      : null,
   }
 }
 
@@ -59,7 +92,13 @@ export async function loadHub(slug: string) {
   return {
     doc,
     html: renderMarkdown(category.description),
-    places: rows.map((place) => ({ href: `/${place.slug}`, text: place.title })),
+    places: rows.map((place) => ({
+      href: `/${place.slug}`,
+      title: place.title,
+      summary: place.summary,
+      hub: category.title,
+      hubHref: `/${category.slug}`,
+    })),
     routes: routes.map((route) => ({ href: `/marshruty/${route.slug}`, text: route.title })),
   }
 }
@@ -104,7 +143,7 @@ export async function loadPlace(slug: string, page = 1) {
   })
   const groups = [
     { title: loaded.category.title, links: [{ href: `/${loaded.category.slug}`, text: loaded.category.title }] },
-    { title: 'Рядом', links: loaded.nearest.slice(0, 5).map((item) => ({ href: `/${item.slug}`, text: item.title })) },
+    { title: 'Рядом', links: loaded.nearest.slice(0, 5).map((item) => ({ href: `/${item.slug}`, text: item.title, distanceKm: Number(item.distance_km) })) },
     loaded.region
       ? { title: `Ещё в регионе ${loaded.region.title}`, links: loaded.sameRegion.map((item) => ({ href: `/${item.slug}`, text: item.title })) }
       : null,
@@ -112,6 +151,22 @@ export async function loadPlace(slug: string, page = 1) {
     { title: 'Подборки', links: loaded.collectionRows.map((item) => ({ href: `/podborki/${item.slug}`, text: item.title })) },
     { title: 'Ещё по теме', links: loaded.related.map((item) => ({ href: `/${item.slug}`, text: item.anchor || item.title })) },
   ].flatMap((group) => (group && group.links.length ? [group] : []))
+  const primary = loaded.routeRows[0] ? await db.content.publishedRoute(loaded.routeRows[0].slug) : null
+  const stepIndex = primary ? primary.points.findIndex((point) => point.slug === loaded.place.slug) : -1
+  const nextStep = primary && stepIndex >= 0 ? primary.points[stepIndex + 1] : undefined
+  const routeBand = primary
+    ? {
+        href: `/marshruty/${primary.route.slug}`,
+        title: primary.route.title,
+        summary: primary.route.summary || '',
+        steps: primary.points.map((point) => ({
+          href: `/${point.slug}`,
+          text: point.title,
+          current: point.slug === loaded.place.slug,
+        })),
+        next: nextStep ? { href: `/${nextStep.slug}`, text: nextStep.title } : null,
+      }
+    : null
   const howToGet = loaded.place.howToGet?.trim()
   const body = howToGet && !loaded.place.body.includes(howToGet)
     ? `${loaded.place.body}\n\n## Как добраться\n\n${howToGet}`
@@ -120,10 +175,14 @@ export async function loadPlace(slug: string, page = 1) {
     doc,
     html: renderMarkdown(body),
     place: loaded.place,
+    categoryTitle: loaded.category.title,
+    categorySlug: loaded.category.slug,
     category: loaded.category,
+    offers: await db.content.activeOffers(loaded.place.id),
     region: loaded.region,
     images,
     groups,
+    routeBand,
     sources: loaded.place.sources ?? [],
   }
 }

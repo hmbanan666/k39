@@ -2,7 +2,7 @@ export default defineNuxtConfig({
   devServer: {
     port: 3000,
   },
-  css: ['~/assets/css/styles.css', '~/assets/css/forts-map.css'],
+  css: ['~/assets/css/tokens.css', '~/assets/css/base.css', '~/assets/css/styles.css', '~/assets/css/forts-map.css'],
   site: {
     url: 'https://k39.online',
     name: 'K39',
@@ -15,9 +15,19 @@ export default defineNuxtConfig({
       titleTemplate: '%s',
     },
   },
-  ui: {
-    colorMode: false,
-    fonts: false,
+  fonts: {
+    provider: 'google',
+    defaults: {
+      subsets: ['cyrillic', 'latin'],
+      styles: ['normal'],
+      weights: [400],
+      preload: true,
+    },
+    families: [
+      { name: 'Alegreya', provider: 'google', weights: [400, 700], styles: ['normal', 'italic'], display: 'swap', preload: true },
+      { name: 'Alegreya SC', provider: 'google', weights: [400], styles: ['normal'], display: 'swap', preload: true },
+      { name: 'Golos Text', provider: 'google', weights: [400, 700], styles: ['normal'], display: 'swap', preload: true },
+    ],
   },
   sitemap: {
     sources: ['/sitemap-urls'],
@@ -49,7 +59,7 @@ export default defineNuxtConfig({
   modules: [
     'nuxt-auth-utils',
     '@nuxtjs/seo',
-    '@nuxt/ui',
+    '@nuxt/fonts',
     '@vueuse/nuxt',
   ],
   experimental: {

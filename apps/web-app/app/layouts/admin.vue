@@ -18,5 +18,13 @@ useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] })
 </script>
 
 <style scoped>
-.admin-bar { display: flex; gap: 1rem; padding: 0.8rem 1rem; border-bottom: 1px solid #e6d5b0; }
+.admin-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--surface);
+}
+.admin-bar a { color: var(--text); font-weight: 700; text-decoration: none; }
 </style>

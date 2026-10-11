@@ -41,13 +41,15 @@
 </template>
 
 <script setup lang="ts">
+import { ofetch } from 'ofetch'
+
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
-const meta = reactive(await $fetch('/api/admin/meta'))
+const meta = reactive(await ofetch('/api/admin/meta'))
 async function saveCategory(item: { id: string }) {
-  await $fetch(`/api/admin/categories/${item.id}`, { method: 'PATCH', body: item })
+  await ofetch(`/api/admin/categories/${item.id}`, { method: 'PATCH', body: item })
 }
 async function saveRegion(item: { id: string }) {
-  await $fetch(`/api/admin/regions/${item.id}`, { method: 'PATCH', body: item })
+  await ofetch(`/api/admin/regions/${item.id}`, { method: 'PATCH', body: item })
 }
 </script>
 

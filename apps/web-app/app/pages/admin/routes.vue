@@ -37,10 +37,12 @@
 </template>
 
 <script setup lang="ts">
+import { ofetch } from 'ofetch'
+
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
-const items = ref(await $fetch('/api/admin/routes'))
+const items = ref(await ofetch('/api/admin/routes'))
 async function save(item: { id: string }) {
-  await $fetch(`/api/admin/routes/${item.id}`, { method: 'PATCH', body: item })
+  await ofetch(`/api/admin/routes/${item.id}`, { method: 'PATCH', body: item })
 }
 </script>
 

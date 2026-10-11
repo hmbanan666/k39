@@ -2,7 +2,7 @@ import type { PlaceDraft } from '../types'
 import type { PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
 import { and, asc, eq, ne, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, media, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
+import { categories, collectionItems, collections, media, offers, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
 
 const published = 'published' as const
 
@@ -149,6 +149,13 @@ export class Content {
       collections: collectionRows.map((row) => ({ loc: `/podborki/${row.slug}`, lastmod: row.updatedAt })),
       quests: questRows.map((row) => ({ loc: `/kvesty/${row.slug}`, lastmod: row.updatedAt })),
     }
+  }
+
+  static async activeOffers(placeId: string) {
+    return useDatabase().select({
+      title: offers.title,
+      terms: offers.terms,
+    }).from(offers).where(and(eq(offers.placeId, placeId), eq(offers.status, 'active')))
   }
 }
 

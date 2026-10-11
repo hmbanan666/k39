@@ -1,82 +1,113 @@
 <template>
   <main class="admin">
     <h1>{{ placeId ? 'Место' : 'Новое место' }}</h1>
-    <form @submit.prevent="save">
-      <label>Название <input v-model="form.title" required></label>
-      <label>Адрес (slug) <input v-model="form.slug" required></label>
-      <p
-        v-if="slugProblem"
-        class="warn"
+    <form
+      class="stack"
+      @submit.prevent="save"
+    >
+      <UiField label="Название">
+        <UiInput
+          v-model="form.title"
+          required
+        />
+      </UiField>
+      <UiField
+        label="Адрес (slug)"
+        :hint="slugProblem"
       >
-        {{ slugProblem }}
-      </p>
-      <label>Раздел
-        <select v-model="form.categorySlug">
-          <option
-            v-for="category in meta.categories"
-            :key="category.id"
-            :value="category.slug"
-          >
-            {{ category.title }}
-          </option>
-        </select>
-      </label>
-      <label>Статус объекта
-        <select v-model="form.status">
-          <option value="open">открыт</option>
-          <option value="ruins">руины</option>
-          <option value="closed">закрыт</option>
-          <option value="unknown">неизвестно</option>
-        </select>
-      </label>
-      <label>Публикация
-        <select v-model="form.publicationStatus">
-          <option value="draft">черновик</option>
-          <option value="review">на проверке</option>
-          <option value="published">опубликовано</option>
-        </select>
-      </label>
-      <label>Кратко <textarea v-model="form.summary" rows="3" /></label>
-      <label>Текст <textarea v-model="form.body" rows="12" /></label>
+        <UiInput
+          v-model="form.slug"
+          required
+        />
+      </UiField>
+      <UiField label="Раздел">
+        <UiSelect
+          v-model="form.categorySlug"
+          :options="categoryOptions"
+        />
+      </UiField>
+      <UiField label="Статус объекта">
+        <UiSelect
+          v-model="form.status"
+          :options="statusOptions"
+        />
+      </UiField>
+      <UiField label="Публикация">
+        <UiSelect
+          v-model="form.publicationStatus"
+          :options="publicationOptions"
+        />
+      </UiField>
+      <UiField label="Кратко">
+        <UiTextarea
+          v-model="form.summary"
+          :rows="3"
+        />
+      </UiField>
+      <UiField label="Текст">
+        <UiTextarea
+          v-model="form.body"
+          :rows="12"
+        />
+      </UiField>
       <div class="preview">
         <h2>Предпросмотр</h2>
         <div v-html="preview" />
       </div>
-      <label>Часы <input v-model="form.hours"></label>
-      <label>Цена <input v-model="form.price"></label>
-      <label>Как добраться <textarea v-model="form.howToGet" rows="3" /></label>
-      <label>Широта <input v-model="form.latitude"></label>
-      <label>Долгота <input v-model="form.longitude"></label>
+      <UiField label="Часы">
+        <UiInput v-model="form.hours" />
+      </UiField>
+      <UiField label="Цена">
+        <UiInput v-model="form.price" />
+      </UiField>
+      <UiField label="Как добраться">
+        <UiTextarea
+          v-model="form.howToGet"
+          :rows="3"
+        />
+      </UiField>
+      <UiField label="Широта">
+        <UiInput v-model="form.latitude" />
+      </UiField>
+      <UiField label="Долгота">
+        <UiInput v-model="form.longitude" />
+      </UiField>
       <p
         v-if="!form.latitude || !form.longitude"
         class="warn"
       >
         Нет координат.
       </p>
-      <label>SEO title <input v-model="form.seoTitle"></label>
-      <p>Заголовок в поиске: {{ finalTitle }} ({{ finalTitle.length }})</p>
-      <p
-        v-if="titleHint"
-        class="warn"
+      <UiField
+        label="SEO title"
+        :count="finalTitle.length"
+        :max="70"
+        :hint="titleHint"
       >
-        {{ titleHint }}
-      </p>
-      <label>SEO description <textarea v-model="form.seoDescription" rows="3" /></label>
-      <p>Описание: {{ finalDescription.length }} знаков</p>
-      <p
-        v-if="descriptionHint"
-        class="warn"
+        <UiInput v-model="form.seoTitle" />
+      </UiField>
+      <p>Заголовок в поиске: {{ finalTitle }}</p>
+      <UiField
+        label="SEO description"
+        :count="finalDescription.length"
+        :max="170"
+        :hint="descriptionHint"
       >
-        {{ descriptionHint }}
-      </p>
-      <label>Картинка для соцсетей <input
-        v-model="form.ogImage"
-        placeholder="/media/..."
-      ></label>
-      <label><input
+        <UiTextarea
+          v-model="form.seoDescription"
+          :rows="3"
+        />
+      </UiField>
+      <UiField label="Картинка для соцсетей">
+        <UiInput
+          v-model="form.ogImage"
+          placeholder="/media/..."
+        />
+      </UiField>
+      <UiSwitch
         v-model="form.noindex"
-        type="checkbox"
-      > Не индексировать</label>
+        label="Не индексировать"
+      />
       <p v-if="placeId">
         <a :href="`/preview/${form.slug}`">Предпросмотр черновика</a>
       </p>
@@ -85,9 +116,9 @@
         <div>k39.online/{{ form.slug }}</div>
         <p>{{ finalDescription }}</p>
       </div>
-      <button type="submit">
+      <UiButton type="submit">
         Сохранить
-      </button>
+      </UiButton>
       <p v-if="message">
         {{ message }}
       </p>
@@ -96,12 +127,34 @@
 </template>
 
 <script setup lang="ts">
+import { ofetch } from 'ofetch'
 import { renderMarkdown } from '~~/shared/markdown'
 import { descriptionWarning, metaDescription, pageTitle, slugError, titleWarning, transliterateSlug } from '~~/shared/seo'
 
+interface AdminCategory { id: string, slug: string, title: string }
+interface AdminPlace {
+  id: string
+  categoryId: string | null
+  title: string
+  slug: string
+  status: string
+  publicationStatus: string
+  summary: string
+  body: string
+  hours: string | null
+  price: string | null
+  howToGet: string | null
+  latitude: number | null
+  longitude: number | null
+  seoTitle: string | null
+  seoDescription: string | null
+  ogImage: string | null
+  noindex: boolean
+}
+
 const props = defineProps<{ placeId?: string }>()
-const meta = await $fetch('/api/admin/meta')
-const places = props.placeId ? await $fetch('/api/admin/places') : []
+const meta = await ofetch<{ categories: AdminCategory[] }>('/api/admin/meta')
+const places = props.placeId ? await ofetch<AdminPlace[]>('/api/admin/places') : []
 const current = places.find((item) => item.id === props.placeId)
 const categorySlug = meta.categories.find((item) => item.id === current?.categoryId)?.slug || 'forty'
 const form = reactive({
@@ -127,6 +180,18 @@ watch(() => form.title, (title) => {
     form.slug = transliterateSlug(title)
   }
 })
+const categoryOptions = computed(() => meta.categories.map((item) => ({ value: item.slug, label: item.title })))
+const statusOptions = [
+  { value: 'open', label: 'открыт' },
+  { value: 'ruins', label: 'руины' },
+  { value: 'closed', label: 'закрыт' },
+  { value: 'unknown', label: 'неизвестно' },
+]
+const publicationOptions = [
+  { value: 'draft', label: 'черновик' },
+  { value: 'review', label: 'на проверке' },
+  { value: 'published', label: 'опубликовано' },
+]
 const slugProblem = computed(() => form.slug ? slugError(form.slug) : null)
 const categoryTitle = computed(() => meta.categories.find((item) => item.slug === form.categorySlug)?.title || 'место')
 const finalTitle = computed(() => pageTitle(form.title || 'Без названия', categoryTitle.value, form.seoTitle))
@@ -146,11 +211,11 @@ async function save() {
     longitude: form.longitude === '' ? null : Number(form.longitude),
   }
   if (props.placeId) {
-    await $fetch(`/api/admin/places/${props.placeId}`, { method: 'PATCH', body: payload })
+    await ofetch(`/api/admin/places/${props.placeId}`, { method: 'PATCH', body: payload })
     message.value = 'Сохранено'
     return
   }
-  const created = await $fetch('/api/admin/places', { method: 'POST', body: payload })
+  const created = await ofetch('/api/admin/places', { method: 'POST', body: payload })
   await navigateTo(`/admin/places/${created.id}`)
 }
 </script>

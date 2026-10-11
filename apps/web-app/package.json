@@ -16,14 +16,15 @@
   "dependencies": {
     "@k39/database": "workspace:*",
     "@k39/types": "workspace:*",
-    "@nuxt/ui": "catalog:integrations",
     "@paralleldrive/cuid2": "catalog:integrations",
     "@vueuse/core": "catalog:integrations",
     "@vueuse/nuxt": "catalog:integrations",
+    "reka-ui": "catalog:integrations",
     "zod": "catalog:integrations"
   },
   "devDependencies": {
     "@nuxt/devtools": "catalog:dev",
+    "@nuxt/fonts": "catalog:dev",
     "@nuxtjs/seo": "catalog:dev",
     "@types/node": "catalog:types",
     "nuxt": "catalog:dev",

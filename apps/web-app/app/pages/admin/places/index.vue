@@ -15,8 +15,10 @@
 </template>
 
 <script setup lang="ts">
+import { ofetch } from 'ofetch'
+
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
-const places = await $fetch('/api/admin/places')
+const places = await ofetch('/api/admin/places')
 useHead({ title: 'Места | Админка' })
 </script>
 

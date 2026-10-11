@@ -2,28 +2,25 @@
   <div
     v-if="!decided"
     class="consent"
+    role="dialog"
+    aria-label="Аналитика"
   >
     <p>
-      Можно записать обезличенные события: какое место вы открыли, без имени и почты.
-      Идентификатор сессии появится только после согласия. Это требование 152-ФЗ.
-      <NuxtLink to="/legal/privacy-policy">
-        Политика
-      </NuxtLink>
+      Можно записать, какое место вы открыли, без имени и почты.
+      <UiLink href="/legal/privacy-policy">
+        Подробнее
+      </UiLink>
     </p>
     <div class="actions">
-      <button
-        type="button"
-        @click="grant"
-      >
-        Разрешить аналитику
-      </button>
-      <button
-        type="button"
-        class="quiet"
+      <UiButton @click="grant">
+        Разрешить
+      </UiButton>
+      <UiButton
+        variant="quiet"
         @click="deny"
       >
         Не записывать
-      </button>
+      </UiButton>
     </div>
   </div>
 </template>
@@ -35,20 +32,16 @@ const { decided, grant, deny } = useConsent()
 <style scoped>
 .consent {
   position: fixed;
-  z-index: 70;
-  left: 12px;
-  right: 12px;
+  z-index: var(--z-consent);
   bottom: 12px;
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 0.9rem 1rem;
-  background: #fbf6ec;
-  color: #3a2e24;
-  border: 1.5px solid #3a2e24;
-  border-radius: 10px;
-  box-shadow: 3px 3px 0 rgba(58, 46, 36, 0.25);
+  left: 12px;
+  width: min(20rem, calc(100% - 24px));
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-pop);
 }
-.actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-button { border: 1.4px solid #3a2e24; background: #9b3d2a; color: #fbf3e2; border-radius: 999px; padding: 0.45rem 0.8rem; font-weight: 700; cursor: pointer; }
-button.quiet { background: transparent; color: #3a2e24; }
+p { margin: 0 0 0.55rem; font-size: var(--step--1); }
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 </style>

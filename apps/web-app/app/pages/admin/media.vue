@@ -33,6 +33,8 @@
 </template>
 
 <script setup lang="ts">
+import { ofetch } from 'ofetch'
+
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
 const alt = ref('')
 const credit = ref('')
@@ -54,7 +56,7 @@ async function upload() {
   body.set('alt', alt.value.trim())
   body.set('credit', credit.value)
   body.set('sourceUrl', sourceUrl.value)
-  const row = await $fetch('/api/admin/media', { method: 'POST', body })
+  const row = await ofetch('/api/admin/media', { method: 'POST', body })
   saved.value = `/media/${row.filename}`
 }
 </script>

@@ -2,6 +2,7 @@
   <RecordPage
     :page="page"
     list-title="Остановки"
+    kicker="Маршрут"
   />
 </template>
 
