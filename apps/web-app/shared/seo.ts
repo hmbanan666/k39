@@ -365,9 +365,9 @@ export function headFromDocument(doc: SeoDocument) {
       { name: 'twitter:description', content: doc.description },
       { name: 'twitter:image', content: doc.ogImage.url },
     ],
-    link: [{ rel: 'canonical', href: doc.canonical }],
+    link: [{ rel: 'canonical' as const, href: doc.canonical }],
     script: [{
-      type: 'application/ld+json',
+      type: 'application/ld+json' as const,
       innerHTML: JSON.stringify({ '@context': 'https://schema.org', '@graph': doc.jsonLd }),
     }],
   }

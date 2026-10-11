@@ -41,6 +41,4 @@ Sample client:
 
 ## Consequences
 
-The toolkit currently asks for newer `vue`, `h3`, and `@nuxt/kit` peers than Nuxt 4.2.2 provides. It installs and the app typechecks with those peers unmet. A Nuxt upgrade is a separate change.
-
-`/mcp` is disallowed in `robots.txt` and reserved so it cannot be a place slug.
+`/mcp` is disallowed in `robots.txt` and reserved so it cannot be a place slug. The Nuxt app is on 4.6 so the toolkit's Vue, h3, and kit peers match.

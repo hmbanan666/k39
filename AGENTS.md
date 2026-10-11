@@ -30,6 +30,8 @@ Streamable HTTP: `https://k39.online/mcp` (`@nuxtjs/mcp-toolkit`, ADR 0012). Sam
 
 Tools: `places_list`, `place_get`, `place_draft_create`, `place_draft_update`, `place_submit_review`, `hubs_list`, `routes_list`, `route_get`, `route_draft_create`, `route_draft_update`, `quests_list`, `quest_get`, `media_upload_from_url`, `media_attach_to_place`, `media_list_for_place`, `commons_search`, `commons_import`. Resource and prompt: `content_guide`.
 
+`@nuxtjs/mcp-toolkit` treats every file directly under `server/mcp/` as a handler (plus `tools/`, `resources/`, and `prompts/`). Only `index.ts` and those three folders belong there. Shared helpers live in `server/utils/mcp/` so the production build does not look for a default export on them.
+
 ```json
 {
   "mcpServers": {

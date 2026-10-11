@@ -22,19 +22,19 @@ catalogs:
     '@antfu/eslint-config': ^6.6.1
     '@commitlint/cli': ^20.2.0
     '@commitlint/config-conventional': ^20.2.0
-    '@nuxt/devtools': ^3.1.1
-    '@nuxt/fonts': ^0.12.1
+    '@nuxt/devtools': ^3.4.2
+    '@nuxt/fonts': ^0.14.0
     '@nuxtjs/mcp-toolkit': ^0.24.1
-    '@nuxtjs/seo': ^3.2.2
+    '@nuxtjs/seo': ^5.3.16
     bumpp: ^10.3.2
     drizzle-kit: 0.31.8
-    eslint: ^9.39.1
+    eslint: ^9.39.5
     husky: ^9.1.7
     lint-staged: ^16.2.7
-    nuxt: ^4.2.2
+    nuxt: ^4.6.1
     nuxt-auth-utils: ^0.5.26
     typescript: ^5.9.3
-    vite: ^7.2.7
+    vite: ^8.3.4
     vue-tsc: ^3.1.8
   integrations:
     '@paralleldrive/cuid2': 2.2.2
@@ -44,17 +44,18 @@ catalogs:
     drizzle-orm: 0.45.1
     pg: 8.16.3
     reka-ui: ^2.5.1
-    sharp: ^0.34.4
+    sharp: ^0.35.4
+    vue: ^3.5.43
     zod: ^4.1.13
   test:
     '@testcontainers/postgresql': ^11.10.0
-    '@vitejs/plugin-vue': ^6.0.1
-    '@vitest/browser-playwright': ^4.0.15
-    '@vitest/coverage-v8': ^4.0.15
+    '@vitejs/plugin-vue': ^6.0.10
+    '@vitest/browser-playwright': ^4.1.11
+    '@vitest/coverage-v8': ^4.1.11
     '@vue/test-utils': ^2.4.6
     happy-dom: ^20.0.10
     playwright: ^1.57.0
-    vitest: ^4.0.15
+    vitest: ^4.1.11
     vitest-browser-vue: ^2.0.1
   types:
     '@types/node': ^25.0.0
