@@ -55,15 +55,23 @@ export default defineNuxtConfig({
   },
   nitro: {
     compressPublicAssets: true,
+    experimental: {
+      asyncContext: true,
+    },
     externals: {
       external: ['sharp'],
     },
+  },
+  mcp: {
+    name: 'K39 content',
+    route: '/mcp',
   },
   modules: [
     'nuxt-auth-utils',
     '@nuxtjs/seo',
     '@nuxt/fonts',
     '@vueuse/nuxt',
+    '@nuxtjs/mcp-toolkit',
   ],
   experimental: {
     typedPages: false,

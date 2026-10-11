@@ -13,13 +13,20 @@ export async function requireEditor(event: Parameters<typeof getUserSession>[0])
   return user
 }
 
-export function requireContentToken(event: Parameters<typeof getRequestHeader>[0]) {
+export function contentAuthFailure(authorization: string | undefined) {
   const token = process.env.CONTENT_API_TOKEN
   if (!token) {
-    throw createError({ statusCode: 503, statusMessage: 'Content API is off' })
+    return { statusCode: 503, statusMessage: 'Content API is off' }
   }
-  const header = getRequestHeader(event, 'authorization') ?? ''
-  if (header !== `Bearer ${token}`) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  if (authorization !== `Bearer ${token}`) {
+    return { statusCode: 401, statusMessage: 'Unauthorized' }
+  }
+  return null
+}
+
+export function requireContentToken(event: Parameters<typeof getRequestHeader>[0]) {
+  const failure = contentAuthFailure(getRequestHeader(event, 'authorization') ?? '')
+  if (failure) {
+    throw createError(failure)
   }
 }

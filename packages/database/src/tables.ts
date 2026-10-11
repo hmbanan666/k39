@@ -216,6 +216,15 @@ export const slugRedirects = pgTable('slug_redirects', {
   statusCode: integer('status_code').notNull().default(301),
 })
 
+export const mcpAudits = pgTable('mcp_audits', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  actor: varchar('actor').notNull().default('mcp'),
+  tool: varchar('tool').notNull(),
+  entityType: varchar('entity_type'),
+  entityId: varchar('entity_id'),
+})
+
 export const revisions = pgTable('revisions', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),
