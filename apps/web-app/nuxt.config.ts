@@ -12,7 +12,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'ru' },
-      titleTemplate: '%s | K39',
+      titleTemplate: '%s',
     },
   },
   ui: {
@@ -20,33 +20,40 @@ export default defineNuxtConfig({
     fonts: false,
   },
   sitemap: {
-    exclude: ['/sign-in', '/api/**'],
-    sources: ['/api/__sitemap__/urls'],
+    sources: ['/sitemap-urls'],
+    exclude: ['/admin/**', '/api/**', '/sign-in', '/map/**', '/preview/**', '/sitemap-urls'],
+  },
+  robots: {
+    credits: false,
+    metaTag: false,
+    header: false,
+    // The module rewrites robots.txt and drops the Yandex Host line. Serve the file as-is.
+    robotsTxt: false,
+    mergeWithRobotsTxtPath: false,
+  },
+  routeRules: {
+    '/sitemap-urls': { headers: { 'x-robots-tag': 'noindex' } },
+    '/media/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+    '/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
   },
   runtimeConfig: {
-    oauth: {
-      yandex: {
-        clientId: '',
-        clientSecret: '',
-      },
-      vk: {
-        clientId: '',
-        clientSecret: '',
-      },
+    public: {
+      featureMap: false,
+      yandexVerification: '',
+      googleVerification: '',
     },
+  },
+  nitro: {
+    compressPublicAssets: true,
   },
   modules: [
     'nuxt-auth-utils',
     '@nuxtjs/seo',
     '@nuxt/ui',
-    '@nuxt/content',
     '@vueuse/nuxt',
   ],
-  content: {
-    experimental: { nativeSqlite: true },
-  },
   experimental: {
-    typedPages: true,
+    typedPages: false,
   },
   compatibilityDate: '2025-10-31',
 })

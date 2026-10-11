@@ -1,66 +1,70 @@
-import type { CatalogSnapshot } from '../../types'
+import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { Catalog } from '../catalog'
-import { EventLog } from '../event-log'
-import { Place } from '../place'
-import { User } from '../user'
+import { useDatabase } from '../../database'
+import { applyInitialContent, INITIAL_CONTENT_IMPORT_ID } from '../../seed/apply'
+import { contentImports, routePoints } from '../../tables'
+import { Content, Editor } from '../content'
 
-const snapshot: CatalogSnapshot = {
-  region: { slug: 'kaliningrad', title: 'Калининград' },
-  places: [{
-    slug: 'fort-11-denhoff',
-    title: 'Форт № 11 «Дёнхофф»',
-    type: 'fort',
-    latitude: 54.656847,
-    longitude: 20.567554,
-    status: 'open',
-    hours: '10:00-18:00',
-    sourceUrl: 'https://fortdonhoff.ru/',
-    regionSlug: 'kaliningrad',
-  }],
-  route: {
-    slug: 'five-forts',
-    title: 'Квест: 5 фортов',
-    summary: 'Короткий маршрут',
-    regionSlug: 'kaliningrad',
-    points: ['fort-11-denhoff'],
-  },
-  quest: {
-    slug: 'five-forts',
-    title: 'Квест: 5 фортов',
-    summary: 'Короткий маршрут',
-    routeSlug: 'five-forts',
-    steps: [{ placeSlug: 'fort-11-denhoff', title: 'Форт № 11', prompt: 'Отметьте визит' }],
-  },
-}
+describe('initial content', () => {
+  it('imports once, then leaves admin edits and timestamps alone', async () => {
+    const first = await applyInitialContent()
+    expect(first.skipped).toBe(false)
+    const loaded = await Content.publishedPlace('fort-11-denhoff')
+    expect(loaded?.place.title).toContain('Дёнхофф')
+    expect(loaded?.place.publicationStatus).toBe('published')
+    expect(loaded?.nearest.length).toBeGreaterThan(0)
+    const hidden = await Content.publishedPlace('does-not-exist')
+    expect(hidden).toBeNull()
 
-describe('catalog and events', () => {
-  it('syncs a place twice and stores a consented event', async () => {
-    await Catalog.apply(snapshot)
-    await Catalog.apply(snapshot)
+    const stamped = loaded?.place.updatedAt
+    const pointsBefore = await useDatabase().select().from(routePoints)
+    const second = await applyInitialContent()
+    expect(second.skipped).toBe(true)
+    const reread = await Editor.placeBySlug('fort-11-denhoff')
+    expect(reread?.updatedAt).toBe(stamped)
+    expect(reread?.title).toBe(loaded?.place.title)
+    expect(await useDatabase().select().from(routePoints)).toEqual(pointsBefore)
 
-    const place = await Place.findBySlug('fort-11-denhoff')
-    expect(place?.title).toContain('Дёнхофф')
-    expect(place?.status).toBe('open')
-
-    const event = await EventLog.create({
-      type: 'page_view',
-      placeId: place?.id,
-      placeSlug: 'fort-11-denhoff',
-      sessionId: 'sess-test',
-      consent: true,
+    await Editor.savePlace({
+      slug: 'draft-only',
+      title: 'Черновик',
+      summary: 'Текст черновика, которого не должно быть в карте сайта.',
+      body: 'Черновик',
+      publicationStatus: 'draft',
     })
-    expect(event.consent).toBe(true)
-    expect(event.placeSlug).toBe('fort-11-denhoff')
-  })
+    const map = await Content.sitemapRows()
+    expect(map.places.some((row) => row.loc === '/fort-11-denhoff')).toBe(true)
+    expect(map.places.some((row) => row.loc === '/draft-only')).toBe(false)
+    expect(map.routes.some((row) => row.loc === '/marshruty/pyat-fortov')).toBe(true)
+    expect(map.quests.some((row) => row.loc === '/kvesty/pyat-fortov')).toBe(true)
 
-  it('creates a user from an email', async () => {
-    const created = await User.create({
-      email: `user-${crypto.randomUUID()}@example.com`,
-      name: 'Test User',
+    const edited = await Editor.savePlace({
+      id: reread?.id,
+      slug: 'fort-11-posle-pravki',
+      title: 'Правка редактора',
+      summary: reread?.summary ?? '',
+      body: 'Текст, который повторный запуск не должен затереть.',
+      status: reread?.status ?? 'unknown',
+      publicationStatus: 'draft',
+      sources: reread?.sources ?? [],
     })
-    expect(created.id).toBeTruthy()
-    const found = await User.findByEmail(created.email)
-    expect(found?.name).toBe('Test User')
+    const third = await applyInitialContent()
+    expect(third.skipped).toBe(true)
+    const survived = await Editor.placeById(edited.id)
+    expect(survived?.title).toBe('Правка редактора')
+    expect(survived?.slug).toBe('fort-11-posle-pravki')
+    expect(survived?.publicationStatus).toBe('draft')
+    expect(survived?.body).toContain('повторный запуск')
+    expect(survived?.updatedAt).toBe(edited.updatedAt)
+    expect(await Editor.placeBySlug('fort-11-denhoff')).toBeUndefined()
+    expect(await useDatabase().select().from(routePoints)).toEqual(pointsBefore)
+
+    await useDatabase().delete(contentImports).where(eq(contentImports.id, INITIAL_CONTENT_IMPORT_ID))
+    const fourth = await applyInitialContent()
+    expect(fourth.skipped).toBe(false)
+    const still = await Editor.placeById(edited.id)
+    expect(still?.title).toBe('Правка редактора')
+    expect(still?.publicationStatus).toBe('draft')
+    expect(still?.updatedAt).toBe(edited.updatedAt)
   })
 })

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by ADR 0007. Place copy now lives in Postgres, not in Nuxt Content.
 
 ## Context
 

@@ -20,7 +20,7 @@ const handler = defineOAuthVKEventHandler({
     })
 
     await setUserSession(event, {
-      user: { id: userInDb.id, email: userInDb.email },
+      user: { id: userInDb.id, email: userInDb.email, role: userInDb.role },
     })
 
     const redirectTo = getCookie(event, 'redirectTo')

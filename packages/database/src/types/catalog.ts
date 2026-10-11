@@ -1,4 +1,4 @@
-import type { PlaceStatus } from './entities'
+import type { VisitStatus } from './entities'
 
 export interface CatalogPlace {
   slug: string
@@ -6,7 +6,7 @@ export interface CatalogPlace {
   type: string
   latitude: number
   longitude: number
-  status: PlaceStatus
+  status: VisitStatus
   hours?: string | null
   sourceUrl?: string | null
   regionSlug: string

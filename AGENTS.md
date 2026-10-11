@@ -12,23 +12,25 @@ The UI and place articles are Russian. Docs, ADRs, and code comments are English
 
 Monorepo (pnpm):
 
-- `apps/web-app`: Nuxt 4, `@nuxt/ui`, `@nuxtjs/seo`, `@nuxt/content`, `nuxt-auth-utils`.
-- `packages/database`: Drizzle ORM and Postgres. Schema, repositories, SQL migrations.
+- `apps/web-app`: Nuxt 4, `@nuxt/ui`, `@nuxtjs/seo`, `nuxt-auth-utils`. No external CMS and no `@nuxt/content`.
+- `packages/database`: Drizzle ORM and Postgres. Schema, repositories, SQL migrations, initial seed.
 - `packages/types`: Zod schemas shared by the API.
 
-Place articles live in `apps/web-app/content/places/*.md` (frontmatter: slug, type, coordinates, status `open` | `ruins` | `unknown`, hours, source URL, region). Quest copy lives in `content/quests`. Offers, offer codes, and events live in Postgres.
+Published pages are server-rendered from Postgres. Place body is markdown text in the database. See ADR 0007, ADR 0008 and ADR 0009.
 
-The same places, the Kaliningrad region, the "five forts" route, and its quest steps are upserted into Postgres on boot from `apps/web-app/shared/data/catalog.json`, so offers and events can reference real rows. Regenerate markdown and the catalog with `node tools/build-place-content.mjs` after editing `apps/web-app/app/data/forts/objects.json`. To refresh that JSON from the static prototype, pass the prototype directory.
+URLs: `/{slug}` for a place, `/forty` `/zamki` `/plyazhi` `/kurorty` `/muzei` `/eda` for hubs, `/marshruty/{slug}`, `/podborki/{slug}`, `/kvesty/{slug}`. Regions are not in the path. Old `/place/*`, `/quest/*` and (while the map flag is off) `/map/*` 301 in one hop. Details and the crawl rules are in ADR 0008. Search console setup is in `docs/search-consoles.md`.
 
-The first illustrated map is the Konigsberg forts, served at `/map/kaliningrad`. The component file is `app/components/map/FortsMap.vue`. Nuxt prefixes that directory, so the tag is `<MapFortsMap>`, not `<FortsMap>`. Geometry is preprojected OpenStreetMap data (ODbL) in `app/data/forts/geo.json`.
+On boot the Nitro plugin migrates, then `applyInitialContent()` inserts categories, the 27 fort pages, one route, one collection and the five-fort quest if `content_imports` does not already contain `initial-content-v1`. A second boot skips that import. An empty `ADMIN_EMAILS` is fine: the site still serves public pages, and nobody is promoted to admin until that list is set. Later edits happen in `/admin` or, for drafts only, `POST`/`PATCH /api/content/places` with `Authorization: Bearer $CONTENT_API_TOKEN`.
 
-Auth is Yandex and VK OAuth only. Empty client id or secret disables that provider. The process still boots.
+The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`). It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve `/map/{region}` with `noindex`. Otherwise those URLs 301 to `/forty`.
 
-`POST /api/events` records an event. `useTrack()` sends one only after the visitor accepts the consent banner. The anonymous session id is an httpOnly cookie set on that request. Rows require `consent = true`. The table has no IP address and no account id.
+Auth is Yandex and VK OAuth. Empty client id or secret disables that provider. `ADMIN_EMAILS` promotes those accounts to `admin` on login. Editors and admins can open `/admin`.
+
+`POST /api/events` records an event. `useTrack()` sends one only after the visitor accepts the consent banner. The banner is `position: fixed` so it does not shift the page. Rows require `consent = true`. The table has no IP address and no account id.
 
 ## Conventions
 
-- User-facing UI copy and place/quest/legal content: Russian. Do not use em dashes in UI text.
+- User-facing UI copy and place/quest/legal content: Russian. Do not use em dashes in UI chrome. The HTML title template in ADR 0008 uses an em dash because that is the search snippet shape.
 - ADRs, this file, the README, code comments: English.
 - Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). Husky runs lint-staged and commitlint.
 - Architecture decisions: `docs/adr/NNNN-title.md`.
@@ -42,7 +44,7 @@ cp apps/web-app/.env.example apps/web-app/.env
 pnpm --filter @k39/web-app dev
 ```
 
-Dev server: http://localhost:3000. Without `DATABASE_URL` the content pages still render. With it, the Nitro plugin migrates and syncs the catalog before serving traffic.
+Dev server: http://localhost:3000. Public pages need `DATABASE_URL`. The plugin migrates and seeds before serving traffic.
 
 Generate a new migration after a schema change:
 
@@ -59,7 +61,7 @@ pnpm test
 pnpm --filter @k39/web-app build
 ```
 
-`pnpm test` runs the database suite and a web-app smoke test that renders the fort 11 place view and checks TouristAttraction JSON. Point `DATABASE_URL` at a local database to skip Docker. The suite drops the `public` schema of that database when the host is localhost. Do not point it at a shared database.
+`pnpm test` runs the database suite and web-app checks for titles, canonicals, JSON-LD, redirects, robots.txt and orphan links. Point `DATABASE_URL` at a local database to skip Docker. The suite drops the `public` and `drizzle` schemas of that database when the host is localhost. Do not point it at a shared database.
 
 ## Deploy
 
@@ -68,14 +70,15 @@ Target: Dokploy.
 - Dockerfile: `docker/web-app/Dockerfile`
 - Build context: repository root
 - The image enables pnpm with Corepack at the version in `packageManager` (`pnpm@10.25.0`). Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`.
-- The container user owns `/app`. Nuxt Content creates a sqlite file there on boot. If that directory is not writable, place pages 404.
+- The container runs as the image's `node` user (uid 1000). `node:24-alpine` already owns that uid, so the Dockerfile does not create another user. Mount a volume at `MEDIA_DIR` (`/app/media`) or uploads disappear on redeploy.
 - CI job `docker` in `.github/workflows/ci.yml` runs that image build on pull requests.
 - Port: 3000
 - Auto-deploy: push to `main`
 - Required env: `DATABASE_URL`, `NUXT_SESSION_PASSWORD` (32+ characters), `NODE_ENV=production`
-- Optional env: `NUXT_OAUTH_YANDEX_CLIENT_ID`, `NUXT_OAUTH_YANDEX_CLIENT_SECRET`, `NUXT_OAUTH_VK_CLIENT_ID`, `NUXT_OAUTH_VK_CLIENT_SECRET`
+- Optional env: OAuth client id/secret pairs, `ADMIN_EMAILS`, `CONTENT_API_TOKEN`, `FEATURE_MAP`, `NUXT_PUBLIC_YANDEX_VERIFICATION`, `NUXT_PUBLIC_GOOGLE_VERIFICATION`
+- Volume: mount a writable directory at `MEDIA_DIR` (image default `/app/media`, process uid 1000). Without the volume, uploads vanish on redeploy.
 
-There is no separate migration job. On boot the Nitro plugin (`server/plugins/01.database.ts`) runs Drizzle migrations from `MIGRATIONS_FOLDER` (the image sets `/app/migrations`) and then upserts the catalog. The migrate is idempotent.
+There is no separate migration job. On boot the Nitro plugin (`server/plugins/01.database.ts`) runs Drizzle migrations from `MIGRATIONS_FOLDER` (the image sets `/app/migrations`) and then applies the one-time content import. The migrate is idempotent. Search console steps are documented in `docs/search-consoles.md` and are not configured from this repo. Empty `NUXT_PUBLIC_YANDEX_VERIFICATION` and `NUXT_PUBLIC_GOOGLE_VERIFICATION` add no meta tags.
 
 `www.k39.online` returns 301 to `https://k39.online` plus the path and query. Other hosts are unchanged, so container health checks on localhost keep working.
 
@@ -85,10 +88,10 @@ Do not add Kubernetes manifests or GitHub Actions deploy workflows.
 
 ## Pages
 
-- `/place/[slug]`: article, source link, Yandex route link, `TouristAttraction` JSON-LD.
-- `/map/[region]`: illustrated forts map for `kaliningrad`. Other regions say the map is not drawn yet.
-- `/quest/[slug]`: quest steps linking to places.
-- `/sign-in`: Yandex and VK, or a disabled message.
-- `/legal/privacy-policy`.
+- `/{slug}`: place. Hub, nearest, same-region, routes, collections, manual related links. JSON-LD matches the category.
+- Hubs: `/forty`, `/zamki`, `/plyazhi`, `/kurorty`, `/muzei`, `/eda`.
+- `/marshruty`, `/podborki`, `/kvesty` and their slugs.
+- `/admin`: editors and admins. `/preview/{slug}` shows a draft to those users and is `noindex`.
+- `/sign-in`, `/legal/privacy-policy`.
 
-Sitemap source: `server/api/__sitemap__/urls.ts`.
+Sitemap source: `server/routes/sitemap-urls.get.ts` (published, indexable rows only). Robots: `public/robots.txt`, served as-is so the Yandex `Host` line stays.

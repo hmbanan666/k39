@@ -9,29 +9,26 @@ export type UserDraft = InferInsertModel<typeof tables.users>
 export type Region = InferSelectModel<typeof tables.regions>
 export type RegionDraft = InferInsertModel<typeof tables.regions>
 
+export type Category = InferSelectModel<typeof tables.categories>
+export type CategoryDraft = InferInsertModel<typeof tables.categories>
+
 export type Place = InferSelectModel<typeof tables.places>
 export type PlaceDraft = InferInsertModel<typeof tables.places>
+
+export type Media = InferSelectModel<typeof tables.media>
+export type MediaDraft = InferInsertModel<typeof tables.media>
 
 export type Route = InferSelectModel<typeof tables.routes>
 export type RouteDraft = InferInsertModel<typeof tables.routes>
 
-export type RoutePoint = InferSelectModel<typeof tables.routePoints>
-export type RoutePointDraft = InferInsertModel<typeof tables.routePoints>
-
 export type Quest = InferSelectModel<typeof tables.quests>
 export type QuestDraft = InferInsertModel<typeof tables.quests>
 
-export type QuestStep = InferSelectModel<typeof tables.questSteps>
-export type QuestStepDraft = InferInsertModel<typeof tables.questSteps>
+export type Collection = InferSelectModel<typeof tables.collections>
+export type CollectionDraft = InferInsertModel<typeof tables.collections>
 
-export type Business = InferSelectModel<typeof tables.businesses>
-export type BusinessDraft = InferInsertModel<typeof tables.businesses>
-
-export type Offer = InferSelectModel<typeof tables.offers>
-export type OfferDraft = InferInsertModel<typeof tables.offers>
-
-export type OfferCode = InferSelectModel<typeof tables.offerCodes>
-export type OfferCodeDraft = InferInsertModel<typeof tables.offerCodes>
+export type SlugRedirect = InferSelectModel<typeof tables.slugRedirects>
+export type SlugRedirectDraft = InferInsertModel<typeof tables.slugRedirects>
 
 export type EventLogRecord = InferSelectModel<typeof tables.events>
 export type EventLogDraft = InferInsertModel<typeof tables.events>

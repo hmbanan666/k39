@@ -28,13 +28,13 @@ COPY --from=builder /app/apps/web-app/.output .
 COPY --from=builder /app/packages/database/migrations /app/migrations
 COPY docker/web-app/health-check.sh ./
 
-# The process runs as appuser. Nuxt Content opens a sqlite file under /app at
-# boot, so that user has to own the workdir or place pages 404.
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup && \
-    chown -R appuser:appgroup /app && \
+# node:24-alpine already has user `node` (uid 1000). Adding another
+# uid 1000 fails the image build. Dokploy should mount a volume at
+# MEDIA_DIR if uploads must survive a redeploy.
+RUN mkdir -p /app/media && \
+    chown -R node:node /app && \
     chmod +x ./health-check.sh
-USER appuser
+USER node
 
 # Configuration
 ARG VERSION=nightly
@@ -45,7 +45,8 @@ ENV VERSION=${VERSION} \
     NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
-    MIGRATIONS_FOLDER=/app/migrations
+    MIGRATIONS_FOLDER=/app/migrations \
+    MEDIA_DIR=/app/media
 
 EXPOSE 3000
 

@@ -2,6 +2,7 @@ declare module '#auth-utils' {
   interface User {
     id: string
     email: string
+    role: 'user' | 'editor' | 'admin'
   }
 
   interface UserYandex {
