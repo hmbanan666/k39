@@ -48,12 +48,13 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `UiButton` | Primary, quiet, or sea. An `href` renders a plain `<a>`. |
 | `UiLink` | Text link, always an `<a href>`. |
 | `UiBadge` | Hub or status chip. Pass `href` when it navigates. |
+| `MediaImage` | `<picture>` for a processed place photo: AVIF and WebP srcset, LQIP background, focal point, credit line. SVG art stays when there is no cover. |
 | `Stamp` | Perforated postage frame (CSS mask). Optional picture and a short label. |
 | `Postcard` | Paper card: picture, caption strip, shadow. Tilt, corner stamp, and postmark only when those props are set. |
 | `PlaceCard` | A postcard for a place. Real media wins; otherwise the category SVG. No tilt and no stamp, so long lists stay quiet. |
 | `PostcardHero` | One `h1`, optional kicker and lede, breadcrumb nav. Text pages, not the place hero. |
 | `UiBreadcrumbs` | Visible crumbs. The same list is the BreadcrumbList JSON-LD. |
-| `SiteHeader` / `SiteFooter` | Logo mark, wordmark, hub pills. The active hub is highlighted. Админка is shown only to a logged-in admin. |
+| `SiteHeader` / `SiteFooter` | Logo mark, wordmark, hub pills. The header background is solid surface, sticky, with a bottom border. The active hub is highlighted. Админка is shown only to a logged-in admin. |
 | `NearbyList` | Nearest places, name plus kilometres. |
 | `RouteSteps` | Ordered stops. Each step is the place name. |
 | `PartnerOffer` | Only for a real active offer. |

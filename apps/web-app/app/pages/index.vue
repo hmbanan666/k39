@@ -16,14 +16,26 @@
       >
         <Postcard
           class="shot a"
-          :src="illustrationFor('forty')"
-          alt=""
+          :src="page.photo?.src || illustrationFor('forty')"
+          :alt="page.photo?.alt || ''"
           caption="Форты"
           meta="K39"
           tilt="-5deg"
           ratio="4 / 3"
           priority
-        />
+        >
+          <template
+            v-if="page.photo"
+            #art
+          >
+            <MediaImage
+              :media="page.photo"
+              priority
+              :show-credit="false"
+              sizes="(min-width: 980px) 440px, 100vw"
+            />
+          </template>
+        </Postcard>
         <Postcard
           class="shot b"
           :src="illustrationFor('kurorty')"
@@ -115,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 import { illustrationFor, POSTMARK_SRC } from '~~/shared/illustrations'
 
@@ -124,6 +137,7 @@ const page = await fetchPublic<{
   hubs: Array<{ href: string, title: string, summary: string }>
   route: { href: string, title: string, summary: string, steps: Array<{ href: string, text: string }> } | null
   quest: { href: string, title: string, summary: string } | null
+  photo: PublicMedia | null
 }>('/api/public/home')
 usePublicHead(page.doc)
 onMounted(() => useTrack().track('page_view'))

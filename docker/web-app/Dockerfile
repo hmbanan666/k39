@@ -27,13 +27,20 @@ WORKDIR /app
 COPY --from=builder /app/apps/web-app/.output .
 COPY --from=builder /app/packages/database/migrations /app/migrations
 COPY docker/web-app/health-check.sh ./
+# sharp is external to the Nitro bundle. The musl build is installed in the
+# builder (node:24-alpine) and copied here so runtime require('sharp') works.
+COPY --from=builder /app/node_modules/sharp /app/node_modules/sharp
+COPY --from=builder /app/node_modules/@img /app/node_modules/@img
+COPY --from=builder /app/node_modules/detect-libc /app/node_modules/detect-libc
+COPY --from=builder /app/node_modules/semver /app/node_modules/semver
 
 # node:24-alpine already has user `node` (uid 1000). Adding another
 # uid 1000 fails the image build. Dokploy should mount a volume at
 # MEDIA_DIR if uploads must survive a redeploy.
 RUN mkdir -p /app/media && \
     chown -R node:node /app && \
-    chmod +x ./health-check.sh
+    chmod +x ./health-check.sh && \
+    node -e "require('sharp')"
 USER node
 
 # Configuration

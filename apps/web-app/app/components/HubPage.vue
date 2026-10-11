@@ -17,6 +17,7 @@
         :title="place.title"
         :summary="place.summary"
         :kind="place.kind"
+        :media="place.media"
         :image="place.image"
       />
     </div>
@@ -28,13 +29,14 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 
 const props = defineProps<{ slug: string }>()
 const page = await fetchPublic<{
   doc: SeoDocument
   html: string
-  places: Array<{ href: string, title: string, summary: string, hub: string, hubHref: string, kind: string, image: { src: string, alt: string, width: number | null, height: number | null } | null }>
+  places: Array<{ href: string, title: string, summary: string, hub: string, hubHref: string, kind: string, media: PublicMedia | null, image: { src: string, alt: string, width: number | null, height: number | null } | null }>
   routes: { href: string, text: string }[]
 }>(`/api/public/hubs/${props.slug}`)
 usePublicHead(page.doc)

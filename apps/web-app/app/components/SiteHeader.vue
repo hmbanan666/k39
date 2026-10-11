@@ -57,7 +57,7 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
   min-height: 72px;
   padding: 0 1.25rem;
   border-bottom: 1px solid var(--color-line);
-  background: rgb(255 251 243 / 92%);
+  background-color: var(--color-surface);
 }
 .logo {
   display: flex;

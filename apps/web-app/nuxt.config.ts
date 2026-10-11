@@ -55,6 +55,9 @@ export default defineNuxtConfig({
   },
   nitro: {
     compressPublicAssets: true,
+    externals: {
+      external: ['sharp'],
+    },
   },
   modules: [
     'nuxt-auth-utils',

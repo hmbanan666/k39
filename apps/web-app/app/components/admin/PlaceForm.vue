@@ -116,6 +116,22 @@
         <div>k39.online/{{ form.slug }}</div>
         <p>{{ finalDescription }}</p>
       </div>
+      <section v-if="placeId">
+        <h2>Фотографии</h2>
+        <p>
+          <a :href="`/admin/media?place=${placeId}`">Открыть загрузку</a>
+        </p>
+        <ul class="shots">
+          <li
+            v-for="item in shots"
+            :key="item.media.id"
+          >
+            {{ item.media.alt }}<template v-if="item.isCover">
+              · обложка
+            </template>
+          </li>
+        </ul>
+      </section>
       <UiButton type="submit">
         Сохранить
       </UiButton>
@@ -153,6 +169,10 @@ interface AdminPlace {
 }
 
 const props = defineProps<{ placeId?: string }>()
+const shots = ref<Array<{ media: { id: string, alt: string }, isCover: boolean }>>([])
+if (props.placeId) {
+  shots.value = await ofetch(`/api/admin/media?placeId=${props.placeId}`)
+}
 const meta = await ofetch<{ categories: AdminCategory[] }>('/api/admin/meta')
 const places = props.placeId ? await ofetch<AdminPlace[]>('/api/admin/places') : []
 const current = places.find((item) => item.id === props.placeId)

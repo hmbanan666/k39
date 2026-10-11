@@ -16,3 +16,15 @@ export interface SourceLink {
   title: string
   url: string
 }
+
+export type MediaStatus = 'processing' | 'ready' | 'failed'
+
+export type MediaLicense = 'own' | 'cc-by' | 'cc-by-sa' | 'cc0' | 'pd' | 'permission'
+
+export interface MediaVariant {
+  format: 'avif' | 'webp' | 'jpeg'
+  width: number
+  height: number
+  bytes: number
+  file: string
+}

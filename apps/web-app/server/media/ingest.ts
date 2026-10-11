@@ -1,0 +1,90 @@
+import type { MediaLicense } from '@k39/database'
+import type { Buffer } from 'node:buffer'
+import { db } from '@k39/database'
+import { createId } from '@paralleldrive/cuid2'
+import { processImage, uploadProblem } from './process'
+import { withMediaSlot } from './semaphore'
+import { createLocalMediaStorage } from './storage'
+
+const VARIANT_FILES = ['master.webp', 'og.jpg', '320.avif', '320.webp', '640.avif', '640.webp', '960.avif', '960.webp', '1280.avif', '1280.webp', '1920.avif', '1920.webp']
+
+export async function removeStoredMedia(mediaId: string) {
+  const storage = createLocalMediaStorage()
+  await Promise.all(VARIANT_FILES.map((file) => storage.delete(`${mediaId}/${file}`)))
+}
+
+export async function ingestImage(input: {
+  bytes: Buffer
+  mime: string
+  filename: string
+  alt: string
+  author?: string | null
+  license?: MediaLicense | null
+  sourceUrl?: string | null
+  caption?: string | null
+  placeId?: string | null
+  isCover?: boolean
+}) {
+  const problem = uploadProblem(input.mime, input.filename, input.bytes.length)
+  if (problem) {
+    return { error: problem, statusCode: problem.includes('25') ? 413 : 400 }
+  }
+  if (!input.alt.trim()) {
+    return { error: 'Нужен alt.', statusCode: 400 }
+  }
+  const id = createId()
+  const storage = createLocalMediaStorage()
+  let processed
+  try {
+    processed = await withMediaSlot(() => processImage(input.bytes, id, storage))
+  } catch (error) {
+    await removeStoredMedia(id)
+    await db.editor.saveMedia({
+      id,
+      filename: 'master.webp',
+      mime: 'image/webp',
+      bytes: 0,
+      width: null,
+      height: null,
+      alt: input.alt.trim(),
+      status: 'failed',
+      placeId: input.placeId ?? null,
+    }).catch(() => undefined)
+    throw error
+  }
+  try {
+    const row = await db.editor.saveMedia({
+      id,
+      filename: processed.filename,
+      mime: processed.mime,
+      bytes: processed.bytes,
+      width: processed.width,
+      height: processed.height,
+      alt: input.alt.trim(),
+      author: input.author ?? null,
+      license: input.license ?? null,
+      sourceUrl: input.sourceUrl ?? null,
+      caption: input.caption ?? null,
+      placeId: input.placeId ?? null,
+      status: 'ready',
+      variants: processed.variants,
+      lqip: processed.lqip,
+      dominantColor: processed.dominantColor,
+    })
+    if (!row) {
+      throw new Error('Media insert failed')
+    }
+    if (input.placeId) {
+      await db.editor.attachMedia(input.placeId, row.id, { isCover: input.isCover })
+    }
+    return {
+      row,
+      warning: processed.sourceWidth < 1200
+        ? 'Исходник уже 1200 пикселей. Для крупной обложки лучше фото шире.'
+        : '',
+    }
+  } catch (error) {
+    await removeStoredMedia(id)
+    throw error
+  }
+}
