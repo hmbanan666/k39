@@ -1,10 +1,16 @@
 import type { AuthorKind, SourceLink, VisitStatus } from '../types/entities'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, routePoints, routes, slugRedirects } from '../tables'
+import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects } from '../tables'
 import initialContent from './initial-content.json'
 
 export const INITIAL_CONTENT_IMPORT_ID = 'initial-content-v1'
+export const DRAFT_BACKFILL_IMPORT_ID = 'initial-content-v2'
+
+const LEGACY_DRAFTS = [
+  { entityType: 'route', slug: 'five-forts', fromPath: '/marshruty/five-forts', toPath: '/marshruty/pyat-fortov' },
+  { entityType: 'quest', slug: 'five-forts', fromPath: '/kvesty/five-forts', toPath: '/kvesty/pyat-fortov' },
+] as const
 
 interface SeedPlace {
   slug: string
@@ -36,7 +42,17 @@ interface SeedFile {
 const seed = initialContent as SeedFile
 
 export async function applyInitialContent() {
-  if (await importAlreadyApplied()) {
+  const imported = await importFreshContent()
+  const backfill = await backfillUntouchedDrafts()
+  return {
+    places: imported.places,
+    skipped: imported.skipped && backfill.skipped,
+    filled: backfill.filled,
+  }
+}
+
+async function importFreshContent() {
+  if (await importAlreadyApplied(INITIAL_CONTENT_IMPORT_ID)) {
     return { places: 0, skipped: true }
   }
   const region = await insertRegion(seed.region)
@@ -59,13 +75,112 @@ export async function applyInitialContent() {
   for (const redirect of seed.redirects) {
     await insertRedirect(redirect.fromPath, redirect.toPath, redirect.statusCode)
   }
-  await useDatabase().insert(contentImports).values({ id: INITIAL_CONTENT_IMPORT_ID }).onConflictDoNothing()
+  await recordImport(INITIAL_CONTENT_IMPORT_ID)
   return { places: placeIds.size, skipped: false }
 }
 
-async function importAlreadyApplied() {
-  const [row] = await useDatabase().select({ id: contentImports.id }).from(contentImports).where(eq(contentImports.id, INITIAL_CONTENT_IMPORT_ID)).limit(1)
+async function backfillUntouchedDrafts() {
+  if (await importAlreadyApplied(DRAFT_BACKFILL_IMPORT_ID)) {
+    return { skipped: true, filled: 0 }
+  }
+  const region = await insertRegion(seed.region)
+  const categoryIds = new Map<string, string>()
+  for (const category of seed.categories) {
+    const row = await insertCategory(category)
+    categoryIds.set(category.slug, row.id)
+  }
+  let filled = 0
+  for (const place of seed.places) {
+    const wrote = await fillUntouchedDraft(place, region.id, categoryIds.get(place.categorySlug) ?? null)
+    if (wrote) {
+      filled += 1
+    }
+  }
+  await parkLegacyDrafts()
+  await recordImport(DRAFT_BACKFILL_IMPORT_ID)
+  return { skipped: false, filled }
+}
+
+async function fillUntouchedDraft(place: SeedPlace, regionId: string, categoryId: string | null) {
+  const db = useDatabase()
+  const [existing] = await db.select().from(places).where(eq(places.slug, place.slug)).limit(1)
+  if (!existing) {
+    await insertPlace(place, regionId, categoryId)
+    return true
+  }
+  if (!(await isUntouchedEmptyDraft(existing))) {
+    return false
+  }
+  await db.update(places).set({
+    title: place.title,
+    categoryId,
+    regionId,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    status: place.visitStatus,
+    hours: place.hours,
+    price: place.price,
+    howToGet: place.howToGet,
+    summary: place.summary,
+    body: place.body,
+    sources: place.sources,
+    authorKind: place.authorKind,
+    publicationStatus: 'published',
+    updatedAt: new Date().toISOString(),
+  }).where(eq(places.id, existing.id))
+  return true
+}
+
+async function isUntouchedEmptyDraft(row: { id: string, body: string | null, publicationStatus: string, updatedBy: string | null }) {
+  if (row.publicationStatus !== 'draft' || row.updatedBy) {
+    return false
+  }
+  if ((row.body ?? '').trim() !== '') {
+    return false
+  }
+  const [revision] = await useDatabase().select({ id: revisions.id }).from(revisions).where(and(
+    eq(revisions.entityType, 'place'),
+    eq(revisions.entityId, row.id),
+  )).limit(1)
+  return !revision
+}
+
+async function parkLegacyDrafts() {
+  for (const legacy of LEGACY_DRAFTS) {
+    const row = legacy.entityType === 'route'
+      ? await legacyRow(routes, legacy.slug)
+      : await legacyRow(quests, legacy.slug)
+    if (!row || row.publicationStatus !== 'draft' || row.updatedBy || (row.body ?? '').trim() !== '') {
+      continue
+    }
+    const [revision] = await useDatabase().select({ id: revisions.id }).from(revisions).where(and(
+      eq(revisions.entityType, legacy.entityType),
+      eq(revisions.entityId, row.id),
+    )).limit(1)
+    if (revision) {
+      continue
+    }
+    await insertRedirect(legacy.fromPath, legacy.toPath, 301)
+  }
+}
+
+async function legacyRow(table: typeof routes | typeof quests, slug: string) {
+  const [row] = await useDatabase().select({
+    id: table.id,
+    body: table.body,
+    publicationStatus: table.publicationStatus,
+    updatedBy: table.updatedBy,
+  }).from(table).where(eq(table.slug, slug)).limit(1)
+  return row
+}
+
+async function importAlreadyApplied(id: string) {
+  const [row] = await useDatabase().select({ id: contentImports.id }).from(contentImports).where(eq(contentImports.id, id)).limit(1)
   return Boolean(row)
+}
+
+async function recordImport(id: string) {
+  await useDatabase().insert(contentImports).values({ id }).onConflictDoNothing()
 }
 
 async function insertRegion(data: SeedFile['region']) {

@@ -12,7 +12,11 @@ Place copy used to live in `@nuxt/content` markdown, with a startup sync into a 
 
 Categories, regions, places, media metadata, routes, collections, quests, manual related links and slug redirects are Postgres tables. Place body is markdown text in a column, rendered by a small in-repo function. Files themselves sit on disk under `MEDIA_DIR`. Offers, offer codes and analytics events stay as they were.
 
-`@nuxt/content` is removed. `applyInitialContent()` inserts the 27 fort pages and the five-fort quest once. The run is recorded in `content_imports` under `initial-content-v1`. A later boot sees that row and writes nothing. If the marker is missing but rows already exist, the import only inserts missing slugs and never updates an existing row, so an admin edit, a slug rename, and `updated_at` survive. After the marker is written, Postgres is the editorial source of truth.
+`@nuxt/content` is removed. `applyInitialContent()` inserts the 27 fort pages and the five-fort quest once. The run is recorded in `content_imports` under `initial-content-v1`. A later boot sees that row and writes nothing. If the marker is missing but rows already exist, the import only inserts missing slugs and never updates an existing row, so an admin edit, a slug rename, and `updated_at` survive.
+
+Production already had those place slugs from the earlier catalog sync. Migration 0001 gave them `publication_status` default `draft` and an empty body, so v1 skipped them and then recorded the marker. `initial-content-v2` runs once after that. For each seeded slug it copies the seed article and sets `published` only when the row is still a draft, the body is empty, `updated_by` is null, and there is no revision. Any other row is left as saved.
+
+The old catalog route and quest use slug `five-forts`. The new pages are `pyat-fortov`. Those legacy rows stay drafts: deleting them can fail while a quest, route point, or offer still points at them. v2 adds 301s from `/marshruty/five-forts` and `/kvesty/five-forts` to the new slugs, and only when the legacy row is still an untouched empty draft. After the marker is written, Postgres is the editorial source of truth.
 
 Humans edit through `/admin`, gated by Yandex or VK login and `users.role` (`editor` or `admin`). Emails in `ADMIN_EMAILS` are promoted to admin on login. An agent may create and update drafts through `/api/content/*` with `CONTENT_API_TOKEN`. That API cannot set `published`.
 
