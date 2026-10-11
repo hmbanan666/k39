@@ -1,9 +1,9 @@
+import { adminRedirect } from '~~/shared/auth'
+
 export default defineNuxtRouteMiddleware(() => {
   const { loggedIn, user } = useUserSession()
-  if (!loggedIn.value) {
-    return navigateTo('/sign-in?redirectTo=/admin')
-  }
-  if (user.value?.role !== 'admin' && user.value?.role !== 'editor') {
-    return navigateTo('/')
+  const target = adminRedirect(loggedIn.value ? user.value : null)
+  if (target) {
+    return navigateTo(target)
   }
 })

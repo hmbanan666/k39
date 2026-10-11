@@ -1,4 +1,13 @@
+import process from 'node:process'
+import { ensureSessionPassword } from './server/utils/session-secret'
 import { brandHeadLinks } from './shared/seo'
+
+// Dev only: nuxt-auth-utils invents NUXT_SESSION_PASSWORD when it is missing.
+// Filling it here keeps a lone NUXT_APP_SECRET in charge. Production uses the
+// Nitro plugin, because this file does not run again in the container.
+if (process.env.NODE_ENV !== 'production') {
+  ensureSessionPassword()
+}
 
 export default defineNuxtConfig({
   devServer: {
