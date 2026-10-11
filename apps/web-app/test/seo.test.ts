@@ -1,11 +1,11 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import seed from '../../../packages/database/src/seed/initial-content.json'
 import { findOrphans, haversineKm, homeLinks, HUBS, SECTION_LINKS } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
 import { decideRedirect } from '../shared/redirects'
-import { collectionDocument, countH1, homeDocument, pageTitle, placeDocument, placeSchemaType, tuneRobots, verificationMeta } from '../shared/seo'
+import { collectionDocument, countH1, headFromDocument, homeDocument, pageTitle, placeDocument, placeSchemaType, tuneRobots, verificationMeta } from '../shared/seo'
 
 function assertDocument(doc: ReturnType<typeof homeDocument>, htmlBody: string) {
   expect(doc.title.length).toBeGreaterThan(10)
@@ -177,6 +177,47 @@ describe('redirects', () => {
     expect(chain).toEqual({ kind: 'redirect', location: 'https://k39.online/c' })
   })
 })
+
+describe('default social image', () => {
+  it('uses og-default.jpg until a page has its own cover', () => {
+    const home = homeDocument()
+    expect(home.ogImage).toMatchObject({
+      url: 'https://k39.online/og-default.jpg',
+      width: 1200,
+      height: 630,
+      alt: 'K39',
+      type: 'image/jpeg',
+    })
+    const homeHead = headFromDocument(home)
+    expect(metaContent(homeHead.meta, 'og:image')).toBe('https://k39.online/og-default.jpg')
+    expect(metaContent(homeHead.meta, 'og:image:width')).toBe('1200')
+    expect(metaContent(homeHead.meta, 'og:image:height')).toBe('630')
+    expect(metaContent(homeHead.meta, 'og:image:type')).toBe('image/jpeg')
+    expect(metaContent(homeHead.meta, 'twitter:image')).toBe('https://k39.online/og-default.jpg')
+
+    const cover = {
+      url: 'https://k39.online/media/fort.jpg',
+      width: 1200,
+      height: 800,
+      alt: 'Форт',
+    }
+    const place = placeDocument({ ...placeInput(), image: cover })
+    expect(place.ogImage.url).toBe(cover.url)
+    const placeHead = headFromDocument(place)
+    expect(metaContent(placeHead.meta, 'og:image')).toBe(cover.url)
+    expect(metaContent(placeHead.meta, 'og:image:type')).toBeUndefined()
+    expect(metaContent(placeHead.meta, 'twitter:image')).toBe(cover.url)
+
+    const pub = resolve(process.cwd(), 'apps/web-app/public')
+    expect(existsSync(resolve(pub, 'favicon.png'))).toBe(false)
+    expect(existsSync(resolve(pub, 'favicon.svg'))).toBe(false)
+    expect(existsSync(resolve(pub, 'og-default.jpg'))).toBe(true)
+  })
+})
+
+function metaContent(meta: ReadonlyArray<{ property?: string, name?: string, content: string }>, key: string) {
+  return meta.find((tag) => tag.property === key || tag.name === key)?.content
+}
 
 describe('verification meta', () => {
   it('omits empty search-console tokens', () => {

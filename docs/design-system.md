@@ -54,7 +54,7 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `PlaceCard` | A postcard for a place. Real media wins; otherwise the category SVG. No tilt and no stamp, so long lists stay quiet. |
 | `PostcardHero` | One `h1`, optional kicker and lede, breadcrumb nav. Text pages, not the place hero. |
 | `UiBreadcrumbs` | Visible crumbs. The same list is the BreadcrumbList JSON-LD. |
-| `SiteHeader` / `SiteFooter` | Logo mark, wordmark, hub pills. The header background is solid surface, sticky, with a bottom border. The active hub is highlighted. Админка is shown only to a logged-in admin. |
+| `SiteHeader` / `SiteFooter` | Moose head, then the plain-text wordmark K39, hub pills. The header background is solid surface, sticky, with a bottom border. The active hub is highlighted. Админка is shown only to a logged-in admin. |
 | `NearbyList` | Nearest places, name plus kilometres. |
 | `RouteSteps` | Ordered stops. Each step is the place name. |
 | `PartnerOffer` | Only for a real active offer. |

@@ -1,10 +1,11 @@
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
 export const DEFAULT_OG_IMAGE = {
-  url: `${SITE_ORIGIN}/favicon.png`,
-  width: 120,
-  height: 120,
+  url: `${SITE_ORIGIN}/og-default.jpg`,
+  width: 1200,
+  height: 630,
   alt: 'K39',
+  type: 'image/jpeg',
 }
 
 export const RESERVED_SLUGS = [
@@ -126,6 +127,7 @@ export interface SeoImage {
   width: number | null
   height: number | null
   alt: string
+  type?: string
 }
 
 export interface SeoDocument {
@@ -357,6 +359,7 @@ export function headFromDocument(doc: SeoDocument) {
       { property: 'og:image:alt', content: doc.ogImage.alt },
       ...(doc.ogImage.width ? [{ property: 'og:image:width', content: String(doc.ogImage.width) }] : []),
       ...(doc.ogImage.height ? [{ property: 'og:image:height', content: String(doc.ogImage.height) }] : []),
+      ...(doc.ogImage.type ? [{ property: 'og:image:type', content: doc.ogImage.type }] : []),
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: doc.title },
       { name: 'twitter:description', content: doc.description },

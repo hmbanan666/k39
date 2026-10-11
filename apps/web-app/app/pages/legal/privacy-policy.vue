@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { breadcrumbNode, metaDescription, pageTitle } from '~~/shared/seo'
+import { breadcrumbNode, DEFAULT_OG_IMAGE, metaDescription, pageTitle } from '~~/shared/seo'
 
 const sections = [
   {
@@ -38,7 +38,7 @@ const doc = {
   robots: 'index, follow',
   h1: 'Политика конфиденциальности',
   crumbs,
-  ogImage: { url: 'https://k39.online/favicon.png', width: 120, height: 120, alt: 'K39' },
+  ogImage: DEFAULT_OG_IMAGE,
   jsonLd: [breadcrumbNode(crumbs)],
 }
 usePublicHead(doc)

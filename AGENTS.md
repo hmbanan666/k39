@@ -16,6 +16,8 @@ Monorepo (pnpm):
 - `packages/database`: Drizzle ORM and Postgres. Schema, repositories, SQL migrations, initial seed.
 - `packages/types`: Zod schemas shared by the API.
 
+Brand files live in `apps/web-app/public/`: `favicon.ico` (16, 32 and 48), `favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `logo/moose-head` (png and webp, 1x and 2x), `logo/moose-head-512.webp`, `og-default.png`, `og-default.jpg`, and `site.webmanifest`. The source master is kept outside this repo. Do not regenerate or re-encode these binaries.
+
 Published pages are server-rendered from Postgres. Place body is markdown text in the database. See ADR 0007, ADR 0008 and ADR 0009.
 
 URLs: `/{slug}` for a place, `/forty` `/zamki` `/plyazhi` `/kurorty` `/muzei` `/eda` for hubs, `/marshruty/{slug}`, `/podborki/{slug}`, `/kvesty/{slug}`. Regions are not in the path. Old `/place/*`, `/quest/*` and (while the map flag is off) `/map/*` 301 in one hop. Details and the crawl rules are in ADR 0008. Search console setup is in `docs/search-consoles.md`.
