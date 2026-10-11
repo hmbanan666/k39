@@ -11,6 +11,7 @@
     "clean": "rm -rf .output",
     "clean:modules": "rm -rf .nuxt .output .data node_modules",
     "typecheck": "nuxt typecheck",
+    "media:rebuild": "jiti ./scripts/media-rebuild.ts",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "@vueuse/core": "catalog:integrations",
     "@vueuse/nuxt": "catalog:integrations",
     "reka-ui": "catalog:integrations",
+    "sharp": "catalog:integrations",
     "zod": "catalog:integrations"
   },
   "devDependencies": {

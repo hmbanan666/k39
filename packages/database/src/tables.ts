@@ -1,4 +1,4 @@
-import type { AuthorKind, OfferCodeStatus, OfferKind, OfferStatus, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
+import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
 import { cuid2 } from 'drizzle-cuid2/postgres'
 import { sql } from 'drizzle-orm'
 import { boolean, check, doublePrecision, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
@@ -90,7 +90,27 @@ export const media = pgTable('media', {
   sourceUrl: varchar('source_url'),
   placeId: cuid2('place_id').references(() => places.id, { onDelete: 'set null', onUpdate: 'cascade' }),
   sortOrder: integer('sort_order').notNull().default(0),
+  status: varchar('status').notNull().default('ready').$type<MediaStatus>(),
+  variants: jsonb('variants').$type<MediaVariant[]>().notNull().default(sql`'[]'::jsonb`),
+  lqip: text('lqip'),
+  dominantColor: varchar('dominant_color'),
+  focalX: doublePrecision('focal_x').notNull().default(0.5),
+  focalY: doublePrecision('focal_y').notNull().default(0.5),
+  license: varchar('license').$type<MediaLicense | null>(),
+  author: varchar('author'),
+  caption: text('caption'),
 })
+
+export const placeMedia = pgTable('place_media', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  placeId: cuid2('place_id').notNull().references(() => places.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  mediaId: cuid2('media_id').notNull().references(() => media.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isCover: boolean('is_cover').notNull().default(false),
+}, (table) => [
+  uniqueIndex('place_media_place_media').on(table.placeId, table.mediaId),
+  index('place_media_place_idx').on(table.placeId),
+])
 
 export const routes = pgTable('routes', {
   id: cuid2('id').defaultRandom().primaryKey(),

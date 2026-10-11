@@ -7,9 +7,19 @@
     caption-style="title"
     :caption="title"
     :meta="meta"
-    :width="image?.width || 640"
-    :height="image?.height || 400"
+    :width="image?.width || media?.width || 640"
+    :height="image?.height || media?.height || 400"
   >
+    <template
+      v-if="media"
+      #art
+    >
+      <MediaImage
+        :media="media"
+        :show-credit="false"
+        sizes="(min-width: 900px) 360px, 80vw"
+      />
+    </template>
     <p
       v-if="summary"
       class="summary"
@@ -20,6 +30,7 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicMedia } from '~~/shared/media'
 import { illustrationFor } from '~~/shared/illustrations'
 import { HUBS } from '~~/shared/links'
 
@@ -31,12 +42,14 @@ const props = withDefaults(defineProps<{
   distanceKm?: number | null
   kind?: string
   image?: { src: string, alt: string, width: number | null, height: number | null } | null
+  media?: PublicMedia | null
 }>(), {
   hub: '',
   summary: '',
   distanceKm: null,
   kind: '',
   image: null,
+  media: null,
 })
 
 const slug = computed(() => props.href.split('/').filter(Boolean).pop() || '')

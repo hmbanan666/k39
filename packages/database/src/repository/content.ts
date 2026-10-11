@@ -1,8 +1,8 @@
 import type { PlaceDraft } from '../types'
-import type { PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
+import type { MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, media, offers, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
+import { categories, collectionItems, collections, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
 
 const published = 'published' as const
 
@@ -42,7 +42,8 @@ export class Content {
     const [region] = place.regionId
       ? await db.select().from(regions).where(eq(regions.id, place.regionId)).limit(1)
       : []
-    const images = await db.select().from(media).where(eq(media.placeId, place.id)).orderBy(asc(media.sortOrder))
+    const gallery = await Content.galleryFor(place.id)
+    const images = gallery.map((item) => item.media)
     const nearest = place.latitude != null && place.longitude != null
       ? await this.nearest(place.latitude, place.longitude, place.slug, 5)
       : []
@@ -56,33 +57,70 @@ export class Content {
     const routeRows = await db.select({ slug: routes.slug, title: routes.title }).from(routePoints).innerJoin(routes, eq(routePoints.routeId, routes.id)).where(and(eq(routePoints.placeId, place.id), eq(routes.publicationStatus, published)))
     const collectionRows = await db.select({ slug: collections.slug, title: collections.title }).from(collectionItems).innerJoin(collections, eq(collectionItems.collectionId, collections.id)).where(and(eq(collectionItems.placeId, place.id), eq(collections.publicationStatus, published)))
     const related = await db.select({ slug: places.slug, title: places.title, anchor: relatedLinks.anchor }).from(relatedLinks).innerJoin(places, eq(relatedLinks.toPlaceId, places.id)).where(and(eq(relatedLinks.fromPlaceId, place.id), eq(places.publicationStatus, published))).orderBy(asc(relatedLinks.position))
-    return { place, category, region, images, nearest, sameRegion, routeRows, collectionRows, related }
+    return { place, category, region, images, gallery, nearest, sameRegion, routeRows, collectionRows, related }
+  }
+
+  static async galleryFor(placeId: string) {
+    const db = useDatabase()
+    const linked = await db.select({
+      sortOrder: placeMedia.sortOrder,
+      isCover: placeMedia.isCover,
+      media,
+    }).from(placeMedia).innerJoin(media, eq(placeMedia.mediaId, media.id)).where(eq(placeMedia.placeId, placeId)).orderBy(desc(placeMedia.isCover), asc(placeMedia.sortOrder))
+    if (linked.length) {
+      return linked
+    }
+    const legacy = await db.select().from(media).where(eq(media.placeId, placeId)).orderBy(asc(media.sortOrder))
+    return legacy.map((item, index) => ({
+      sortOrder: item.sortOrder,
+      isCover: index === 0,
+      media: item,
+    }))
   }
 
   static async coversFor(placeIds: string[]) {
     const ids = placeIds.filter(Boolean)
+    const map = new Map<string, typeof media.$inferSelect>()
     if (!ids.length) {
-      return new Map<string, { filename: string, alt: string, width: number | null, height: number | null }>()
+      return map
     }
-    const rows = await useDatabase().select({
-      placeId: media.placeId,
-      filename: media.filename,
-      alt: media.alt,
-      width: media.width,
-      height: media.height,
-    }).from(media).where(inArray(media.placeId, ids)).orderBy(asc(media.sortOrder))
-    const map = new Map<string, { filename: string, alt: string, width: number | null, height: number | null }>()
-    for (const row of rows) {
-      if (row.placeId && !map.has(row.placeId)) {
-        map.set(row.placeId, row)
+    const db = useDatabase()
+    const links = await db.select().from(placeMedia).where(inArray(placeMedia.placeId, ids)).orderBy(desc(placeMedia.isCover), asc(placeMedia.sortOrder))
+    const mediaIds = [...new Set(links.map((link) => link.mediaId))]
+    const rows = mediaIds.length
+      ? await db.select().from(media).where(inArray(media.id, mediaIds))
+      : []
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    for (const link of links) {
+      const row = byId.get(link.mediaId)
+      if (row && !map.has(link.placeId)) {
+        map.set(link.placeId, row)
+      }
+    }
+    const missing = ids.filter((id) => !map.has(id))
+    if (missing.length) {
+      const legacy = await db.select().from(media).where(inArray(media.placeId, missing)).orderBy(asc(media.sortOrder))
+      for (const row of legacy) {
+        if (row.placeId && !map.has(row.placeId)) {
+          map.set(row.placeId, row)
+        }
       }
     }
     return map
   }
 
+  static async mediaByIds(ids: string[]) {
+    const unique = [...new Set(ids.filter(Boolean))]
+    if (!unique.length) {
+      return []
+    }
+    return useDatabase().select().from(media).where(inArray(media.id, unique))
+  }
+
   static async nearest(lat: number, lng: number, excludeSlug: string, limit: number) {
     const result = await useDatabase().execute(sql`
       select p.slug, p.title, c.slug as category_slug,
+        p.id as place_id,
         (select m.filename from media m where m.place_id = p.id order by m.sort_order asc limit 1) as image_filename,
         (select m.alt from media m where m.place_id = p.id order by m.sort_order asc limit 1) as image_alt,
         (select m.width from media m where m.place_id = p.id order by m.sort_order asc limit 1) as image_width,
@@ -101,6 +139,7 @@ export class Content {
       limit ${limit}
     `)
     type NearestRow = {
+      place_id: string
       slug: string
       title: string
       distance_km: number
@@ -168,6 +207,7 @@ export class Content {
       id: places.id,
     }).from(places).where(visible)
     const images = await db.select().from(media)
+    const links = await db.select().from(placeMedia)
     const routeRows = await db.select({ slug: routes.slug, updatedAt: routes.updatedAt }).from(routes).where(and(eq(routes.publicationStatus, published), eq(routes.noindex, false)))
     const collectionRows = await db.select({ slug: collections.slug, updatedAt: collections.updatedAt }).from(collections).where(and(eq(collections.publicationStatus, published), eq(collections.noindex, false)))
     const questRows = await db.select({ slug: quests.slug, updatedAt: quests.updatedAt }).from(quests).where(and(eq(quests.publicationStatus, published), eq(quests.noindex, false)))
@@ -176,8 +216,8 @@ export class Content {
         loc: `/${row.slug}`,
         lastmod: row.updatedAt,
         title: row.title,
-        images: images.filter((image) => image.placeId === row.id).map((image) => ({
-          loc: `/media/${image.filename}`,
+        images: galleryImages(row.id, images, links).map((image) => ({
+          loc: mediaPublicPath(image),
           title: image.alt,
         })),
       })),
@@ -333,7 +373,86 @@ export class Editor {
     return updated
   }
 
+  static async listAllMedia() {
+    return useDatabase().select().from(media).orderBy(asc(media.createdAt))
+  }
+
+  static async mediaById(id: string) {
+    const [row] = await useDatabase().select().from(media).where(eq(media.id, id)).limit(1)
+    return row
+  }
+
+  static async updateMedia(id: string, data: Partial<{
+    filename: string
+    mime: string
+    bytes: number
+    width: number | null
+    height: number | null
+    alt: string
+    credit: string | null
+    sourceUrl: string | null
+    placeId: string | null
+    sortOrder: number
+    status: MediaStatus
+    variants: MediaVariant[]
+    lqip: string | null
+    dominantColor: string | null
+    focalX: number
+    focalY: number
+    license: MediaLicense | null
+    author: string | null
+    caption: string | null
+  }>) {
+    const [row] = await useDatabase().update(media).set({
+      ...data,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(media.id, id)).returning()
+    return row
+  }
+
+  static async deleteMedia(id: string) {
+    await useDatabase().delete(media).where(eq(media.id, id))
+  }
+
+  static async attachMedia(placeId: string, mediaId: string, options?: { sortOrder?: number, isCover?: boolean }) {
+    const db = useDatabase()
+    const existing = await db.select().from(placeMedia).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId))).limit(1)
+    if (options?.isCover) {
+      await db.update(placeMedia).set({ isCover: false }).where(eq(placeMedia.placeId, placeId))
+    }
+    if (existing[0]) {
+      const [row] = await db.update(placeMedia).set({
+        sortOrder: options?.sortOrder ?? existing[0].sortOrder,
+        isCover: options?.isCover ?? existing[0].isCover,
+      }).where(eq(placeMedia.id, existing[0].id)).returning()
+      return row
+    }
+    const [countRow] = await db.select({ value: sql<number>`count(*)::int` }).from(placeMedia).where(eq(placeMedia.placeId, placeId))
+    const [row] = await db.insert(placeMedia).values({
+      placeId,
+      mediaId,
+      sortOrder: options?.sortOrder ?? countRow?.value ?? 0,
+      isCover: options?.isCover ?? (countRow?.value ?? 0) === 0,
+    }).returning()
+    await db.update(media).set({ placeId, updatedAt: new Date().toISOString() }).where(eq(media.id, mediaId))
+    return row
+  }
+
+  static async reorderGallery(placeId: string, orderedIds: string[]) {
+    const db = useDatabase()
+    for (const [index, mediaId] of orderedIds.entries()) {
+      await db.update(placeMedia).set({ sortOrder: index }).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId)))
+    }
+  }
+
+  static async setCover(placeId: string, mediaId: string) {
+    const db = useDatabase()
+    await db.update(placeMedia).set({ isCover: false }).where(eq(placeMedia.placeId, placeId))
+    await db.update(placeMedia).set({ isCover: true }).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId)))
+  }
+
   static async saveMedia(data: {
+    id?: string
     filename: string
     mime: string
     bytes: number
@@ -344,24 +463,60 @@ export class Editor {
     sourceUrl?: string | null
     placeId?: string | null
     sortOrder?: number
+    status?: MediaStatus
+    variants?: MediaVariant[]
+    lqip?: string | null
+    dominantColor?: string | null
+    focalX?: number
+    focalY?: number
+    license?: MediaLicense | null
+    author?: string | null
+    caption?: string | null
   }) {
     const [row] = await useDatabase().insert(media).values({
+      ...(data.id ? { id: data.id } : {}),
       filename: data.filename,
       mime: data.mime,
       bytes: data.bytes,
       width: data.width,
       height: data.height,
       alt: data.alt,
-      credit: data.credit ?? null,
+      credit: data.credit ?? data.author ?? null,
       sourceUrl: data.sourceUrl ?? null,
       placeId: data.placeId ?? null,
       sortOrder: data.sortOrder ?? 0,
+      status: data.status ?? 'ready',
+      variants: data.variants ?? [],
+      lqip: data.lqip ?? null,
+      dominantColor: data.dominantColor ?? null,
+      focalX: data.focalX ?? 0.5,
+      focalY: data.focalY ?? 0.5,
+      license: data.license ?? null,
+      author: data.author ?? data.credit ?? null,
+      caption: data.caption ?? null,
     }).returning()
     if (!row) {
       throw new Error('Media insert failed')
     }
     return row
   }
+}
+
+function mediaPublicPath(image: { id: string, filename: string, variants: MediaVariant[] | null }) {
+  const variants = image.variants ?? []
+  if (variants.some((item) => item.file === 'og.jpg')) {
+    return `/media/${image.id}/og.jpg`
+  }
+  return `/media/${image.filename}`
+}
+
+function galleryImages(placeId: string, images: Array<typeof media.$inferSelect>, links: Array<typeof placeMedia.$inferSelect>) {
+  const linkedIds = links.filter((link) => link.placeId === placeId).map((link) => link.mediaId)
+  const fromJoin = images.filter((image) => linkedIds.includes(image.id))
+  if (fromJoin.length) {
+    return fromJoin
+  }
+  return images.filter((image) => image.placeId === placeId)
 }
 
 async function upsertRedirect(fromPath: string, toPath: string) {

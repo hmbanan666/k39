@@ -21,6 +21,7 @@
     "clean:modules": "pnpm -r run clean:modules && rm -rf node_modules",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
+    "media:rebuild": "pnpm --filter @k39/web-app media:rebuild",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check:full": "pnpm run lint:fix && pnpm run typecheck && pnpm vitest run",

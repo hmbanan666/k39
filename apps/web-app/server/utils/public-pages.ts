@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { homeLinks, HUBS } from '../../shared/links'
 import { renderMarkdown } from '../../shared/markdown'
+import { ogPath, toPublicMedia } from '../../shared/media'
 import { absoluteUrl, collectionDocument, homeDocument, placeDocument } from '../../shared/seo'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
@@ -30,6 +31,8 @@ export async function loadHome() {
   const cats = await db.content.categories()
   const forty = cats.find((item) => item.slug === 'forty')
   const featured = forty ? (await db.content.publishedPlacesByCategory(forty.id)).slice(0, 6) : []
+  const featuredCovers = await db.content.coversFor(featured.map((place) => place.id))
+  const photoRow = featured.map((place) => featuredCovers.get(place.id)).find((row) => row)
   const routes = await db.content.listPublishedRoutes()
   const firstRoute = routes[0] ? await db.content.publishedRoute(routes[0].slug) : null
   const quests = await db.content.listPublishedQuests()
@@ -67,6 +70,7 @@ export async function loadHome() {
           summary: quest.summary || '',
         }
       : null,
+    photo: photoRow ? toPublicMedia(photoRow) : null,
   }
 }
 
@@ -102,6 +106,7 @@ export async function loadHub(slug: string) {
         hub: category.title,
         hubHref: `/${category.slug}`,
         kind: category.slug,
+        media: cover ? toPublicMedia(cover) : null,
         image: cover
           ? mediaImage({ filename: cover.filename, alt: cover.alt, width: cover.width, height: cover.height })
           : null,
@@ -116,20 +121,25 @@ export async function loadPlace(slug: string, page = 1) {
   if (!loaded?.category) {
     return null
   }
-  const images = loaded.images.map(mediaImage)
-  const listed = images[0]
-    ? { url: images[0].url, width: images[0].width, height: images[0].height, alt: images[0].alt }
+  const gallery = loaded.gallery.map((item) => ({ ...toPublicMedia(item.media), isCover: item.isCover }))
+  const cover = gallery.find((item) => item.isCover) ?? gallery[0] ?? null
+  const images = gallery.map((item) => ({
+    src: item.src,
+    url: absoluteUrl(ogPath(item)),
+    alt: item.alt,
+    width: item.width,
+    height: item.height,
+  }))
+  const listed = cover
+    ? { url: absoluteUrl(ogPath(cover)), width: cover.width, height: cover.height, alt: cover.alt || loaded.place.title }
     : null
   const ogImage = loaded.place.ogImage
-  const matched = ogImage
-    ? images.find((image) => image.src === ogImage || image.url === absoluteUrl(ogImage))
-    : undefined
   const image = ogImage
     ? {
         url: absoluteUrl(ogImage),
-        width: matched?.width ?? null,
-        height: matched?.height ?? null,
-        alt: matched?.alt || loaded.place.title,
+        width: listed?.width ?? null,
+        height: listed?.height ?? null,
+        alt: listed?.alt || loaded.place.title,
       }
     : listed
   const doc = placeDocument({
@@ -147,8 +157,15 @@ export async function loadPlace(slug: string, page = 1) {
     noindex: loaded.place.noindex,
     sources: loaded.place.sources ?? [],
     image,
+    images: gallery.map((item) => ({
+      url: absoluteUrl(ogPath(item)),
+      width: item.width,
+      height: item.height,
+      alt: item.alt || loaded.place.title,
+    })),
     page,
   })
+  const nearCovers = await db.content.coversFor(loaded.nearest.map((item) => item.place_id))
   const groups = [
     { title: loaded.category.title, links: [{ href: `/${loaded.category.slug}`, text: loaded.category.title }] },
     { title: 'Рядом', links: loaded.nearest.slice(0, 3).map((item) => ({
@@ -156,14 +173,7 @@ export async function loadPlace(slug: string, page = 1) {
       text: item.title,
       distanceKm: Number(item.distance_km),
       kind: item.category_slug,
-      image: item.image_filename
-        ? {
-            src: `/media/${item.image_filename}`,
-            alt: item.image_alt || item.title,
-            width: item.image_width,
-            height: item.image_height,
-          }
-        : null,
+      media: nearCovers.get(item.place_id) ? toPublicMedia(nearCovers.get(item.place_id)!) : null,
     })) },
     loaded.region
       ? { title: `Ещё в регионе ${loaded.region.title}`, links: loaded.sameRegion.map((item) => ({ href: `/${item.slug}`, text: item.title })) }
@@ -202,6 +212,8 @@ export async function loadPlace(slug: string, page = 1) {
     offers: await db.content.activeOffers(loaded.place.id),
     region: loaded.region,
     images,
+    gallery,
+    cover,
     groups,
     routeBand,
     sources: loaded.place.sources ?? [],

@@ -15,9 +15,20 @@
         stamp-place="out"
         postmark
         priority
-        :width="page.images[0]?.width || 1200"
-        :height="page.images[0]?.height || 700"
-      />
+        :width="page.cover?.width || 1200"
+        :height="page.cover?.height || 700"
+      >
+        <template
+          v-if="page.cover"
+          #art
+        >
+          <MediaImage
+            :media="page.cover"
+            priority
+            sizes="(min-width: 1000px) 720px, 100vw"
+          />
+        </template>
+      </Postcard>
       <div class="hero-copy">
         <p class="kicker">
           {{ page.categoryTitle }}<template v-if="page.region">
@@ -172,6 +183,20 @@
       </aside>
     </div>
     <section
+      v-if="page.gallery.length"
+      class="gallery"
+    >
+      <h2>Фотографии</h2>
+      <div class="gallery-grid">
+        <MediaImage
+          v-for="item in page.gallery"
+          :key="item.id"
+          :media="item"
+          sizes="(min-width: 900px) 360px, 100vw"
+        />
+      </div>
+    </section>
+    <section
       v-if="nearby"
       class="nearby-block"
     >
@@ -184,7 +209,7 @@
           :title="link.text"
           :distance-km="link.distanceKm"
           :kind="link.kind || ''"
-          :image="link.image"
+          :media="link.media"
         />
       </div>
     </section>
@@ -208,6 +233,7 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 import { illustrationFor } from '~~/shared/illustrations'
 
@@ -216,7 +242,7 @@ interface PlaceLink {
   text: string
   distanceKm?: number | null
   kind?: string | null
-  image?: { src: string, alt: string, width: number | null, height: number | null } | null
+  media?: PublicMedia | null
 }
 interface PlacePage {
   doc: SeoDocument
@@ -233,7 +259,9 @@ interface PlacePage {
   categoryTitle: string
   categorySlug: string
   region: { title: string } | null
-  images: Array<{ src: string, alt: string, width: number | null, height: number | null }>
+  images: Array<{ src: string, url: string, alt: string, width: number | null, height: number | null }>
+  gallery: PublicMedia[]
+  cover: PublicMedia | null
   groups: Array<{ title: string, links: PlaceLink[] }>
   sources: Array<{ title: string, url: string }>
   offers: Array<{ title: string, terms: string }>
@@ -250,8 +278,8 @@ const route = useRoute()
 const slug = String(route.params.slug || '')
 const pageQuery = Number(route.query.page ?? 1)
 const page = await fetchPublic<PlacePage>(`/api/public/places/${slug}`, { page: Number.isFinite(pageQuery) ? pageQuery : 1 })
-const heroSrc = page.images[0]?.src || illustrationFor(page.categorySlug, slug)
-const heroAlt = page.images[0]?.alt || page.doc.h1
+const heroSrc = page.cover?.src || illustrationFor(page.categorySlug, slug)
+const heroAlt = page.cover?.alt || page.doc.h1
 const statusLabel = ({ open: 'открыт', ruins: 'руины', closed: 'закрыт', unknown: 'статус неизвестен' } as Record<string, string>)[page.place.status] || page.place.status
 const statusHint = ({
   open: 'По источникам сюда пускают посетителей.',
@@ -345,6 +373,11 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 }
 .fact a { font-weight: 600; }
 .offers { display: flex; flex-direction: column; gap: 1rem; }
+.gallery { margin-top: 2.5rem; }
+.gallery-grid {
+  display: grid;
+  gap: 1rem;
+}
 .nearby-block { margin-top: 3rem; }
 .nearby-block h2 { margin-bottom: 1rem; }
 .nearby {
@@ -382,6 +415,9 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 @media (max-width: 999px) {
   .aside { display: contents; }
   .facts { order: -1; }
+}
+@media (min-width: 720px) {
+  .gallery-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (min-width: 900px) {
   .nearby {

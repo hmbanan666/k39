@@ -24,7 +24,12 @@
       width="260"
       height="140"
     >
+    <slot
+      v-if="$slots.art"
+      name="art"
+    />
     <img
+      v-else
       class="art"
       :src="src"
       :alt="alt"

@@ -214,6 +214,7 @@ export interface PlaceSeoInput {
   noindex?: boolean
   sources: Array<{ title: string, url: string }>
   image?: SeoImage | null
+  images?: SeoImage[]
   page?: number
 }
 
@@ -233,7 +234,7 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     'name': input.title,
     'description': description,
     'url': absoluteUrl(path),
-    'image': image.url,
+    'image': input.images?.length ? input.images.map((item) => item.url) : image.url,
   }
   if (input.latitude != null && input.longitude != null) {
     node.geo = {
