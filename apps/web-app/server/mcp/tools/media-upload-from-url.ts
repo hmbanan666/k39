@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import { ingestImage } from '../../media/ingest'
 import { fetchPublicImage } from '../../media/public-url'
-import { auditMcp } from '../audit'
-import { license } from '../schemas'
+import { auditMcp } from '../../utils/mcp/audit'
+import { license } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'media_upload_from_url',

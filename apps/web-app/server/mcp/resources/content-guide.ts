@@ -1,4 +1,4 @@
-import { CONTENT_GUIDE } from '../guide'
+import { CONTENT_GUIDE } from '../../utils/mcp/guide'
 
 export default defineMcpResource({
   name: 'content_guide',

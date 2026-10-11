@@ -1,6 +1,6 @@
 import process from 'node:process'
-import { takeContentSlot } from '../mcp/rate-limit'
 import { requireContentToken } from '../utils/access'
+import { takeContentSlot } from '../utils/mcp/rate-limit'
 
 export default defineEventHandler((event) => {
   const path = getRequestURL(event).pathname

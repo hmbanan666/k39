@@ -1,8 +1,8 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { slugError } from '../../../shared/seo'
-import { auditMcp } from '../audit'
-import { draftStatus } from '../draft'
+import { auditMcp } from '../../utils/mcp/audit'
+import { draftStatus } from '../../utils/mcp/draft'
 
 export default defineMcpTool({
   name: 'route_draft_create',

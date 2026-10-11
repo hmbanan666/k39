@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import { downloadWikimedia } from '../../media/commons'
 import { ingestImage } from '../../media/ingest'
-import { auditMcp } from '../audit'
-import { license } from '../schemas'
+import { auditMcp } from '../../utils/mcp/audit'
+import { license } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'commons_import',

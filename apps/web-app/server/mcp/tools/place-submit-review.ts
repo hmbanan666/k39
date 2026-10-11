@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { submitPlaceReview } from '../places'
+import { submitPlaceReview } from '../../utils/mcp/places'
 
 export default defineMcpTool({
   name: 'place_submit_review',

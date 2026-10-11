@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { draftStatus } from '../server/mcp/draft'
-import { createPlaceDraft } from '../server/mcp/places'
-import { resetContentSlots, takeContentSlot } from '../server/mcp/rate-limit'
 import { contentAuthFailure } from '../server/utils/access'
+import { draftStatus } from '../server/utils/mcp/draft'
+import { createPlaceDraft } from '../server/utils/mcp/places'
+import { resetContentSlots, takeContentSlot } from '../server/utils/mcp/rate-limit'
 
 describe('content MCP auth', () => {
   const previous = process.env.CONTENT_API_TOKEN

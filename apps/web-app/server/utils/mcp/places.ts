@@ -1,6 +1,6 @@
 import type { VisitStatus } from '@k39/database'
 import { db } from '@k39/database'
-import { slugError } from '../../shared/seo'
+import { slugError } from '../../../shared/seo'
 import { auditMcp } from './audit'
 import { draftStatus } from './draft'
 

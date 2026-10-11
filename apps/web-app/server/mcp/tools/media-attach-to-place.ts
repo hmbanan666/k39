@@ -1,6 +1,6 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
-import { auditMcp } from '../audit'
+import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
   name: 'media_attach_to_place',

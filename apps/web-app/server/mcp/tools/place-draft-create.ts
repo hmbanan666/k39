@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { createPlaceDraft } from '../places'
-import { placeFields } from '../schemas'
+import { createPlaceDraft } from '../../utils/mcp/places'
+import { placeFields } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'place_draft_create',

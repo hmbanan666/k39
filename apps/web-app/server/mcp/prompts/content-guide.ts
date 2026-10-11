@@ -1,4 +1,4 @@
-import { contentGuideMessages } from '../guide'
+import { contentGuideMessages } from '../../utils/mcp/guide'
 
 export default defineMcpPrompt({
   name: 'content_guide',
