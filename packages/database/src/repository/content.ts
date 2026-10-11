@@ -347,6 +347,29 @@ export class Editor {
     return useDatabase().select().from(routes).orderBy(asc(routes.title))
   }
 
+  static async listQuests() {
+    return useDatabase().select().from(quests).orderBy(asc(quests.title))
+  }
+
+  static async questById(id: string) {
+    const [row] = await useDatabase().select().from(quests).where(eq(quests.id, id)).limit(1)
+    return row
+  }
+
+  static async questBySlug(slug: string) {
+    const [row] = await useDatabase().select().from(quests).where(eq(quests.slug, slug)).limit(1)
+    return row
+  }
+
+  static async questStepsFor(questId: string) {
+    return useDatabase().select({
+      slug: places.slug,
+      title: questSteps.title,
+      prompt: questSteps.prompt,
+      position: questSteps.position,
+    }).from(questSteps).innerJoin(places, eq(questSteps.placeId, places.id)).where(eq(questSteps.questId, questId)).orderBy(asc(questSteps.position))
+  }
+
   static async listCollections() {
     return useDatabase().select().from(collections).orderBy(asc(collections.title))
   }
@@ -417,6 +440,68 @@ export class Editor {
     }
     const [updated] = await db.update(collections).set(values).where(eq(collections.id, existing.id)).returning()
     return updated ?? existing
+  }
+
+  static async saveQuest(data: {
+    id?: string
+    slug: string
+    title: string
+    summary?: string | null
+    body?: string
+    publicationStatus?: PublicationStatus
+    seoTitle?: string | null
+    seoDescription?: string | null
+    ogImage?: string | null
+    noindex?: boolean
+    routeId?: string | null
+    steps?: Array<{ placeSlug: string, title: string, prompt?: string | null }>
+  }, userId?: string | null) {
+    const db = useDatabase()
+    const [existing] = data.id
+      ? await db.select().from(quests).where(eq(quests.id, data.id)).limit(1)
+      : await db.select().from(quests).where(eq(quests.slug, data.slug)).limit(1)
+    if (existing && existing.slug !== data.slug) {
+      await upsertRedirect(`/kvesty/${existing.slug}`, `/kvesty/${data.slug}`)
+    }
+    const values = {
+      slug: data.slug,
+      title: data.title,
+      summary: data.summary ?? existing?.summary ?? null,
+      body: data.body ?? existing?.body ?? '',
+      publicationStatus: data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
+      seoTitle: data.seoTitle ?? existing?.seoTitle ?? null,
+      seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,
+      ogImage: data.ogImage ?? existing?.ogImage ?? null,
+      noindex: data.noindex ?? existing?.noindex ?? false,
+      routeId: data.routeId === undefined ? existing?.routeId ?? null : data.routeId,
+      updatedBy: userId ?? null,
+      updatedAt: new Date().toISOString(),
+    }
+    const row = existing
+      ? (await db.update(quests).set(values).where(eq(quests.id, existing.id)).returning())[0] ?? existing
+      : (await db.insert(quests).values(values).returning())[0]
+    if (!row) {
+      throw new Error('Quest insert failed')
+    }
+    if (data.steps) {
+      await db.delete(questSteps).where(eq(questSteps.questId, row.id))
+      let position = 1
+      for (const step of data.steps) {
+        const [place] = await db.select({ id: places.id }).from(places).where(eq(places.slug, step.placeSlug)).limit(1)
+        if (!place) {
+          throw new Error(`Place not found: ${step.placeSlug}`)
+        }
+        await db.insert(questSteps).values({
+          questId: row.id,
+          placeId: place.id,
+          position,
+          title: step.title,
+          prompt: step.prompt ?? null,
+        })
+        position += 1
+      }
+    }
+    return row
   }
 
   static async saveCategory(id: string, data: { title: string, description: string, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean }) {

@@ -13,7 +13,7 @@ export const placeFields = {
   title: z.string().optional().describe('Visible Russian title'),
   categorySlug: z.string().optional().describe('Hub slug: forty, zamki, plyazhi, kurorty, muzei, eda'),
   status: visit.describe('Visit status'),
-  publicationStatus: publication.describe('draft or review. published is rejected'),
+  publicationStatus: publication.describe('draft, review, or published. Same values as the admin form'),
   summary: z.string().optional(),
   body: z.string().optional().describe('Markdown body'),
   hours: z.string().nullable().optional(),

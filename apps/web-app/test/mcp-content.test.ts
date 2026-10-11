@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { contentAuthFailure } from '../server/utils/access'
-import { draftStatus } from '../server/utils/mcp/draft'
-import { createPlaceDraft } from '../server/utils/mcp/places'
+import { normalizePublication } from '../server/utils/mcp/draft'
 import { resetContentSlots, takeContentSlot } from '../server/utils/mcp/rate-limit'
 
 describe('content MCP auth', () => {
@@ -33,17 +32,13 @@ describe('content MCP auth', () => {
   })
 })
 
-describe('place draft writes', () => {
-  it('refuses to publish and allows review', async () => {
-    expect(draftStatus(undefined)).toBe('draft')
-    expect(draftStatus('review')).toBe('review')
-    expect(draftStatus('draft', 'review')).toBe('draft')
-    expect(() => draftStatus('published')).toThrowError()
-    expect(() => draftStatus('review', 'published')).toThrowError()
-    await expect(createPlaceDraft({
-      slug: 'mcp-test',
-      title: 'Проверка',
-      publicationStatus: 'published',
-    })).rejects.toMatchObject({ statusCode: 400 })
+describe('publication status', () => {
+  it('allows publish and unpublish with the same statuses as the admin form', () => {
+    expect(normalizePublication(undefined)).toBe('draft')
+    expect(normalizePublication('published')).toBe('published')
+    expect(normalizePublication('draft', 'published')).toBe('draft')
+    expect(normalizePublication('review', 'published')).toBe('review')
+    expect(normalizePublication(undefined, 'published')).toBe('published')
+    expect(() => normalizePublication('archived')).toThrowError()
   })
 })

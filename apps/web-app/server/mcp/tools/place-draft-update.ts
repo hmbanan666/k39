@@ -4,7 +4,7 @@ import { placeFields } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'place_draft_update',
-  description: 'Update a draft or in-review place. Published pages are left unchanged.',
+  description: 'Update a place, including one that is already published. publicationStatus may be draft, review, or published.',
   inputSchema: {
     id: z.string().optional(),
     ...placeFields,

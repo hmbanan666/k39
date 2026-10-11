@@ -3,7 +3,7 @@ import { submitPlaceReview } from '../../utils/mcp/places'
 
 export default defineMcpTool({
   name: 'place_submit_review',
-  description: 'Move a draft place to review. Does not publish.',
+  description: 'Move a place to review. Does not by itself publish.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string().optional(),

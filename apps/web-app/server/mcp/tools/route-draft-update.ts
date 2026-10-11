@@ -2,11 +2,11 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { slugError } from '../../../shared/seo'
 import { auditMcp } from '../../utils/mcp/audit'
-import { draftStatus } from '../../utils/mcp/draft'
+import { normalizePublication } from '../../utils/mcp/draft'
 
 export default defineMcpTool({
   name: 'route_draft_update',
-  description: 'Update a draft or in-review route. Published routes are left unchanged.',
+  description: 'Update a route, including one that is already published.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string().optional(),
@@ -19,11 +19,13 @@ export default defineMcpTool({
   },
   handler: async (input) => {
     const rows = await db.editor.listRoutes()
-    const current = rows.find((item) => item.id === input.id || item.slug === input.slug)
+    const current = input.id
+      ? rows.find((item) => item.id === input.id)
+      : rows.find((item) => item.slug === input.slug)
     if (!current) {
       throw createError({ statusCode: 404, statusMessage: 'Маршрут не найден' })
     }
-    const publicationStatus = draftStatus(input.publicationStatus, current.publicationStatus)
+    const publicationStatus = normalizePublication(input.publicationStatus, current.publicationStatus)
     const slug = input.slug || current.slug
     const problem = slugError(slug)
     if (problem) {

@@ -2,7 +2,7 @@ import type { VisitStatus } from '@k39/database'
 import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
 import { auditMcp } from './audit'
-import { draftStatus } from './draft'
+import { normalizePublication } from './draft'
 
 const VISIT = new Set(['open', 'ruins', 'closed', 'unknown'])
 
@@ -57,7 +57,7 @@ async function categoryId(slug: string | undefined, fallback: string | null) {
 }
 
 export async function createPlaceDraft(input: PlaceDraftInput) {
-  const publicationStatus = draftStatus(input.publicationStatus)
+  const publicationStatus = normalizePublication(input.publicationStatus)
   const slug = String(input.slug || '')
   const problem = slugError(slug)
   if (problem || !input.title?.trim()) {
@@ -87,7 +87,7 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
   return compactPlace(row!)
 }
 
-export async function updatePlaceDraft(input: PlaceDraftInput) {
+export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'place_draft_update') {
   const current = input.id
     ? await db.editor.placeById(input.id)
     : input.slug
@@ -96,7 +96,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput) {
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
   }
-  const publicationStatus = draftStatus(input.publicationStatus, current.publicationStatus)
+  const publicationStatus = normalizePublication(input.publicationStatus, current.publicationStatus)
   const slug = input.slug || current.slug
   const problem = slugError(slug)
   if (problem) {
@@ -124,7 +124,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput) {
     noindex: input.noindex ?? current.noindex,
     authorKind: current.authorKind,
   })
-  await auditMcp('place_draft_update', 'place', current.id)
+  await auditMcp(auditTool, 'place', current.id)
   return compactPlace(row!)
 }
 
@@ -137,7 +137,6 @@ export async function submitPlaceReview(input: { id?: string, slug?: string }) {
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
   }
-  draftStatus('review', current.publicationStatus)
   const row = await db.editor.savePlace({
     id: current.id,
     slug: current.slug,

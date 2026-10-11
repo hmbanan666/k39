@@ -2,11 +2,11 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { slugError } from '../../../shared/seo'
 import { auditMcp } from '../../utils/mcp/audit'
-import { draftStatus } from '../../utils/mcp/draft'
+import { normalizePublication } from '../../utils/mcp/draft'
 
 export default defineMcpTool({
   name: 'route_draft_create',
-  description: 'Create a route draft. Does not publish.',
+  description: 'Create a route. publicationStatus may be draft, review, or published. A slug rename writes a 301 from /marshruty/old.',
   inputSchema: {
     slug: z.string(),
     title: z.string(),
@@ -17,7 +17,7 @@ export default defineMcpTool({
     seoDescription: z.string().nullable().optional(),
   },
   handler: async (input) => {
-    const publicationStatus = draftStatus(input.publicationStatus)
+    const publicationStatus = normalizePublication(input.publicationStatus)
     const problem = slugError(input.slug)
     if (problem) {
       throw createError({ statusCode: 400, statusMessage: problem })
