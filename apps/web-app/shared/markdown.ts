@@ -1,3 +1,5 @@
+import { externalLinkAttrs } from './links'
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')
@@ -6,10 +8,16 @@ function escapeHtml(value: string) {
     .replace(/"/g, '&quot;')
 }
 
+function anchor(label: string, href: string) {
+  const attrs = externalLinkAttrs(href)
+  const extra = attrs.target ? ` target="${attrs.target}" rel="${attrs.rel}"` : ''
+  return `<a href="${href}"${extra}>${label}</a>`
+}
+
 function inline(value: string) {
   const safe = escapeHtml(value)
   return safe
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, (_match, label: string, href: string) => anchor(label, href))
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
 }

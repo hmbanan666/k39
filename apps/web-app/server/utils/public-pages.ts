@@ -1,7 +1,7 @@
 import { db } from '@k39/database'
 import { homeLinks, HUBS } from '../../shared/links'
 import { renderMarkdown } from '../../shared/markdown'
-import { ogPath, toPublicMedia } from '../../shared/media'
+import { describedAlt, ogPath, toPublicMedia } from '../../shared/media'
 import { absoluteUrl, collectionDocument, homeDocument, placeDocument, stripRepeatedLead } from '../../shared/seo'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
@@ -161,7 +161,10 @@ export async function loadPlace(slug: string, page = 1) {
       url: absoluteUrl(ogPath(item)),
       width: item.width,
       height: item.height,
-      alt: item.alt || loaded.place.title,
+      alt: describedAlt(item.alt || loaded.place.title, item.author, item.license),
+      author: item.author,
+      license: item.license,
+      sourceUrl: item.sourceUrl,
     })),
     page,
     body: loaded.place.body,

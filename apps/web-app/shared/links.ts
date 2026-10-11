@@ -23,6 +23,40 @@ export const SECTION_LINKS: TextLink[] = [
   { href: '/kvesty', text: 'Квесты' },
 ]
 
+const SITE_HOSTS = new Set(['k39.online', 'www.k39.online'])
+
+export function isExternalHref(href: string) {
+  if (!href || href.startsWith('#') || href.startsWith('/') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+    return false
+  }
+  try {
+    const url = new URL(href, 'https://k39.online')
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return false
+    }
+    return !SITE_HOSTS.has(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+export function externalLinkAttrs(href: string) {
+  if (!isExternalHref(href)) {
+    return {}
+  }
+  let map = false
+  try {
+    const url = new URL(href)
+    map = url.hostname === 'yandex.ru' && url.pathname.startsWith('/maps')
+  } catch {
+    map = false
+  }
+  return {
+    target: '_blank' as const,
+    rel: map ? 'noopener noreferrer nofollow' : 'noopener nofollow',
+  }
+}
+
 export function homeLinks(extra: TextLink[] = []) {
   return [...HUBS, ...SECTION_LINKS, { href: '/legal/privacy-policy', text: 'Политика конфиденциальности' }, ...extra]
 }

@@ -15,7 +15,7 @@
       >
       <img
         :src="media.src"
-        :alt="media.alt"
+        :alt="alt"
         :width="media.width || 640"
         :height="media.height || 400"
         :loading="priority ? 'eager' : 'lazy'"
@@ -28,13 +28,13 @@
       <a
         v-if="href"
         :href="href"
-        rel="noopener"
+        v-bind="externalLinkAttrs(href)"
       >{{ label }}</a>
       <span v-else-if="label">{{ label }}</span>
       <a
         v-if="media.sourceUrl"
         :href="media.sourceUrl"
-        rel="noopener"
+        v-bind="externalLinkAttrs(media.sourceUrl)"
       >источник</a>
     </figcaption>
   </figure>
@@ -42,7 +42,8 @@
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
-import { licenseHref, licenseLabel } from '~~/shared/media'
+import { externalLinkAttrs } from '~~/shared/links'
+import { describedAlt, licenseHref, licenseLabel } from '~~/shared/media'
 
 const props = withDefaults(defineProps<{
   media: PublicMedia
@@ -55,6 +56,7 @@ const props = withDefaults(defineProps<{
   showCredit: true,
 })
 
+const alt = computed(() => describedAlt(props.media.alt, props.media.author, props.media.license))
 const avif = computed(() => srcset('avif'))
 const webp = computed(() => srcset('webp'))
 const label = computed(() => licenseLabel(props.media.license))

@@ -1,3 +1,5 @@
+import { licenseHref } from './media'
+
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
 export const DEFAULT_OG_IMAGE = {
@@ -139,6 +141,9 @@ export interface SeoImage {
   height: number | null
   alt: string
   type?: string
+  author?: string | null
+  license?: string | null
+  sourceUrl?: string | null
 }
 
 export interface SeoDocument {
@@ -213,6 +218,32 @@ export function placeSchemaType(categorySlug: string) {
   return SCHEMA_BY_CATEGORY[categorySlug] ?? 'TouristAttraction'
 }
 
+function imageObject(image: SeoImage) {
+  const node: Record<string, unknown> = {
+    '@type': 'ImageObject',
+    'url': image.url,
+    'contentUrl': image.url,
+    'caption': image.alt,
+  }
+  if (image.width) {
+    node.width = image.width
+  }
+  if (image.height) {
+    node.height = image.height
+  }
+  if (image.author) {
+    node.creator = { '@type': 'Person', 'name': image.author }
+  }
+  const license = licenseHref(image.license)
+  if (license) {
+    node.license = license
+  }
+  if (image.sourceUrl) {
+    node.acquireLicensePage = image.sourceUrl
+  }
+  return node
+}
+
 export interface PlaceSeoInput {
   slug: string
   title: string
@@ -249,7 +280,7 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     'name': input.title,
     'description': description,
     'url': absoluteUrl(path),
-    'image': input.images?.length ? input.images.map((item) => item.url) : image.url,
+    'image': input.images?.length ? input.images.map((item) => imageObject(item)) : image.url,
   }
   if (input.latitude != null && input.longitude != null) {
     node.geo = {

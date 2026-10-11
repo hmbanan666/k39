@@ -45,11 +45,20 @@ const LICENSE_LINKS: Record<string, string> = {
 
 const LICENSE_LABELS: Record<string, string> = {
   'own': 'фото K39',
-  'cc-by': 'CC BY',
-  'cc-by-sa': 'CC BY-SA',
-  'cc0': 'CC0',
+  'cc-by': 'CC BY 4.0',
+  'cc-by-sa': 'CC BY-SA 4.0',
+  'cc0': 'CC0 1.0',
   'pd': 'общественное достояние',
   'permission': 'с разрешения автора',
+}
+
+export interface AuthorBadgeData {
+  type: 'external' | 'user'
+  name: string
+  avatarUrl?: string | null
+  profileUrl?: string | null
+  license?: string | null
+  sourceUrl?: string | null
 }
 
 export function licenseLabel(license: string | null | undefined) {
@@ -64,6 +73,39 @@ export function licenseHref(license: string | null | undefined) {
     return ''
   }
   return LICENSE_LINKS[license] || ''
+}
+
+export function describedAlt(alt: string, author?: string | null, license?: string | null) {
+  return [alt.trim(), author?.trim(), licenseLabel(license)].filter(Boolean).join('. ')
+}
+
+export function authorInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2)
+  const letters = parts.map((part) => part[0] ?? '').join('')
+  return letters.toLocaleUpperCase('ru') || '?'
+}
+
+export function authorFromMedia(media: Pick<PublicMedia, 'author' | 'license' | 'sourceUrl'>): AuthorBadgeData {
+  return {
+    type: 'external',
+    name: media.author?.trim() || 'Автор неизвестен',
+    avatarUrl: null,
+    profileUrl: null,
+    license: media.license,
+    sourceUrl: media.sourceUrl,
+  }
+}
+
+export function largestVariantUrl(media: Pick<PublicMedia, 'id' | 'src' | 'variants'>, format: 'avif' | 'webp') {
+  const best = media.variants
+    .filter((item) => item.format === format)
+    .reduce<PublicMedia['variants'][number] | null>((winner, item) => {
+      if (!winner || item.width > winner.width) {
+        return item
+      }
+      return winner
+    }, null)
+  return best ? `/media/${media.id}/${best.file}` : ''
 }
 
 export function toPublicMedia(row: MediaRowLike): PublicMedia {

@@ -22,10 +22,11 @@
           v-if="page.cover"
           #art
         >
-          <MediaImage
+          <PlacePhoto
             :media="page.cover"
             priority
             sizes="(min-width: 1000px) 720px, 100vw"
+            @open="openPhoto(page.cover.id)"
           />
         </template>
       </Postcard>
@@ -86,10 +87,9 @@
             v-for="source in page.sources"
             :key="source.url"
           >
-            <a
-              :href="source.url"
-              rel="noopener"
-            >{{ source.title }}</a>
+            <UiLink :href="source.url">
+              {{ source.title }}
+            </UiLink>
           </li>
         </ul>
       </div>
@@ -170,10 +170,12 @@
               </p>
               <p>
                 {{ page.place.latitude.toFixed(5) }}, {{ page.place.longitude.toFixed(5) }}
-                <a
+                <UiLink
                   v-if="yandex"
                   :href="yandex"
-                >Яндекс Карты</a>
+                >
+                  Яндекс Карты
+                </UiLink>
               </p>
             </div>
           </div>
@@ -197,11 +199,12 @@
     >
       <h2>Фотографии</h2>
       <div class="gallery-grid">
-        <MediaImage
+        <PlacePhoto
           v-for="item in morePhotos"
           :key="item.id"
           :media="item"
           sizes="(min-width: 900px) 360px, 100vw"
+          @open="openPhoto(item.id)"
         />
       </div>
     </section>
@@ -231,6 +234,12 @@
       :steps="page.routeBand.steps"
       :next="page.routeBand.next"
       action="К маршруту"
+    />
+    <PhotoViewer
+      v-if="photos.length"
+      v-model:open="viewerOpen"
+      v-model:index="viewerIndex"
+      :photos="photos"
     />
     <LinkList
       v-for="group in otherGroups"
@@ -290,6 +299,16 @@ const page = await fetchPublic<PlacePage>(`/api/public/places/${slug}`, { page: 
 const heroSrc = page.cover?.src || illustrationFor(page.categorySlug, slug)
 const heroAlt = page.cover?.alt || page.doc.h1
 const morePhotos = page.gallery.filter((item) => item.id !== page.cover?.id)
+const photos = page.cover && !page.gallery.some((item) => item.id === page.cover?.id)
+  ? [page.cover, ...page.gallery]
+  : page.gallery
+const viewerOpen = ref(false)
+const viewerIndex = ref(0)
+function openPhoto(id: string) {
+  const found = photos.findIndex((item) => item.id === id)
+  viewerIndex.value = found >= 0 ? found : 0
+  viewerOpen.value = true
+}
 const statusLabel = ({ open: 'открыт', ruins: 'руины', closed: 'закрыт', unknown: 'статус неизвестен' } as Record<string, string>)[page.place.status] || page.place.status
 const statusHint = ({
   open: 'По источникам сюда пускают посетителей.',

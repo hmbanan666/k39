@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { formatDistance } from '../shared/links'
+import { externalLinkAttrs, formatDistance } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
+import { describedAlt } from '../shared/media'
 import { faqFromBody, placeDocument, stripRepeatedLead } from '../shared/seo'
 
 describe('place page', () => {
@@ -75,6 +76,46 @@ describe('place page', () => {
     expect(faqFromBody('Просто текст')).toEqual([])
     expect(stripRepeatedLead('Короткий лид.', body)).toBe('Дальше текст.\n\n## Частые вопросы\n\n**Можно ли войти?** Пока нет.\n\n## Источники\n\n**Это не вопрос** и не попадает в FAQ.')
     expect(stripRepeatedLead('Другой лид.', body)).toBe(body)
+  })
+
+  it('opens off-site links in a new tab and leaves internal links alone', () => {
+    const html = renderMarkdown('[Карты](https://yandex.ru/maps/?rtext=~54) и [форт](/fort-11) и [вики](https://ru.wikipedia.org/wiki/A)')
+    expect(html).toContain('href="https://yandex.ru/maps/?rtext=~54" target="_blank" rel="noopener noreferrer nofollow"')
+    expect(html).toContain('<a href="/fort-11">форт</a>')
+    expect(html).toContain('href="https://ru.wikipedia.org/wiki/A" target="_blank" rel="noopener nofollow"')
+    expect(externalLinkAttrs('https://k39.online/fort-11')).toEqual({})
+    expect(externalLinkAttrs('/forty')).toEqual({})
+  })
+
+  it('puts author and license on the image object', () => {
+    expect(describedAlt('Собор', 'Julian Nyča', 'cc-by-sa')).toBe('Собор. Julian Nyča. CC BY-SA 4.0')
+    const doc = placeDocument({
+      slug: 'kafedralnyi-sobor',
+      title: 'Кафедральный собор',
+      summary: 'Остров Канта.',
+      categorySlug: 'forty',
+      categoryTitle: 'Форты',
+      regionTitle: 'Калининград',
+      latitude: 54.706,
+      longitude: 20.512,
+      hours: null,
+      sources: [{ title: 'Википедия', url: 'https://ru.wikipedia.org/wiki/sobor' }],
+      images: [{
+        url: 'https://k39.online/media/photo/og.jpg',
+        width: 1200,
+        height: 800,
+        alt: 'Собор. Julian Nyča. CC BY-SA 4.0',
+        author: 'Julian Nyča',
+        license: 'cc-by-sa',
+        sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sobor.jpg',
+      }],
+    })
+    const node = doc.jsonLd.find((item) => item['@type'] === 'LandmarksOrHistoricalBuildings') as { image?: Array<Record<string, unknown>> }
+    const image = node.image?.[0]
+    expect(image?.['@type']).toBe('ImageObject')
+    expect(image?.creator).toEqual({ '@type': 'Person', 'name': 'Julian Nyča' })
+    expect(image?.license).toBe('https://creativecommons.org/licenses/by-sa/4.0/deed.ru')
+    expect(image?.acquireLicensePage).toBe('https://commons.wikimedia.org/wiki/File:Sobor.jpg')
   })
 
   it('formats nearby distance in metres and kilometres', () => {
