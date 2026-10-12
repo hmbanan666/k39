@@ -2,6 +2,16 @@ import type { CatalogStop, ContentCatalog, PageMetric, StoredScore } from '@k39/
 import type { LinkCatalog, PageKind, PageScore, PassportFields, ScoreSource } from '../../../shared/scoring'
 import { emptyResults, linkStats, queriesForPath, scorePage } from '../../../shared/scoring'
 
+export function catalogPageRefs(catalog: ContentCatalog) {
+  return [
+    ...catalog.places.map((row) => ({ pageType: 'place' as const, entityId: row.id, path: `/${row.slug}` })),
+    ...catalog.routes.map((row) => ({ pageType: 'route' as const, entityId: row.id, path: `/marshruty/${row.slug}` })),
+    ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}` })),
+    ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}` })),
+    ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}` })),
+  ]
+}
+
 function stopSlugs(stops: CatalogStop[], parentId: string, publishedOnly: boolean) {
   return stops
     .filter((stop) => stop.parentId === parentId && (!publishedOnly || stop.placePublished))
@@ -71,6 +81,7 @@ export function scoresFromCatalog(
       slug: hub.slug,
       title: hub.title,
       description: hub.description,
+      body: hub.body,
       noindex: hub.noindex,
     })),
     related: catalog.related,
@@ -269,7 +280,7 @@ export function scoresFromCatalog(
         path,
         title: hub.title,
         summary: hub.description,
-        body: hub.description,
+        body: hub.body,
         howToGet: null,
         hours: null,
         price: null,
@@ -296,7 +307,7 @@ export function scoresFromCatalog(
       }
     }),
   ]
-  return pages.map((page) => scorePage(page, now))
+  return pages.filter((page) => page.publicationStatus === 'published').map((page) => scorePage(page, now))
 }
 
 export function toStored(score: PageScore): StoredScore {

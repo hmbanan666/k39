@@ -56,6 +56,7 @@ export interface CatalogHub {
   slug: string
   title: string
   description: string
+  body: string
   noindex: boolean
   seoTitle: string | null
   seoDescription: string | null

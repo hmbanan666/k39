@@ -183,6 +183,7 @@ export class Scoring {
         slug: row.slug,
         title: row.title,
         description: row.description,
+        body: row.body,
         noindex: row.noindex,
         seoTitle: row.seoTitle,
         seoDescription: row.seoDescription,

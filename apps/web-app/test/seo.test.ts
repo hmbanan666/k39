@@ -184,6 +184,33 @@ describe('seo documents', () => {
     expect(quest.jsonLd.find((node) => node['@type'] === 'FAQPage')).toEqual(placeFaq)
     expect(hub.jsonLd.find((node) => node['@type'] === 'FAQPage')).toEqual(placeFaq)
     expect(hub.title).toBe('Форты Калининграда | K39')
+
+    const hubArticle = [
+      '## Частые вопросы',
+      '',
+      '### Какой форт выбрать, если время только на один?',
+      '',
+      'Форт № 5, если нужен музей с часами.',
+      '',
+      '### Можно ли зайти в заброшенные форты?',
+      '',
+      'У форта № 2а вход свободный, но без охраны.',
+    ].join('\n')
+    const hubFaq = collectionDocument({
+      path: '/forty',
+      h1: 'Форты',
+      summary: 'Форты, ворота и бастионы Кёнигсберга.',
+      crumbName: 'раздел',
+      items: [{ name: 'Форт № 11 «Дёнхофф»', url: '/fort-11-denhoff' }],
+      kind: 'CollectionPage',
+      body: hubArticle,
+    })
+    const questions = hubFaq.jsonLd.find((node) => node['@type'] === 'FAQPage') as { mainEntity?: Array<{ name: string, acceptedAnswer?: { text: string } }> }
+    expect(questions?.mainEntity?.map((item) => item.name)).toEqual([
+      'Какой форт выбрать, если время только на один?',
+      'Можно ли зайти в заброшенные форты?',
+    ])
+    expect(questions?.mainEntity?.[0]?.acceptedAnswer?.text).toContain('Форт № 5')
   })
 
   it('uses the title or seoTitle, a vertical bar, and no repeated type word', () => {

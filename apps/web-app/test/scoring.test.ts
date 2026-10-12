@@ -1,5 +1,7 @@
+import type { CatalogArticle, CatalogHub, ContentCatalog, ScorePlace } from '@k39/database'
 import type { LinkCatalog, ScoreSource } from '../shared/scoring'
 import { describe, expect, it } from 'vitest'
+import { catalogPageRefs, scoresFromCatalog } from '../server/utils/scoring/assemble'
 import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage } from '../shared/scoring'
 
 const TITLE = `Форт на окраине города K39 ${'а'.repeat(10)}`
@@ -168,6 +170,141 @@ describe('page score', () => {
     const missed = scorePage(source({ indexingHooks: { yandex: false, google: null } }))
     expect(missed.checks.indexing).toContain('not in Yandex')
   })
+
+  it('accepts a route body that uses Без машины and a ruble table', () => {
+    const body = [
+      '## Какие форты открыты в 2026 году',
+      '',
+      '| Форт | Билет |',
+      '| --- | --- |',
+      '| № 5 | 500 ₽ |',
+      '',
+      '## План дня',
+      '',
+      'Выезд утром от Северного вокзала.',
+      '',
+      '## Без машины',
+      '',
+      'Автобус № 48 до форта № 5.',
+      '',
+      '## Бюджет на одного взрослого',
+      '',
+      'Билеты около 1500 ₽.',
+      '',
+      faq(6),
+    ].join('\n')
+    const score = scorePage(source({
+      kind: 'route',
+      path: '/marshruty/pyat-fortov',
+      categorySlug: null,
+      body,
+      memberCount: 5,
+      photoCount: 1,
+    }))
+    expect(score.checks.quality).not.toContain('no Как добраться')
+    expect(score.checks.quality).not.toContain('no prices')
+    expect(score.checks.quality).not.toContain('no FAQ')
+  })
+
+  it('accepts a collection that says how to arrive and what it costs', () => {
+    const body = [
+      '## Открыты с билетом',
+      '',
+      'Форт № 5 работает ежедневно.',
+      '',
+      '## Как добраться без машины',
+      '',
+      'Автобус № 48 по Советскому проспекту.',
+      '',
+      '## Сколько стоит',
+      '',
+      '| Форт | Взрослый |',
+      '| --- | --- |',
+      '| № 5 | 500 ₽ |',
+      '| № 1 | 600 руб. |',
+      '',
+      faq(6),
+    ].join('\n')
+    const score = scorePage(source({
+      kind: 'collection',
+      path: '/podborki/otkrytye-forty',
+      categorySlug: null,
+      body,
+      memberCount: 4,
+      photoCount: 1,
+    }))
+    expect(score.checks.quality).not.toContain('no Как добраться')
+    expect(score.checks.quality).not.toContain('no prices')
+  })
+
+  it('accepts Дорога, Транспорт, and a worded ruble price', () => {
+    const body = [
+      '## Дорога',
+      '',
+      'Электричка до Зеленоградска.',
+      '',
+      '## Транспорт и как сократить',
+      '',
+      'Обратно на автобусе.',
+      '',
+      '## Сколько стоит день',
+      '',
+      'Билет около 300 рублей.',
+      '',
+      faq(6),
+    ].join('\n')
+    const score = scorePage(source({
+      kind: 'route',
+      path: '/marshruty/vorota-i-bashni-peshkom',
+      categorySlug: null,
+      body,
+      memberCount: 3,
+      photoCount: 1,
+    }))
+    expect(score.checks.quality).not.toContain('no Как добраться')
+    expect(score.checks.quality).not.toContain('no prices')
+  })
+
+  it('still flags a route that never says how to get there or what it costs', () => {
+    const score = scorePage(source({
+      kind: 'route',
+      path: '/marshruty/empty',
+      categorySlug: null,
+      body: '## План дня\n\nТолько расписание. На рубеже города.',
+      memberCount: 2,
+      photoCount: 1,
+    }))
+    expect(score.checks.quality).toContain('no Как добраться')
+    expect(score.checks.quality).toContain('no prices')
+  })
+
+  it('scores hub FAQ and body length from the article, not the short description', () => {
+    const body = [
+      'ы'.repeat(500),
+      '',
+      'Смотрите [маршрут](/marshruty/pyat-fortov).',
+      '',
+      '## Частые вопросы',
+      '',
+      '### Какой форт выбрать?',
+      '',
+      'Форт № 5, если нужен музей с часами.',
+    ].join('\n')
+    const score = scorePage(source({
+      kind: 'hub',
+      path: '/forty',
+      summary: 'Коротко.',
+      body,
+      categorySlug: 'forty',
+      photoCount: 1,
+      memberCount: 2,
+    }))
+    expect(score.signals.bodyChars).toBeGreaterThan(500)
+    expect(score.signals.faqCount).toBe(1)
+    expect(score.checks.quality).toContain('FAQ 1, need 6')
+    expect(score.checks.quality).not.toContain('no Как добраться')
+    expect(score.checks.quality).not.toContain('no prices')
+  })
 })
 
 describe('internal links', () => {
@@ -200,7 +337,7 @@ describe('internal links', () => {
       routes: [],
       collections: [],
       quests: [],
-      hubs: [{ slug: 'forty', title: 'Форты', description: 'Список.', noindex: false }],
+      hubs: [{ slug: 'forty', title: 'Форты', description: 'Список.', body: '', noindex: false }],
       related: [],
     }
     const stats = linkStats(catalog)
@@ -230,6 +367,138 @@ describe('internal links', () => {
       related: [],
     })
     expect(stats.get('/lonely')).toMatchObject({ orphan: true, inbound: 0 })
+  })
+
+  it('counts a link in the hub article, not only the short description', () => {
+    const stats = linkStats({
+      places: [{
+        slug: 'lonely',
+        title: 'Одинокий',
+        categorySlug: null,
+        regionId: null,
+        latitude: null,
+        longitude: null,
+        published: true,
+        noindex: false,
+        body: '',
+      }],
+      routes: [],
+      collections: [],
+      quests: [],
+      hubs: [{
+        slug: 'zamki',
+        title: 'Замки',
+        description: 'Короткое описание без ссылки.',
+        body: 'Подробнее в статье [замок](/lonely).',
+        noindex: false,
+      }],
+      related: [],
+    })
+    expect(stats.get('/lonely')?.orphan).toBe(false)
+    expect(stats.get('/zamki')?.contentOutbound).toBeGreaterThan(0)
+  })
+})
+
+const UPDATED = '2026-10-12T00:00:00.000Z'
+
+function catalogPlace(patch: Partial<ScorePlace> = {}): ScorePlace {
+  return {
+    id: 'place-1',
+    slug: 'fort-a',
+    title: 'Форт А',
+    summary: 'Коротко.',
+    body: '',
+    howToGet: null,
+    hours: null,
+    price: null,
+    latitude: null,
+    longitude: null,
+    publicationStatus: 'published',
+    noindex: false,
+    seoTitle: null,
+    seoDescription: null,
+    factsCheckedAt: null,
+    sources: [],
+    categorySlug: 'forty',
+    categoryTitle: 'Форты',
+    regionId: null,
+    regionTitle: null,
+    updatedAt: UPDATED,
+    ...patch,
+  }
+}
+
+function catalogArticle(patch: Partial<CatalogArticle> = {}): CatalogArticle {
+  return {
+    id: 'article-1',
+    slug: 'five-forts',
+    title: 'Пять фортов',
+    summary: '',
+    body: '',
+    publicationStatus: 'draft',
+    noindex: false,
+    seoTitle: null,
+    seoDescription: null,
+    updatedAt: UPDATED,
+    routeSlug: null,
+    ...patch,
+  }
+}
+
+function catalogHub(patch: Partial<CatalogHub> = {}): CatalogHub {
+  return {
+    id: 'hub-1',
+    slug: 'forty',
+    title: 'Форты',
+    description: 'Коротко.',
+    body: '',
+    noindex: false,
+    seoTitle: TITLE,
+    seoDescription: DESCRIPTION,
+    updatedAt: UPDATED,
+    ...patch,
+  }
+}
+
+function catalog(patch: Partial<ContentCatalog> = {}): ContentCatalog {
+  return {
+    places: [],
+    routes: [],
+    routeStops: [],
+    collections: [],
+    collectionStops: [],
+    quests: [],
+    questStops: [],
+    hubs: [],
+    related: [],
+    photos: [],
+    passports: [],
+    ...patch,
+  }
+}
+
+describe('score run', () => {
+  it('skips drafts and reviews, including the old five-forts quest', () => {
+    const rows = catalog({
+      places: [catalogPlace()],
+      routes: [catalogArticle({ id: 'route-review', slug: 'chernovik', publicationStatus: 'review' })],
+      quests: [catalogArticle({ id: 'quest-old', slug: 'five-forts', publicationStatus: 'draft' })],
+      hubs: [catalogHub({
+        body: `${'ы'.repeat(500)}\n\nСмотрите [маршрут](/marshruty/pyat-fortov).\n\n## Частые вопросы\n\n### Какой форт выбрать?\n\nФорт № 5.`,
+      })],
+    })
+    const scores = scoresFromCatalog(rows, [], [], false)
+    const paths = scores.map((row) => row.path)
+    expect(paths).toContain('/fort-a')
+    expect(paths).toContain('/forty')
+    expect(paths).not.toContain('/kvesty/five-forts')
+    expect(paths).not.toContain('/marshruty/chernovik')
+    expect(catalogPageRefs(rows).map((row) => row.path)).toContain('/kvesty/five-forts')
+    const hub = scores.find((row) => row.path === '/forty')
+    expect(hub?.signals.bodyChars).toBeGreaterThan(500)
+    expect(hub?.signals.faqCount).toBe(1)
+    expect(hub?.checks.linking).not.toContain('no outbound')
+    expect(hub?.checks.quality).not.toContain('no Как добраться')
   })
 })
 
