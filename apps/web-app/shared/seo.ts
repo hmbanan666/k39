@@ -337,25 +337,48 @@ export function faqFromBody(body: string) {
   const lines = body.replace(/\r\n/g, '\n').split('\n')
   let inFaq = false
   const items: Array<{ question: string, answer: string }> = []
+  let question = ''
+  const answer: string[] = []
+  const commit = () => {
+    const text = answer.join(' ').trim()
+    if (question && text) {
+      items.push({ question, answer: text })
+    }
+    question = ''
+    answer.length = 0
+  }
   for (const line of lines) {
     const trimmed = line.trim()
     if (/^##[ \t]+Частые вопросы\s*$/.test(trimmed)) {
+      commit()
       inFaq = true
       continue
     }
-    if (inFaq && /^##[ \t]+/.test(trimmed)) {
+    if (!inFaq) {
+      continue
+    }
+    if (/^##[ \t]+/.test(trimmed)) {
       break
     }
-    if (!inFaq || !trimmed) {
+    if (!trimmed) {
       continue
     }
     const match = /^\*\*([^*]+)\?\*\*(.*)$/.exec(trimmed)
-    const answer = match?.[2]?.trim() ?? ''
-    if (!match?.[1] || !answer) {
+    if (match?.[1]) {
+      commit()
+      question = `${match[1].trim()}?`
+      const sameLine = match[2]?.trim() ?? ''
+      if (sameLine) {
+        answer.push(sameLine)
+        commit()
+      }
       continue
     }
-    items.push({ question: `${match[1].trim()}?`, answer })
+    if (question) {
+      answer.push(trimmed)
+    }
   }
+  commit()
   return items
 }
 

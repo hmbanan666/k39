@@ -5,7 +5,8 @@ Tone: plain, specific, calm. No slogans, no "лучший", no invented atmosphe
 Structure:
 - summary: one or two sentences, what the place is and why a visitor stops.
 - body: markdown. First paragraph states what it is and when it was built or opened, only if a source says so. Then a heading "## Как добраться" with the practical route. Optional heading "## Что посмотреть" only for things named in sources.
-- hours, price, howToGet: copy from sources or leave empty. Never guess a timetable or a ticket price.
+- hours, price: copy from sources or leave empty. Never guess a timetable or a ticket price.
+- howToGet: the short address only, such as "Неман, ул. Победы, 47". The route itself belongs under the body heading "## Как добраться", not in this field.
 - status: open, ruins, closed, or unknown. unknown if the source does not say.
 
 Facts: if a source does not state it, do not write it. Coordinates, names, and dates come from the source list. Put each source in sources as { title, url }.

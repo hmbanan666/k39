@@ -60,7 +60,7 @@
       <UiField label="Цена">
         <UiInput v-model="form.price" />
       </UiField>
-      <UiField label="Как добраться">
+      <UiField label="Адрес">
         <UiTextarea
           v-model="form.howToGet"
           :rows="3"

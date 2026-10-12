@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { articleBody, shortAddress } from '../shared/address'
 import { externalLinkAttrs, formatDistance } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
 import { describedAlt } from '../shared/media'
@@ -74,6 +75,19 @@ describe('place page', () => {
     const faq = doc.jsonLd.find((node) => node['@type'] === 'FAQPage') as { mainEntity?: Array<{ name: string }> }
     expect(faq?.mainEntity?.map((item) => item.name)).toEqual(['Можно ли войти?'])
     expect(faqFromBody('Просто текст')).toEqual([])
+    expect(faqFromBody([
+      '## Частые вопросы',
+      '',
+      '**Можно ли зайти?**',
+      'Нет. Закрыто на стройку.',
+      '',
+      '**Где сбор?**',
+      '',
+      'Ул. Победы, 51а.',
+    ].join('\n'))).toEqual([
+      { question: 'Можно ли зайти?', answer: 'Нет. Закрыто на стройку.' },
+      { question: 'Где сбор?', answer: 'Ул. Победы, 51а.' },
+    ])
     expect(stripRepeatedLead('Короткий лид.', body)).toBe('Дальше текст.\n\n## Частые вопросы\n\n**Можно ли войти?** Пока нет.\n\n## Источники\n\n**Это не вопрос** и не попадает в FAQ.')
     expect(stripRepeatedLead('Другой лид.', body)).toBe(body)
   })
@@ -121,6 +135,17 @@ describe('place page', () => {
       'name': 'Википедия',
       'url': 'https://ru.wikipedia.org/wiki/sobor',
     }])
+  })
+
+  it('keeps a short address in the facts and leaves directions in the body', () => {
+    expect(shortAddress('Неман, ул. Победы, 47 (120 км от Калининграда). Сбор на экскурсию: ул. Победы, 51а.')).toBe('Неман, ул. Победы, 47 (120 км от Калининграда).')
+    expect(shortAddress('Ул. Канта, 1, остров Канта. Остановки «Рыбная деревня».')).toBe('Ул. Канта, 1, остров Канта.')
+    expect(shortAddress('Литовский вал, 21')).toBe('Литовский вал, 21')
+    const body = '## История\n\nТекст.\n\n## Как добраться\n\nНа машине 120 км.'
+    const article = articleBody('Лид.', body, 'Неман, ул. Победы, 47. Сбор у кластера.')
+    expect(article.match(/## Как добраться/g)?.length).toBe(1)
+    expect(article).not.toContain('Сбор у кластера')
+    expect(articleBody('Лид.', '## История\n\nТекст.', 'Неман, ул. Победы, 47.')).toContain('## Как добраться')
   })
 
   it('formats nearby distance in metres and kilometres', () => {
