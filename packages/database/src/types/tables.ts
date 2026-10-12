@@ -6,6 +6,9 @@ export type { Database } from '../connection'
 export type User = InferSelectModel<typeof tables.users>
 export type UserDraft = InferInsertModel<typeof tables.users>
 
+export type UserConsent = InferSelectModel<typeof tables.userConsents>
+export type UserConsentDraft = InferInsertModel<typeof tables.userConsents>
+
 export type Region = InferSelectModel<typeof tables.regions>
 export type RegionDraft = InferInsertModel<typeof tables.regions>
 

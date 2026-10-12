@@ -1,6 +1,7 @@
 import type { UserYandex } from '#auth-utils'
 import { findOrCreateUserByEmail } from '../../services/auth'
 import { assertOAuthProvider } from '../../utils/oauth'
+import { completeConsentedSession, guardOAuthProvider } from '../../utils/oauth-consent'
 
 const logger = useLogger('yandex')
 
@@ -18,12 +19,7 @@ const handler = defineOAuthYandexEventHandler({
       name: yandexUser.display_name,
     })
 
-    await setUserSession(event, {
-      user: { id: userInDb.id, email: userInDb.email, role: userInDb.role },
-    })
-
-    const redirectTo = getCookie(event, 'redirectTo')
-    return sendRedirect(event, redirectTo || '/')
+    return completeConsentedSession(event, userInDb)
   },
   onError(event, error) {
     logger.error('OAuth error:', error)
@@ -33,5 +29,9 @@ const handler = defineOAuthYandexEventHandler({
 
 export default defineEventHandler((event) => {
   assertOAuthProvider('yandex')
+  const denied = guardOAuthProvider(event)
+  if (denied) {
+    return denied
+  }
   return handler(event)
 })
