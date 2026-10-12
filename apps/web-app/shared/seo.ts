@@ -416,13 +416,29 @@ export function stripRepeatedLead(summary: string, body: string) {
   return [rest, after].filter(Boolean).join('\n\n')
 }
 
+function tripPlace(item: { name: string, url: string, latitude?: number | null, longitude?: number | null }) {
+  const place: Record<string, unknown> = {
+    '@type': 'TouristAttraction',
+    'name': item.name,
+    'url': absoluteUrl(item.url),
+  }
+  if (typeof item.latitude === 'number' && Number.isFinite(item.latitude) && typeof item.longitude === 'number' && Number.isFinite(item.longitude)) {
+    place.geo = {
+      '@type': 'GeoCoordinates',
+      'latitude': item.latitude,
+      'longitude': item.longitude,
+    }
+  }
+  return place
+}
+
 export function collectionDocument(input: {
   path: string
   h1: string
   summary: string
   crumbName: string
   parent?: Crumb
-  items: Array<{ name: string, url: string, note?: string | null }>
+  items: Array<{ name: string, url: string, note?: string | null, latitude?: number | null, longitude?: number | null }>
   seoTitle?: string | null
   seoDescription?: string | null
   noindex?: boolean
@@ -440,13 +456,22 @@ export function collectionDocument(input: {
   const description = metaDescription(input.summary, input.seoDescription)
   const list = {
     '@type': 'ItemList',
-    'itemListElement': input.items.map((item, index) => ({
-      '@type': 'ListItem',
-      'position': index + 1,
-      'name': item.name,
-      'url': absoluteUrl(item.url),
-      ...(item.note ? { description: item.note } : {}),
-    })),
+    'numberOfItems': input.items.length,
+    'itemListElement': input.items.map((item, index) => {
+      const entry: Record<string, unknown> = {
+        '@type': 'ListItem',
+        'position': index + 1,
+        'name': item.name,
+        'url': absoluteUrl(item.url),
+      }
+      if (item.note) {
+        entry.description = item.note
+      }
+      if (input.kind === 'TouristTrip') {
+        entry.item = tripPlace(item)
+      }
+      return entry
+    }),
   }
   const node: Record<string, unknown> = input.kind === 'TouristTrip'
     ? { '@type': 'TouristTrip', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'itinerary': list }

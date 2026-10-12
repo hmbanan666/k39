@@ -50,8 +50,8 @@ describe('ordered stops and archive', () => {
       ['stop-live', 'С экскурсией', 1],
     ])
     const visible = await Content.publishedRoute('ordered-route')
-    expect(visible?.points.map((point) => [point.slug, point.note])).toEqual([
-      ['stop-live', 'С экскурсией'],
+    expect(visible?.points.map((point) => [point.slug, point.note, point.latitude, point.longitude])).toEqual([
+      ['stop-live', 'С экскурсией', null, null],
     ])
 
     await Editor.saveRoute({
@@ -96,6 +96,34 @@ describe('ordered stops and archive', () => {
       points: [],
     })
     expect(await Editor.routePoints(route.id)).toEqual([])
+  })
+
+  it('returns place coordinates for a published route', async () => {
+    await Editor.savePlace({
+      slug: 'stop-live',
+      title: 'Живой форт',
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+      latitude: 54.64528,
+      longitude: 21.07472,
+    })
+    await Editor.saveRoute({
+      slug: 'coord-route',
+      title: 'С координатами',
+      publicationStatus: 'published',
+      points: [{ placeSlug: 'stop-live', note: 'У кассы' }],
+    })
+    const visible = await Content.publishedRoute('coord-route')
+    expect(visible?.points).toEqual([
+      expect.objectContaining({
+        slug: 'stop-live',
+        title: 'Живой форт',
+        note: 'У кассы',
+        latitude: 54.64528,
+        longitude: 21.07472,
+      }),
+    ])
   })
 
   it('archives a published route, deletes a draft, and refuses a route a quest still links', async () => {

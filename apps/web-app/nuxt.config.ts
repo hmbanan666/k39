@@ -76,6 +76,8 @@ export default defineNuxtConfig({
       consentBanner: false,
       yandexVerification: '',
       googleVerification: '',
+      // Empty string keeps the route map on Leaflet. A key loads Yandex Maps JS API 3.
+      yandexMapsApiKey: '',
     },
   },
   nitro: {

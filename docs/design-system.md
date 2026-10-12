@@ -56,7 +56,8 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `UiBreadcrumbs` | Visible crumbs. The same list is the BreadcrumbList JSON-LD. |
 | `SiteHeader` / `SiteFooter` | Moose head, then the plain-text wordmark K39, hub pills. The header background is solid surface, sticky, with a bottom border. The active hub is highlighted. Админка is shown only to a logged-in admin. |
 | `NearbyList` | Nearest places, name plus kilometres. |
-| `RouteSteps` | Ordered stops. Each step is the place name. |
+| `RouteSteps` | Ordered stops on a place page. Each step is the place name. |
+| `RouteGuide` | Route page: Yandex or Leaflet map, deep links, and stop cards with the note and the straight-line leg. |
 | `PartnerOffer` | Only for a real active offer. |
 | `CookieNotice` | Full-width bar fixed to the bottom, ink background, brick button. Client-only, so it does not shift layout. Dismiss is a localStorage flag. |
 | `UiAccordion` | Reka accordion. Default open when the copy must be read immediately. Content stays in the HTML. |

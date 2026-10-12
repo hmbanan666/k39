@@ -16,4 +16,4 @@ Other region slugs render a short "not drawn yet" page. A Yandex Maps deep link 
 
 ## Consequences
 
-A new region needs new artwork and projected paths. It cannot be a drop-in of a slippy map. Pan and zoom are custom. The quest "I am here" control does not check geolocation.
+A new region needs new artwork and projected paths. It cannot be a drop-in of a slippy map. Pan and zoom are custom. The quest "I am here" control does not check geolocation. Route pages are the exception in ADR 0015: a lazy map of the ordered stops. This forts map stays SVG.
