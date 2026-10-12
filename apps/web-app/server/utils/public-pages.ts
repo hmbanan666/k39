@@ -1,8 +1,9 @@
 import { db } from '@k39/database'
+import { articleBody } from '../../shared/address'
 import { homeLinks, HUBS } from '../../shared/links'
 import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, ogPath, toPublicMedia } from '../../shared/media'
-import { absoluteUrl, collectionDocument, homeDocument, placeDocument, stripRepeatedLead } from '../../shared/seo'
+import { absoluteUrl, collectionDocument, homeDocument, placeDocument } from '../../shared/seo'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
   return {
@@ -202,11 +203,7 @@ export async function loadPlace(slug: string, page = 1) {
         next: nextStep ? { href: `/${nextStep.slug}`, text: nextStep.title } : null,
       }
     : null
-  const article = stripRepeatedLead(loaded.place.summary, loaded.place.body)
-  const howToGet = loaded.place.howToGet?.trim()
-  const body = howToGet && !article.includes(howToGet)
-    ? `${article}\n\n## Как добраться\n\n${howToGet}`
-    : article
+  const body = articleBody(loaded.place.summary, loaded.place.body, loaded.place.howToGet)
   return {
     doc,
     html: renderMarkdown(body),

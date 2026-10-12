@@ -118,7 +118,7 @@
             </div>
           </div>
           <div
-            v-if="page.place.howToGet?.trim()"
+            v-if="address"
             class="fact"
           >
             <svg
@@ -131,9 +131,9 @@
             /><path d="M12 8l3 7-3-1.2L9 15z" /></svg>
             <div>
               <p class="label">
-                Как добраться
+                Адрес
               </p>
-              <p>{{ page.place.howToGet }}</p>
+              <p>{{ address }}</p>
             </div>
           </div>
           <div
@@ -253,6 +253,7 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
+import { shortAddress } from '~~/shared/address'
 import { illustrationFor } from '~~/shared/illustrations'
 
 interface PlaceLink {
@@ -321,10 +322,11 @@ const yandex = page.place.latitude != null
   : ''
 const hours = page.place.hours?.trim() || ''
 const price = page.place.price?.trim() || ''
+const address = shortAddress(page.place.howToGet || '')
 const hasFacts = Boolean(
   hours
   || price
-  || page.place.howToGet?.trim()
+  || address
   || (page.place.latitude != null && page.place.longitude != null),
 )
 const nearby = page.groups.find((group) => group.title === 'Рядом')
