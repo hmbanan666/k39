@@ -5,9 +5,6 @@
     :lede="lede"
   >
     <div class="legal">
-      <p class="revised">
-        Редакция от 12 октября 2026.
-      </p>
       <slot />
     </div>
   </ArticleShell>
@@ -41,7 +38,6 @@ usePublicHead({
 </script>
 
 <style scoped>
-.revised { color: var(--muted); font-size: 0.9rem; }
 .legal :deep(h2) {
   margin: 1.8rem 0 0.6rem;
   font-family: var(--font-display);

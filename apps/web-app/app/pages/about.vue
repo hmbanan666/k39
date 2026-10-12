@@ -18,7 +18,7 @@
       <a :href="operatorMailHref()">{{ operator.email }}</a>
     </p>
     <p>
-      Документы: <a href="/privacy">политика обработки персональных данных</a>, <a href="/cookies">файлы cookie</a>, <a href="/terms">пользовательское соглашение</a>.
+      Документы: <a href="/privacy">политика конфиденциальности</a>, <a href="/terms">пользовательское соглашение</a>.
     </p>
   </LegalPage>
 </template>

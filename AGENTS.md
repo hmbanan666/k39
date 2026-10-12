@@ -118,6 +118,6 @@ Do not add Kubernetes manifests or GitHub Actions deploy workflows.
 - Hubs: `/forty`, `/zamki`, `/plyazhi`, `/kurorty`, `/muzei`, `/eda`.
 - `/marshruty`, `/podborki`, `/kvesty` and their slugs.
 - `/admin`: editors and admins. `/preview/{slug}` shows a draft to those users and is `noindex`.
-- `/sign-in`, `/about`, `/privacy`, `/cookies`, `/terms`. `/legal/privacy-policy` redirects to `/privacy`.
+- `/sign-in`, `/about`, `/privacy`, `/terms`. `/cookies` redirects to `/privacy#cookies`. `/legal/privacy-policy` redirects to `/privacy`.
 
 Sitemap source: `server/routes/sitemap-urls.get.ts` (published, indexable rows only). Robots: `public/robots.txt`, served as-is so the Yandex `Host` line stays.

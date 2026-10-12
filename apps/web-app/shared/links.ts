@@ -25,8 +25,7 @@ export const SECTION_LINKS: TextLink[] = [
 
 export const LEGAL_LINKS: TextLink[] = [
   { href: '/about', text: 'О проекте' },
-  { href: '/privacy', text: 'Конфиденциальность' },
-  { href: '/cookies', text: 'Cookie' },
+  { href: '/privacy', text: 'Политика конфиденциальности' },
   { href: '/terms', text: 'Соглашение' },
 ]
 
