@@ -165,7 +165,7 @@ export class Content {
     if (!route) {
       return null
     }
-    const points = await db.select({ slug: places.slug, title: places.title, position: routePoints.position }).from(routePoints).innerJoin(places, eq(routePoints.placeId, places.id)).where(and(eq(routePoints.routeId, route.id), eq(places.publicationStatus, published))).orderBy(asc(routePoints.position))
+    const points = await db.select({ slug: places.slug, title: places.title, note: routePoints.note, position: routePoints.position }).from(routePoints).innerJoin(places, eq(routePoints.placeId, places.id)).where(and(eq(routePoints.routeId, route.id), eq(places.publicationStatus, published))).orderBy(asc(routePoints.position))
     return { route, points }
   }
 
@@ -179,7 +179,7 @@ export class Content {
     if (!collection) {
       return null
     }
-    const items = await db.select({ slug: places.slug, title: places.title, position: collectionItems.position }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id)).where(and(eq(collectionItems.collectionId, collection.id), eq(places.publicationStatus, published))).orderBy(asc(collectionItems.position))
+    const items = await db.select({ slug: places.slug, title: places.title, note: collectionItems.note, position: collectionItems.position }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id)).where(and(eq(collectionItems.collectionId, collection.id), eq(places.publicationStatus, published))).orderBy(asc(collectionItems.position))
     return { collection, items }
   }
 
@@ -347,6 +347,15 @@ export class Editor {
     return useDatabase().select().from(routes).orderBy(asc(routes.title))
   }
 
+  static async routePoints(routeId: string) {
+    return useDatabase().select({
+      placeSlug: places.slug,
+      title: places.title,
+      note: routePoints.note,
+      position: routePoints.position,
+    }).from(routePoints).innerJoin(places, eq(routePoints.placeId, places.id)).where(eq(routePoints.routeId, routeId)).orderBy(asc(routePoints.position))
+  }
+
   static async listQuests() {
     return useDatabase().select().from(quests).orderBy(asc(quests.title))
   }
@@ -374,11 +383,21 @@ export class Editor {
     return useDatabase().select().from(collections).orderBy(asc(collections.title))
   }
 
+  static async collectionItems(collectionId: string) {
+    return useDatabase().select({
+      placeSlug: places.slug,
+      title: places.title,
+      note: collectionItems.note,
+      position: collectionItems.position,
+    }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id)).where(eq(collectionItems.collectionId, collectionId)).orderBy(asc(collectionItems.position))
+  }
+
   static async listRegions() {
     return useDatabase().select().from(regions).orderBy(asc(regions.title))
   }
 
-  static async saveRoute(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean }, userId?: string | null) {
+  static async saveRoute(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[] }, userId?: string | null) {
+    const resolvedPoints = data.points ? await resolveStops(data.points) : null
     const db = useDatabase()
     const [existing] = data.id
       ? await db.select().from(routes).where(eq(routes.id, data.id)).limit(1)
@@ -399,18 +418,21 @@ export class Editor {
       updatedBy: userId ?? null,
       updatedAt: new Date().toISOString(),
     }
-    if (!existing) {
-      const [created] = await db.insert(routes).values(values).returning()
-      if (!created) {
-        throw new Error('Route insert failed')
-      }
-      return created
+    const row = existing
+      ? (await db.update(routes).set(values).where(eq(routes.id, existing.id)).returning())[0] ?? existing
+      : (await db.insert(routes).values(values).returning())[0]
+    if (!row) {
+      throw new Error('Route insert failed')
     }
-    const [updated] = await db.update(routes).set(values).where(eq(routes.id, existing.id)).returning()
-    return updated ?? existing
+    if (resolvedPoints) {
+      await writeRoutePoints(row.id, resolvedPoints)
+    }
+    await syncGonePath(`/marshruty/${row.slug}`, row.publicationStatus)
+    return row
   }
 
-  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean }, userId?: string | null) {
+  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[] }, userId?: string | null) {
+    const resolvedItems = data.items ? await resolveStops(data.items) : null
     const db = useDatabase()
     const [existing] = data.id
       ? await db.select().from(collections).where(eq(collections.id, data.id)).limit(1)
@@ -431,15 +453,71 @@ export class Editor {
       updatedBy: userId ?? null,
       updatedAt: new Date().toISOString(),
     }
-    if (!existing) {
-      const [created] = await db.insert(collections).values(values).returning()
-      if (!created) {
-        throw new Error('Collection insert failed')
-      }
-      return created
+    const row = existing
+      ? (await db.update(collections).set(values).where(eq(collections.id, existing.id)).returning())[0] ?? existing
+      : (await db.insert(collections).values(values).returning())[0]
+    if (!row) {
+      throw new Error('Collection insert failed')
     }
-    const [updated] = await db.update(collections).set(values).where(eq(collections.id, existing.id)).returning()
-    return updated ?? existing
+    if (resolvedItems) {
+      await writeCollectionItems(row.id, resolvedItems)
+    }
+    await syncGonePath(`/podborki/${row.slug}`, row.publicationStatus)
+    return row
+  }
+
+  static async archiveOrDeleteRoute(id: string) {
+    const db = useDatabase()
+    const [row] = await db.select().from(routes).where(eq(routes.id, id)).limit(1)
+    if (!row) {
+      return null
+    }
+    if (row.publicationStatus === 'draft') {
+      const [quest] = await db.select({ id: quests.id }).from(quests).where(eq(quests.routeId, row.id)).limit(1)
+      if (quest) {
+        throw new Error('Cannot delete: a quest still links this route')
+      }
+      const [offer] = await db.select({ id: offers.id }).from(offers).where(eq(offers.routeId, row.id)).limit(1)
+      if (offer) {
+        throw new Error('Cannot delete: an offer still links this route')
+      }
+      await db.delete(routes).where(eq(routes.id, row.id))
+      return { action: 'deleted' as const, id: row.id, slug: row.slug, publicationStatus: null }
+    }
+    const [updated] = await db.update(routes).set({
+      publicationStatus: 'archived',
+      updatedAt: new Date().toISOString(),
+    }).where(eq(routes.id, row.id)).returning()
+    await markGone(`/marshruty/${row.slug}`)
+    return {
+      action: 'archived' as const,
+      id: row.id,
+      slug: row.slug,
+      publicationStatus: updated?.publicationStatus ?? 'archived',
+    }
+  }
+
+  static async archiveOrDeleteCollection(id: string) {
+    const db = useDatabase()
+    const [row] = await db.select().from(collections).where(eq(collections.id, id)).limit(1)
+    if (!row) {
+      return null
+    }
+    if (row.publicationStatus === 'draft') {
+      await db.delete(collections).where(eq(collections.id, row.id))
+      return { action: 'deleted' as const, id: row.id, slug: row.slug, publicationStatus: null }
+    }
+    const [updated] = await db.update(collections).set({
+      publicationStatus: 'archived',
+      updatedAt: new Date().toISOString(),
+    }).where(eq(collections.id, row.id)).returning()
+    await markGone(`/podborki/${row.slug}`)
+    return {
+      action: 'archived' as const,
+      id: row.id,
+      slug: row.slug,
+      publicationStatus: updated?.publicationStatus ?? 'archived',
+    }
   }
 
   static async saveQuest(data: {
@@ -677,6 +755,84 @@ function galleryImages(placeId: string, images: Array<typeof media.$inferSelect>
     return fromJoin
   }
   return images.filter((image) => image.placeId === placeId)
+}
+
+type OrderedStop = { placeSlug: string, note?: string | null }
+type ResolvedStop = { placeId: string, note: string | null }
+
+function blankNote(note: string | null | undefined) {
+  const text = note?.trim()
+  return text || null
+}
+
+async function resolveStops(stops: OrderedStop[]) {
+  const db = useDatabase()
+  const resolved: ResolvedStop[] = []
+  for (const stop of stops) {
+    const [place] = await db.select({ id: places.id }).from(places).where(eq(places.slug, stop.placeSlug)).limit(1)
+    if (!place) {
+      throw new Error(`Place not found: ${stop.placeSlug}`)
+    }
+    resolved.push({ placeId: place.id, note: blankNote(stop.note) })
+  }
+  return resolved
+}
+
+async function writeRoutePoints(routeId: string, stops: ResolvedStop[]) {
+  const db = useDatabase()
+  await db.transaction(async (tx) => {
+    await tx.delete(routePoints).where(eq(routePoints.routeId, routeId))
+    if (!stops.length) {
+      return
+    }
+    // Position is the array index so the saved order matches the request.
+    await tx.insert(routePoints).values(stops.map((stop, position) => ({
+      routeId,
+      placeId: stop.placeId,
+      position,
+      note: stop.note,
+    })))
+  })
+}
+
+async function writeCollectionItems(collectionId: string, stops: ResolvedStop[]) {
+  const db = useDatabase()
+  await db.transaction(async (tx) => {
+    await tx.delete(collectionItems).where(eq(collectionItems.collectionId, collectionId))
+    if (!stops.length) {
+      return
+    }
+    await tx.insert(collectionItems).values(stops.map((stop, position) => ({
+      collectionId,
+      placeId: stop.placeId,
+      position,
+      note: stop.note,
+    })))
+  })
+}
+
+async function markGone(fromPath: string) {
+  const db = useDatabase()
+  const [existing] = await db.select().from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
+  if (!existing) {
+    await db.insert(slugRedirects).values({ fromPath, toPath: null, statusCode: 410 })
+    return
+  }
+  await db.update(slugRedirects).set({ toPath: null, statusCode: 410 }).where(eq(slugRedirects.id, existing.id))
+}
+
+async function clearGone(fromPath: string) {
+  await useDatabase().delete(slugRedirects).where(and(eq(slugRedirects.fromPath, fromPath), eq(slugRedirects.statusCode, 410)))
+}
+
+async function syncGonePath(path: string, status: PublicationStatus) {
+  if (status === 'published') {
+    await clearGone(path)
+    return
+  }
+  if (status === 'archived') {
+    await markGone(path)
+  }
 }
 
 async function upsertRedirect(fromPath: string, toPath: string) {

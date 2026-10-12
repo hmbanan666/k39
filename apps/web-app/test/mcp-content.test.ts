@@ -39,6 +39,7 @@ describe('publication status', () => {
     expect(normalizePublication('draft', 'published')).toBe('draft')
     expect(normalizePublication('review', 'published')).toBe('review')
     expect(normalizePublication(undefined, 'published')).toBe('published')
+    expect(normalizePublication(undefined, 'archived')).toBe('archived')
     expect(() => normalizePublication('archived')).toThrowError()
   })
 })

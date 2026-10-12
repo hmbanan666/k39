@@ -1,12 +1,10 @@
-import { db } from '@k39/database'
 import { z } from 'zod'
-import { slugError } from '../../../shared/seo'
-import { auditMcp } from '../../utils/mcp/audit'
-import { normalizePublication } from '../../utils/mcp/draft'
+import { createRouteDraft } from '../../utils/mcp/routes'
+import { orderedStops } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'route_draft_create',
-  description: 'Create a route. publicationStatus may be draft, review, or published. A slug rename writes a 301 from /marshruty/old.',
+  description: 'Create a route. publicationStatus may be draft, review, or published. Optional points are ordered stops; each placeSlug must already exist and note is optional. A slug rename writes a 301 from /marshruty/old.',
   inputSchema: {
     slug: z.string(),
     title: z.string(),
@@ -15,23 +13,7 @@ export default defineMcpTool({
     publicationStatus: z.enum(['draft', 'review', 'published']).optional(),
     seoTitle: z.string().nullable().optional(),
     seoDescription: z.string().nullable().optional(),
+    points: orderedStops.describe('Ordered stops. Omit to leave stops empty on create. An empty array stores no stops.'),
   },
-  handler: async (input) => {
-    const publicationStatus = normalizePublication(input.publicationStatus)
-    const problem = slugError(input.slug)
-    if (problem) {
-      throw createError({ statusCode: 400, statusMessage: problem })
-    }
-    const row = await db.editor.saveRoute({
-      slug: input.slug,
-      title: input.title,
-      summary: input.summary,
-      body: input.body,
-      publicationStatus,
-      seoTitle: input.seoTitle,
-      seoDescription: input.seoDescription,
-    })
-    await auditMcp('route_draft_create', 'route', row?.id)
-    return { id: row?.id, slug: row?.slug, title: row?.title, publicationStatus: row?.publicationStatus }
-  },
+  handler: async (input) => createRouteDraft(input),
 })

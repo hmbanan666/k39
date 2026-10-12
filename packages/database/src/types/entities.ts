@@ -2,7 +2,7 @@ export type UserRole = 'user' | 'editor' | 'admin'
 
 export type VisitStatus = 'open' | 'ruins' | 'closed' | 'unknown'
 
-export type PublicationStatus = 'draft' | 'review' | 'published'
+export type PublicationStatus = 'draft' | 'review' | 'published' | 'archived'
 
 export type AuthorKind = 'ai' | 'human'
 

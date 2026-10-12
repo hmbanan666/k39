@@ -64,6 +64,13 @@
       "when": 1791780000000,
       "tag": "0008_user_consents",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791790000000,
+      "tag": "0009_point_notes",
+      "breakpoints": true
     }
   ]
 }

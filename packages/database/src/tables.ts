@@ -147,6 +147,7 @@ export const routePoints = pgTable('route_points', {
   routeId: cuid2('route_id').notNull().references(() => routes.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   placeId: cuid2('place_id').notNull().references(() => places.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   position: integer('position').notNull(),
+  note: text('note'),
 }, (table) => [
   uniqueIndex('route_points_route_position').on(table.routeId, table.position),
 ])
@@ -202,6 +203,7 @@ export const collectionItems = pgTable('collection_items', {
   collectionId: cuid2('collection_id').notNull().references(() => collections.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   placeId: cuid2('place_id').notNull().references(() => places.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   position: integer('position').notNull(),
+  note: text('note'),
 }, (table) => [
   uniqueIndex('collection_items_position').on(table.collectionId, table.position),
 ])

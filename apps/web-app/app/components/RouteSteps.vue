@@ -40,11 +40,17 @@
       <ol class="steps">
         <li
           v-for="(step, index) in steps"
-          :key="step.href"
+          :key="`${step.href}-${index}`"
           :class="{ cur: step.current }"
         >
           <span class="n">{{ index + 1 }}</span>
-          <a :href="step.href">{{ step.text }}</a>
+          <span class="label">
+            <a :href="step.href">{{ step.text }}</a>
+            <span
+              v-if="step.note"
+              class="note"
+            >{{ step.note }}</span>
+          </span>
         </li>
       </ol>
       <p
@@ -66,7 +72,7 @@
 <script setup lang="ts">
 withDefaults(defineProps<{
   title: string
-  steps: Array<{ href: string, text: string, current?: boolean }>
+  steps: Array<{ href: string, text: string, note?: string | null, current?: boolean }>
   summary?: string
   kicker?: string
   href?: string
@@ -124,6 +130,7 @@ h2 a { color: inherit; text-decoration: none; }
 h2 a:hover { color: var(--color-amber-soft); }
 .sub { max-width: 56ch; margin: 0; color: #c9d6db; }
 .steps { position: relative; z-index: 1; margin: 1.4rem 0 0; padding: 0; list-style: none; }
+.label { display: block; min-width: 0; }
 .steps a {
   color: #fff;
   font-family: var(--font-display);
@@ -131,6 +138,13 @@ h2 a:hover { color: var(--color-amber-soft); }
   font-weight: 600;
   line-height: 1.3;
   text-decoration: none;
+}
+.note {
+  display: block;
+  margin-top: 0.15rem;
+  color: #c9d6db;
+  font-size: 0.82rem;
+  line-height: 1.35;
 }
 .n {
   display: grid;
@@ -221,7 +235,7 @@ h2 a:hover { color: var(--color-amber-soft); }
     align-items: center;
     text-align: left;
   }
-  .track .n { grid-row: span 2; margin: 0; }
+  .track .n { margin: 0; }
   .route { border-radius: 14px; }
 }
 @media (min-width: 800px) {

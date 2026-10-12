@@ -1,9 +1,10 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
+import { orderedStopView } from '../../utils/mcp/routes'
 
 export default defineMcpTool({
   name: 'collection_get',
-  description: 'Load one collection by id or slug, including drafts.',
+  description: 'Load one collection by id or slug, including drafts and ordered places.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -15,9 +16,6 @@ export default defineMcpTool({
     if (!row) {
       throw createError({ statusCode: 404, statusMessage: 'Подборка не найдена' })
     }
-    const published = row.publicationStatus === 'published'
-      ? await db.content.publishedCollection(row.slug)
-      : null
     return {
       id: row.id,
       slug: row.slug,
@@ -28,7 +26,7 @@ export default defineMcpTool({
       seoTitle: row.seoTitle,
       seoDescription: row.seoDescription,
       noindex: row.noindex,
-      items: published?.items ?? [],
+      items: orderedStopView(await db.editor.collectionItems(row.id)),
     }
   },
 })

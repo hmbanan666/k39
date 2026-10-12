@@ -1,12 +1,10 @@
-import { db } from '@k39/database'
 import { z } from 'zod'
-import { slugError } from '../../../shared/seo'
-import { auditMcp } from '../../utils/mcp/audit'
-import { normalizePublication } from '../../utils/mcp/draft'
+import { updateRouteDraft } from '../../utils/mcp/routes'
+import { orderedStops } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'route_draft_update',
-  description: 'Update a route in place. Omitting publicationStatus leaves a published route published. A slug change writes a 301 from /marshruty/old.',
+  description: 'Update a route in place, including one that is already published. Omitting publicationStatus leaves a published route published. Optional points replace the ordered stops; omit them to keep the current stops. An empty array clears the stops. Each placeSlug must exist. A slug change writes a 301 from /marshruty/old.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string().optional(),
@@ -16,32 +14,7 @@ export default defineMcpTool({
     publicationStatus: z.enum(['draft', 'review', 'published']).optional(),
     seoTitle: z.string().nullable().optional(),
     seoDescription: z.string().nullable().optional(),
+    points: orderedStops.describe('Replacement ordered stops. Omit to keep the current stops.'),
   },
-  handler: async (input) => {
-    const rows = await db.editor.listRoutes()
-    const current = input.id
-      ? rows.find((item) => item.id === input.id)
-      : rows.find((item) => item.slug === input.slug)
-    if (!current) {
-      throw createError({ statusCode: 404, statusMessage: 'Маршрут не найден' })
-    }
-    const publicationStatus = normalizePublication(input.publicationStatus, current.publicationStatus)
-    const slug = input.slug || current.slug
-    const problem = slugError(slug)
-    if (problem) {
-      throw createError({ statusCode: 400, statusMessage: problem })
-    }
-    const row = await db.editor.saveRoute({
-      id: current.id,
-      slug,
-      title: input.title || current.title,
-      summary: input.summary ?? current.summary,
-      body: input.body ?? current.body,
-      publicationStatus,
-      seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-      seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-    })
-    await auditMcp('route_draft_update', 'route', current.id)
-    return { id: row?.id, slug: row?.slug, title: row?.title, publicationStatus: row?.publicationStatus }
-  },
+  handler: async (input) => updateRouteDraft(input),
 })
