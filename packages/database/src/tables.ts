@@ -53,6 +53,7 @@ export const categories = pgTable('categories', {
   slug: varchar('slug').notNull().unique(),
   title: varchar('title').notNull(),
   description: text('description').notNull(),
+  body: text('body').notNull().default(''),
   seoTitle: varchar('seo_title'),
   seoDescription: varchar('seo_description'),
   ogImage: varchar('og_image'),

@@ -31,7 +31,7 @@ interface SeedPlace {
 
 interface SeedFile {
   region: { slug: string, title: string, description: string }
-  categories: Array<{ slug: string, title: string, description: string, seoTitle: string, seoDescription: string }>
+  categories: Array<{ slug: string, title: string, description: string, body?: string, seoTitle: string, seoDescription: string }>
   places: SeedPlace[]
   route: { slug: string, title: string, summary: string, body: string, placeSlugs: string[] }
   collection: { slug: string, title: string, summary: string, body: string, placeSlugs: string[] }
@@ -206,6 +206,7 @@ async function insertCategory(data: SeedFile['categories'][number]) {
     slug: data.slug,
     title: data.title,
     description: data.description,
+    body: data.body ?? '',
     seoTitle: data.seoTitle,
     seoDescription: data.seoDescription,
   }).returning()

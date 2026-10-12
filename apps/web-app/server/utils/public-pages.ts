@@ -3,6 +3,7 @@ import { articleBody } from '../../shared/address'
 import { homeLinks, HUBS } from '../../shared/links'
 import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, ogPath, toPublicMedia } from '../../shared/media'
+import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, placeDocument } from '../../shared/seo'
 
@@ -95,10 +96,13 @@ export async function loadHub(slug: string) {
     noindex: category.noindex,
     ogImage: storedImage(category.ogImage, category.title),
     kind: 'CollectionPage',
+    body: category.body,
   })
+  const article = category.body.trim()
   return {
     doc,
     html: renderMarkdown(category.description),
+    bodyHtml: article ? renderMarkdown(article) : '',
     places: rows.map((place) => {
       const cover = covers.get(place.id)
       return {
@@ -335,6 +339,7 @@ export async function loadQuest(slug: string) {
   if (!loaded) {
     return null
   }
+  const covers = await db.content.coversFor(loaded.steps.map((step) => step.placeId))
   const doc = collectionDocument({
     path: `/kvesty/${loaded.quest.slug}`,
     h1: loaded.quest.title,
@@ -347,10 +352,18 @@ export async function loadQuest(slug: string) {
     noindex: loaded.quest.noindex,
     ogImage: storedImage(loaded.quest.ogImage, loaded.quest.title),
     kind: 'TouristTrip',
+    body: loaded.quest.body,
   })
   return {
     doc,
     html: renderMarkdown(loaded.quest.body),
-    items: loaded.steps.map((step) => ({ href: `/${step.slug}`, text: step.title })),
+    route: loaded.route
+      ? { slug: loaded.route.slug, title: loaded.route.title, href: questRoutePath(loaded.route.slug) }
+      : null,
+    steps: questStepCards(loaded.steps).map((step, index) => {
+      const source = loaded.steps[index]
+      const cover = source ? covers.get(source.placeId) : undefined
+      return { ...step, media: cover ? toPublicMedia(cover) : null }
+    }),
   }
 }

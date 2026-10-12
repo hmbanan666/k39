@@ -8,7 +8,9 @@
       @submit.prevent="saveCategory(item)"
     >
       <label>Название <input v-model="item.title"></label>
-      <label>Текст <textarea v-model="item.description" rows="3" /></label>
+      <label>Кратко <textarea v-model="item.description" rows="3" /></label>
+      <label>Текст <textarea v-model="item.body" rows="8" /></label>
+      <p>Markdown. Раздел «Частые вопросы» попадает в результаты поиска.</p>
       <label>SEO title <input v-model="item.seoTitle"></label>
       <p>{{ (item.seoTitle || item.title || '').length }} знаков в заголовке</p>
       <label>SEO description <textarea

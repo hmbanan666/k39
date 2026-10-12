@@ -213,8 +213,7 @@ const publicationOptions = [
   { value: 'published', label: 'опубликовано' },
 ]
 const slugProblem = computed(() => form.slug ? slugError(form.slug) : null)
-const categoryTitle = computed(() => meta.categories.find((item) => item.slug === form.categorySlug)?.title || 'место')
-const finalTitle = computed(() => pageTitle(form.title || 'Без названия', categoryTitle.value, form.seoTitle))
+const finalTitle = computed(() => pageTitle(form.title || 'Без названия', form.seoTitle))
 const finalDescription = computed(() => metaDescription(form.summary, form.seoDescription))
 const titleHint = computed(() => titleWarning(finalTitle.value))
 const descriptionHint = computed(() => descriptionWarning(finalDescription.value))

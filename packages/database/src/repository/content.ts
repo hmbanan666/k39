@@ -200,8 +200,23 @@ export class Content {
     if (!quest) {
       return null
     }
-    const steps = await db.select({ slug: places.slug, title: places.title, position: questSteps.position }).from(questSteps).innerJoin(places, eq(questSteps.placeId, places.id)).where(and(eq(questSteps.questId, quest.id), eq(places.publicationStatus, published))).orderBy(asc(questSteps.position))
-    return { quest, steps }
+    const steps = await db.select({
+      slug: places.slug,
+      title: questSteps.title,
+      prompt: questSteps.prompt,
+      position: questSteps.position,
+      placeId: places.id,
+      categorySlug: categories.slug,
+    }).from(questSteps).innerJoin(places, eq(questSteps.placeId, places.id)).leftJoin(categories, eq(places.categoryId, categories.id)).where(and(eq(questSteps.questId, quest.id), eq(places.publicationStatus, published))).orderBy(asc(questSteps.position))
+    let route: { slug: string, title: string } | null = null
+    if (quest.routeId) {
+      const [linked] = await db.select({ slug: routes.slug, title: routes.title }).from(routes).where(and(
+        eq(routes.id, quest.routeId),
+        eq(routes.publicationStatus, published),
+      )).limit(1)
+      route = linked ?? null
+    }
+    return { quest, steps, route }
   }
 
   static async sitemapRows() {
@@ -589,9 +604,15 @@ export class Editor {
     return row
   }
 
-  static async saveCategory(id: string, data: { title: string, description: string, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean }) {
+  static async saveCategory(id: string, data: { title: string, description: string, body?: string, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean }) {
     const [updated] = await useDatabase().update(categories).set({
-      ...data,
+      title: data.title,
+      description: data.description,
+      ...(data.body !== undefined ? { body: data.body } : {}),
+      ...(data.seoTitle !== undefined ? { seoTitle: data.seoTitle } : {}),
+      ...(data.seoDescription !== undefined ? { seoDescription: data.seoDescription } : {}),
+      ...(data.ogImage !== undefined ? { ogImage: data.ogImage } : {}),
+      ...(data.noindex !== undefined ? { noindex: data.noindex } : {}),
       updatedAt: new Date().toISOString(),
     }).where(eq(categories.id, id)).returning()
     return updated

@@ -85,6 +85,13 @@
       "when": 1791810000000,
       "tag": "0011_content_scores",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791820000000,
+      "tag": "0012_hub_body",
+      "breakpoints": true
     }
   ]
 }
