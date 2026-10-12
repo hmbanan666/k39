@@ -142,6 +142,8 @@ img {
 }
 
 .btn:hover { background: var(--color-brick-dark); color: var(--color-surface); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn:disabled:hover { background: var(--color-brick); color: var(--color-surface); }
 
 .btn-quiet {
   background: transparent;

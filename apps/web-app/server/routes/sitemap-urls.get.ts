@@ -1,4 +1,5 @@
 import { db, isDatabaseReady } from '@k39/database'
+import { CONSENT_PATH } from '../../shared/consent'
 import { HUBS, LEGAL_LINKS, SECTION_LINKS } from '../../shared/links'
 import { absoluteUrl } from '../../shared/seo'
 
@@ -27,6 +28,7 @@ export default defineEventHandler(async () => {
   const staticPages = [
     { loc: absoluteUrl('/'), lastmod: newest },
     ...LEGAL_LINKS.map((link) => ({ loc: absoluteUrl(link.href) })),
+    { loc: absoluteUrl(CONSENT_PATH) },
     ...HUBS.map((link) => ({ loc: absoluteUrl(link.href) })),
     ...SECTION_LINKS.map((link) => ({ loc: absoluteUrl(link.href) })),
   ]

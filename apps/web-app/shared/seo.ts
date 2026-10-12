@@ -47,6 +47,7 @@ export const RESERVED_SLUGS = [
   'search',
   'sign-in',
   'sitemap',
+  'soglasie',
   'sitemaps',
   'terms',
   'zamki',

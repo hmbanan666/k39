@@ -8,6 +8,7 @@
     <p><a href="/admin/taxonomy">Разделы</a></p>
     <p><a href="/admin/media">Медиа</a></p>
     <p><a href="/admin/analytics">Аналитика</a></p>
+    <p><a href="/admin/consents">Согласия</a></p>
   </main>
 </template>
 

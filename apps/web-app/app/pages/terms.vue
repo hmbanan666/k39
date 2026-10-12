@@ -9,7 +9,7 @@
 
     <h2>1. Общие положения</h2>
     <p>1.1. Настоящее Соглашение определяет условия использования сайта https://k39.online (далее — Сайт), путеводителя по Калининградской области.</p>
-    <p>1.2. Владелец Сайта — {{ operator.form }} {{ operator.name }}, ИНН {{ operator.inn }}, {{ operator.address }} (далее — Администрация, «мы»).</p>
+    <p>1.2. Владелец Сайта — {{ operator.form }} {{ operator.name }}, {{ operatorIdLine() }}, {{ operator.address }} (далее — Администрация, «мы»).</p>
     <p>1.3. Пользуясь Сайтом, вы соглашаетесь с условиями этого Соглашения. Если вы не согласны с ними, пожалуйста, не используйте Сайт.</p>
     <p>1.4. Сайт предоставляется бесплатно и без регистрации.</p>
 
@@ -50,5 +50,5 @@
 </template>
 
 <script setup lang="ts">
-import { operator, operatorMailHref } from '~~/shared/operator'
+import { operator, operatorIdLine, operatorMailHref } from '~~/shared/operator'
 </script>

@@ -21,6 +21,18 @@ export const users = pgTable('users', {
   role: varchar('role').notNull().default('user').$type<UserRole>(),
 })
 
+export const userConsents = pgTable('user_consents', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  userId: cuid2('user_id').notNull().references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  version: varchar('version').notNull(),
+  consentedAt: timestamp('consented_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  method: varchar('method').notNull(),
+  withdrawnAt: timestamp('withdrawn_at', { precision: 3, withTimezone: true, mode: 'string' }),
+}, (table) => [
+  index('user_consents_user_idx').on(table.userId),
+  uniqueIndex('user_consents_active_idx').on(table.userId, table.version).where(sql`${table.withdrawnAt} is null`),
+])
+
 export const regions = pgTable('regions', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),

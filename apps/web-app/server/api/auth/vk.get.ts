@@ -1,6 +1,7 @@
 import type { UserVK } from '#auth-utils'
 import { findOrCreateUserByEmail } from '../../services/auth'
 import { assertOAuthProvider } from '../../utils/oauth'
+import { completeConsentedSession, guardOAuthProvider } from '../../utils/oauth-consent'
 
 const logger = useLogger('vk')
 
@@ -19,12 +20,7 @@ const handler = defineOAuthVKEventHandler({
       name: `${vkUser.first_name} ${vkUser.last_name}`.trim(),
     })
 
-    await setUserSession(event, {
-      user: { id: userInDb.id, email: userInDb.email, role: userInDb.role },
-    })
-
-    const redirectTo = getCookie(event, 'redirectTo')
-    return sendRedirect(event, redirectTo || '/')
+    return completeConsentedSession(event, userInDb)
   },
   onError(event, error) {
     logger.error('OAuth error:', error)
@@ -34,5 +30,9 @@ const handler = defineOAuthVKEventHandler({
 
 export default defineEventHandler((event) => {
   assertOAuthProvider('vk')
+  const denied = guardOAuthProvider(event)
+  if (denied) {
+    return denied
+  }
   return handler(event)
 })
