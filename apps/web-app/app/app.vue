@@ -4,15 +4,6 @@
       <NuxtPage />
     </NuxtLayout>
     <ConsentBanner />
-    <noscript>
-      <img
-      src="/api/collect.gif"
-      alt=""
-      width="1"
-      height="1"
-      style="position:absolute;width:1px;height:1px;overflow:hidden"
-      >
-    </noscript>
   </TooltipProvider>
 </template>
 
@@ -30,5 +21,9 @@ useHead({
   htmlAttrs: { lang: 'ru' },
   meta,
   script: [{ src: '/collect.js', defer: true, tagPosition: 'bodyClose' }],
+  noscript: [{
+    innerHTML: '<img src="/api/collect.gif" alt="" width="1" height="1" style="position:absolute;width:1px;height:1px">',
+    tagPosition: 'bodyClose',
+  }],
 })
 </script>
