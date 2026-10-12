@@ -57,6 +57,8 @@
           <UiButton
             v-if="yandex"
             :href="yandex"
+            data-track="outbound"
+            data-track-name="route"
           >
             Как добраться
           </UiButton>
@@ -241,7 +243,11 @@
           v-for="source in page.sources"
           :key="source.url"
         >
-          <UiLink :href="source.url">
+          <UiLink
+            :href="source.url"
+            data-track="outbound"
+            data-track-name="source"
+          >
             {{ source.title }}
           </UiLink>
         </li>

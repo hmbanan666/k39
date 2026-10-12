@@ -7,6 +7,7 @@
     <p><a href="/admin/collections">Подборки</a></p>
     <p><a href="/admin/taxonomy">Разделы</a></p>
     <p><a href="/admin/media">Медиа</a></p>
+    <p><a href="/admin/analytics">Аналитика</a></p>
   </main>
 </template>
 

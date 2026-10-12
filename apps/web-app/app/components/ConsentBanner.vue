@@ -1,12 +1,12 @@
 <template>
   <div
-    v-if="!decided"
+    v-if="enabled && !decided"
     class="consent"
     role="dialog"
     aria-label="Аналитика"
   >
     <p>
-      Можно записать, какое место вы открыли, без имени и почты.
+      Можно запомнить браузер случайным cookie, без имени и почты. Без согласия остаётся суточный обезличенный счётчик, без cookie и без IP.
       <UiLink href="/legal/privacy-policy">
         Подробнее
       </UiLink>
@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+const enabled = computed(() => useRuntimeConfig().public.consentBanner)
 const { decided, grant, deny } = useConsent()
 </script>
 

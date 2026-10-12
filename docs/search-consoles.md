@@ -18,6 +18,26 @@ Do this after the site answers on `https://k39.online`. Nothing here is configur
 3. Submit the same sitemap.
 4. Inspect `/fort-11-denhoff` and `/forty` and confirm the rendered HTML contains the H1 and canonical.
 
+## Query import
+
+The site pulls queries into Postgres once a day. If the variables below are empty, that engine is skipped and the rest of the site keeps running. Steps for creating the tokens are in ADR 0013.
+
+Yandex Webmaster:
+
+1. Create an OAuth token that can read Webmaster (`https://oauth.yandex.ru`, access to the Webmaster API).
+2. Call `GET https://api.webmaster.yandex.net/v4/user` with `Authorization: OAuth <token>` and then `GET /v4/user/{user-id}/hosts`.
+3. Copy the host id. For this site it looks like `https:k39.online:443`.
+4. Set `YANDEX_WEBMASTER_TOKEN` and `YANDEX_WEBMASTER_HOST_ID` on the web app.
+
+Google Search Console, one of these:
+
+- Service account: create a JSON key, put the file contents in `GSC_SERVICE_ACCOUNT_JSON`, and add the client email as a user on the property `https://k39.online/`. Scope used by the job: `https://www.googleapis.com/auth/webmasters.readonly`.
+- OAuth: set `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, and `GSC_REFRESH_TOKEN` for a user who can read that property.
+
+Also set `GSC_SITE_URL=https://k39.online/`.
+
+`ANALYTICS_SALT` is a long random string. The daily cookieless visitor hash uses it. Without it the server falls back to `NUXT_SESSION_PASSWORD`.
+
 ## Dokploy
 
 Set the verification variables on the web app and redeploy. They are public by design (they appear in HTML). Do not put them in the database.

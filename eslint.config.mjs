@@ -21,6 +21,6 @@ export default antfu(
     },
   },
   {
-    ignores: ['.github/**'],
+    ignores: ['.github/**', 'apps/web-app/public/collect.js'],
   },
 )

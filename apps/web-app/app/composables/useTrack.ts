@@ -8,7 +8,7 @@ export function useTrack() {
   const consent = useConsent()
 
   async function track(type: string, extra: TrackInput = {}) {
-    if (!consent.granted.value) {
+    if (!useRuntimeConfig().public.consentBanner || !consent.granted.value) {
       return
     }
     try {

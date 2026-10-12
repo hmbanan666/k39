@@ -10,6 +10,7 @@ export default defineConfig({
           name: 'packages/database',
           root: './packages/database',
           environment: 'node',
+          fileParallelism: false,
           setupFiles: ['./test/setup.ts'],
           hookTimeout: 120_000,
           testTimeout: 30_000,

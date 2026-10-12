@@ -1,7 +1,7 @@
 import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
 import { cuid2 } from 'drizzle-cuid2/postgres'
 import { sql } from 'drizzle-orm'
-import { boolean, check, doublePrecision, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
+import { bigint, boolean, check, date, doublePrecision, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
 
 function createdAt() {
   return timestamp('created_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow()
@@ -285,4 +285,76 @@ export const events = pgTable('events', {
   index('events_occurred_at_idx').on(table.occurredAt),
   index('events_place_slug_idx').on(table.placeSlug),
   check('events_consent_required', sql`${table.consent} = true`),
+])
+
+export const analyticsHits = pgTable('analytics_hits', {
+  id: varchar('id').primaryKey(),
+  occurredAt: timestamp('occurred_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  visitorKey: varchar('visitor_key').notNull(),
+  visitorMode: varchar('visitor_mode').notNull(),
+  sessionKey: varchar('session_key').notNull(),
+  consented: boolean('consented').notNull().default(false),
+  isBot: boolean('is_bot').notNull().default(false),
+  eventType: varchar('event_type').notNull(),
+  path: varchar('path').notNull(),
+  placeId: varchar('place_id'),
+  routeId: varchar('route_id'),
+  referrer: varchar('referrer'),
+  referrerHost: varchar('referrer_host'),
+  utmSource: varchar('utm_source'),
+  utmMedium: varchar('utm_medium'),
+  utmCampaign: varchar('utm_campaign'),
+  channel: varchar('channel').notNull(),
+  searchQuery: varchar('search_query'),
+  device: varchar('device'),
+  browser: varchar('browser'),
+  os: varchar('os'),
+  screenBucket: varchar('screen_bucket'),
+  language: varchar('language'),
+  landingPath: varchar('landing_path'),
+  isEntry: boolean('is_entry').notNull().default(false),
+  isExit: boolean('is_exit').notNull().default(false),
+  engagedMs: integer('engaged_ms'),
+  scrollBucket: varchar('scroll_bucket'),
+  target: varchar('target'),
+}, (table) => [
+  index('analytics_hits_occurred_idx').on(table.occurredAt),
+  index('analytics_hits_session_idx').on(table.sessionKey, table.occurredAt),
+  index('analytics_hits_visitor_idx').on(table.visitorKey, table.occurredAt),
+  index('analytics_hits_path_idx').on(table.path, table.occurredAt),
+])
+
+export const analyticsDaily = pgTable('analytics_daily', {
+  day: date('day').notNull(),
+  path: varchar('path').notNull().default(''),
+  channel: varchar('channel').notNull().default(''),
+  device: varchar('device').notNull().default(''),
+  pageviews: integer('pageviews').notNull().default(0),
+  visitors: integer('visitors').notNull().default(0),
+  sessions: integer('sessions').notNull().default(0),
+  bounces: integer('bounces').notNull().default(0),
+  engagedMs: bigint('engaged_ms', { mode: 'number' }).notNull().default(0),
+  outbound: integer('outbound').notNull().default(0),
+  photos: integer('photos').notNull().default(0),
+}, (table) => [
+  primaryKey({ columns: [table.day, table.path, table.channel, table.device] }),
+])
+
+export const analyticsSearchQueries = pgTable('analytics_search_queries', {
+  day: date('day').notNull(),
+  engine: varchar('engine').notNull(),
+  page: varchar('page').notNull().default(''),
+  query: text('query').notNull(),
+  impressions: integer('impressions').notNull().default(0),
+  clicks: integer('clicks').notNull().default(0),
+  position: real('position'),
+}, (table) => [
+  primaryKey({ columns: [table.day, table.engine, table.page, table.query] }),
+])
+
+export const analyticsRuns = pgTable('analytics_runs', {
+  day: date('day').notNull(),
+  kind: varchar('kind').notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.day, table.kind] }),
 ])

@@ -4,7 +4,7 @@
       class="control select-trigger"
       type="button"
     >
-      <SelectValue />
+      <SelectValue :placeholder="currentLabel" />
     </SelectTrigger>
     <SelectPortal>
       <SelectContent class="select-content">
@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { SelectContent, SelectItem, SelectItemText, SelectPortal, SelectRoot, SelectTrigger, SelectValue, SelectViewport } from 'reka-ui'
 
-defineProps<{ options: Array<{ value: string, label: string }> }>()
+const props = defineProps<{ options: Array<{ value: string, label: string }> }>()
 const model = defineModel<string>({ required: true })
+const currentLabel = computed(() => props.options.find((option) => option.value === model.value)?.label || '')
 </script>

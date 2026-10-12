@@ -1,4 +1,3 @@
-import process from 'node:process'
 import { db, isDatabaseReady } from '@k39/database'
 import { eventCreateSchema } from '@k39/types'
 import { createId } from '@paralleldrive/cuid2'
@@ -10,14 +9,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 503, statusMessage: 'Database is unavailable' })
     }
 
-    const sessionId = getCookie(event, 'k39_sid') ?? createId()
-    setCookie(event, 'k39_sid', sessionId, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365,
-    })
+    const sessionId = createId()
 
     const place = body.placeSlug ? await db.editor.placeBySlug(body.placeSlug) : undefined
     const row = await db.eventLog.create({
