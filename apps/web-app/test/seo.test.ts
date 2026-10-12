@@ -161,6 +161,54 @@ describe('seo documents', () => {
     })
     expect(quiet.jsonLd.some((node) => node['@type'] === 'FAQPage')).toBe(false)
   })
+
+  it('lists ordered places with coordinates on a tourist trip', () => {
+    const route = collectionDocument({
+      path: '/marshruty/zamki-vostoka',
+      h1: 'Замки востока за день: Тапиау, Инстербург, Рагнит',
+      summary: 'Три орденских замка на восток от Калининграда за один день на машине.',
+      crumbName: 'маршрут',
+      parent: { name: 'Маршруты', href: '/marshruty' },
+      kind: 'TouristTrip',
+      items: [
+        { name: 'Замок Тапиау', url: '/zamok-tapiau', note: 'Старт от кассы', latitude: 54.64528, longitude: 21.07472 },
+        { name: 'Замок Инстербург', url: '/zamok-insterburg', latitude: 54.63972, longitude: 21.80667 },
+        { name: 'Замок Рагнит', url: '/zamok-ragnit', latitude: null, longitude: null },
+      ],
+    })
+    const trip = route.jsonLd.find((node) => node['@type'] === 'TouristTrip') as {
+      itinerary?: {
+        '@type'?: string
+        'numberOfItems'?: number
+        'itemListElement'?: Array<{
+          position?: number
+          description?: string
+          item?: { '@type'?: string, 'url'?: string, 'geo'?: { latitude: number, longitude: number } }
+        }>
+      }
+    }
+    expect(trip.itinerary?.['@type']).toBe('ItemList')
+    expect(trip.itinerary?.numberOfItems).toBe(3)
+    expect(trip.itinerary?.itemListElement?.map((item) => item.position)).toEqual([1, 2, 3])
+    expect(trip.itinerary?.itemListElement?.[0]?.description).toBe('Старт от кассы')
+    expect(trip.itinerary?.itemListElement?.[0]?.item).toMatchObject({
+      '@type': 'TouristAttraction',
+      'url': 'https://k39.online/zamok-tapiau',
+      'geo': { '@type': 'GeoCoordinates', 'latitude': 54.64528, 'longitude': 21.07472 },
+    })
+    expect(trip.itinerary?.itemListElement?.[2]?.item?.geo).toBeUndefined()
+    expect(trip.itinerary?.itemListElement?.[2]?.item?.url).toBe('https://k39.online/zamok-ragnit')
+    const hub = collectionDocument({
+      path: '/forty',
+      h1: 'Форты',
+      summary: 'Форты, ворота и бастионы Кёнигсберга со статусом и часами работы.',
+      crumbName: 'раздел',
+      items: [{ name: 'Форт № 11 «Дёнхофф»', url: '/fort-11-denhoff', latitude: 54.65, longitude: 20.56 }],
+      kind: 'CollectionPage',
+    })
+    const page = hub.jsonLd.find((node) => node['@type'] === 'CollectionPage') as { mainEntity?: { itemListElement?: Array<{ item?: unknown }> } }
+    expect(page.mainEntity?.itemListElement?.[0]?.item).toBeUndefined()
+  })
 })
 
 function placeInput() {

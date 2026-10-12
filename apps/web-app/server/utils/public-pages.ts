@@ -3,6 +3,7 @@ import { articleBody } from '../../shared/address'
 import { homeLinks, HUBS } from '../../shared/links'
 import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, ogPath, toPublicMedia } from '../../shared/media'
+import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, placeDocument } from '../../shared/seo'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
@@ -241,13 +242,26 @@ export async function loadRoute(slug: string) {
   if (!loaded) {
     return null
   }
+  const stops = routeStopViews(loaded.points.map((point) => ({
+    href: `/${point.slug}`,
+    text: point.title,
+    note: point.note,
+    latitude: point.latitude,
+    longitude: point.longitude,
+  })))
   const doc = collectionDocument({
     path: `/marshruty/${loaded.route.slug}`,
     h1: loaded.route.title,
     summary: loaded.route.summary || loaded.route.title,
     crumbName: 'маршрут',
     parent: { name: 'Маршруты', href: '/marshruty' },
-    items: loaded.points.map((point) => ({ name: point.title, url: `/${point.slug}`, note: point.note })),
+    items: loaded.points.map((point) => ({
+      name: point.title,
+      url: `/${point.slug}`,
+      note: point.note,
+      latitude: point.latitude,
+      longitude: point.longitude,
+    })),
     seoTitle: loaded.route.seoTitle,
     seoDescription: loaded.route.seoDescription,
     noindex: loaded.route.noindex,
@@ -258,7 +272,9 @@ export async function loadRoute(slug: string) {
   return {
     doc,
     html: renderMarkdown(loaded.route.body),
-    items: loaded.points.map((point) => ({ href: `/${point.slug}`, text: point.title, note: point.note })),
+    summary: loaded.route.summary || '',
+    stops,
+    items: stops.map((stop) => ({ href: stop.href, text: stop.text, note: stop.note })),
   }
 }
 

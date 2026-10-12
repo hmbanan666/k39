@@ -165,7 +165,14 @@ export class Content {
     if (!route) {
       return null
     }
-    const points = await db.select({ slug: places.slug, title: places.title, note: routePoints.note, position: routePoints.position }).from(routePoints).innerJoin(places, eq(routePoints.placeId, places.id)).where(and(eq(routePoints.routeId, route.id), eq(places.publicationStatus, published))).orderBy(asc(routePoints.position))
+    const points = await db.select({
+      slug: places.slug,
+      title: places.title,
+      note: routePoints.note,
+      position: routePoints.position,
+      latitude: places.latitude,
+      longitude: places.longitude,
+    }).from(routePoints).innerJoin(places, eq(routePoints.placeId, places.id)).where(and(eq(routePoints.routeId, route.id), eq(places.publicationStatus, published))).orderBy(asc(routePoints.position))
     return { route, points }
   }
 

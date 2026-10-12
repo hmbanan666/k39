@@ -20,6 +20,7 @@
     "@paralleldrive/cuid2": "catalog:integrations",
     "@vueuse/core": "catalog:integrations",
     "@vueuse/nuxt": "catalog:integrations",
+    "leaflet": "catalog:integrations",
     "reka-ui": "catalog:integrations",
     "sharp": "catalog:integrations",
     "vue": "catalog:integrations",
@@ -30,6 +31,7 @@
     "@nuxt/fonts": "catalog:dev",
     "@nuxtjs/mcp-toolkit": "catalog:dev",
     "@nuxtjs/seo": "catalog:dev",
+    "@types/leaflet": "catalog:types",
     "@types/node": "catalog:types",
     "nuxt": "catalog:dev",
     "nuxt-auth-utils": "catalog:dev"
