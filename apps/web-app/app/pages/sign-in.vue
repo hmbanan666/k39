@@ -65,14 +65,7 @@
             </UiButton>
           </div>
           <p class="consent">
-            Нажимая кнопку входа, вы даёте
-            <UiLink href="/soglasie">
-              Согласие на обработку персональных данных
-            </UiLink>
-            и принимаете
-            <UiLink href="/privacy">
-              Политику конфиденциальности
-            </UiLink>.
+            Нажимая кнопку входа, вы даёте <a href="/soglasie">Согласие на обработку персональных данных</a> и принимаете <a href="/privacy">Политику конфиденциальности</a>.
           </p>
         </template>
       </div>
@@ -277,6 +270,10 @@ h1::after {
   color: var(--color-muted);
   font-size: var(--step--1);
   line-height: 1.45;
+}
+
+.consent a {
+  font-weight: 700;
 }
 
 .back {
