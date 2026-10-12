@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { applyInitialContent } from '../../seed/apply'
@@ -40,6 +41,11 @@ describe('content scores', () => {
     const fort = catalog.places.find((place) => place.slug === 'fort-11-denhoff')
     expect(fort?.categorySlug).toBe('forty')
     expect(catalog.hubs.some((hub) => hub.slug === 'forty')).toBe(true)
+    await useDatabase().update(categories).set({
+      body: '## Частые вопросы\n\n### Можно ли зайти?\n\nДа, смотрите статус на странице форта.',
+    }).where(eq(categories.slug, 'forty'))
+    const withBody = await Scoring.loadCatalog()
+    expect(withBody.hubs.find((hub) => hub.slug === 'forty')?.body).toContain('### Можно ли зайти?')
     expect(catalog.routes.some((route) => route.slug === 'pyat-fortov')).toBe(true)
     const saved = await Scoring.upsertPassport({
       pageType: 'place',

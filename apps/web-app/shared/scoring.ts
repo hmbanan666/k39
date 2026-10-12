@@ -118,7 +118,7 @@ export interface LinkCatalog {
   routes: LinkGroup[]
   collections: LinkGroup[]
   quests: Array<LinkGroup & { routeSlug: string | null }>
-  hubs: Array<{ slug: string, title: string, description: string, noindex: boolean }>
+  hubs: Array<{ slug: string, title: string, description: string, body: string, noindex: boolean }>
   related: Array<{ fromSlug: string, toSlug: string }>
 }
 
@@ -281,6 +281,7 @@ function contentLinks(path: string, catalog: LinkCatalog) {
     if (hub.slug === 'forty') {
       links.push(...catalog.routes.filter((item) => item.published).map((item) => `/marshruty/${item.slug}`))
     }
+    links.push(...markdownInternalPaths(hub.body))
     links.push(...markdownInternalPaths(hub.description))
   }
   if (path === '/marshruty') {
@@ -360,15 +361,31 @@ function articleText(page: Pick<ScoreSource, 'kind' | 'summary' | 'body' | 'howT
   return page.body.trim()
 }
 
+function markdownHeadings(text: string) {
+  return [...text.replace(/\r\n/g, '\n').matchAll(/^#{2,3}[ \t]+(\S.*)$/gm)].map((match) => match[1]?.trim() ?? '')
+}
+
+// Route and collection articles use these headings instead of one exact line.
+const NOT_CYRILLIC = String.raw`\P{Script=Cyrillic}`
+const DIRECTION_HEADING = new RegExp(`как добраться|(?:^|${NOT_CYRILLIC})дорог[аеиу](?!\\p{Script=Cyrillic})|транспорт|без машины|как (?:ехать|доехать|передвигаться)|на машине`, 'iu')
+const PRICE_HEADING = new RegExp(`цены|цена|стоимость|режим работы|практическая информация|(?:^|${NOT_CYRILLIC})билеты?(?!\\p{Script=Cyrillic})|бюджет|сколько стоит|стоит денег`, 'iu')
+const PRICE_AMOUNT = /₽|руб(?:\.|лей|ля|ль|ли)?(?!\p{Script=Cyrillic})/iu
+
 function hasDirections(text: string, howToGet: string | null) {
-  return /^##[ \t]+Как добраться[ \t]*$/m.test(text) || Boolean(howToGet?.trim())
+  if (howToGet?.trim()) {
+    return true
+  }
+  return markdownHeadings(text).some((heading) => DIRECTION_HEADING.test(heading))
 }
 
 function hasPractical(text: string, hours: string | null, price: string | null) {
   if (hours?.trim() || price?.trim()) {
     return true
   }
-  return /^##[ \t]+(?:Цены|Стоимость|Режим работы|Практическая информация|Билеты|Цены и часы)[ \t]*$/m.test(text)
+  if (markdownHeadings(text).some((heading) => PRICE_HEADING.test(heading))) {
+    return true
+  }
+  return PRICE_AMOUNT.test(text)
 }
 
 function lengthPoints(length: number, norm: { min: number, max: number | null }) {
@@ -382,9 +399,22 @@ function lengthPoints(length: number, norm: { min: number, max: number | null })
   return { points: Math.round(25 * length / norm.min), checks: [`body ${length} chars, need ${need}`] }
 }
 
+function faqSection(text: string) {
+  const questions = faqFromBody(text).length
+  if (questions >= 6) {
+    return { points: 10, checks: [] as string[], questions }
+  }
+  if (questions === 0) {
+    return { points: 0, checks: ['no FAQ'], questions }
+  }
+  return { points: 0, checks: [`FAQ ${questions}, need 6`], questions }
+}
+
 function sectionPoints(page: ScoreSource, text: string) {
+  const faq = faqSection(text)
+  // Hubs are lists. Directions and prices stay optional; the article FAQ still counts.
   if (page.kind === 'hub') {
-    return { points: 30, checks: [] as string[] }
+    return { points: 20 + faq.points, checks: faq.checks, questions: faq.questions }
   }
   const checks: string[] = []
   let points = 0
@@ -398,15 +428,7 @@ function sectionPoints(page: ScoreSource, text: string) {
   } else {
     checks.push('no prices')
   }
-  const questions = faqFromBody(text).length
-  if (questions >= 6) {
-    points += 10
-  } else if (questions === 0) {
-    checks.push('no FAQ')
-  } else {
-    checks.push(`FAQ ${questions}, need 6`)
-  }
-  return { points, checks, questions }
+  return { points: points + faq.points, checks: [...checks, ...faq.checks], questions: faq.questions }
 }
 
 function photoNeed(page: ScoreSource) {
@@ -760,7 +782,7 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
     signals: {
       bodyChars: text.length,
       tier: page.kind === 'place' ? (MAJOR_PLACE_CATEGORIES.has(page.categorySlug || '') ? 'major' : 'minor') : null,
-      faqCount: page.kind === 'hub' ? null : faqFromBody(text).length,
+      faqCount: faqFromBody(text).length,
       photoCount: page.photoCount,
       factsAgeDays: fresh.age,
       inbound: page.inbound,

@@ -375,8 +375,15 @@ export function faqFromBody(body: string) {
     if (!inFaq) {
       continue
     }
+    // A later h2 ends the section. An h3 is a question, the form hub articles use.
     if (/^##[ \t]+/.test(trimmed)) {
       break
+    }
+    const heading = /^###[ \t]+(\S.*)$/.exec(trimmed)
+    if (heading?.[1]) {
+      commit()
+      question = heading[1].trim()
+      continue
     }
     if (!trimmed) {
       continue

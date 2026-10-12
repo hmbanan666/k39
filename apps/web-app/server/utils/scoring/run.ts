@@ -2,7 +2,7 @@ import type { PageKind, PrimaryAction } from '../../../shared/scoring'
 import { db } from '@k39/database'
 import { buildWeeklyReport, filterScores, pageKindLabel, topIssue } from '../../../shared/scoring'
 import { auditMcp } from '../mcp/audit'
-import { scoresFromCatalog, toStored } from './assemble'
+import { catalogPageRefs, scoresFromCatalog, toStored } from './assemble'
 
 function dayStamp(date: Date) {
   return date.toISOString().slice(0, 10)
@@ -31,8 +31,9 @@ export async function refreshContentScores(options?: { force?: boolean }) {
   const stored = scores.map(toStored)
   await db.scoring.replaceScores(stored, now.toISOString())
   await db.scoring.upsertDays(today, stored)
-  await db.scoring.syncPassportPaths(stored)
-  await db.scoring.deleteStalePassports(stored)
+  const pages = catalogPageRefs(catalog)
+  await db.scoring.syncPassportPaths(pages)
+  await db.scoring.deleteStalePassports(pages)
   return { skipped: false, pages: scores.length, scoredAt: now.toISOString() }
 }
 
