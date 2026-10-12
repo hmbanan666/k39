@@ -1,6 +1,6 @@
 import { db, isDatabaseReady } from '@k39/database'
 import { CONSENT_PATH } from '../../shared/consent'
-import { HUBS, LEGAL_LINKS, SECTION_LINKS } from '../../shared/links'
+import { indexableHubs, LEGAL_LINKS, SECTION_LINKS } from '../../shared/links'
 import { absoluteUrl } from '../../shared/seo'
 
 function lastmod(value: string | null | undefined) {
@@ -20,6 +20,8 @@ export default defineEventHandler(async () => {
     return []
   }
   const rows = await db.content.sitemapRows()
+  const categories = await db.content.categories()
+  const hubs = indexableHubs(categories.filter((row) => row.noindex).map((row) => row.slug))
   const newest = [...rows.places, ...rows.routes, ...rows.collections, ...rows.quests]
     .map((row) => lastmod(row.lastmod))
     .filter((value): value is string => Boolean(value))
@@ -29,7 +31,7 @@ export default defineEventHandler(async () => {
     { loc: absoluteUrl('/'), lastmod: newest },
     ...LEGAL_LINKS.map((link) => ({ loc: absoluteUrl(link.href) })),
     { loc: absoluteUrl(CONSENT_PATH) },
-    ...HUBS.map((link) => ({ loc: absoluteUrl(link.href) })),
+    ...hubs.map((link) => ({ loc: absoluteUrl(link.href) })),
     ...SECTION_LINKS.map((link) => ({ loc: absoluteUrl(link.href) })),
   ]
   return [

@@ -20,6 +20,8 @@ Photos: alt is required and describes the picture. author, license, and sourceUr
 Routes and collections: route_draft_create, route_draft_update, and route_update take ordered points as [{placeSlug, note?}]. collection_save takes ordered items in the same shape. Every placeSlug must already exist. Omitting the array leaves the current stops. An empty array clears them. A short note is shown next to that stop. content_archive deletes a draft route or collection. A published or review row is archived: it leaves the site and the public URL returns 410. A draft route that a quest still links is not deleted. quest_save and quest_update take routeSlug to point the quest at another route, including a draft. null clears the link. Then content_archive can delete the draft.
 
 Regions: regionSlug must be a slug from region_list. region_upsert creates or updates one by slug. name is the title. coordinates or center is an optional { latitude, longitude }. Do not invent a center.
+
+Page passports: page_passport_get and page_passport_set store targetQueries, audience, primaryAction (build_route, buy_ticket, go_next_place, claim_offer, read), goal30d, goal90d, and notes for a place, route, collection, hub, or quest. claim_offer names the action. It does not create an offer. content_scores_list, content_score_get, and content_report_weekly read the 0-100 score. A score is quality, linking, indexing, and results. Refresh on content_score_get recomputes every page.
 `
 
 export function contentGuideMessages() {

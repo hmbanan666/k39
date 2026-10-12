@@ -17,6 +17,11 @@ export const HUBS: TextLink[] = [
   { href: '/eda', text: 'Еда' },
 ]
 
+export function indexableHubs(noindexSlugs: readonly string[]) {
+  const hidden = new Set(noindexSlugs)
+  return HUBS.filter((link) => !hidden.has(link.href.slice(1)))
+}
+
 export const SECTION_LINKS: TextLink[] = [
   { href: '/marshruty', text: 'Маршруты' },
   { href: '/podborki', text: 'Подборки' },

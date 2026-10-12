@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { createHead, renderSSRHead } from 'unhead/server'
 import { describe, expect, it } from 'vitest'
 import seed from '../../../packages/database/src/seed/initial-content.json'
-import { findOrphans, haversineKm, homeLinks, HUBS, SECTION_LINKS } from '../shared/links'
+import { findOrphans, haversineKm, homeLinks, HUBS, indexableHubs, SECTION_LINKS } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
 import { decideRedirect } from '../shared/redirects'
 import { brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, pageTitle, placeDocument, placeSchemaType, tuneRobots, verificationMeta } from '../shared/seo'
@@ -359,6 +359,8 @@ describe('robots.txt', () => {
     expect(text).toContain('Disallow: /admin')
     expect(text).toContain('Disallow: /preview')
     expect(text).toContain('Disallow: /api')
+    expect(indexableHubs(['forty']).map((link) => link.href)).not.toContain('/forty')
+    expect(indexableHubs([]).map((link) => link.href)).toContain('/forty')
   })
 })
 

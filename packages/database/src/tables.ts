@@ -1,4 +1,5 @@
-import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
+import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PrimaryAction, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
+import type { ScoreChecks } from './types/scoring'
 import { cuid2 } from 'drizzle-cuid2/postgres'
 import { sql } from 'drizzle-orm'
 import { bigint, boolean, check, date, doublePrecision, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
@@ -367,6 +368,62 @@ export const analyticsSearchQueries = pgTable('analytics_search_queries', {
   position: real('position'),
 }, (table) => [
   primaryKey({ columns: [table.day, table.engine, table.page, table.query] }),
+])
+
+export const pagePassports = pgTable('page_passports', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  pageType: varchar('page_type').notNull().$type<PageKind>(),
+  entityId: varchar('entity_id').notNull(),
+  path: varchar('path').notNull(),
+  targetQueries: jsonb('target_queries').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  audience: text('audience'),
+  primaryAction: varchar('primary_action').$type<PrimaryAction | null>(),
+  goal30d: integer('goal_30d'),
+  goal90d: integer('goal_90d'),
+  notes: text('notes'),
+}, (table) => [
+  uniqueIndex('page_passports_page_idx').on(table.pageType, table.entityId),
+  uniqueIndex('page_passports_path_idx').on(table.path),
+])
+
+export const contentScores = pgTable('content_scores', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  computedAt: timestamp('computed_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  pageType: varchar('page_type').notNull().$type<PageKind>(),
+  entityId: varchar('entity_id').notNull(),
+  path: varchar('path').notNull(),
+  title: varchar('title').notNull(),
+  total: integer('total').notNull(),
+  quality: integer('quality').notNull(),
+  linking: integer('linking').notNull(),
+  indexing: integer('indexing').notNull(),
+  results: integer('results').notNull(),
+  checks: jsonb('checks').$type<ScoreChecks>().notNull().default(sql`'{}'::jsonb`),
+  signals: jsonb('signals').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+}, (table) => [
+  uniqueIndex('content_scores_page_idx').on(table.pageType, table.entityId),
+  index('content_scores_path_idx').on(table.path),
+])
+
+export const contentScoreDays = pgTable('content_score_days', {
+  day: date('day').notNull(),
+  pageType: varchar('page_type').notNull().$type<PageKind>(),
+  entityId: varchar('entity_id').notNull(),
+  path: varchar('path').notNull(),
+  title: varchar('title').notNull(),
+  total: integer('total').notNull(),
+  quality: integer('quality').notNull(),
+  linking: integer('linking').notNull(),
+  indexing: integer('indexing').notNull(),
+  results: integer('results').notNull(),
+  organic30d: integer('organic_30d').notNull().default(0),
+  organic90d: integer('organic_90d').notNull().default(0),
+  goal30d: integer('goal_30d'),
+  goal90d: integer('goal_90d'),
+}, (table) => [
+  primaryKey({ columns: [table.day, table.pageType, table.entityId] }),
 ])
 
 export const analyticsRuns = pgTable('analytics_runs', {
