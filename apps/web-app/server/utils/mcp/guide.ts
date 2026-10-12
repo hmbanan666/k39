@@ -16,6 +16,8 @@ SEO: seoTitle stays under 70 characters, seoDescription under 170. The visible H
 Publishing: you may set publicationStatus to published, or call content_set_publication. Publish only when the facts are in sources and every photo has alt, author, license, and sourceUrl. Unpublish by setting draft. noindex hides a live page from the sitemap, the same checkbox as in /admin. Do not invent a fact in order to publish.
 
 Photos: alt is required and describes the picture. author, license, and sourceUrl are required for an upload. Do not attach a photo whose license is not own, cc-by, cc-by-sa, cc0, pd, or permission.
+
+Routes and collections: route_draft_create, route_draft_update, and route_update take ordered points as [{placeSlug, note?}]. collection_save takes ordered items in the same shape. Every placeSlug must already exist. Omitting the array leaves the current stops. An empty array clears them. A short note is shown next to that stop. content_archive deletes a draft route or collection. A published or review row is archived: it leaves the site and the public URL returns 410.
 `
 
 export function contentGuideMessages() {

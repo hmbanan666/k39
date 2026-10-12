@@ -8,6 +8,13 @@ export const sources = z.array(z.object({
   url: z.string(),
 })).optional()
 
+export const orderedStop = z.object({
+  placeSlug: z.string().describe('Slug of an existing place'),
+  note: z.string().nullable().optional().describe('Optional short note shown with this stop'),
+})
+
+export const orderedStops = z.array(orderedStop).optional()
+
 export const placeFields = {
   slug: z.string().optional().describe('URL slug, latin'),
   title: z.string().optional().describe('Visible Russian title'),

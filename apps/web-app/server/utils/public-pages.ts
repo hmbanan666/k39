@@ -61,7 +61,7 @@ export async function loadHome() {
           href: `/marshruty/${firstRoute.route.slug}`,
           title: firstRoute.route.title,
           summary: firstRoute.route.summary || '',
-          steps: firstRoute.points.map((point) => ({ href: `/${point.slug}`, text: point.title })),
+          steps: firstRoute.points.map((point) => ({ href: `/${point.slug}`, text: point.title, note: point.note })),
         }
       : null,
     quest: quest
@@ -198,6 +198,7 @@ export async function loadPlace(slug: string, page = 1) {
         steps: primary.points.map((point) => ({
           href: `/${point.slug}`,
           text: point.title,
+          note: point.note,
           current: point.slug === loaded.place.slug,
         })),
         next: nextStep ? { href: `/${nextStep.slug}`, text: nextStep.title } : null,
@@ -246,17 +247,18 @@ export async function loadRoute(slug: string) {
     summary: loaded.route.summary || loaded.route.title,
     crumbName: 'маршрут',
     parent: { name: 'Маршруты', href: '/marshruty' },
-    items: loaded.points.map((point) => ({ name: point.title, url: `/${point.slug}` })),
+    items: loaded.points.map((point) => ({ name: point.title, url: `/${point.slug}`, note: point.note })),
     seoTitle: loaded.route.seoTitle,
     seoDescription: loaded.route.seoDescription,
     noindex: loaded.route.noindex,
     ogImage: storedImage(loaded.route.ogImage, loaded.route.title),
     kind: 'TouristTrip',
+    body: loaded.route.body,
   })
   return {
     doc,
     html: renderMarkdown(loaded.route.body),
-    items: loaded.points.map((point) => ({ href: `/${point.slug}`, text: point.title })),
+    items: loaded.points.map((point) => ({ href: `/${point.slug}`, text: point.title, note: point.note })),
   }
 }
 
@@ -284,17 +286,18 @@ export async function loadCollection(slug: string) {
     summary: loaded.collection.summary || loaded.collection.title,
     crumbName: 'подборка',
     parent: { name: 'Подборки', href: '/podborki' },
-    items: loaded.items.map((item) => ({ name: item.title, url: `/${item.slug}` })),
+    items: loaded.items.map((item) => ({ name: item.title, url: `/${item.slug}`, note: item.note })),
     seoTitle: loaded.collection.seoTitle,
     seoDescription: loaded.collection.seoDescription,
     noindex: loaded.collection.noindex,
     ogImage: storedImage(loaded.collection.ogImage, loaded.collection.title),
     kind: 'CollectionPage',
+    body: loaded.collection.body,
   })
   return {
     doc,
     html: renderMarkdown(loaded.collection.body),
-    items: loaded.items.map((item) => ({ href: `/${item.slug}`, text: item.title })),
+    items: loaded.items.map((item) => ({ href: `/${item.slug}`, text: item.title, note: item.note })),
   }
 }
 

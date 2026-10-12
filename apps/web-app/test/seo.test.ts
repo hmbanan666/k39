@@ -70,6 +70,7 @@ describe('seo documents', () => {
     })
     assertDocument(route, '')
     expect(route.jsonLd.some((node) => node['@type'] === 'TouristTrip')).toBe(true)
+    expect(route.jsonLd.some((node) => node['@type'] === 'FAQPage')).toBe(false)
 
     const quest = collectionDocument({
       path: '/kvesty/pyat-fortov',
@@ -108,6 +109,57 @@ describe('seo documents', () => {
     expect(filtered.robots).toContain('noindex')
     expect(filtered.canonical).toBe(place.canonical)
     expect(tuneRobots(place, { utm_source: 'ya' }).robots).toBe(place.robots)
+  })
+
+  it('adds the same FAQPage to a route and a collection when the body has Частые вопросы', () => {
+    const body = [
+      '## Частые вопросы',
+      '',
+      '**Сколько занимает?** Один день.',
+      '',
+      '## Дальше',
+      '',
+      '**Не вопрос** и не попадает в FAQ.',
+    ].join('\n')
+    const place = placeDocument({ ...placeInput(), body })
+    const route = collectionDocument({
+      path: '/marshruty/pyat-fortov',
+      h1: 'Пять фортов за один выезд',
+      summary: 'Редакционный маршрут по фортам.',
+      crumbName: 'маршрут',
+      parent: { name: 'Маршруты', href: '/marshruty' },
+      items: [{ name: 'Форт № 11 «Дёнхофф»', url: '/fort-11-denhoff', note: 'С экскурсией' }],
+      kind: 'TouristTrip',
+      body,
+    })
+    const collection = collectionDocument({
+      path: '/podborki/otkrytye-forty',
+      h1: 'Открытые форты',
+      summary: 'Форты, куда по источникам можно попасть.',
+      crumbName: 'подборка',
+      parent: { name: 'Подборки', href: '/podborki' },
+      items: [{ name: 'Форт № 11 «Дёнхофф»', url: '/fort-11-denhoff' }],
+      kind: 'CollectionPage',
+      body,
+    })
+    const placeFaq = place.jsonLd.find((node) => node['@type'] === 'FAQPage')
+    expect(placeFaq).toBeTruthy()
+    expect(route.jsonLd.find((node) => node['@type'] === 'FAQPage')).toEqual(placeFaq)
+    expect(collection.jsonLd.find((node) => node['@type'] === 'FAQPage')).toEqual(placeFaq)
+    const trip = route.jsonLd.find((node) => node['@type'] === 'TouristTrip') as {
+      itinerary?: { itemListElement?: Array<{ description?: string }> }
+    }
+    expect(trip.itinerary?.itemListElement?.[0]?.description).toBe('С экскурсией')
+    const quiet = collectionDocument({
+      path: '/podborki/bez-voprosov',
+      h1: 'Без вопросов',
+      summary: 'Текст без раздела вопросов, который не должен стать FAQ.',
+      crumbName: 'подборка',
+      items: [],
+      kind: 'CollectionPage',
+      body: '## Как добраться\n\nПешком.',
+    })
+    expect(quiet.jsonLd.some((node) => node['@type'] === 'FAQPage')).toBe(false)
   })
 })
 

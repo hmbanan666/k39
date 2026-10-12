@@ -314,17 +314,10 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     }))
   }
   const noindex = Boolean(input.noindex) || page > 1
-  const faq = faqFromBody(input.body || '')
   const jsonLd = [breadcrumbNode(crumbs), node]
-  if (faq.length) {
-    jsonLd.push({
-      '@type': 'FAQPage',
-      'mainEntity': faq.map((item) => ({
-        '@type': 'Question',
-        'name': item.question,
-        'acceptedAnswer': { '@type': 'Answer', 'text': item.answer },
-      })),
-    })
+  const faq = faqPageNode(input.body)
+  if (faq) {
+    jsonLd.push(faq)
   }
   return {
     title,
@@ -335,6 +328,21 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     crumbs,
     ogImage: image,
     jsonLd,
+  }
+}
+
+export function faqPageNode(body: string | null | undefined) {
+  const faq = faqFromBody(body || '')
+  if (!faq.length) {
+    return null
+  }
+  return {
+    '@type': 'FAQPage',
+    'mainEntity': faq.map((item) => ({
+      '@type': 'Question',
+      'name': item.question,
+      'acceptedAnswer': { '@type': 'Answer', 'text': item.answer },
+    })),
   }
 }
 
@@ -414,13 +422,14 @@ export function collectionDocument(input: {
   summary: string
   crumbName: string
   parent?: Crumb
-  items: Array<{ name: string, url: string }>
+  items: Array<{ name: string, url: string, note?: string | null }>
   seoTitle?: string | null
   seoDescription?: string | null
   noindex?: boolean
   page?: number
   kind: 'CollectionPage' | 'TouristTrip'
   ogImage?: SeoImage
+  body?: string | null
 }): SeoDocument {
   const page = input.page ?? 1
   const parent = input.parent ?? { name: 'Главная', href: '/' }
@@ -436,12 +445,18 @@ export function collectionDocument(input: {
       'position': index + 1,
       'name': item.name,
       'url': absoluteUrl(item.url),
+      ...(item.note ? { description: item.note } : {}),
     })),
   }
   const node: Record<string, unknown> = input.kind === 'TouristTrip'
     ? { '@type': 'TouristTrip', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'itinerary': list }
     : { '@type': 'CollectionPage', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'mainEntity': list }
   const noindex = Boolean(input.noindex) || page > 1
+  const jsonLd = [breadcrumbNode(crumbs), node]
+  const faq = faqPageNode(input.body)
+  if (faq) {
+    jsonLd.push(faq)
+  }
   return {
     title,
     description,
@@ -450,7 +465,7 @@ export function collectionDocument(input: {
     h1: input.h1,
     crumbs,
     ogImage: input.ogImage ?? DEFAULT_OG_IMAGE,
-    jsonLd: [breadcrumbNode(crumbs), node],
+    jsonLd,
   }
 }
 

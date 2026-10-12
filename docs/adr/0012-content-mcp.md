@@ -14,7 +14,7 @@ Editors and agents already create drafts through `POST` and `PATCH /api/content/
 
 Every request needs `Authorization: Bearer $CONTENT_API_TOKEN`, the same check as the content API (`contentAuthFailure` / `requireContentToken`). A missing or wrong token is HTTP 401. If the token is unset, the answer is 503. There is no OAuth discovery. An in-memory limit of 60 calls per minute applies per token.
 
-On 2026-10-11 Nick decided this token has the same content rights as an editor. Tools may publish, unpublish (`publicationStatus: draft`), edit a published row, and set `noindex`. There is no separate archive status in the schema. The token cannot manage users, roles, or site settings.
+On 2026-10-11 Nick decided this token has the same content rights as an editor. Tools may publish, unpublish (`publicationStatus: draft`), edit a published row, and set `noindex`. Archive and hard delete of routes and collections are a later decision, recorded in ADR 0014. The token cannot manage users, roles, or site settings.
 
 Writes go through the same repository methods as `/admin`. A slug change inserts a `slug_redirects` row with status 301. Each update stores the previous place row in `revisions`. The sitemap, nearest-place links, and public pages read publication status from Postgres on request, so a publish has the same effect as saving `published` in the admin form. There is no extra cache purge.
 

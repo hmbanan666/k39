@@ -15,6 +15,7 @@
           <option value="draft">черновик</option>
           <option value="review">на проверке</option>
           <option value="published">опубликовано</option>
+          <option value="archived">в архиве</option>
         </select>
       </label>
       <label>SEO title <input v-model="item.seoTitle"></label>
