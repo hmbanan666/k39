@@ -78,7 +78,7 @@ const busyId = ref('')
 const errorText = ref('')
 
 const methods: Record<string, string> = {
-  'sign-in-checkbox': 'галочка при входе',
+  'sign-in-checkbox': 'кнопка входа',
 }
 
 function methodLabel(method: string) {
