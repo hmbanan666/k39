@@ -7,7 +7,7 @@
   >
     <p>
       Можно запомнить браузер случайным cookie, без имени и почты. Без согласия остаётся суточный обезличенный счётчик, без cookie и без IP.
-      <UiLink href="/legal/privacy-policy">
+      <UiLink href="/privacy">
         Подробнее
       </UiLink>
     </p>

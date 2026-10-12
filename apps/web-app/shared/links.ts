@@ -23,6 +23,13 @@ export const SECTION_LINKS: TextLink[] = [
   { href: '/kvesty', text: 'Квесты' },
 ]
 
+export const LEGAL_LINKS: TextLink[] = [
+  { href: '/about', text: 'О проекте' },
+  { href: '/privacy', text: 'Конфиденциальность' },
+  { href: '/cookies', text: 'Cookie' },
+  { href: '/terms', text: 'Соглашение' },
+]
+
 const SITE_HOSTS = new Set(['k39.online', 'www.k39.online'])
 
 export function isExternalHref(href: string) {
@@ -58,7 +65,7 @@ export function externalLinkAttrs(href: string) {
 }
 
 export function homeLinks(extra: TextLink[] = []) {
-  return [...HUBS, ...SECTION_LINKS, { href: '/legal/privacy-policy', text: 'Политика конфиденциальности' }, ...extra]
+  return [...HUBS, ...SECTION_LINKS, ...LEGAL_LINKS, ...extra]
 }
 
 export function uniqueLinks(links: TextLink[]) {
