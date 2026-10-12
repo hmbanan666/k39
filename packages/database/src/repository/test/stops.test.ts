@@ -134,9 +134,35 @@ describe('ordered stops and archive', () => {
     expect((await Content.redirects()).some((item) => item.fromPath === '/marshruty/draft-route')).toBe(false)
 
     const linked = await Editor.saveRoute({ slug: 'linked-route', title: 'Связан' })
-    await Editor.saveQuest({ slug: 'linked-quest', title: 'Квест', routeId: linked.id })
+    const quest = await Editor.saveQuest({ slug: 'linked-quest', title: 'Квест', routeId: linked.id })
     await expect(Editor.archiveOrDeleteRoute(linked.id)).rejects.toThrow('Cannot delete: a quest still links this route')
     expect((await Editor.listRoutes()).some((item) => item.id === linked.id)).toBe(true)
+
+    const other = await Editor.saveRoute({ slug: 'other-route', title: 'Другой' })
+    const moved = await Editor.saveQuest({
+      id: quest.id,
+      slug: quest.slug,
+      title: quest.title,
+      routeId: other.id,
+    })
+    expect(moved.routeId).toBe(other.id)
+    expect((await Editor.archiveOrDeleteRoute(linked.id))?.action).toBe('deleted')
+    expect((await Editor.questById(quest.id))?.routeId).toBe(other.id)
+
+    const kept = await Editor.saveQuest({
+      id: quest.id,
+      slug: quest.slug,
+      title: 'Квест без смены маршрута',
+    })
+    expect(kept.routeId).toBe(other.id)
+    await Editor.saveQuest({
+      id: quest.id,
+      slug: quest.slug,
+      title: quest.title,
+      routeId: null,
+    })
+    expect((await Editor.questById(quest.id))?.routeId).toBeNull()
+    expect((await Editor.archiveOrDeleteRoute(other.id))?.action).toBe('deleted')
 
     const review = await Editor.saveRoute({
       slug: 'review-route',

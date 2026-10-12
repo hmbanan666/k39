@@ -19,7 +19,7 @@ export const placeFields = {
   slug: z.string().optional().describe('URL slug, latin'),
   title: z.string().optional().describe('Visible Russian title'),
   categorySlug: z.string().optional().describe('Hub slug: forty, zamki, plyazhi, kurorty, muzei, eda'),
-  regionSlug: z.string().optional().describe('Region slug from the regions table, such as kaliningrad or gvardeysk. Omit on update to keep the current region. Create does not default to kaliningrad.'),
+  regionSlug: z.string().optional().describe('Region slug from region_list, such as kaliningrad, gvardeysk, or zelenogradsk. Create one with region_upsert. Omit on update to keep the current region. Create does not default to kaliningrad.'),
   status: visit.describe('Visit status'),
   publicationStatus: publication.describe('draft, review, or published. Same values as the admin form'),
   summary: z.string().optional(),

@@ -20,9 +20,13 @@ On 2026-10-11 Nick decided this token has the same content rights as an editor. 
 
 `content_archive` takes a route or collection by id or slug. A draft is hard-deleted. A published or review row is not deleted: `publication_status` becomes `archived`, the row leaves the sitemap, and `slug_redirects` records 410 for `/marshruty/{slug}` or `/podborki/{slug}`. Publishing that slug again removes the 410. A draft route that a quest or offer still links is left in place and the tool returns 409. The call writes an `mcp_audits` row with tool `content_archive`. ADR 0014 records that decision.
 
+`quest_save` and `quest_update` accept `routeSlug`. A slug retargets the quest, including onto a draft route. `null` clears the link. Omitting `routeSlug` keeps the current route. `quest_get` and `quests_list` return `routeSlug`. After the quest no longer points at a draft route, `content_archive` can delete that draft. `quest_update` edits an existing quest and does not create one. Both writes insert an `mcp_audits` row.
+
+`region_list` returns every region. `region_upsert` creates or updates one by slug. `name` is stored as `regions.title`. `coordinates` and `center` are the same optional `{ latitude, longitude }`. Null clears the center. Omitting both leaves the stored point. The write inserts an `mcp_audits` row with tool `region_upsert`. Migration `0010_coastal_districts` adds nullable `latitude` and `longitude` and inserts `zelenogradsk`, `svetlogorsk`, `baltiysk`, and `sovetsk` under their official district names: Зеленоградский муниципальный округ, Светлогорский городской округ, Балтийский городской округ, Советский городской округ. Centers stay null until an editor sets them.
+
 Writes go through the same repository methods as `/admin`. A slug change inserts a `slug_redirects` row with status 301. Each update stores the previous place row in `revisions`. The sitemap, nearest-place links, and public pages read publication status from Postgres on request, so a publish has the same effect as saving `published` in the admin form. There is no extra cache purge.
 
-Quest writes use `Editor.saveQuest`, added because the repository previously had no quest save. Hub updates use `Editor.saveCategory`. Media delete uses the same file removal as `/admin`.
+Quest writes use `Editor.saveQuest`. Hub updates use `Editor.saveCategory`. Region writes use `Editor.upsertRegion`. Media delete uses the same file removal as `/admin`.
 
 `media_upload_from_url` accepts https URLs on public hosts only, then runs the Sharp pipeline. Commons search and import reuse the Wikimedia helper and its license filter.
 
