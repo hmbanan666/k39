@@ -51,6 +51,12 @@ describe('initial content', () => {
     expect(loaded?.place.title).toContain('Дёнхофф')
     expect(loaded?.place.publicationStatus).toBe('published')
     expect(loaded?.nearest.length).toBeGreaterThan(0)
+    const forty = await Content.categoryBySlug('forty')
+    expect(forty?.body).toContain('## Частые вопросы')
+    const quest = await Content.publishedQuest('pyat-fortov')
+    expect(quest?.route).toEqual({ slug: 'pyat-fortov', title: 'Пять фортов за один выезд' })
+    expect(quest?.steps[0]?.prompt).toContain('Отметьте визит')
+    expect(quest?.quest.body).toContain('## Частые вопросы')
     const hidden = await Content.publishedPlace('does-not-exist')
     expect(hidden).toBeNull()
 

@@ -53,7 +53,7 @@ Page analytics (ADR 0013) is cookieless for every visitor. `public/collect.js` b
 
 ## Conventions
 
-- User-facing UI copy and place/quest/legal content: Russian. Do not use em dashes in UI chrome. The HTML title template in ADR 0008 uses an em dash because that is the search snippet shape.
+- User-facing UI copy and place/quest/legal content: Russian. Do not use em dashes in UI chrome or in the HTML title. The title pattern is `{title} | K39`, or `{seoTitle} | K39` when that field is set. Do not append a second type word.
 - ADRs, this file, the README, code comments: English.
 - Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). Husky runs lint-staged and commitlint.
 - Architecture decisions: `docs/adr/NNNN-title.md`.
@@ -115,7 +115,7 @@ Do not add Kubernetes manifests or GitHub Actions deploy workflows.
 ## Pages
 
 - `/{slug}`: place. Hub, nearest, same-region, routes, collections, manual related links. JSON-LD matches the category.
-- Hubs: `/forty`, `/zamki`, `/plyazhi`, `/kurorty`, `/muzei`, `/eda`.
+- Hubs: `/forty`, `/zamki`, `/plyazhi`, `/kurorty`, `/muzei`, `/eda`. A hub stores a markdown `body`, rendered with the place article renderer. A `## Частые вопросы` section adds FAQPage. `hub_update` writes the body and the SEO fields and is audit-logged. `/admin` edits the same fields.
 - `/marshruty`, `/podborki`, `/kvesty` and their slugs.
 - `/admin`: editors and admins. `/preview/{slug}` shows a draft to those users and is `noindex`.
 - `/sign-in`, `/about`, `/privacy`, `/terms`. `/cookies` redirects to `/privacy#cookies`. `/legal/privacy-policy` redirects to `/privacy`.

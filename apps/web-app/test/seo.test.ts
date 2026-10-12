@@ -97,7 +97,7 @@ describe('seo documents', () => {
       noindex: true,
     })
     expect(draft.robots).toContain('noindex')
-    expect(pageTitle('Имя', 'контекст')).toContain('| K39')
+    expect(pageTitle('Имя')).toBe('Имя | K39')
     expect(place.jsonLd.some((node) => node['@type'] === 'BreadcrumbList')).toBe(true)
     expect(place.jsonLd.some((node) => node['@type'] === 'FAQPage')).toBe(false)
     const geo = (attraction?.geo ?? {}) as { '@type'?: string }
@@ -160,6 +160,71 @@ describe('seo documents', () => {
       body: '## Как добраться\n\nПешком.',
     })
     expect(quiet.jsonLd.some((node) => node['@type'] === 'FAQPage')).toBe(false)
+
+    const quest = collectionDocument({
+      path: '/kvesty/pyat-fortov',
+      h1: 'Квест: 5 фортов',
+      summary: 'Пять фортов, куда по источникам можно попасть.',
+      crumbName: 'квест',
+      parent: { name: 'Квесты', href: '/kvesty' },
+      items: [{ name: 'Форт № 5', url: '/fort-5-korol-fridrih-vilgelm-iii' }],
+      kind: 'TouristTrip',
+      body,
+    })
+    const hub = collectionDocument({
+      path: '/forty',
+      h1: 'Форты',
+      summary: 'Форты, ворота и бастионы Кёнигсберга.',
+      crumbName: 'раздел',
+      items: [{ name: 'Форт № 11 «Дёнхофф»', url: '/fort-11-denhoff' }],
+      kind: 'CollectionPage',
+      seoTitle: 'Форты Калининграда',
+      body,
+    })
+    expect(quest.jsonLd.find((node) => node['@type'] === 'FAQPage')).toEqual(placeFaq)
+    expect(hub.jsonLd.find((node) => node['@type'] === 'FAQPage')).toEqual(placeFaq)
+    expect(hub.title).toBe('Форты Калининграда | K39')
+  })
+
+  it('uses the title or seoTitle, a vertical bar, and no repeated type word', () => {
+    expect(homeDocument().title).toBe('Куда сходить в Калининградской области | K39')
+    const place = placeDocument({ ...placeInput() })
+    expect(place.title).toBe('Форт № 11 «Дёнхофф» | K39')
+    expect(placeDocument({ ...placeInput(), seoTitle: 'Форт Дёнхофф: часы и дорога' }).title).toBe('Форт Дёнхофф: часы и дорога | K39')
+    expect(pageTitle('Форт', 'Форт Дёнхофф | K39')).toBe('Форт Дёнхофф | K39')
+
+    const titled = [
+      ['Форты', 'раздел', undefined, 'Форты | K39'],
+      ['Пять фортов за один выезд', 'маршрут', undefined, 'Пять фортов за один выезд | K39'],
+      ['Форты, куда пускают', 'подборка', undefined, 'Форты, куда пускают | K39'],
+      ['Квест: 5 фортов', 'квест', undefined, 'Квест: 5 фортов | K39'],
+      ['Маршруты', 'список', undefined, 'Маршруты | K39'],
+      ['Подборки', 'список', undefined, 'Подборки | K39'],
+      ['Квесты', 'список', undefined, 'Квесты | K39'],
+    ] as const
+    for (const [h1, crumbName, seoTitle, title] of titled) {
+      const doc = collectionDocument({
+        path: '/example',
+        h1,
+        summary: 'Короткое описание страницы для поисковой выдачи.',
+        crumbName,
+        items: [],
+        kind: 'CollectionPage',
+        seoTitle,
+      })
+      expect(doc.title).toBe(title)
+      expect(doc.title).not.toContain('—')
+      expect(doc.title.endsWith('| K39')).toBe(true)
+      expect(doc.title.split('| K39')).toHaveLength(2)
+    }
+    expect(collectionDocument({
+      path: '/kvesty/pyat-fortov',
+      h1: 'Квест: 5 фортов',
+      summary: 'Пять фортов, куда по источникам можно попасть.',
+      crumbName: 'квест',
+      items: [],
+      kind: 'TouristTrip',
+    }).title.toLowerCase().match(/квест/g)).toEqual(['квест'])
   })
 
   it('lists ordered places with coordinates on a tourist trip', () => {

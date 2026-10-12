@@ -95,12 +95,17 @@ export function absoluteUrl(path: string) {
   return `${SITE_ORIGIN}${path.startsWith('/') ? path : `/${path}`}`
 }
 
-export function pageTitle(name: string, context: string, override?: string | null) {
-  const custom = override?.trim()
-  if (custom) {
-    return custom.includes(SITE_NAME) ? custom : `${custom} | ${SITE_NAME}`
+// `{title} | K39`, or `{seoTitle} | K39` when an override is set.
+// The type word (квест, маршрут, раздел) is not appended, so a title that already names the type is not repeated.
+export function pageTitle(title: string, seoTitle?: string | null) {
+  const custom = seoTitle?.trim()
+  const base = (custom || title).replace(/\s+/g, ' ').trim()
+  if (!base) {
+    return SITE_NAME
   }
-  const base = context ? `${name} — ${context}` : name
+  if (base.includes(SITE_NAME)) {
+    return base
+  }
   return `${base} | ${SITE_NAME}`
 }
 
@@ -193,7 +198,7 @@ export function breadcrumbNode(crumbs: Crumb[]) {
 }
 
 export function homeDocument(): SeoDocument {
-  const title = pageTitle('Куда сходить в Калининградской области', '')
+  const title = pageTitle('Куда сходить в Калининградской области')
   const description = metaDescription('Форты, замки, пляжи, курорты, музеи и еда Калининградской области: статус, часы и как добраться.')
   return {
     title,
@@ -272,7 +277,7 @@ export interface PlaceSeoInput {
 export function placeDocument(input: PlaceSeoInput): SeoDocument {
   const path = `/${input.slug}`
   const page = input.page ?? 1
-  const title = pageTitle(input.title, input.categoryTitle, input.seoTitle)
+  const title = pageTitle(input.title, input.seoTitle)
   const description = metaDescription(input.summary, input.seoDescription)
   const crumbs: Crumb[] = [
     { name: 'Главная', href: '/' },
@@ -436,7 +441,7 @@ export function collectionDocument(input: {
   path: string
   h1: string
   summary: string
-  crumbName: string
+  crumbName?: string
   parent?: Crumb
   items: Array<{ name: string, url: string, note?: string | null, latitude?: number | null, longitude?: number | null }>
   seoTitle?: string | null
@@ -452,7 +457,7 @@ export function collectionDocument(input: {
   const crumbs: Crumb[] = parent.href === '/'
     ? [{ name: 'Главная', href: '/' }, { name: input.h1, href: input.path }]
     : [{ name: 'Главная', href: '/' }, parent, { name: input.h1, href: input.path }]
-  const title = pageTitle(input.h1, input.crumbName, input.seoTitle)
+  const title = pageTitle(input.h1, input.seoTitle)
   const description = metaDescription(input.summary, input.seoDescription)
   const list = {
     '@type': 'ItemList',

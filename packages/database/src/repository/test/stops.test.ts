@@ -257,4 +257,47 @@ describe('ordered stops and archive', () => {
     expect(await Editor.collectionItems(live.id)).toHaveLength(1)
     expect((await Content.redirects()).some((item) => item.fromPath === '/podborki/live-collection' && item.statusCode === 410)).toBe(true)
   })
+
+  it('returns quest task text and only a published route', async () => {
+    const live = await Editor.saveRoute({
+      slug: 'live-ring',
+      title: 'Живое кольцо',
+      publicationStatus: 'published',
+    })
+    await Editor.saveQuest({
+      slug: 'task-quest',
+      title: 'Квест: кольцо',
+      summary: 'Коротко о квесте по кольцу фортов.',
+      body: '## Частые вопросы\n\n**Сколько точек?** Одна.',
+      publicationStatus: 'published',
+      routeId: live.id,
+      steps: [{ placeSlug: 'stop-live', title: 'Живой форт', prompt: 'Найдите табличку у входа.' }],
+    })
+    const loaded = await Content.publishedQuest('task-quest')
+    expect(loaded?.steps).toEqual([
+      expect.objectContaining({
+        slug: 'stop-live',
+        title: 'Живой форт',
+        prompt: 'Найдите табличку у входа.',
+      }),
+    ])
+    expect(loaded?.route).toEqual({ slug: 'live-ring', title: 'Живое кольцо' })
+    expect(loaded?.quest.body).toContain('## Частые вопросы')
+
+    const draft = await Editor.saveRoute({
+      slug: 'draft-ring',
+      title: 'Черновик кольца',
+      publicationStatus: 'draft',
+    })
+    await Editor.saveQuest({
+      id: (await Editor.questBySlug('task-quest'))?.id,
+      slug: 'task-quest',
+      title: 'Квест: кольцо',
+      publicationStatus: 'published',
+      routeId: draft.id,
+    })
+    const retargeted = await Content.publishedQuest('task-quest')
+    expect(retargeted?.route).toBeNull()
+    expect(retargeted?.steps[0]?.prompt).toBe('Найдите табличку у входа.')
+  })
 })

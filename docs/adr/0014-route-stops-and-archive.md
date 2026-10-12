@@ -14,7 +14,7 @@ Accepted.
 
 `content_archive` deletes a draft route or collection and writes an `mcp_audits` row. A published or review row is not deleted. Its `publication_status` becomes `archived`, it drops out of the public site and the sitemap, and `slug_redirects` records 410 for `/marshruty/{slug}` or `/podborki/{slug}`. Publishing that slug again removes the 410. A draft route that a quest or offer still links is left in place and the tool returns 409. `quest_save` and `quest_update` clear that block: set `routeSlug` to another route, or `null`, and the draft can be deleted. `content_set_publication` still accepts only `draft`, `review`, and `published`. An edit that omits `publicationStatus` keeps `archived`.
 
-Place, route, and collection JSON-LD reuse `faqPageNode`, which calls `faqFromBody`. A body with `## Частые вопросы` adds FAQPage. Quest pages do not pass their body into that helper.
+Place, route, collection, hub, and quest JSON-LD reuse `faqPageNode`, which calls `faqFromBody`. A body with `## Частые вопросы` adds FAQPage. Hub copy is `categories.body`.
 
 ## Consequences
 

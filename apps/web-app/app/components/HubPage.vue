@@ -5,8 +5,9 @@
     kicker="Раздел"
   >
     <div
+      v-if="articleHtml"
       class="prose"
-      v-html="page.html"
+      v-html="articleHtml"
     />
     <h2>Места</h2>
     <div class="card-grid">
@@ -36,8 +37,10 @@ const props = defineProps<{ slug: string }>()
 const page = await fetchPublic<{
   doc: SeoDocument
   html: string
+  bodyHtml: string
   places: Array<{ href: string, title: string, summary: string, hub: string, hubHref: string, kind: string, media: PublicMedia | null, image: { src: string, alt: string, width: number | null, height: number | null } | null }>
   routes: { href: string, text: string }[]
 }>(`/api/public/hubs/${props.slug}`)
+const articleHtml = `${page.html}${page.bodyHtml}`
 usePublicHead(page.doc)
 </script>

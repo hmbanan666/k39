@@ -26,7 +26,7 @@ const crumbs: Crumb[] = [
   { name: props.h1, href: props.path },
 ]
 usePublicHead({
-  title: pageTitle(props.h1, 'K39'),
+  title: pageTitle(props.h1),
   description: metaDescription(props.description),
   canonical: `https://k39.online${props.path}`,
   robots: 'index, follow',

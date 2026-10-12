@@ -22,6 +22,8 @@ Routes and collections: route_draft_create, route_draft_update, and route_update
 Regions: regionSlug must be a slug from region_list. region_upsert creates or updates one by slug. name is the title. coordinates or center is an optional { latitude, longitude }. Do not invent a center.
 
 Page passports: page_passport_get and page_passport_set store targetQueries, audience, primaryAction (build_route, buy_ticket, go_next_place, claim_offer, read), goal30d, goal90d, and notes for a place, route, collection, hub, or quest. claim_offer names the action. It does not create an offer. content_scores_list, content_score_get, and content_report_weekly read the 0-100 score. A score is quality, linking, indexing, and results. Refresh on content_score_get recomputes every page.
+
+Hubs: hub_update edits a category. body is markdown shown on the hub page. A heading line "## Частые вопросы" in that body becomes FAQPage, the same parser as a place. seoTitle, seoDescription, ogImage, and noindex match /admin. Omitting a field keeps the stored value. The write is an mcp_audits row.
 `
 
 export function contentGuideMessages() {
