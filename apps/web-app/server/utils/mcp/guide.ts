@@ -9,7 +9,7 @@ Structure:
 - howToGet: the short address only, such as "Неман, ул. Победы, 47". The route itself belongs under the body heading "## Как добраться", not in this field.
 - status: open, ruins, closed, or unknown. unknown if the source does not say.
 
-Facts: if a source does not state it, do not write it. Coordinates, names, and dates come from the source list. Put each source in sources as { title, url }.
+Facts: if a source does not state it, do not write it. Coordinates, names, and dates come from the source list. Put each source in sources as { title, url }. factsCheckedAt is an ISO date (YYYY-MM-DD or a full timestamp) for the last fact check. place_update and place_draft_update store it as last_verified_at. Send it alone with id or slug to record a check without editing the article. Null clears it. Omit it to keep the stored date. Routes, collections, and hubs have no such field.
 
 SEO: seoTitle stays under 70 characters, seoDescription under 170. The visible H1 is the place title. Do not keyword-stuff.
 
@@ -17,7 +17,7 @@ Publishing: you may set publicationStatus to published, or call content_set_publ
 
 Photos: alt is required and describes the picture. author, license, and sourceUrl are required for an upload. Do not attach a photo whose license is not own, cc-by, cc-by-sa, cc0, pd, or permission.
 
-Routes and collections: route_draft_create, route_draft_update, and route_update take ordered points as [{placeSlug, note?}]. collection_save takes ordered items in the same shape. Every placeSlug must already exist. Omitting the array leaves the current stops. An empty array clears them. A short note is shown next to that stop. content_archive deletes a draft route or collection. A published or review row is archived: it leaves the site and the public URL returns 410. A draft route that a quest still links is not deleted. quest_save and quest_update take routeSlug to point the quest at another route, including a draft. null clears the link. Then content_archive can delete the draft.
+Routes and collections: route_draft_create, route_draft_update, and route_update take ordered points as [{placeSlug, note?}]. collection_save takes ordered items in the same shape. Every placeSlug must already exist. Omitting the array leaves the current stops. An empty array clears them. A short note is shown next to that stop. A collection whose places all share one region does not need a "## Как добраться" heading. A note or the place howToGet that gives an address or a transport line also covers that check. content_archive deletes a draft route or collection. A published or review row is archived: it leaves the site and the public URL returns 410. A draft route that a quest still links is not deleted. quest_save and quest_update take routeSlug to point the quest at another route, including a draft. null clears the link. Then content_archive can delete the draft.
 
 Regions: regionSlug must be a slug from region_list. region_upsert creates or updates one by slug. name is the title. coordinates or center is an optional { latitude, longitude }. Do not invent a center.
 

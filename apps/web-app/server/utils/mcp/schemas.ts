@@ -34,4 +34,5 @@ export const placeFields = {
   ogImage: z.string().nullable().optional(),
   noindex: z.boolean().optional(),
   sources,
+  factsCheckedAt: z.string().nullable().optional().describe('ISO date (YYYY-MM-DD or a full timestamp) when the facts were last checked. Stored as last_verified_at. Omit to keep the current value. Null clears it. Send it with only id or slug to record a check and leave the article unchanged.'),
 }

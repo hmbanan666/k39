@@ -302,8 +302,90 @@ describe('page score', () => {
     expect(score.signals.bodyChars).toBeGreaterThan(500)
     expect(score.signals.faqCount).toBe(1)
     expect(score.checks.quality).toContain('FAQ 1, need 6')
+    expect(score.checks.quality.some((check) => check.includes('need 2000'))).toBe(true)
+    expect(score.checks.quality.some((check) => check.includes('above'))).toBe(false)
     expect(score.checks.quality).not.toContain('no Как добраться')
     expect(score.checks.quality).not.toContain('no prices')
+  })
+
+  it('gives a hub landing page no upper length penalty once it clears 2000 characters', () => {
+    const score = scorePage(source({
+      kind: 'hub',
+      path: '/forty',
+      categorySlug: 'forty',
+      body: `${'ы'.repeat(4000)}\n\n${faq(6)}`,
+      photoCount: 1,
+      memberCount: 2,
+    }))
+    expect(score.checks.quality.filter((check) => check.startsWith('body ') || check.includes('FAQ') || check === 'no FAQ')).toEqual([])
+  })
+
+  it('does not require Как добраться when every collection stop is in one city', () => {
+    const body = [
+      'а'.repeat(5200),
+      '',
+      '## Сколько стоит',
+      '',
+      'Билет 300 ₽.',
+      '',
+      faq(6),
+    ].join('\n')
+    const stops = [
+      { city: 'kaliningrad', access: null },
+      { city: 'kaliningrad', access: 'уточнить у кассы' },
+    ]
+    for (const path of ['/podborki/gorodskie-vorota-kaliningrada', '/podborki/kaliningrad-v-dozhd']) {
+      const score = scorePage(source({
+        kind: 'collection',
+        path,
+        categorySlug: null,
+        body,
+        memberCount: 8,
+        photoCount: 1,
+        stops,
+      }))
+      expect(score.checks.quality).not.toContain('no Как добраться')
+    }
+  })
+
+  it('accepts per-item address or transport lines instead of a collection how-to-get block', () => {
+    const score = scorePage(source({
+      kind: 'collection',
+      path: '/podborki/dva-goroda',
+      categorySlug: null,
+      body: [
+        'б'.repeat(5200),
+        '',
+        '## Сколько стоит',
+        '',
+        'Билет 400 рублей.',
+        '',
+        faq(6),
+      ].join('\n'),
+      memberCount: 2,
+      photoCount: 1,
+      stops: [
+        { city: 'kaliningrad', access: 'ул. Фрунзе, 112' },
+        { city: 'svetlogorsk', access: 'электричка до Светлогорска' },
+      ],
+    }))
+    expect(score.checks.quality).not.toContain('no Как добраться')
+  })
+
+  it('still requires Как добраться when collection stops span cities and have no access lines', () => {
+    const score = scorePage(source({
+      kind: 'collection',
+      path: '/podborki/zamki-oblasti',
+      categorySlug: null,
+      body: '## План\n\nДва города, без адресов.',
+      memberCount: 2,
+      photoCount: 1,
+      stops: [
+        { city: 'kaliningrad', access: null },
+        { city: 'gvardeysk', access: 'касса у входа' },
+      ],
+    }))
+    expect(score.checks.quality).toContain('no Как добраться')
   })
 })
 

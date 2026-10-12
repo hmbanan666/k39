@@ -62,6 +62,8 @@ export interface ScoreSource {
   seoTitle: string | null
   seoDescription: string | null
   factsCheckedAt: string | null
+  // Collection stops only. city is the place region id. access is the item note plus the place address.
+  stops?: Array<{ city: string | null, access: string | null }>
   photoCount: number
   inRoute: boolean
   inCollection: boolean
@@ -159,7 +161,8 @@ export function lengthNorm(kind: PageKind, categorySlug: string | null) {
   if (kind === 'quest') {
     return { min: 2000, max: 4000 as number | null }
   }
-  return { min: 400, max: 1500 as number | null }
+  // Hub landing pages have a floor and no ceiling. Six FAQ questions are scored on their own.
+  return { min: 2000, max: null }
 }
 
 function clamp(value: number) {
@@ -378,6 +381,29 @@ function hasDirections(text: string, howToGet: string | null) {
   return markdownHeadings(text).some((heading) => DIRECTION_HEADING.test(heading))
 }
 
+const ACCESS_LINE = /ул\.|улиц|проспект|пр-т|(?:^|[^\p{L}])пр\.|площад|переул|шоссе|набережн|автобус|трамва|электричка|поезд|такси|маршрутка|пешком|остановк|транспорт|как добраться/iu
+
+function accessLine(value: string | null | undefined) {
+  return ACCESS_LINE.test(value?.trim() ?? '')
+}
+
+function sameCity(stops: Array<{ city: string | null }>) {
+  const city = stops[0]?.city?.trim()
+  return Boolean(city) && stops.every((stop) => stop.city?.trim() === city)
+}
+
+function collectionDirections(page: ScoreSource, text: string) {
+  if (hasDirections(text, null)) {
+    return true
+  }
+  const stops = page.stops ?? []
+  if (!stops.length) {
+    return false
+  }
+  // A city collection does not need one how-to-get block. Per-stop address or transport also covers it.
+  return sameCity(stops) || stops.every((stop) => accessLine(stop.access))
+}
+
 function hasPractical(text: string, hours: string | null, price: string | null) {
   if (hours?.trim() || price?.trim()) {
     return true
@@ -418,7 +444,10 @@ function sectionPoints(page: ScoreSource, text: string) {
   }
   const checks: string[] = []
   let points = 0
-  if (hasDirections(text, page.kind === 'place' ? page.howToGet : null)) {
+  const directions = page.kind === 'collection'
+    ? collectionDirections(page, text)
+    : hasDirections(text, page.kind === 'place' ? page.howToGet : null)
+  if (directions) {
     points += 10
   } else {
     checks.push('no Как добраться')

@@ -80,6 +80,9 @@ export class Scoring {
       parentId: collectionItems.collectionId,
       placeSlug: places.slug,
       placePublished: places.publicationStatus,
+      regionId: places.regionId,
+      note: collectionItems.note,
+      howToGet: places.howToGet,
     }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id))
     const questStopRows = await db.select({
       parentId: questSteps.questId,
@@ -127,11 +130,23 @@ export class Scoring {
         routeSlug,
       }
     }
-    const stops = (rows: Array<{ parentId: string, placeSlug: string, placePublished: string }>): CatalogStop[] => rows.map((row) => ({
-      parentId: row.parentId,
-      placeSlug: row.placeSlug,
-      placePublished: row.placePublished === 'published',
-    }))
+    const stops = (rows: Array<{
+      parentId: string
+      placeSlug: string
+      placePublished: string
+      regionId?: string | null
+      note?: string | null
+      howToGet?: string | null
+    }>): CatalogStop[] => rows.map((row) => {
+      const access = [row.note, row.howToGet].map((item) => item?.trim()).filter((item): item is string => Boolean(item)).join('\n')
+      return {
+        parentId: row.parentId,
+        placeSlug: row.placeSlug,
+        placePublished: row.placePublished === 'published',
+        regionId: row.regionId ?? null,
+        access: access || null,
+      }
+    })
 
     return {
       places: placeRows.flatMap((row): ScorePlace[] => {

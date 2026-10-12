@@ -29,5 +29,6 @@ export default defineEventHandler(async (event) => {
     ogImage: body.ogImage,
     noindex: body.noindex,
     sources: Array.isArray(body.sources) ? body.sources : undefined,
+    factsCheckedAt: body.factsCheckedAt,
   })
 })

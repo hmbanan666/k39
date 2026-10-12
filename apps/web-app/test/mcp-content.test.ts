@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import { contentAuthFailure } from '../server/utils/access'
 import { normalizePublication } from '../server/utils/mcp/draft'
+import { parseFactsCheckedAt } from '../server/utils/mcp/facts'
 import { routeIdForSlug, routeSlugOf } from '../server/utils/mcp/quests'
 import { resetContentSlots, takeContentSlot } from '../server/utils/mcp/rate-limit'
 import { regionView, resolveCenter } from '../server/utils/mcp/regions'
+import { placeFields } from '../server/utils/mcp/schemas'
 
 describe('content MCP auth', () => {
   const previous = process.env.CONTENT_API_TOKEN
@@ -74,6 +77,28 @@ describe('region center', () => {
       latitude: 54.96,
       longitude: null,
     }).center).toBeNull()
+  })
+})
+
+describe('factsCheckedAt', () => {
+  it('accepts an ISO date by itself and stores date-only values at UTC midnight', () => {
+    const schema = z.object({ id: z.string().optional(), ...placeFields })
+    expect(schema.parse({ id: 'place-1', factsCheckedAt: '2026-10-12' })).toMatchObject({
+      id: 'place-1',
+      factsCheckedAt: '2026-10-12',
+    })
+    expect(schema.parse({ slug: 'fort-11-denhoff', factsCheckedAt: null }).factsCheckedAt).toBeNull()
+    expect(parseFactsCheckedAt(undefined)).toBeUndefined()
+    expect(parseFactsCheckedAt(null)).toBeNull()
+    expect(parseFactsCheckedAt('2026-10-12')).toBe('2026-10-12T00:00:00.000Z')
+    expect(parseFactsCheckedAt('2026-10-12T15:04:05.000Z')).toBe('2026-10-12T15:04:05.000Z')
+    expect(() => parseFactsCheckedAt('12.10.2026')).toThrowError()
+    expect(() => parseFactsCheckedAt('2026-02-31')).toThrowError()
+    try {
+      parseFactsCheckedAt('вчера')
+    } catch (error) {
+      expect((error as { statusCode: number }).statusCode).toBe(400)
+    }
   })
 })
 
