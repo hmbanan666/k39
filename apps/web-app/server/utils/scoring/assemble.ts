@@ -200,6 +200,9 @@ export function scoresFromCatalog(
       const link = stat(path)
       const passport = passportOf(catalog, 'collection', collection.id)
       const members = stopSlugs(catalog.collectionStops, collection.id, true)
+      const stops = catalog.collectionStops
+        .filter((stop) => stop.parentId === collection.id && stop.placePublished)
+        .map((stop) => ({ city: stop.regionId, access: stop.access }))
       return {
         kind: 'collection',
         id: collection.id,
@@ -230,6 +233,7 @@ export function scoresFromCatalog(
         orphan: link.orphan,
         passport,
         results: resultsFor(path, passport),
+        stops,
       }
     }),
     ...catalog.quests.map((quest): ScoreSource => {

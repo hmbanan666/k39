@@ -3,6 +3,7 @@ import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
 import { auditMcp } from './audit'
 import { normalizePublication } from './draft'
+import { parseFactsCheckedAt } from './facts'
 
 const VISIT = new Set(['open', 'ruins', 'closed', 'unknown'])
 
@@ -26,6 +27,7 @@ export interface PlaceDraftInput {
   ogImage?: string | null
   noindex?: boolean
   sources?: Array<{ title: string, url: string }>
+  factsCheckedAt?: string | null
 }
 
 function compactPlace(row: {
@@ -35,6 +37,7 @@ function compactPlace(row: {
   publicationStatus: string
   status: string
   updatedAt?: string
+  lastVerifiedAt?: string | null
 }) {
   return {
     id: row.id,
@@ -43,6 +46,7 @@ function compactPlace(row: {
     status: row.status,
     publicationStatus: row.publicationStatus,
     updatedAt: row.updatedAt,
+    factsCheckedAt: row.lastVerifiedAt ?? null,
   }
 }
 
@@ -78,6 +82,7 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
   if (problem || !input.title?.trim()) {
     throw createError({ statusCode: 400, statusMessage: problem || 'Нужны название и адрес' })
   }
+  const checked = parseFactsCheckedAt(input.factsCheckedAt)
   const row = await db.editor.savePlace({
     slug,
     title: input.title.trim(),
@@ -98,6 +103,7 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     publicationStatus,
     noindex: Boolean(input.noindex),
     authorKind: 'ai',
+    ...(checked !== undefined ? { lastVerifiedAt: checked } : {}),
   })
   await auditMcp('place_draft_create', 'place', row?.id)
   return compactPlace(row!)
@@ -118,6 +124,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   if (problem) {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
+  const checked = parseFactsCheckedAt(input.factsCheckedAt)
   const row = await db.editor.savePlace({
     id: current.id,
     slug,
@@ -139,6 +146,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     publicationStatus,
     noindex: input.noindex ?? current.noindex,
     authorKind: current.authorKind,
+    lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
   })
   await auditMcp(auditTool, 'place', current.id)
   return compactPlace(row!)
@@ -174,6 +182,7 @@ export async function submitPlaceReview(input: { id?: string, slug?: string }) {
     noindex: current.noindex,
     publicationStatus: 'review',
     authorKind: current.authorKind,
+    lastVerifiedAt: current.lastVerifiedAt,
   })
   await auditMcp('place_submit_review', 'place', current.id)
   return compactPlace(row!)

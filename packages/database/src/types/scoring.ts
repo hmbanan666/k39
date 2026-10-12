@@ -49,6 +49,8 @@ export interface CatalogStop {
   parentId: string
   placeSlug: string
   placePublished: boolean
+  regionId: string | null
+  access: string | null
 }
 
 export interface CatalogHub {

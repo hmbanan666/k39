@@ -4,6 +4,7 @@ import { useDatabase } from '../../database'
 import { applyInitialContent } from '../../seed/apply'
 import { analyticsSearchQueries, categories, collectionItems, collections, contentImports, contentScoreDays, contentScores, media, offerCodes, offers, pagePassports, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes } from '../../tables'
 import { Analytics } from '../analytics'
+import { Editor } from '../content'
 import { Scoring } from '../scoring'
 
 async function wipe() {
@@ -41,6 +42,12 @@ describe('content scores', () => {
     const fort = catalog.places.find((place) => place.slug === 'fort-11-denhoff')
     expect(fort?.categorySlug).toBe('forty')
     expect(catalog.hubs.some((hub) => hub.slug === 'forty')).toBe(true)
+    const openForts = catalog.collections.find((item) => item.slug === 'otkrytye-forty')
+    const fortStops = catalog.collectionStops.filter((stop) => stop.parentId === openForts?.id && stop.placePublished)
+    expect(fortStops.length).toBeGreaterThan(1)
+    expect(new Set(fortStops.map((stop) => stop.regionId)).size).toBe(1)
+    expect(fortStops.every((stop) => stop.regionId)).toBe(true)
+    expect(fortStops.some((stop) => stop.access?.includes('транспорт'))).toBe(true)
     await useDatabase().update(categories).set({
       body: '## Частые вопросы\n\n### Можно ли зайти?\n\nДа, смотрите статус на странице форта.',
     }).where(eq(categories.slug, 'forty'))
@@ -69,6 +76,36 @@ describe('content scores', () => {
     expect(again?.audience).toBe('семьи')
     const reloaded = await Scoring.loadCatalog()
     expect(reloaded.passports[0]?.targetQueries).toEqual(['форт 11'])
+  })
+
+  it('stores lastVerifiedAt without rewriting the article', async () => {
+    const created = await Editor.savePlace({
+      slug: 'fact-check',
+      title: 'Проверка',
+      summary: 'Коротко',
+      body: 'Текст статьи',
+      publicationStatus: 'draft',
+    })
+    const stamped = await Editor.savePlace({
+      id: created.id,
+      slug: created.slug,
+      title: created.title,
+      summary: created.summary,
+      body: created.body,
+      lastVerifiedAt: '2026-04-01T00:00:00.000Z',
+    })
+    expect(stamped.body).toBe('Текст статьи')
+    expect(stamped.lastVerifiedAt && new Date(stamped.lastVerifiedAt).toISOString()).toBe('2026-04-01T00:00:00.000Z')
+    const cleared = await Editor.savePlace({
+      id: created.id,
+      slug: created.slug,
+      title: created.title,
+      summary: created.summary,
+      body: created.body,
+      lastVerifiedAt: null,
+    })
+    expect(cleared.lastVerifiedAt).toBeNull()
+    expect(cleared.body).toBe('Текст статьи')
   })
 
   it('stores a day snapshot and finds the week-ago row', async () => {

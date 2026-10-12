@@ -43,6 +43,7 @@ export default defineMcpTool({
       seoDescription: place.seoDescription,
       ogImage: place.ogImage,
       noindex: place.noindex,
+      factsCheckedAt: place.lastVerifiedAt,
       media: gallery.map((item) => ({
         ...compactMedia(item.media),
         isCover: item.isCover,
