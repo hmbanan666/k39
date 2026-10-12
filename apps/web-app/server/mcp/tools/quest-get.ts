@@ -1,9 +1,10 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
+import { routeSlugOf } from '../../utils/mcp/quests'
 
 export default defineMcpTool({
   name: 'quest_get',
-  description: 'Load one quest by id or slug, including drafts and steps.',
+  description: 'Load one quest by id or slug, including drafts, steps, and routeSlug. routeSlug is null when the quest is not linked to a route.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -14,6 +15,7 @@ export default defineMcpTool({
     if (!quest) {
       throw createError({ statusCode: 404, statusMessage: 'Квест не найден' })
     }
+    const routes = await db.editor.listRoutes()
     return {
       id: quest.id,
       slug: quest.slug,
@@ -24,6 +26,7 @@ export default defineMcpTool({
       seoTitle: quest.seoTitle,
       seoDescription: quest.seoDescription,
       noindex: quest.noindex,
+      routeSlug: routeSlugOf(quest.routeId, routes),
       steps: await db.editor.questStepsFor(quest.id),
     }
   },

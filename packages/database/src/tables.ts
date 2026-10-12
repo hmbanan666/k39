@@ -40,6 +40,9 @@ export const regions = pgTable('regions', {
   slug: varchar('slug').notNull().unique(),
   title: varchar('title').notNull(),
   description: text('description'),
+  // Optional map center. Both stay null until an editor sets them.
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
 })
 
 export const categories = pgTable('categories', {

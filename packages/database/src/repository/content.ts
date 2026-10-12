@@ -599,6 +599,40 @@ export class Editor {
     return updated
   }
 
+  // Insert by slug, or update the existing row. Omitted center fields stay as stored.
+  static async upsertRegion(data: {
+    slug: string
+    title: string
+    description?: string | null
+    latitude?: number | null
+    longitude?: number | null
+  }) {
+    const db = useDatabase()
+    const [existing] = await db.select().from(regions).where(eq(regions.slug, data.slug)).limit(1)
+    const title = data.title.trim()
+    if (!existing) {
+      const [created] = await db.insert(regions).values({
+        slug: data.slug,
+        title,
+        description: data.description ?? null,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+      }).returning()
+      if (!created) {
+        throw new Error('Region insert failed')
+      }
+      return created
+    }
+    const [updated] = await db.update(regions).set({
+      title: title || existing.title,
+      description: data.description === undefined ? existing.description : data.description,
+      latitude: data.latitude === undefined ? existing.latitude : data.latitude,
+      longitude: data.longitude === undefined ? existing.longitude : data.longitude,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(regions.id, existing.id)).returning()
+    return updated ?? existing
+  }
+
   static async listAllMedia() {
     return useDatabase().select().from(media).orderBy(asc(media.createdAt))
   }

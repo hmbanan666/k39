@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { contentAuthFailure } from '../server/utils/access'
 import { normalizePublication } from '../server/utils/mcp/draft'
+import { routeIdForSlug, routeSlugOf } from '../server/utils/mcp/quests'
 import { resetContentSlots, takeContentSlot } from '../server/utils/mcp/rate-limit'
+import { regionView, resolveCenter } from '../server/utils/mcp/regions'
 
 describe('content MCP auth', () => {
   const previous = process.env.CONTENT_API_TOKEN
@@ -41,5 +43,57 @@ describe('publication status', () => {
     expect(normalizePublication(undefined, 'published')).toBe('published')
     expect(normalizePublication(undefined, 'archived')).toBe('archived')
     expect(() => normalizePublication('archived')).toThrowError()
+  })
+})
+
+describe('region center', () => {
+  it('treats coordinates and center as one optional point', () => {
+    expect(resolveCenter({})).toBeUndefined()
+    expect(resolveCenter({ center: { latitude: 54.96, longitude: 20.48 } })).toEqual({
+      latitude: 54.96,
+      longitude: 20.48,
+    })
+    expect(resolveCenter({ coordinates: null })).toEqual({ latitude: null, longitude: null })
+    expect(resolveCenter({
+      coordinates: { latitude: 54.96, longitude: 20.48 },
+      center: { latitude: 54.96, longitude: 20.48 },
+    })).toEqual({ latitude: 54.96, longitude: 20.48 })
+    expect(() => resolveCenter({
+      coordinates: { latitude: 1, longitude: 2 },
+      center: { latitude: 3, longitude: 4 },
+    })).toThrowError()
+    expect(() => resolveCenter({ center: { latitude: 91, longitude: 0 } })).toThrowError()
+  })
+
+  it('hides a half-filled center', () => {
+    expect(regionView({
+      id: 'region-1',
+      slug: 'zelenogradsk',
+      title: 'Зеленоградский муниципальный округ',
+      description: null,
+      latitude: 54.96,
+      longitude: null,
+    }).center).toBeNull()
+  })
+})
+
+describe('quest route link', () => {
+  const routes = [
+    { id: 'route-draft', slug: 'draft-route' },
+    { id: 'route-live', slug: 'live-route' },
+  ]
+
+  it('retargets a quest onto a draft route or clears the link', () => {
+    expect(routeIdForSlug(undefined, routes)).toBeUndefined()
+    expect(routeIdForSlug(null, routes)).toBeNull()
+    expect(routeIdForSlug('draft-route', routes)).toBe('route-draft')
+    expect(routeSlugOf('route-live', routes)).toBe('live-route')
+    expect(routeSlugOf(null, routes)).toBeNull()
+    expect(() => routeIdForSlug('missing', routes)).toThrowError()
+    try {
+      routeIdForSlug('missing', routes)
+    } catch (error) {
+      expect((error as { statusCode: number }).statusCode).toBe(400)
+    }
   })
 })
