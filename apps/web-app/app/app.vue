@@ -3,7 +3,9 @@
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
-    <ConsentBanner />
+    <ClientOnly>
+      <CookieNotice />
+    </ClientOnly>
   </TooltipProvider>
 </template>
 
