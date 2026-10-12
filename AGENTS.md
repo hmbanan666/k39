@@ -49,6 +49,8 @@ Auth is `nuxt-auth-utils`: Yandex and VK use `defineOAuthYandexEventHandler` and
 
 `POST /api/events` records an event. `useTrack()` sends one only after the visitor accepts the consent banner. The banner is `position: fixed` so it does not shift the page. Rows require `consent = true`. The table has no IP address and no account id.
 
+Page analytics (ADR 0013) is separate. `public/collect.js` beacons to `POST /api/collect`. A cookie visitor id exists only after consent. Otherwise the key is a daily HMAC of salt, IP, and User-Agent, and the IP is not stored. Raw hits last 13 months. `analytics_daily` is kept. Search queries are imported when `YANDEX_WEBMASTER_TOKEN` plus `YANDEX_WEBMASTER_HOST_ID`, or Google Search Console credentials, are set. Read-only MCP tools `analytics_overview`, `analytics_channels`, `analytics_top_pages`, `analytics_landing_pages`, `analytics_referrers`, `analytics_search_queries`, `analytics_events`, `analytics_realtime`, and `analytics_page` are audited. The same numbers are on `/admin/analytics`.
+
 ## Conventions
 
 - User-facing UI copy and place/quest/legal content: Russian. Do not use em dashes in UI chrome. The HTML title template in ADR 0008 uses an em dash because that is the search snippet shape.

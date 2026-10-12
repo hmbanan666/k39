@@ -1,10 +1,12 @@
 import { sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
+import { Analytics } from './analytics'
 import { Content, Editor } from './content'
 import { EventLog } from './event-log'
 import { User } from './user'
 
 class Repository {
+  readonly analytics = Analytics
   readonly content = Content
   readonly editor = Editor
   readonly eventLog = EventLog

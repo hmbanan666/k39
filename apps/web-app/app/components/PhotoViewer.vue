@@ -104,6 +104,14 @@ function hashFor(id: string | null) {
   window.history.replaceState(null, '', `${url.pathname}${url.search}${next}`)
 }
 
+watch(open, (value, was) => {
+  if (!import.meta.client) {
+    return
+  }
+  if (value && !was) {
+    window.dispatchEvent(new CustomEvent('k39-track', { detail: { type: 'photo', target: photo.value?.id || '' } }))
+  }
+})
 watch([open, index], () => {
   if (!import.meta.client) {
     return
