@@ -78,6 +78,13 @@
       "when": 1791800000000,
       "tag": "0010_coastal_districts",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791810000000,
+      "tag": "0011_content_scores",
+      "breakpoints": true
     }
   ]
 }
