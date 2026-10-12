@@ -4,7 +4,7 @@ K39 already stores places, routes, collections, quests, hubs, and partner offers
 
 ## Phase 1. Content scoring
 
-ADR 0015. Done in this change.
+ADR 0016. Done in this change.
 
 Each place, route, collection, hub, and quest can have a page passport: target queries, audience, the action the page should cause, and 30- and 90-day organic goals. A nightly job, and an on-demand recompute, scores the page 0–100 in four blocks: quality, linking, indexing, and results. Failing checks are stored on the row. Editors read them in `/admin/content-scores` and through the content MCP.
 
@@ -12,7 +12,7 @@ Each place, route, collection, hub, and quest can have a page passport: target q
 
 ## Phase 2. Offers MVP
 
-ADR 0016. Not built yet.
+ADR 0017. Not built yet.
 
 A manual pilot with two or three cafes. No billing.
 
@@ -20,6 +20,6 @@ An editor attaches an active offer to a place or a route, using the existing `of
 
 ## Phase 3. Billing and a business cabinet
 
-ADR 0016. Not built yet.
+ADR 0017. Not built yet.
 
 Redeeming a code adds `bid` kopecks to `spent` and ends the offer when the budget is used up. The business owner signs in to a cabinet that shows their offers, codes, and redemptions, and can pause an offer. Collecting the payment is a later step. Auction bids wait until redemptions are real.

@@ -1,4 +1,4 @@
-# ADR 0015: Content scoring and page passports
+# ADR 0016: Content scoring and page passports
 
 ## Status
 

@@ -1,4 +1,4 @@
-# ADR 0016: Geo offers, claim codes, and the business funnel
+# ADR 0017: Geo offers, claim codes, and the business funnel
 
 ## Status
 
@@ -12,13 +12,13 @@ A place page can already show a partner offer. `businesses`, `offers`, and `offe
 
 The public place page loads `Content.activeOffers` and renders `PartnerOffer` with the title and terms. The label is `партнёр K39`. There is no button that issues a code, no staff screen that redeems one, and no charge: nothing writes `spent`. ADR 0001 said there is no payment flow. That is still true.
 
-Quests and routes already depend on this table. `content_archive` refuses to delete a draft route while an offer still has that `route_id` (ADR 0014). The page passport's `claim_offer` action (ADR 0015) names the page where a later claim should start. It does not create an offer.
+Quests and routes already depend on this table. `content_archive` refuses to delete a draft route while an offer still has that `route_id` (ADR 0014). The page passport's `claim_offer` action (ADR 0016) names the page where a later claim should start. It does not create an offer.
 
 ## Decision
 
 Offers stay on `offers` and `offer_codes`. A new claim flow does not get a second code table. Money stays in kopecks. The funnel has three phases. Only phase 1 is in the product now.
 
-Phase 1, content scoring, is ADR 0015. A page can record `claim_offer` and an organic-visit goal before any cafe is attached.
+Phase 1, content scoring, is ADR 0016. A page can record `claim_offer` and an organic-visit goal before any cafe is attached.
 
 Phase 2 is a manual pilot with two or three cafes and no billing.
 
