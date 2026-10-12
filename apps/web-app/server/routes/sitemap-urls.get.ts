@@ -1,5 +1,5 @@
 import { db, isDatabaseReady } from '@k39/database'
-import { HUBS, SECTION_LINKS } from '../../shared/links'
+import { HUBS, LEGAL_LINKS, SECTION_LINKS } from '../../shared/links'
 import { absoluteUrl } from '../../shared/seo'
 
 function lastmod(value: string | null | undefined) {
@@ -26,7 +26,7 @@ export default defineEventHandler(async () => {
     .at(-1)
   const staticPages = [
     { loc: absoluteUrl('/'), lastmod: newest },
-    { loc: absoluteUrl('/legal/privacy-policy') },
+    ...LEGAL_LINKS.map((link) => ({ loc: absoluteUrl(link.href) })),
     ...HUBS.map((link) => ({ loc: absoluteUrl(link.href) })),
     ...SECTION_LINKS.map((link) => ({ loc: absoluteUrl(link.href) })),
   ]

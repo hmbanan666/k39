@@ -27,17 +27,22 @@
           :key="link.href"
           :href="link.href"
         >{{ link.text }}</a>
-        <a href="/legal/privacy-policy">Конфиденциальность</a>
+        <a
+          v-for="link in legal"
+          :key="link.href"
+          :href="link.href"
+        >{{ link.text }}</a>
       </nav>
     </div>
   </footer>
 </template>
 
 <script setup lang="ts">
-import { HUBS, SECTION_LINKS } from '~~/shared/links'
+import { HUBS, LEGAL_LINKS, SECTION_LINKS } from '~~/shared/links'
 
 const hubs = HUBS
 const sections = SECTION_LINKS
+const legal = LEGAL_LINKS
 </script>
 
 <style scoped>

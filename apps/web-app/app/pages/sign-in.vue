@@ -24,8 +24,12 @@
     </div>
     <p class="fine">
       Кнопка входа означает согласие с
-      <UiLink href="/legal/privacy-policy">
-        политикой конфиденциальности
+      <UiLink href="/privacy">
+        политикой обработки персональных данных
+      </UiLink>
+      и
+      <UiLink href="/terms">
+        пользовательским соглашением
       </UiLink>.
     </p>
     <p>

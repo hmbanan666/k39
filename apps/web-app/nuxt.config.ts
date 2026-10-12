@@ -50,6 +50,7 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/sitemap-urls': { headers: { 'x-robots-tag': 'noindex' } },
+    '/legal/privacy-policy': { redirect: { to: '/privacy', statusCode: 301 } },
     '/media/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     // Brand URLs stay stable, so they are not immutable. A week lets a deploy replace them.

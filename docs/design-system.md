@@ -58,7 +58,7 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `NearbyList` | Nearest places, name plus kilometres. |
 | `RouteSteps` | Ordered stops. Each step is the place name. |
 | `PartnerOffer` | Only for a real active offer. |
-| `ConsentBanner` | Fixed toast at the bottom-left on desktop, a slim bar on a phone. It does not shift layout. |
+| `CookieNotice` | Full-width bar fixed to the bottom, ink background, brick button. Client-only, so it does not shift layout. Dismiss is a localStorage flag. |
 | `UiAccordion` | Reka accordion. Default open when the copy must be read immediately. Content stays in the HTML. |
 | `UiDialog` | Reka dialog. The public header uses a pill row instead of a menu button. |
 | `UiTooltip` | Extra hint. The visible label still states the fact. |

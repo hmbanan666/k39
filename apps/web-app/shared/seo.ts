@@ -22,6 +22,8 @@ export const brandHeadLinks = [
 ] as const
 
 export const RESERVED_SLUGS = [
+  'about',
+  'cookies',
   'admin',
   'api',
   'eda',
@@ -39,12 +41,14 @@ export const RESERVED_SLUGS = [
   'plyazhi',
   'podborki',
   'preview',
+  'privacy',
   'quest',
   'robots',
   'search',
   'sign-in',
   'sitemap',
   'sitemaps',
+  'terms',
   'zamki',
 ] as const
 
