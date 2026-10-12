@@ -71,6 +71,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       featureMap: false,
+      consentBanner: false,
       yandexVerification: '',
       googleVerification: '',
     },

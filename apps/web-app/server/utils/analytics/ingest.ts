@@ -46,7 +46,8 @@ export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'b
   const ua = getHeader(event, 'user-agent') || ''
   const parsed = parseUserAgent(ua)
   const bot = parsed.bot || (source === 'server' && !getHeader(event, 'accept-language'))
-  const consented = getCookie(event, 'k39_consent') === 'granted' && source === 'beacon'
+  const allowVisitorCookie = useRuntimeConfig().public.consentBanner === true && source === 'beacon'
+  const consented = allowVisitorCookie && getCookie(event, 'k39_consent') === 'granted'
   const now = Date.now()
   let visitorKey = ''
   let sessionKey = ''
@@ -65,6 +66,11 @@ export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'b
     cookie(event, 'k39_seen', String(now))
     mode = 'cookie'
   } else {
+    for (const name of ['k39_vid', 'k39_sid', 'k39_seen']) {
+      if (getCookie(event, name)) {
+        deleteCookie(event, name, { path: '/' })
+      }
+    }
     const day = new Date(now).toISOString().slice(0, 10)
     const ip = getRequestIP(event, { xForwardedFor: true }) || ''
     visitorKey = dailyVisitorKey(analyticsSalt(), day, ip, ua)

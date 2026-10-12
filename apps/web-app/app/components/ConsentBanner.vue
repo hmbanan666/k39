@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="!decided"
+    v-if="enabled && !decided"
     class="consent"
     role="dialog"
     aria-label="Аналитика"
@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+const enabled = computed(() => useRuntimeConfig().public.consentBanner)
 const { decided, grant, deny } = useConsent()
 </script>
 
