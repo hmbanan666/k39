@@ -1,5 +1,5 @@
 import type { PlaceDraft } from '../types'
-import type { MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
+import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { categories, collectionItems, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
@@ -539,7 +539,7 @@ export class Editor {
     return row
   }
 
-  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[] }, userId?: string | null) {
+  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[], kind?: CollectionKind, month?: number | null, sources?: SourceLink[] }, userId?: string | null) {
     const resolvedItems = data.items ? await resolveStops(data.items) : null
     const db = useDatabase()
     const [existing] = data.id
@@ -558,6 +558,9 @@ export class Editor {
       seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,
       ogImage: data.ogImage ?? existing?.ogImage ?? null,
       noindex: data.noindex ?? existing?.noindex ?? false,
+      kind: data.kind ?? existing?.kind ?? 'theme',
+      month: data.month !== undefined ? data.month : existing?.month ?? null,
+      sources: data.sources ?? existing?.sources ?? [],
       updatedBy: userId ?? null,
       updatedAt: new Date().toISOString(),
     }

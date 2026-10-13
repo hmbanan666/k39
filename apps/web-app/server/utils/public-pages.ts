@@ -3,6 +3,7 @@ import { homeLinks, HUBS } from '../../shared/links'
 import { normalizeRoutePath } from '../../shared/map'
 import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, toPublicMedia } from '../../shared/media'
+import { splitCollections } from '../../shared/month-guide'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
@@ -308,15 +309,18 @@ export async function loadRoute(slug: string) {
 
 export async function loadCollectionIndex() {
   const rows = await db.content.listPublishedCollections()
+  const { months, themes } = splitCollections(rows)
+  const ordered = [...months, ...themes]
   const doc = collectionDocument({
     path: '/podborki',
     h1: 'Подборки',
-    summary: 'Подборки мест Калининградской области по теме.',
+    summary: 'Подборки мест Калининградской области по теме и путеводители по месяцам.',
     crumbName: 'список',
-    items: rows.map((row) => ({ name: row.title, url: `/podborki/${row.slug}` })),
+    items: ordered.map((row) => ({ name: row.title, url: `/podborki/${row.slug}` })),
     kind: 'CollectionPage',
   })
-  return { doc, items: rows.map((row) => ({ href: `/podborki/${row.slug}`, text: row.title })) }
+  const link = (row: { slug: string, title: string }) => ({ href: `/podborki/${row.slug}`, text: row.title })
+  return { doc, items: themes.map(link), months: months.map(link) }
 }
 
 export async function loadCollection(slug: string) {
@@ -324,11 +328,12 @@ export async function loadCollection(slug: string) {
   if (!loaded) {
     return null
   }
+  const isMonth = loaded.collection.kind === 'month'
   const doc = collectionDocument({
     path: `/podborki/${loaded.collection.slug}`,
     h1: loaded.collection.title,
     summary: loaded.collection.summary || loaded.collection.title,
-    crumbName: 'подборка',
+    crumbName: isMonth ? 'путеводитель' : 'подборка',
     parent: { name: 'Подборки', href: '/podborki' },
     items: loaded.items.map((item) => ({ name: item.title, url: `/${item.slug}`, note: item.note })),
     seoTitle: loaded.collection.seoTitle,
@@ -338,10 +343,16 @@ export async function loadCollection(slug: string) {
     kind: 'CollectionPage',
     body: loaded.collection.body,
   })
+  const months = isMonth
+    ? splitCollections(await db.content.listPublishedCollections()).months.filter((row) => row.slug !== loaded.collection.slug).map((row) => ({ href: `/podborki/${row.slug}`, text: row.title }))
+    : []
   return {
     doc,
     html: renderMarkdown(loaded.collection.body),
     items: loaded.items.map((item) => ({ href: `/${item.slug}`, text: item.title, note: item.note })),
+    kind: loaded.collection.kind,
+    sources: loaded.collection.sources ?? [],
+    months,
   }
 }
 
