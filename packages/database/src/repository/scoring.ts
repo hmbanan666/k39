@@ -1,4 +1,4 @@
-import type { PageKind, PrimaryAction } from '../types/entities'
+import type { PageKind, PrimaryAction, SourceLink, StoredPageModule } from '../types/entities'
 import type { CatalogArticle, CatalogHub, CatalogPassport, CatalogStop, CatalogVenue, ContentCatalog, PageMetric, PassportWrite, ScorePlace, StoredScore } from '../types/scoring'
 import { createId } from '@paralleldrive/cuid2'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
@@ -58,6 +58,7 @@ export class Scoring {
       seoDescription: places.seoDescription,
       lastVerifiedAt: places.lastVerifiedAt,
       sources: places.sources,
+      faq: places.faq,
       categorySlug: categories.slug,
       categoryTitle: categories.title,
       regionId: places.regionId,
@@ -122,7 +123,7 @@ export class Scoring {
       group by venue_id
     `)
 
-    const article = (row: { id: string, slug: string, title: string, summary: string | null, body: string, publicationStatus: string, noindex: boolean, seoTitle: string | null, seoDescription: string | null, updatedAt: string }, routeSlug: string | null = null): CatalogArticle | null => {
+    const article = (row: { id: string, slug: string, title: string, summary: string | null, body: string, publicationStatus: string, noindex: boolean, seoTitle: string | null, seoDescription: string | null, updatedAt: string, modules?: StoredPageModule[], sources?: SourceLink[] }, routeSlug: string | null = null): CatalogArticle | null => {
       const publicationStatus = statusOf(row.publicationStatus)
       if (!publicationStatus) {
         return null
@@ -139,6 +140,8 @@ export class Scoring {
         seoDescription: row.seoDescription,
         updatedAt: row.updatedAt,
         routeSlug,
+        modules: row.modules ?? [],
+        sourcesCount: row.sources?.length ?? 0,
       }
     }
     const stops = (rows: Array<{
@@ -182,6 +185,7 @@ export class Scoring {
           seoDescription: row.seoDescription,
           factsCheckedAt: row.lastVerifiedAt,
           sources: row.sources ?? [],
+          faqCount: row.faq?.length ?? 0,
           categorySlug: row.categorySlug,
           categoryTitle: row.categoryTitle,
           regionId: row.regionId,

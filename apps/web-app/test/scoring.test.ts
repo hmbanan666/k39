@@ -2,6 +2,7 @@ import type { CatalogArticle, CatalogHub, ContentCatalog, ScorePlace } from '@k3
 import type { LinkCatalog, ScoreSource } from '../shared/scoring'
 import { describe, expect, it } from 'vitest'
 import { catalogPageRefs, scoresFromCatalog } from '../server/utils/scoring/assemble'
+import { personaCoverageReport } from '../server/utils/scoring/coverage'
 import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage } from '../shared/scoring'
 
 const TITLE = `Форт на окраине города K39 ${'а'.repeat(10)}`
@@ -501,6 +502,7 @@ function catalogPlace(patch: Partial<ScorePlace> = {}): ScorePlace {
     seoDescription: null,
     factsCheckedAt: null,
     sources: [],
+    faqCount: 0,
     categorySlug: 'forty',
     categoryTitle: 'Форты',
     regionId: null,
@@ -523,6 +525,8 @@ function catalogArticle(patch: Partial<CatalogArticle> = {}): CatalogArticle {
     seoDescription: null,
     updatedAt: UPDATED,
     routeSlug: null,
+    modules: [],
+    sourcesCount: 0,
     ...patch,
   }
 }
@@ -642,5 +646,21 @@ describe('search queries', () => {
       { page: '', query: 'погода' },
     ]
     expect(queriesForPath('/fort-a', rows, ['Билеты в форт'])).toEqual(['форт а', 'билеты в форт'])
+  })
+})
+
+describe('persona coverage report', () => {
+  it('builds rows for targeted pages and flags gaps', () => {
+    const month = catalogArticle({ id: 'month-1', slug: 'month', title: 'Месяц', body: 'Текст', modules: [{ type: 'plans' }, { type: 'text', role: 'events' }] })
+    const report = personaCoverageReport(catalog({ collections: [month], places: [catalogPlace()] }), [
+      { pageType: 'collection', entityId: 'month-1', personaCode: 'local', weight: 3, primary: true },
+      { pageType: 'collection', entityId: 'month-1', personaCode: 'business', weight: 1, primary: false },
+    ])
+    expect(report.untargeted).toBe(1)
+    expect(report.rows).toHaveLength(1)
+    const cells = Object.fromEntries(report.rows[0]!.cells.map((cell) => [cell.code, cell]))
+    expect(cells.local).toMatchObject({ score: 67, primary: true, gap: false })
+    expect(cells.business).toMatchObject({ score: 33, weight: 1, gap: true, missing: ['nearby', 'eat-nearby'] })
+    expect(cells.family!.weight).toBeNull()
   })
 })
