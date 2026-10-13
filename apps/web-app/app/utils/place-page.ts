@@ -36,7 +36,7 @@ export const PLACE_TYPE_TITLE: Record<string, string> = {
 }
 
 export function yandexRouteUrl(lat: number, lon: number) {
-  return `https://yandex.ru/maps/?rtext=~${lat}%2C${lon}&rtt=mt`
+  return `https://yandex.ru/maps/?rtext=~${lat.toFixed(5)},${lon.toFixed(5)}&rtt=auto`
 }
 
 export function touristAttraction(place: PlacePageModel, origin = 'https://k39.online') {

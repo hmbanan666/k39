@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. The embedded basemap is superseded by ADR 0019. The whole-route deep links on this page stay.
 
 ## Context
 

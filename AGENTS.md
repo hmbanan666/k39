@@ -43,7 +43,7 @@ Tools: `places_list`, `place_get`, `place_draft_create`, `place_update`, `place_
 }
 ```
 
-The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`). It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve `/map/{region}` with `noindex`. Otherwise those URLs 301 to `/forty`. Route pages draw their stops on a separate lazy map: Yandex Maps JS API 3 when `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` is set, otherwise Leaflet and OpenStreetMap tiles. See ADR 0015.
+The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`). It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve `/map/{region}` with `noindex`. Otherwise those URLs 301 to `/forty`. Place, venue, and route pages, and `/karta`, use the K39 map (ADR 0019): MapLibre with the OpenFreeMap Positron style, custom pins, clustering, and a pin card. «Как добраться» opens Yandex Maps with that point as the destination. Route pages still build the whole line in Yandex or Google. See ADR 0015.
 
 Auth is `nuxt-auth-utils`: Yandex and VK use `defineOAuthYandexEventHandler` and `defineOAuthVKEventHandler`, and the admin session is `requireUserSession` / `setUserSession`. Empty client id or secret disables that provider. `ADMIN_EMAILS` promotes those accounts to `admin` on login. Editors and admins can open `/admin`. Anonymous visitors go to `/sign-in?redirectTo=/admin`. The session cookie is sealed with `NUXT_SESSION_PASSWORD` (32+ characters). `nuxt-auth-utils` does not read `NUXT_APP_SECRET`; switch to that when the library supports `appSecret` natively. See ADR 0005.
 

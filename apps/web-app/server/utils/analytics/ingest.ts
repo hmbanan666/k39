@@ -1,12 +1,13 @@
 import type { H3Event } from 'h3'
 import process from 'node:process'
 import { db } from '@k39/database'
-import { classifyChannel, isBotUserAgent, parseUserAgent, screenBucket, scrollBucket, utmFromPath } from '../../../shared/analytics'
+import { classifyChannel, COLLECT_TYPES, isBotUserAgent, mergeHitEntities, parseUserAgent, screenBucket, scrollBucket, utmFromPath } from '../../../shared/analytics'
 import { analyticsSalt, dailyVisitorKey, newVisitorKey } from './identity'
 
 const SESSION_MS = 30 * 60 * 1000
 const YEAR = 60 * 60 * 24 * 400
-const TYPES = new Set(['pageview', 'engage', 'outbound', 'photo', 'impression'])
+const TYPES = new Set<string>(COLLECT_TYPES)
+const ENTITY_TYPES = new Set(['impression', 'directions', 'pin_impression', 'pin_click'])
 
 interface ClientEvent {
   type?: string
@@ -17,6 +18,7 @@ interface ClientEvent {
   ms?: number
   scroll?: number | string
   target?: string
+  entity?: string
 }
 
 function cookie(event: H3Event, name: string, value: string) {
@@ -100,11 +102,19 @@ export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'b
       utmMedium: utm.utmMedium,
     })
     const channel = item.ref ? classified.channel : (knownChannel || classified.channel)
-    const subject = item.type === 'pageview' ? await db.analytics.resolvePath(path) : { placeId: null, routeId: null, venueId: null }
-    const shown = item.type === 'impression' && item.target
+    const kind = item.type || ''
+    const emptyEntity = { placeId: null, routeId: null, venueId: null }
+    const pageSubject = kind === 'pageview' || ENTITY_TYPES.has(kind)
+      ? await db.analytics.resolvePath(path)
+      : emptyEntity
+    const shown = kind === 'impression' && item.target
       ? await db.analytics.resolvePath(item.target)
       : null
-    const host = item.type === 'impression' ? await db.analytics.resolvePath(path) : null
+    const entityPath = (item.entity || '').trim().split('?')[0] || ''
+    const entitySubject = entityPath.startsWith('/')
+      ? await db.analytics.resolvePath(entityPath)
+      : null
+    const ids = mergeHitEntities(pageSubject, entitySubject, shown)
     const entry = item.type === 'pageview' && !entryTaken
     if (entry) {
       entryTaken = true
@@ -118,9 +128,9 @@ export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'b
       isBot: bot || isBotUserAgent(ua),
       eventType: item.type || 'pageview',
       path,
-      placeId: host?.placeId ?? subject.placeId,
-      routeId: host?.routeId ?? subject.routeId,
-      venueId: shown?.venueId ?? subject.venueId,
+      placeId: ids.placeId,
+      routeId: ids.routeId,
+      venueId: ids.venueId,
       referrer: item.ref || null,
       referrerHost: classified.referrerHost || null,
       utmSource: utm.utmSource || null,

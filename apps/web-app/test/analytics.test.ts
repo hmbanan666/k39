@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { dailyVisitorKey } from '../server/utils/analytics/identity'
-import { classifyChannel, isBotUserAgent, parseUserAgent, resolvePeriod, screenBucket, searchQueryFromReferrer, trendPercent } from '../shared/analytics'
+import { classifyChannel, COLLECT_TYPES, isBotUserAgent, mergeHitEntities, parseUserAgent, resolvePeriod, screenBucket, searchQueryFromReferrer, trendPercent } from '../shared/analytics'
 
 describe('analytics classification', () => {
   it('reads channels and the rare search query', () => {
@@ -44,12 +44,27 @@ describe('analytics classification', () => {
     expect(trendPercent(5, 0)).toBeNull()
   })
 
-  it('keeps the beacon under 2 KB', () => {
+  it('keeps the beacon under 2 KB and sends the entity path', () => {
     const file = ['public/collect.js', 'apps/web-app/public/collect.js']
       .map((item) => resolve(process.cwd(), item))
       .find((item) => existsSync(item))
     expect(file).toBeTruthy()
-    const bytes = readFileSync(file || '').length
-    expect(bytes).toBeLessThan(2048)
+    const bytes = readFileSync(file || '')
+    expect(bytes.length).toBeLessThan(2048)
+    expect(bytes.toString('utf8')).toContain('data-track-entity')
+    expect(COLLECT_TYPES).toEqual(expect.arrayContaining(['directions', 'pin_impression', 'pin_click']))
+  })
+
+  it('stores the pin entity and keeps the page route', () => {
+    expect(mergeHitEntities(
+      { placeId: 'place-page', routeId: 'route-1', venueId: null },
+      { placeId: null, routeId: null, venueId: 'venue-1' },
+      null,
+    )).toEqual({ placeId: 'place-page', routeId: 'route-1', venueId: 'venue-1' })
+    expect(mergeHitEntities(
+      { placeId: null, routeId: 'route-1', venueId: null },
+      { placeId: 'stop-place', routeId: null, venueId: null },
+      null,
+    )).toEqual({ placeId: 'stop-place', routeId: 'route-1', venueId: null })
   })
 })

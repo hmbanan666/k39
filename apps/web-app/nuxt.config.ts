@@ -76,7 +76,7 @@ export default defineNuxtConfig({
       consentBanner: false,
       yandexVerification: '',
       googleVerification: '',
-      // Empty string keeps the route map on Leaflet. A key loads Yandex Maps JS API 3.
+      // Directions are plain Yandex URLs. The K39 map does not load the JS API.
       yandexMapsApiKey: '',
     },
   },
