@@ -152,6 +152,8 @@ describe('place page', () => {
     expect(image?.creator).toEqual({ '@type': 'Person', 'name': 'Julian Nyča' })
     expect(image?.license).toBe('https://creativecommons.org/licenses/by-sa/4.0/deed.ru')
     expect(image?.acquireLicensePage).toBe('https://commons.wikimedia.org/wiki/File:Sobor.jpg')
+    expect(image?.creditText).toBe('Julian Nyča, CC BY-SA 4.0')
+    expect(image?.copyrightNotice).toBe('© Julian Nyča')
     expect(node.citation).toEqual([{
       '@type': 'CreativeWork',
       'name': 'Википедия',

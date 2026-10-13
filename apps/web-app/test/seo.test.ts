@@ -6,7 +6,7 @@ import seed from '../../../packages/database/src/seed/initial-content.json'
 import { findOrphans, haversineKm, homeLinks, HUBS, indexableHubs, SECTION_LINKS } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
 import { decideRedirect } from '../shared/redirects'
-import { brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, pageTitle, placeDocument, placeSchemaType, tuneRobots, verificationMeta } from '../shared/seo'
+import { brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, imageCredit, pageTitle, placeDocument, placeSchemaType, tuneRobots, venueDocument, verificationMeta } from '../shared/seo'
 
 function assertDocument(doc: ReturnType<typeof homeDocument>, htmlBody: string) {
   expect(doc.title.length).toBeGreaterThan(10)
@@ -317,6 +317,85 @@ function placeInput() {
     sources: [{ title: 'Википедия', url: 'https://ru.wikipedia.org/wiki/fort' }],
   }
 }
+
+describe('image credit', () => {
+  const commons = {
+    url: 'https://k39.online/media/photo/og.jpg',
+    width: 1200,
+    height: 800,
+    alt: 'Форт',
+    author: 'Irina Yakubovskaya',
+    license: 'cc-by',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Fort.jpg',
+  }
+
+  function imagesOf(nodes: Array<Record<string, unknown>>) {
+    return nodes.flatMap((node) => {
+      const image = node.image
+      if (!image || typeof image === 'string') {
+        return []
+      }
+      return (Array.isArray(image) ? image : [image]) as Array<Record<string, unknown>>
+    })
+  }
+
+  it('adds creditText and copyrightNotice on place, route, venue, and collection images', () => {
+    expect(imageCredit({ author: 'Irina Yakubovskaya', license: 'cc-by' })).toEqual({
+      creditText: 'Irina Yakubovskaya, CC BY 4.0',
+      copyrightNotice: '© Irina Yakubovskaya',
+    })
+    expect(imageCredit({ author: 'Irina Yakubovskaya', license: 'pd' })).toEqual({
+      creditText: 'Irina Yakubovskaya',
+    })
+    expect(imageCredit({ license: 'cc0' })).toEqual({ creditText: 'Wikimedia Commons' })
+    expect(imageCredit({ license: 'pd' })).toEqual({ creditText: 'Wikimedia Commons' })
+    expect(imageCredit({})).toBeNull()
+
+    const place = imagesOf(placeDocument({ ...placeInput(), images: [commons] }).jsonLd)[0]
+    expect(place?.['@type']).toBe('ImageObject')
+    expect(place?.creditText).toBe('Irina Yakubovskaya, CC BY 4.0')
+    expect(place?.copyrightNotice).toBe('© Irina Yakubovskaya')
+
+    const publicDomain = imagesOf(placeDocument({
+      ...placeInput(),
+      images: [{ ...commons, author: null, license: 'pd' }],
+    }).jsonLd)[0]
+    expect(publicDomain?.creditText).toBe('Wikimedia Commons')
+    expect(publicDomain).not.toHaveProperty('copyrightNotice')
+
+    const venue = imagesOf(venueDocument({
+      slug: 'kofeynya-u-forta',
+      name: 'Кофейня у форта',
+      kind: 'coffee',
+      description: 'Кофейня у форта варит эспрессо и кормит обедом. '.repeat(8),
+      image: commons,
+    }).jsonLd)[0]
+    expect(venue?.creditText).toBe('Irina Yakubovskaya, CC BY 4.0')
+    expect(venue?.copyrightNotice).toBe('© Irina Yakubovskaya')
+
+    const route = imagesOf(collectionDocument({
+      path: '/marshruty/koltso-fortov',
+      h1: 'Кольцо фортов',
+      summary: 'Маршрут по фортам.',
+      items: [],
+      kind: 'TouristTrip',
+      images: [{ ...commons, license: 'cc0' }],
+    }).jsonLd)[0]
+    expect(route?.creditText).toBe('Irina Yakubovskaya')
+    expect(route).not.toHaveProperty('copyrightNotice')
+
+    const collection = imagesOf(collectionDocument({
+      path: '/podborki/forty',
+      h1: 'Форты',
+      summary: 'Подборка фортов.',
+      items: [],
+      kind: 'CollectionPage',
+      images: [commons],
+    }).jsonLd)[0]
+    expect(collection?.creditText).toBe('Irina Yakubovskaya, CC BY 4.0')
+    expect(collection?.copyrightNotice).toBe('© Irina Yakubovskaya')
+  })
+})
 
 describe('redirects', () => {
   it('resolves host, old paths and slug redirects in one hop', () => {
