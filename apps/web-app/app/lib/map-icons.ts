@@ -18,164 +18,193 @@ const COLORS: Record<string, string> = {
 
 type Draw = (ctx: CanvasRenderingContext2D) => void
 
-function fill(ctx: CanvasRenderingContext2D) {
-  ctx.fillStyle = '#fffbf3'
+const PAPER = '#fffbf3'
+
+function stroke(ctx: CanvasRenderingContext2D) {
+  ctx.strokeStyle = PAPER
+  ctx.fillStyle = PAPER
+  ctx.lineWidth = 1.7
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
 }
 
 function fort(ctx: CanvasRenderingContext2D) {
-  fill(ctx)
-  ctx.fillRect(-11, -2, 22, 12)
-  for (const x of [-11, -3, 5]) {
-    ctx.fillRect(x, -8, 5, 6)
-  }
+  stroke(ctx)
+  ctx.beginPath()
+  ctx.moveTo(-9, 8)
+  ctx.lineTo(-9, -1)
+  ctx.lineTo(-6, -1)
+  ctx.lineTo(-6, -6)
+  ctx.lineTo(-2, -6)
+  ctx.lineTo(-2, -1)
+  ctx.lineTo(2, -1)
+  ctx.lineTo(2, -6)
+  ctx.lineTo(6, -6)
+  ctx.lineTo(6, -1)
+  ctx.lineTo(9, -1)
+  ctx.lineTo(9, 8)
+  ctx.closePath()
+  ctx.fill()
 }
 
 function castle(ctx: CanvasRenderingContext2D) {
-  fill(ctx)
-  ctx.fillRect(-10, 0, 20, 10)
+  stroke(ctx)
   ctx.beginPath()
-  ctx.moveTo(-5, 0)
-  ctx.lineTo(0, -9)
-  ctx.lineTo(5, 0)
+  ctx.moveTo(-8, 8)
+  ctx.lineTo(-8, -1)
+  ctx.lineTo(-5, -1)
+  ctx.lineTo(-5, -7)
+  ctx.lineTo(-1, -7)
+  ctx.lineTo(-1, -1)
+  ctx.lineTo(1, -1)
+  ctx.lineTo(1, -7)
+  ctx.lineTo(5, -7)
+  ctx.lineTo(5, -1)
+  ctx.lineTo(8, -1)
+  ctx.lineTo(8, 8)
+  ctx.closePath()
   ctx.fill()
-  ctx.fillRect(-1.4, -2, 2.8, 12)
+  ctx.beginPath()
+  ctx.moveTo(-2, 8)
+  ctx.lineTo(-2, 3)
+  ctx.lineTo(2, 3)
+  ctx.lineTo(2, 8)
+  ctx.stroke()
 }
 
 function beach(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle = '#fffbf3'
-  ctx.lineWidth = 2.2
-  ctx.lineCap = 'round'
+  stroke(ctx)
   ctx.beginPath()
-  ctx.arc(-5, 2, 5, Math.PI, 0)
-  ctx.arc(5, 2, 5, Math.PI, 0)
+  ctx.arc(0, 0, 7, Math.PI, 0)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(0, 0)
+  ctx.lineTo(0, 8)
+  ctx.moveTo(0, 8)
+  ctx.quadraticCurveTo(3.2, 8, 3.2, 5.2)
   ctx.stroke()
 }
 
 function museum(ctx: CanvasRenderingContext2D) {
-  fill(ctx)
+  stroke(ctx)
   ctx.beginPath()
-  ctx.moveTo(-11, -2)
-  ctx.lineTo(0, -9)
-  ctx.lineTo(11, -2)
+  ctx.moveTo(-9, -1)
+  ctx.lineTo(0, -8)
+  ctx.lineTo(9, -1)
   ctx.closePath()
   ctx.fill()
-  ctx.fillRect(-9, -2, 3, 11)
-  ctx.fillRect(-1.5, -2, 3, 11)
-  ctx.fillRect(6, -2, 3, 11)
-  ctx.fillRect(-10, 9, 20, 2)
+  ctx.fillRect(-7, 0, 2.2, 8)
+  ctx.fillRect(-1.1, 0, 2.2, 8)
+  ctx.fillRect(4.8, 0, 2.2, 8)
+  ctx.fillRect(-8, 8, 16, 1.6)
 }
 
 function church(ctx: CanvasRenderingContext2D) {
-  fill(ctx)
-  ctx.beginPath()
-  ctx.arc(0, 4, 8, Math.PI, 0)
-  ctx.lineTo(8, 11)
-  ctx.lineTo(-8, 11)
-  ctx.closePath()
-  ctx.fill()
-  ctx.fillRect(-1.3, -9, 2.6, 8)
-  ctx.fillRect(-4.2, -7, 8.4, 2.4)
+  stroke(ctx)
+  ctx.fillRect(-1.35, -8, 2.7, 16)
+  ctx.fillRect(-6.2, -2.6, 12.4, 2.7)
 }
 
 function sun(ctx: CanvasRenderingContext2D) {
-  fill(ctx)
+  stroke(ctx)
   ctx.beginPath()
-  ctx.arc(0, 0, 5, 0, Math.PI * 2)
+  ctx.arc(0, 0, 4.2, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = '#fffbf3'
-  ctx.lineWidth = 2
-  ctx.lineCap = 'round'
-  for (let i = 0; i < 8; i += 1) {
-    const angle = (i / 8) * Math.PI * 2
+  for (let index = 0; index < 8; index += 1) {
+    const angle = (index / 8) * Math.PI * 2
     ctx.beginPath()
-    ctx.moveTo(Math.cos(angle) * 7.5, Math.sin(angle) * 7.5)
-    ctx.lineTo(Math.cos(angle) * 11, Math.sin(angle) * 11)
+    ctx.moveTo(Math.cos(angle) * 6.4, Math.sin(angle) * 6.4)
+    ctx.lineTo(Math.cos(angle) * 9, Math.sin(angle) * 9)
     ctx.stroke()
   }
 }
 
 function cup(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle = '#fffbf3'
-  ctx.fillStyle = '#fffbf3'
-  ctx.lineWidth = 2
+  stroke(ctx)
   ctx.beginPath()
-  ctx.moveTo(-7, -4)
-  ctx.lineTo(-5, 6)
-  ctx.quadraticCurveTo(0, 10, 5, 6)
-  ctx.lineTo(7, -4)
+  ctx.moveTo(-6, -4)
+  ctx.lineTo(-4.4, 4)
+  ctx.quadraticCurveTo(0, 8, 4.4, 4)
+  ctx.lineTo(6, -4)
   ctx.stroke()
   ctx.beginPath()
-  ctx.arc(8, 0, 3.2, -1.2, 1.2)
+  ctx.arc(7.2, 0, 2.6, -1.15, 1.15)
   ctx.stroke()
 }
 
-function plate(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle = '#fffbf3'
-  ctx.lineWidth = 2
+function utensils(ctx: CanvasRenderingContext2D) {
+  stroke(ctx)
   ctx.beginPath()
-  ctx.ellipse(0, 1, 10, 6, 0, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.ellipse(0, 1, 4, 2.2, 0, 0, Math.PI * 2)
+  ctx.moveTo(-4.5, -8)
+  ctx.lineTo(-4.5, 8)
+  ctx.moveTo(-6.4, -8)
+  ctx.lineTo(-6.4, -3)
+  ctx.moveTo(-2.6, -8)
+  ctx.lineTo(-2.6, -3)
+  ctx.moveTo(3.2, -8)
+  ctx.lineTo(5.6, -1)
+  ctx.lineTo(3.2, -1)
+  ctx.lineTo(3.2, 8)
   ctx.stroke()
 }
 
 function loaf(ctx: CanvasRenderingContext2D) {
-  fill(ctx)
+  stroke(ctx)
   ctx.beginPath()
-  ctx.moveTo(-9, 6)
-  ctx.quadraticCurveTo(-9, -6, 0, -6)
-  ctx.quadraticCurveTo(9, -6, 9, 6)
+  ctx.moveTo(-8, 6)
+  ctx.quadraticCurveTo(-8, -6, 0, -6)
+  ctx.quadraticCurveTo(8, -6, 8, 6)
   ctx.closePath()
-  ctx.fill()
-  ctx.strokeStyle = '#8f5a00'
-  ctx.lineWidth = 1.4
+  ctx.stroke()
   ctx.beginPath()
-  ctx.moveTo(-4, 6)
-  ctx.quadraticCurveTo(-4, -1, 0, -1)
-  ctx.quadraticCurveTo(4, -1, 4, 6)
+  ctx.moveTo(0, -6)
+  ctx.lineTo(0, 6)
   ctx.stroke()
 }
 
 function glass(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle = '#fffbf3'
-  ctx.lineWidth = 2
-  ctx.lineJoin = 'round'
+  stroke(ctx)
   ctx.beginPath()
-  ctx.moveTo(-6, -7)
-  ctx.lineTo(-3, 4)
-  ctx.lineTo(3, 4)
-  ctx.lineTo(6, -7)
+  ctx.moveTo(-5, -7)
+  ctx.lineTo(-2.2, 3)
+  ctx.lineTo(2.2, 3)
+  ctx.lineTo(5, -7)
+  ctx.closePath()
   ctx.stroke()
   ctx.beginPath()
-  ctx.moveTo(0, 4)
-  ctx.lineTo(0, 8)
-  ctx.moveTo(-4, 9)
-  ctx.lineTo(4, 9)
+  ctx.moveTo(0, 3)
+  ctx.lineTo(0, 7)
+  ctx.moveTo(-3.4, 8)
+  ctx.lineTo(3.4, 8)
   ctx.stroke()
 }
 
 function basket(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle = '#fffbf3'
-  ctx.lineWidth = 2
+  stroke(ctx)
   ctx.beginPath()
-  ctx.moveTo(-9, -1)
+  ctx.moveTo(-8, -1)
   ctx.lineTo(-6, 8)
   ctx.lineTo(6, 8)
-  ctx.lineTo(9, -1)
+  ctx.lineTo(8, -1)
+  ctx.closePath()
   ctx.stroke()
   ctx.beginPath()
-  ctx.arc(0, -1, 6, Math.PI, 0)
+  ctx.arc(0, -1, 5, Math.PI, 0)
   ctx.stroke()
 }
 
-function bag(ctx: CanvasRenderingContext2D) {
-  fill(ctx)
-  ctx.fillRect(-7, -2, 14, 12)
-  ctx.strokeStyle = '#fffbf3'
-  ctx.lineWidth = 2
+function burger(ctx: CanvasRenderingContext2D) {
+  stroke(ctx)
   ctx.beginPath()
-  ctx.arc(0, -2, 4, Math.PI, 0)
+  ctx.moveTo(-7, -1)
+  ctx.quadraticCurveTo(-7, -7, 0, -7)
+  ctx.quadraticCurveTo(7, -7, 7, -1)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(-7, 1)
+  ctx.lineTo(7, 1)
+  ctx.moveTo(-7, 4)
+  ctx.quadraticCurveTo(0, 8, 7, 4)
   ctx.stroke()
 }
 
@@ -188,61 +217,87 @@ const GLYPHS: Record<string, Draw> = {
   kurorty: sun,
   coffee: cup,
   cafe: cup,
-  restaurant: plate,
+  restaurant: utensils,
   bakery: loaf,
   bar: glass,
   market: basket,
-  fastfood: bag,
-  other: cup,
-  eda: plate,
+  fastfood: burger,
+  other: utensils,
+  eda: utensils,
 }
 
-function pinCanvas(color: string, glyph: Draw) {
-  const scale = 2
+const SIZE = 48
+const SCALE = 2
+
+function pinCanvas(color: string, glyph: Draw, sponsored: boolean) {
   const canvas = document.createElement('canvas')
-  canvas.width = 48 * scale
-  canvas.height = 56 * scale
+  canvas.width = SIZE * SCALE
+  canvas.height = SIZE * SCALE
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     throw new Error('Canvas is unavailable')
   }
-  ctx.scale(scale, scale)
-  ctx.beginPath()
-  ctx.arc(24, 22, 16, 0, Math.PI * 2)
-  ctx.fillStyle = color
-  ctx.fill()
-  ctx.lineWidth = 3
-  ctx.strokeStyle = '#fffbf3'
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(16, 32)
-  ctx.lineTo(24, 52)
-  ctx.lineTo(32, 32)
-  ctx.fillStyle = color
-  ctx.fill()
+  ctx.scale(SCALE, SCALE)
+  const cx = 24
+  const cy = 23
+  const radius = 15
   ctx.save()
-  ctx.translate(24, 22)
+  ctx.shadowColor = 'rgba(43, 36, 32, 0.28)'
+  ctx.shadowBlur = 5
+  ctx.shadowOffsetY = 1.5
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.fillStyle = color
+  ctx.fill()
+  ctx.restore()
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius - 0.4, 0, Math.PI * 2)
+  ctx.strokeStyle = PAPER
+  ctx.lineWidth = 2
+  ctx.stroke()
+  if (sponsored) {
+    ctx.beginPath()
+    ctx.arc(cx, cy, radius + 2.4, 0, Math.PI * 2)
+    ctx.strokeStyle = '#d68a22'
+    ctx.lineWidth = 2.5
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(cx + 10, cy - 11, 4.6, 0, Math.PI * 2)
+    ctx.fillStyle = '#d68a22'
+    ctx.fill()
+    ctx.lineWidth = 1.4
+    ctx.strokeStyle = PAPER
+    ctx.stroke()
+  }
+  ctx.save()
+  ctx.translate(cx, cy)
   glyph(ctx)
   ctx.restore()
   return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
 
 function stopCanvas() {
-  const scale = 2
   const canvas = document.createElement('canvas')
-  canvas.width = 28 * scale
-  canvas.height = 28 * scale
+  canvas.width = 32 * SCALE
+  canvas.height = 32 * SCALE
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     throw new Error('Canvas is unavailable')
   }
-  ctx.scale(scale, scale)
+  ctx.scale(SCALE, SCALE)
+  ctx.save()
+  ctx.shadowColor = 'rgba(43, 36, 32, 0.28)'
+  ctx.shadowBlur = 4
+  ctx.shadowOffsetY = 1
   ctx.beginPath()
-  ctx.arc(14, 14, 12, 0, Math.PI * 2)
+  ctx.arc(16, 16, 12, 0, Math.PI * 2)
   ctx.fillStyle = '#a3402a'
   ctx.fill()
+  ctx.restore()
+  ctx.beginPath()
+  ctx.arc(16, 16, 12, 0, Math.PI * 2)
   ctx.lineWidth = 2
-  ctx.strokeStyle = '#fffbf3'
+  ctx.strokeStyle = PAPER
   ctx.stroke()
   return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
@@ -250,7 +305,9 @@ function stopCanvas() {
 export function mapImages() {
   const images: Record<string, ImageData> = { stop: stopCanvas() }
   for (const [id, glyph] of Object.entries(GLYPHS)) {
-    images[id] = pinCanvas(COLORS[id] || '#a3402a', glyph)
+    const color = COLORS[id] || '#a3402a'
+    images[id] = pinCanvas(color, glyph, false)
+    images[`s-${id}`] = pinCanvas(color, glyph, true)
   }
   return images
 }

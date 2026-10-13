@@ -1,14 +1,23 @@
 import type { MapLayer } from '@k39/map'
+import type { MapBounds } from '~~/shared/map'
 import { basemapFromUrl, layerCoordinates, lonePoint, MAP_CENTER, MAP_ZOOM, mapStyle } from '@k39/map'
 import maplibregl from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
 import { mapImages } from './map-icons'
-import { eraseMapLayer, interactivePaintIds, paintMapLayer, replaceMapLayerData } from './sync-map-layers'
+import { applyPicked, eraseMapLayer, interactivePaintIds, paintMapLayer, replaceMapLayerData } from './sync-map-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
+
+export interface MapFramePadding {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
 
 export interface K39MapHandle {
   setLayers: (layers: MapLayer[]) => void
   setSelected: (id: string | null) => void
+  setPadding: (padding: MapFramePadding) => void
   reveal: (id: string) => void
   fit: () => void
   zoomIn: () => void
@@ -40,12 +49,16 @@ export async function mountK39Map(el: HTMLElement, options: {
   layers: MapLayer[]
   cooperative: boolean
   pmtilesUrl?: string
+  padding?: MapFramePadding
   onSelect: (id: string) => void
   onEmpty: () => void
+  onBounds?: (bounds: MapBounds) => void
+  onLocate?: (point: { latitude: number, longitude: number }) => void
 }): Promise<K39MapHandle> {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const duration = reduce ? 0 : 450
   const known = new Set(Object.keys(mapImages()))
+  let padding: MapFramePadding = options.padding || { top: 16, right: 64, bottom: 24, left: 16 }
   let layers = options.layers
   let selected: string | null = null
   let hovered: { source: string, id: string } | null = null
@@ -131,6 +144,7 @@ export async function mountK39Map(el: HTMLElement, options: {
       }
     }
     selected = id
+    applyPicked(map, layers, known, id)
     if (!id) {
       return
     }
@@ -213,15 +227,45 @@ export async function mountK39Map(el: HTMLElement, options: {
   function fit() {
     const single = lonePoint(layers)
     if (single) {
-      map.easeTo({ center: single, zoom: 15, duration })
+      map.easeTo({ center: single, zoom: 15, padding, duration })
       return
     }
     const bounds = boundsOf()
     if (!bounds) {
-      map.easeTo({ center: MAP_CENTER, zoom: MAP_ZOOM, duration })
+      map.easeTo({ center: MAP_CENTER, zoom: MAP_ZOOM, padding, duration })
       return
     }
-    map.fitBounds(bounds, { padding: 56, maxZoom: 15, duration })
+    map.fitBounds(bounds, { padding, maxZoom: 15, duration })
+  }
+
+  let boundsFrame = 0
+  function emitBounds() {
+    boundsFrame = 0
+    const canvas = map.getCanvas()
+    const width = canvas.clientWidth
+    const height = canvas.clientHeight
+    if (width < 8 || height < 8) {
+      return
+    }
+    const left = Math.min(Math.max(padding.left, 0), width - 4)
+    const top = Math.min(Math.max(padding.top, 0), height - 4)
+    const right = Math.max(left + 2, width - Math.max(padding.right, 0))
+    const bottom = Math.max(top + 2, height - Math.max(padding.bottom, 0))
+    const nw = map.unproject([left, top])
+    const se = map.unproject([right, bottom])
+    options.onBounds?.({
+      west: Math.min(nw.lng, se.lng),
+      east: Math.max(nw.lng, se.lng),
+      south: Math.min(nw.lat, se.lat),
+      north: Math.max(nw.lat, se.lat),
+    })
+  }
+
+  function scheduleBounds() {
+    if (boundsFrame) {
+      return
+    }
+    boundsFrame = window.requestAnimationFrame(emitBounds)
   }
 
   function findCoord(id: string): [number, number] | null {
@@ -246,7 +290,13 @@ export async function mountK39Map(el: HTMLElement, options: {
   if (details instanceof HTMLDetailsElement) {
     details.open = false
   }
-  requestAnimationFrame(() => map.resize())
+  map.setPadding(padding)
+  map.on('move', scheduleBounds)
+  map.on('moveend', emitBounds)
+  requestAnimationFrame(() => {
+    map.resize()
+    emitBounds()
+  })
 
   return {
     setLayers(next) {
@@ -258,12 +308,17 @@ export async function mountK39Map(el: HTMLElement, options: {
     setSelected(id) {
       applySelected(id)
     },
+    setPadding(next) {
+      padding = next
+      map.setPadding(next)
+      emitBounds()
+    },
     reveal(id) {
       const coord = findCoord(id)
       if (!coord) {
         return
       }
-      map.easeTo({ center: coord, zoom: Math.max(map.getZoom(), 13), duration })
+      map.easeTo({ center: coord, zoom: Math.max(map.getZoom(), 14.6), padding, duration })
     },
     fit,
     zoomIn() {
@@ -278,9 +333,12 @@ export async function mountK39Map(el: HTMLElement, options: {
       }
       return new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition((position) => {
+          const point = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+          options.onLocate?.(point)
           map.easeTo({
-            center: [position.coords.longitude, position.coords.latitude],
+            center: [point.longitude, point.latitude],
             zoom: Math.max(map.getZoom(), 14),
+            padding,
             duration,
           })
           resolve('ok')
@@ -291,6 +349,9 @@ export async function mountK39Map(el: HTMLElement, options: {
       map.resize()
     },
     destroy() {
+      if (boundsFrame) {
+        window.cancelAnimationFrame(boundsFrame)
+      }
       map.remove()
     },
   }

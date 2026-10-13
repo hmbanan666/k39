@@ -34,11 +34,25 @@ The 2026-10-13 archive is 99,943,373 bytes. It is not in git and not in the imag
 
 When the archive is missing or the hash does not match, `pmtilesUrl` is empty. The style uses the OpenFreeMap TileJSON `https://tiles.openfreemap.org/planet` (OpenMapTiles) and remote glyphs. The wildcard `/{z}/{x}/{y}.pbf` path answers with empty tiles, so that fallback does not use it. A missing local file does not break the map. An https override that 404s does not fall back.
 
-Pins are canvas images, one per sight facet and food kind: форты, замки, пляжи, музеи, церкви, курорты, and the food kinds. Churches are places whose slug or title matches собор, кирха, or церковь. The cathedral stays in the museum category and also matches the church chip. Clusters are cream bubbles with a brick stroke and a count. Hover and the selected pin scale up. A partner dot is drawn only when `FEATURE_SPONSORED_VENUES` is on and the venue has an active offer.
+Pins are retina canvas images (drawn at 2×), one round marker per sight facet and food kind: форты, замки, пляжи, музеи, церкви, курорты, and the food kinds. Each marker is a paper-ringed disc, a soft shadow, and one filled icon. Churches are places whose slug or title matches собор, кирха, or церковь. The cathedral stays in the museum category and also matches the church chip. Clusters are cream bubbles with a brick stroke, a soft shadow, and a count. Hover and the selected pin scale up. A sponsored pin, drawn only when `FEATURE_SPONSORED_VENUES` is on and the venue has an active offer, adds an amber ring and a small amber badge.
 
-The card has one action, «Открыть». «Как добраться» stays on the place and route pages. The card closes on a map tap, Escape, or a downward swipe. The close control is an icon. The photo is a thumbnail on a wide screen and a short strip on a phone, where the card is a bottom sheet.
+The card has one action, «Открыть». «Как добраться» stays on the place and route pages. On an embedded map the card still closes on a map tap, Escape, or a downward swipe. On `/karta` the card lives in the panel, described under UX.
 
-`/karta` fills `100dvh` minus the header. Filters, search, and the route picker float over the map. On a phone the result list is behind «Список». Choices live in the query: `s` for sight ids (`none` clears them), `f` for food path segments such as `kofe`, `r` for one route slug, `q` for the name. Omitting `s` or `f` means all of that group.
+`/karta` fills `100dvh` minus the header. Choices live in the query: `c` for the panel category (`sights`, `food`, `beaches`, `routes`), `s` for sight ids (`none` clears them), `f` for food path segments such as `kofe`, `r` for one route slug, `q` for the name. Omitting `s` or `f` inside a category means every sub-chip of that category. An idle URL, with none of those keys, does not dump every object onto the map.
+
+## UX
+
+The panel follows the desktop sidebar and the phone sheet of Yandex Maps, 2GIS, and Google Maps.
+
+Search comes first. Under it, quick categories are the way in: Достопримечательности, Где поесть, Пляжи, Маршруты. A chip with a zero count is omitted. Choosing a category shows its sub-chips and a list of the objects inside the current map view, with a thumbnail, sorted by how the name matches and then by distance. The idle panel is a short shelf, «Стоит увидеть» plus a few routes, not every object.
+
+Selecting an object replaces the panel with that card. Back returns to the previous list. The card shows a photo, the title, the type, a short text, the address and hours when the object is a venue, the distance, and «Открыть». The selected pin grows. The camera keeps padding for the panel, or for the sheet, so the pin stays in the open part of the map.
+
+Маршруты lists route cards: name, an estimated duration, the stop count, and a thumbnail. Opening one replaces the panel with the route and its stops, and draws the line. A stored path is solid. Otherwise the stops stay joined with a dashed stroke, which is not a road.
+
+On a desktop the panel is solid paper, the full height between the header and the bottom of the map, and it can collapse. On a phone the same flow is a bottom sheet with three snaps: peek, half, and full.
+
+A denied or failed «Я здесь» uses the shared toast, «Не удалось определить место». The toast leaves after about 2.5 seconds. It sits over the open map, not on the search field.
 
 Routes draw nothing until `r` is set. The selected route shows numbered stops. `routes.path` is an optional list of `[longitude, latitude]`. When that line has at least two points, the map draws it solid. Otherwise the stops are joined in order with a dashed stroke, which is not a road. The same rule is used on `/marshruty/{slug}`. The Yandex and Google direction links on that page are unchanged. `route_draft_create`, `route_draft_update`, and `route_update` accept `path`. Omit it to keep the stored line. Null clears it.
 

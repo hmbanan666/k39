@@ -9,137 +9,56 @@
       :overlay="overlay"
       :fit-key="fitKey"
       :lazy="false"
+      :card-visible="false"
+      :padding="padding"
+      :controls-bottom="controlsBottom"
       map-label="Карта Калининградской области"
+      @bounds="onBounds"
+      @located="onLocated"
     />
-    <form
-      class="panel"
-      :class="{ listed: listOpen }"
-      role="search"
-      @submit.prevent
-    >
-      <label class="search-label">
-        <span class="sr">Название</span>
-        <input
-          v-model="state.q"
-          class="search"
-          type="search"
-          placeholder="Название"
-          enterkeyhint="search"
-        >
-      </label>
-      <fieldset>
-        <legend>Достопримечательности</legend>
-        <div class="chips">
-          <button
-            v-for="facet in SIGHT_FACETS"
-            :key="facet.id"
-            type="button"
-            class="chip"
-            :aria-pressed="sightOn(facet.id)"
-            @click="toggleSight(facet.id)"
-          >
-            <MapGlyph :name="facet.id" />
-            {{ facet.label }}
-            <span class="count">{{ counts.sights[facet.id] }}</span>
-          </button>
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>Где поесть</legend>
-        <div class="chips">
-          <button
-            v-for="facet in foodFacets"
-            :key="facet.id"
-            type="button"
-            class="chip"
-            :aria-pressed="foodOn(facet.id)"
-            @click="toggleFood(facet.id)"
-          >
-            <MapGlyph :name="facet.id" />
-            {{ facet.label }}
-            <span class="count">{{ counts.food[facet.id] || 0 }}</span>
-          </button>
-        </div>
-      </fieldset>
-      <label class="route">
-        <span>Маршрут</span>
-        <select
-          :value="state.route || ''"
-          @change="setRoute"
-        >
-          <option value="">
-            Не выбран
-          </option>
-          <option
-            v-for="item in page.routes"
-            :key="item.slug"
-            :value="item.slug"
-          >
-            {{ item.title }}
-          </option>
-        </select>
-      </label>
-      <button
-        class="list-toggle"
-        type="button"
-        :aria-expanded="listOpen"
-        @click="listOpen = !listOpen"
-      >
-        {{ listOpen ? 'Карта' : 'Список' }}
-        <span class="count">{{ visible.length }}</span>
-      </button>
-      <ul class="list">
-        <li
-          v-for="point in visible"
-          :key="point.id"
-        >
-          <a
-            :href="point.href"
-            :aria-current="selectedId === point.id ? 'true' : undefined"
-            @click.prevent="choose(point.id)"
-          >
-            <MapGlyph :name="point.marker" />
-            <span>
-              <b>{{ point.title }}</b>
-              <small>{{ point.kindLabel }}</small>
-            </span>
-          </a>
-        </li>
-        <li
-          v-if="overlay"
-          class="route-link"
-        >
-          <a :href="selectedRoute?.href || '/marshruty'">Маршрут на странице</a>
-        </li>
-        <li
-          v-if="!visible.length"
-          class="empty"
-        >
-          Ничего не нашлось
-        </li>
-      </ul>
-    </form>
+    <MapPanel
+      :points="page.points"
+      :routes="page.routes"
+      :state="state"
+      :selected-id="selectedId"
+      :bounds="bounds"
+      :origin="origin"
+      :collapsed="collapsed"
+      :mobile="mobile"
+      :snap="snap"
+      @search="state.q = $event"
+      @category="chooseCategory"
+      @toggle-sight="toggleSight"
+      @toggle-food="toggleFood"
+      @select-point="choosePoint"
+      @select-route="chooseRoute"
+      @back="back"
+      @collapse="collapsed = !collapsed"
+      @snap="snap = $event"
+      @metrics="onMetrics"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { MapPoint, MapQueryState, MapRoute, SightId } from '~~/shared/map'
+import type { BrowseCategory, MapBounds, MapOrigin, MapPoint, MapQueryState, MapRoute, SightId } from '~~/shared/map'
 import type { SeoDocument } from '~~/shared/seo'
+import type { MapFramePadding } from '~/lib/mount-k39-map'
 import {
-  facetCounts,
+  activeCategory,
+  boundsCenter,
   FOOD_FILTERS,
   foodIdsIn,
   mapQueryRecord,
   parseMapQuery,
-  pointVisible,
   queriesEqual,
   routeOverlay,
-  SIGHT_FACETS,
-  sortMapPoints,
+  shownPoints,
+  SIGHT_BROWSE,
   toggleId,
 } from '~~/shared/map'
 import K39Map from '~/components/map/K39Map.vue'
-import MapGlyph from '~/components/map/MapGlyph.vue'
+import MapPanel from '~/components/map/MapPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,43 +72,129 @@ usePublicHead(page.doc)
 const foodAll = foodIdsIn(page.points)
 const state = ref<MapQueryState>(parseMapQuery(route.query))
 const selectedId = ref<string | null>(null)
-const listOpen = ref(false)
-const counts = facetCounts(page.points)
-const foodFacets = [
-  ...FOOD_FILTERS,
-  ...(counts.food.eda ? [{ id: 'eda', label: 'Еда' }] : []),
-]
+const bounds = ref<MapBounds | null>(null)
+const userOrigin = ref<MapOrigin | null>(null)
+const collapsed = ref(false)
+const mobile = ref(false)
+const snap = ref<'peek' | 'half' | 'full'>('peek')
+const panelWidth = ref(424)
+const sheetHeight = ref(180)
 
-const visible = computed(() => sortMapPoints(page.points.filter((point) => pointVisible(point, state.value))))
+const visible = computed(() => shownPoints(page.points, state.value))
 const selectedRoute = computed(() => page.routes.find((item) => item.slug === state.value.route) || null)
 const overlay = computed(() => routeOverlay(selectedRoute.value))
-const fitKey = computed(() => JSON.stringify(mapQueryRecord(state.value, foodAll)))
+const fitKey = computed(() => `${activeCategory(state.value) || ''}|${state.value.route || ''}`)
+const origin = computed(() => userOrigin.value || (bounds.value ? boundsCenter(bounds.value) : null))
+const padding = computed<MapFramePadding>(() => ({
+  top: 16,
+  right: 72,
+  bottom: mobile.value ? Math.min(sheetHeight.value, 280) + 12 : 28,
+  left: mobile.value ? 16 : (collapsed.value ? 16 : panelWidth.value + 8),
+}))
+const controlsBottom = computed(() => {
+  if (!mobile.value) {
+    return '0.6rem'
+  }
+  if (snap.value === 'full') {
+    return 'calc(100% - 4.6rem)'
+  }
+  if (snap.value === 'half') {
+    return 'calc(min(52dvh, 28rem) + 2.4rem)'
+  }
+  return '14rem'
+})
 
-function sightOn(id: SightId) {
-  return state.value.sights == null || state.value.sights.includes(id)
-}
-
-function foodOn(id: string) {
-  return state.value.food == null || state.value.food.includes(id)
+function chooseCategory(id: BrowseCategory) {
+  selectedId.value = null
+  const current = activeCategory(state.value)
+  state.value.sights = null
+  state.value.food = null
+  state.value.route = null
+  state.value.category = current === id ? null : id
+  if (mobile.value && snap.value === 'peek' && state.value.category) {
+    snap.value = 'half'
+  }
 }
 
 function toggleSight(id: SightId) {
-  state.value.sights = toggleId(state.value.sights, id, SIGHT_FACETS.map((item) => item.id)) as SightId[] | null
+  state.value.category = 'sights'
+  state.value.sights = toggleId(state.value.sights, id, SIGHT_BROWSE.map((item) => item.id)) as SightId[] | null
 }
 
 function toggleFood(id: string) {
-  state.value.food = toggleId(state.value.food, id, foodAll)
+  state.value.category = 'food'
+  state.value.food = toggleId(state.value.food, id, foodAll.length ? foodAll : FOOD_FILTERS.map((item) => item.id))
 }
 
-function setRoute(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
-  state.value.route = value || null
-}
-
-function choose(id: string) {
+function choosePoint(id: string) {
   selectedId.value = id
-  listOpen.value = false
+  if (mobile.value && snap.value === 'peek') {
+    snap.value = 'half'
+  }
 }
+
+function chooseRoute(slug: string) {
+  selectedId.value = null
+  state.value.category = 'routes'
+  state.value.sights = null
+  state.value.food = null
+  state.value.route = slug
+  if (mobile.value) {
+    snap.value = 'half'
+  }
+}
+
+function back() {
+  if (selectedId.value) {
+    selectedId.value = null
+    return
+  }
+  if (state.value.route) {
+    state.value.route = null
+    state.value.category = 'routes'
+    return
+  }
+  if (state.value.q) {
+    state.value.q = ''
+    return
+  }
+  state.value.category = null
+  state.value.sights = null
+  state.value.food = null
+}
+
+function onBounds(next: MapBounds) {
+  bounds.value = next
+}
+
+function onLocated(point: MapOrigin) {
+  userOrigin.value = point
+}
+
+function onMetrics(size: { width: number, height: number }) {
+  if (!mobile.value && size.width > 0) {
+    panelWidth.value = size.width
+  }
+  if (mobile.value) {
+    sheetHeight.value = size.height
+  }
+}
+
+function syncChrome() {
+  mobile.value = window.matchMedia('(max-width: 720px)').matches
+  const header = document.querySelector('.site-header')
+  if (!header) {
+    return
+  }
+  document.documentElement.style.setProperty('--site-header-offset', `${header.getBoundingClientRect().height}px`)
+}
+
+function syncPanelVar() {
+  const width = mobile.value || collapsed.value ? 0 : panelWidth.value
+  document.documentElement.style.setProperty('--karta-panel', `${width}px`)
+}
+
+let headerObserver: ResizeObserver | undefined
 
 watch(() => route.query, (query) => {
   if (queriesEqual(mapQueryRecord(state.value, foodAll), query)) {
@@ -206,27 +211,25 @@ watch(state, (value) => {
   void router.replace({ path: '/karta', query: next })
 }, { deep: true })
 
-function syncHeader() {
-  const header = document.querySelector('.site-header')
-  if (!header) {
-    return
-  }
-  document.documentElement.style.setProperty('--site-header-offset', `${header.getBoundingClientRect().height}px`)
-}
-
-let headerObserver: ResizeObserver | undefined
+watch([collapsed, mobile, panelWidth], () => syncPanelVar())
 
 onMounted(() => {
   useTrack().track('page_view')
-  syncHeader()
+  syncChrome()
+  syncPanelVar()
   const header = document.querySelector('.site-header')
   if (header && 'ResizeObserver' in window) {
-    headerObserver = new ResizeObserver(() => syncHeader())
+    headerObserver = new ResizeObserver(() => syncChrome())
     headerObserver.observe(header)
   }
+  window.addEventListener('resize', syncChrome)
 })
 
-onBeforeUnmount(() => headerObserver?.disconnect())
+onBeforeUnmount(() => {
+  headerObserver?.disconnect()
+  window.removeEventListener('resize', syncChrome)
+  document.documentElement.style.removeProperty('--karta-panel')
+})
 </script>
 
 <style scoped>
@@ -246,116 +249,24 @@ onBeforeUnmount(() => headerObserver?.disconnect())
   white-space: nowrap;
   border: 0;
 }
-.panel {
-  position: absolute;
-  z-index: 3;
-  top: 0.75rem;
-  left: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  width: min(22.5rem, calc(100% - 4.6rem));
-  max-height: calc(100% - 1.5rem);
-  padding: 0.75rem;
-  overflow: auto;
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  background: rgb(255 251 243 / 94%);
-  box-shadow: var(--shadow-pop);
-}
-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
-legend {
-  margin-bottom: 0.4rem;
-  color: var(--muted);
-  font-family: "Alegreya SC", serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  min-height: 2rem;
-  padding: 0.15rem 0.55rem 0.15rem 0.4rem;
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font: 600 0.82rem/1 var(--font-body);
-  cursor: pointer;
-}
-.chip[aria-pressed="true"] {
-  border-color: var(--color-brick);
-  background: var(--color-brick);
-  color: var(--color-paper);
-}
-.count { opacity: 0.72; font-weight: 500; font-variant-numeric: tabular-nums; }
-.search, select {
-  width: 100%;
-  min-height: 2.4rem;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid var(--color-line);
-  border-radius: 10px;
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font: 400 0.95rem/1.3 var(--font-body);
-}
-.route { display: grid; gap: 0.25rem; color: var(--color-ink); font-size: 0.82rem; font-weight: 700; }
-.list { display: grid; gap: 0.15rem; max-height: 34vh; margin: 0; padding: 0; overflow: auto; list-style: none; }
-.list a {
-  display: flex;
-  gap: 0.45rem;
-  align-items: center;
-  padding: 0.35rem 0.2rem;
-  color: inherit;
-  text-decoration: none;
-}
-.list a[aria-current="true"] b { color: var(--color-brick); }
-.list b { display: block; font-family: var(--font-display); font-size: 1rem; font-weight: 700; }
-.list small { color: var(--muted); font-size: 0.78rem; }
-.route-link a {
-  display: inline;
-  color: var(--color-sea);
-  font-size: 0.9rem;
-  text-decoration: underline;
-}
-.empty { color: var(--muted); }
-.list-toggle { display: none; }
 @media (min-width: 900px) {
   .karta { height: calc(100dvh - var(--site-header-offset, 4.75rem)); }
-}
-@media (max-width: 720px) {
-  .panel {
-    top: 0.5rem;
-    right: 3.5rem;
-    left: 0.5rem;
-    width: auto;
-    max-height: calc(100% - 1rem);
-    padding: 0.5rem;
-  }
-  .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.15rem; }
-  .chip { flex: none; }
-  .list { display: none; max-height: 42dvh; }
-  .panel.listed .list { display: grid; }
-  .list-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.4rem;
-    min-height: 2.3rem;
-    padding: 0.3rem 0.7rem;
-    border: 1px solid var(--color-line);
-    border-radius: 999px;
-    background: var(--color-surface);
-    color: var(--color-ink);
-    font: 700 0.88rem/1 var(--font-body);
-    cursor: pointer;
-  }
 }
 </style>
 
 <style>
+html:has(.karta),
+body:has(.karta) {
+  height: 100%;
+  overflow: clip;
+}
 body:has(.karta) .site-footer { margin-top: 0; }
+body:has([aria-label="Уведомление о cookie"]) .karta {
+  height: calc(100dvh - var(--site-header-offset, 7.5rem) - 56px);
+}
+@media (min-width: 900px) {
+  body:has([aria-label="Уведомление о cookie"]) .karta {
+    height: calc(100dvh - var(--site-header-offset, 4.75rem) - 56px);
+  }
+}
 </style>
