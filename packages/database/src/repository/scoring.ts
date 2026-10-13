@@ -1,10 +1,10 @@
 import type { PageKind, PrimaryAction } from '../types/entities'
-import type { CatalogArticle, CatalogHub, CatalogPassport, CatalogStop, ContentCatalog, PageMetric, PassportWrite, ScorePlace, StoredScore } from '../types/scoring'
+import type { CatalogArticle, CatalogHub, CatalogPassport, CatalogStop, ContentCatalog, PageMetric, PassportWrite, ScorePlace, ScoreVenue, StoredScore } from '../types/scoring'
 import { createId } from '@paralleldrive/cuid2'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, places, quests, questSteps, regions, relatedLinks, routePoints, routes } from '../tables'
+import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, places, quests, questSteps, regions, relatedLinks, routePoints, routes, venues } from '../tables'
 
 const HUB_SLUGS = ['forty', 'zamki', 'plyazhi', 'kurorty', 'muzei', 'eda']
 
@@ -110,6 +110,36 @@ export class Scoring {
       group by place_id
     `)
     const passports = await db.select().from(pagePassports)
+    const venueRows = await db.select({
+      id: venues.id,
+      slug: venues.slug,
+      name: venues.name,
+      kind: venues.kind,
+      description: venues.description,
+      address: venues.address,
+      latitude: venues.latitude,
+      longitude: venues.longitude,
+      hours: venues.hours,
+      priceLevel: venues.priceLevel,
+      avgCheck: venues.avgCheck,
+      phone: venues.phone,
+      website: venues.website,
+      cuisine: venues.cuisine,
+      sources: venues.sources,
+      status: venues.status,
+      lastVerifiedAt: venues.lastVerifiedAt,
+      seoTitle: venues.seoTitle,
+      seoDescription: venues.seoDescription,
+      regionSlug: regions.slug,
+      regionTitle: regions.title,
+      updatedAt: venues.updatedAt,
+    }).from(venues).leftJoin(regions, eq(venues.regionId, regions.id)).where(ne(venues.status, 'archived'))
+    const venuePhotoResult = await db.execute(sql`
+      select venue_id, count(*)::int as photos
+      from venue_media
+      group by venue_id
+    `)
+    const venuePhotos = new Map(rowsOf<{ venue_id: string, photos: number }>(venuePhotoResult).map((row) => [row.venue_id, num(row.photos)]))
 
     const article = (row: { id: string, slug: string, title: string, summary: string | null, body: string, publicationStatus: string, noindex: boolean, seoTitle: string | null, seoDescription: string | null, updatedAt: string }, routeSlug: string | null = null): CatalogArticle | null => {
       const publicationStatus = statusOf(row.publicationStatus)
@@ -204,6 +234,36 @@ export class Scoring {
         seoDescription: row.seoDescription,
         updatedAt: row.updatedAt,
       })),
+      venues: venueRows.flatMap((row): ScoreVenue[] => {
+        if (row.status !== 'draft' && row.status !== 'published' && row.status !== 'closed') {
+          return []
+        }
+        return [{
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          kind: row.kind,
+          description: row.description,
+          address: row.address,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          hours: row.hours ?? {},
+          priceLevel: row.priceLevel,
+          avgCheck: row.avgCheck,
+          phone: row.phone,
+          website: row.website,
+          cuisine: row.cuisine ?? [],
+          sources: row.sources ?? [],
+          status: row.status,
+          lastVerifiedAt: row.lastVerifiedAt,
+          seoTitle: row.seoTitle,
+          seoDescription: row.seoDescription,
+          regionSlug: row.regionSlug,
+          regionTitle: row.regionTitle,
+          photoCount: venuePhotos.get(row.id) ?? 0,
+          updatedAt: row.updatedAt,
+        }]
+      }),
       related: relatedRows,
       photos: rowsOf<{ place_id: string, photos: number }>(photoResult).map((row) => ({
         placeId: row.place_id,

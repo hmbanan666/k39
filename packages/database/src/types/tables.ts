@@ -30,6 +30,9 @@ export type QuestDraft = InferInsertModel<typeof tables.quests>
 export type Collection = InferSelectModel<typeof tables.collections>
 export type CollectionDraft = InferInsertModel<typeof tables.collections>
 
+export type Venue = InferSelectModel<typeof tables.venues>
+export type VenueDraft = InferInsertModel<typeof tables.venues>
+
 export type SlugRedirect = InferSelectModel<typeof tables.slugRedirects>
 export type SlugRedirectDraft = InferInsertModel<typeof tables.slugRedirects>
 

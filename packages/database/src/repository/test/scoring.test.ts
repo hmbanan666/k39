@@ -2,13 +2,16 @@ import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { applyInitialContent } from '../../seed/apply'
-import { analyticsSearchQueries, categories, collectionItems, collections, contentImports, contentScoreDays, contentScores, media, offerCodes, offers, pagePassports, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes } from '../../tables'
+import { analyticsSearchQueries, categories, collectionItems, collections, contentImports, contentScoreDays, contentScores, media, offerCodes, offers, pagePassports, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, venueListingIntros, venueMedia, venues } from '../../tables'
 import { Analytics } from '../analytics'
 import { Editor } from '../content'
 import { Scoring } from '../scoring'
 
 async function wipe() {
   const db = useDatabase()
+  await db.delete(venueMedia)
+  await db.delete(venueListingIntros)
+  await db.delete(venues)
   await db.delete(contentScoreDays)
   await db.delete(contentScores)
   await db.delete(pagePassports)

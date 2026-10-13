@@ -3,6 +3,7 @@
     <header class="admin-bar">
       <a href="/admin">Админка</a>
       <a href="/admin/places">Места</a>
+      <a href="/admin/venues">Заведения</a>
       <a href="/admin/routes">Маршруты</a>
       <a href="/admin/collections">Подборки</a>
       <a href="/admin/taxonomy">Разделы</a>

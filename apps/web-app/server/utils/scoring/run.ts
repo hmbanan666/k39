@@ -138,6 +138,7 @@ export async function resolveScoredPage(input: { path?: string, pageType?: PageK
     ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}`, title: row.title, slug: row.slug })),
     ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}`, title: row.title, slug: row.slug })),
     ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}`, title: row.title, slug: row.slug })),
+    ...catalog.venues.map((row) => ({ pageType: 'venue' as const, entityId: row.id, path: `/zavedeniya/${row.slug}`, title: row.name, slug: row.slug })),
   ]
   if (input.path) {
     const path = normalizePath(input.path)

@@ -1,6 +1,7 @@
 import type { CatalogStop, ContentCatalog, PageMetric, StoredScore } from '@k39/database'
 import type { LinkCatalog, PageKind, PageScore, PassportFields, ScoreSource } from '../../../shared/scoring'
 import { emptyResults, linkStats, queriesForPath, scorePage } from '../../../shared/scoring'
+import { hoursHaveIntervals } from '../../../shared/venues'
 
 export function catalogPageRefs(catalog: ContentCatalog) {
   return [
@@ -9,6 +10,7 @@ export function catalogPageRefs(catalog: ContentCatalog) {
     ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}` })),
     ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}` })),
     ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}` })),
+    ...catalog.venues.map((row) => ({ pageType: 'venue' as const, entityId: row.id, path: `/zavedeniya/${row.slug}` })),
   ]
 }
 
@@ -83,6 +85,16 @@ export function scoresFromCatalog(
       description: hub.description,
       body: hub.body,
       noindex: hub.noindex,
+    })),
+    venues: catalog.venues.map((venue) => ({
+      slug: venue.slug,
+      kind: venue.kind,
+      regionSlug: venue.regionSlug,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+      published: venue.status === 'published' || venue.status === 'closed',
+      noindex: !venue.description.trim(),
+      lastVerifiedAt: venue.lastVerifiedAt,
     })),
     related: catalog.related,
   }
@@ -266,6 +278,43 @@ export function scoresFromCatalog(
         inRoute: false,
         inCollection: false,
         memberCount: members.length,
+        inbound: link.inbound,
+        contentOutbound: link.contentOutbound,
+        orphan: link.orphan,
+        passport,
+        results: resultsFor(path, passport),
+      }
+    }),
+    ...catalog.venues.map((venue): ScoreSource => {
+      const path = `/zavedeniya/${venue.slug}`
+      const link = stat(path)
+      const passport = passportOf(catalog, 'venue', venue.id)
+      const live = venue.status === 'published' || venue.status === 'closed'
+      return {
+        kind: 'venue',
+        id: venue.id,
+        path,
+        title: venue.name,
+        summary: venue.description,
+        body: '',
+        howToGet: venue.address,
+        hours: hoursHaveIntervals(venue.hours) ? 'open' : null,
+        price: venue.avgCheck == null ? null : String(venue.avgCheck),
+        categorySlug: venue.kind,
+        categoryTitle: null,
+        regionTitle: venue.regionTitle,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
+        sources: venue.sources,
+        publicationStatus: live ? 'published' : 'draft',
+        noindex: !venue.description.trim(),
+        seoTitle: venue.seoTitle,
+        seoDescription: venue.seoDescription,
+        factsCheckedAt: venue.lastVerifiedAt,
+        photoCount: venue.photoCount,
+        inRoute: false,
+        inCollection: false,
+        memberCount: 0,
         inbound: link.inbound,
         contentOutbound: link.contentOutbound,
         orphan: link.orphan,

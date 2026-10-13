@@ -1,4 +1,6 @@
+import type { VenueHours } from '@k39/database'
 import { licenseHref } from './media'
+import { openingHoursSpec, venueSchemaType } from './venues'
 
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
@@ -51,6 +53,7 @@ export const RESERVED_SLUGS = [
   'sitemaps',
   'terms',
   'zamki',
+  'zavedeniya',
 ] as const
 
 const RU: Record<string, string> = {
@@ -564,4 +567,155 @@ export function headFromDocument(doc: SeoDocument) {
 
 export function countH1(html: string) {
   return [...html.matchAll(/<h1\b/gi)].length
+}
+
+function clipDescription(text: string) {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= 160) {
+    return clean
+  }
+  const cut = clean.slice(0, 157).replace(/\s+\S*$/, '')
+  const base = cut.length >= 110 ? cut : clean.slice(0, 157).trim()
+  return `${base}...`.slice(0, 160)
+}
+
+export function venueDocument(input: {
+  slug: string
+  name: string
+  description: string
+  kind: string
+  regionTitle: string | null
+  regionSlug?: string | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  phone?: string | null
+  website?: string | null
+  priceLevel?: number | null
+  cuisine?: string[]
+  hours?: VenueHours | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  noindex?: boolean
+  sources?: Array<{ title: string, url: string }>
+  image?: SeoImage | null
+}): SeoDocument {
+  const path = `/zavedeniya/${input.slug}`
+  const missing = !input.description.trim()
+  const title = pageTitle(input.name, input.seoTitle)
+  const description = metaDescription(clipDescription(input.description || input.name), input.seoDescription)
+  const crumbs: Crumb[] = [
+    { name: 'Главная', href: '/' },
+    { name: 'Заведения', href: '/zavedeniya' },
+  ]
+  if (input.regionTitle && input.regionSlug) {
+    crumbs.push({ name: input.regionTitle, href: `/zavedeniya/${input.regionSlug}` })
+  }
+  crumbs.push({ name: input.name, href: path })
+  const node: Record<string, unknown> = {
+    '@type': venueSchemaType(input.kind),
+    'name': input.name,
+    'description': description || input.name,
+    'url': absoluteUrl(path),
+  }
+  if (input.image) {
+    node.image = input.image.url
+  }
+  if (input.latitude != null && input.longitude != null) {
+    node.geo = {
+      '@type': 'GeoCoordinates',
+      'latitude': input.latitude,
+      'longitude': input.longitude,
+    }
+  }
+  if (input.address || input.regionTitle) {
+    node.address = {
+      '@type': 'PostalAddress',
+      'streetAddress': input.address || undefined,
+      'addressLocality': input.regionTitle || undefined,
+      'addressRegion': 'Калининградская область',
+      'addressCountry': 'RU',
+    }
+  }
+  if (input.phone) {
+    node.telephone = input.phone
+  }
+  if (input.priceLevel) {
+    node.priceRange = '₽'.repeat(Math.min(4, input.priceLevel))
+  }
+  if (input.cuisine?.length) {
+    node.servesCuisine = input.cuisine
+  }
+  const specs = openingHoursSpec(input.hours)
+  if (specs.length) {
+    node.openingHoursSpecification = specs
+  }
+  const sameAs = [
+    input.website || '',
+    ...(input.sources ?? []).map((source) => source.url),
+  ].filter((url) => url.startsWith('http'))
+  if (sameAs.length) {
+    node.sameAs = sameAs
+  }
+  return {
+    title,
+    description,
+    canonical: absoluteUrl(path),
+    robots: missing || input.noindex ? 'noindex, follow' : 'index, follow',
+    h1: input.name,
+    crumbs,
+    ogImage: input.image ?? DEFAULT_OG_IMAGE,
+    jsonLd: [breadcrumbNode(crumbs), node],
+  }
+}
+
+export function venueListingDocument(input: {
+  path: string
+  h1: string
+  summary: string
+  region?: { title: string, slug: string } | null
+  kind?: boolean
+  items: Array<{ name: string, url: string }>
+  noindex?: boolean
+}): SeoDocument {
+  const crumbs: Crumb[] = [{ name: 'Главная', href: '/' }]
+  if (input.path === '/zavedeniya') {
+    crumbs.push({ name: input.h1, href: input.path })
+  } else {
+    crumbs.push({ name: 'Заведения', href: '/zavedeniya' })
+    if (input.kind && input.region) {
+      crumbs.push({ name: input.region.title, href: `/zavedeniya/${input.region.slug}` })
+    }
+    crumbs.push({ name: input.h1, href: input.path })
+  }
+  const description = metaDescription(input.summary)
+  const list = {
+    '@type': 'ItemList',
+    'numberOfItems': input.items.length,
+    'itemListElement': input.items.map((item, index) => ({
+      '@type': 'ListItem',
+      'position': index + 1,
+      'name': item.name,
+      'url': absoluteUrl(item.url),
+    })),
+  }
+  return {
+    title: pageTitle(input.h1),
+    description,
+    canonical: absoluteUrl(input.path),
+    robots: input.noindex ? 'noindex, follow' : 'index, follow',
+    h1: input.h1,
+    crumbs,
+    ogImage: DEFAULT_OG_IMAGE,
+    jsonLd: [
+      breadcrumbNode(crumbs),
+      {
+        '@type': 'CollectionPage',
+        'name': input.h1,
+        'description': description,
+        'url': absoluteUrl(input.path),
+        'mainEntity': list,
+      },
+    ],
+  }
 }

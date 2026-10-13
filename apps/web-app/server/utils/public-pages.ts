@@ -6,6 +6,7 @@ import { describedAlt, ogPath, toPublicMedia } from '../../shared/media'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, placeDocument } from '../../shared/seo'
+import { nearbyVenues } from './venues/nearby'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
   return {
@@ -225,6 +226,10 @@ export async function loadPlace(slug: string, page = 1) {
     groups,
     routeBand,
     sources: loaded.place.sources ?? [],
+    nearbyVenues: await nearbyVenues([{
+      latitude: loaded.place.latitude,
+      longitude: loaded.place.longitude,
+    }]),
   }
 }
 
@@ -279,6 +284,10 @@ export async function loadRoute(slug: string) {
     summary: loaded.route.summary || '',
     stops,
     items: stops.map((stop) => ({ href: stop.href, text: stop.text, note: stop.note })),
+    nearbyVenues: await nearbyVenues(loaded.points.map((point) => ({
+      latitude: point.latitude,
+      longitude: point.longitude,
+    }))),
   }
 }
 

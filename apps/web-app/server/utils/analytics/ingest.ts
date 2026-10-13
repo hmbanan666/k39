@@ -6,7 +6,7 @@ import { analyticsSalt, dailyVisitorKey, newVisitorKey } from './identity'
 
 const SESSION_MS = 30 * 60 * 1000
 const YEAR = 60 * 60 * 24 * 400
-const TYPES = new Set(['pageview', 'engage', 'outbound', 'photo'])
+const TYPES = new Set(['pageview', 'engage', 'outbound', 'photo', 'impression'])
 
 interface ClientEvent {
   type?: string

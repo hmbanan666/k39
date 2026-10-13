@@ -320,6 +320,29 @@ export class Analytics {
     `)
   }
 
+  static async venueImpressions(from: string, to: string, slug?: string) {
+    const target = slug ? `venue:${slug}` : null
+    const result = await useDatabase().execute(sql`
+      select target,
+        count(*)::int as impressions,
+        count(distinct visitor_key)::int as visitors
+      from analytics_hits
+      where is_bot = false
+        and event_type = 'impression'
+        and target like 'venue:%'
+        and occurred_at >= ${from}
+        and occurred_at < ${to}
+        and (${target}::varchar is null or target = ${target})
+      group by target
+      order by impressions desc
+    `)
+    return rowsOf<{ target: string, impressions: number, visitors: number }>(result).map((row) => ({
+      slug: String(row.target).slice('venue:'.length),
+      impressions: num(row.impressions),
+      visitors: num(row.visitors),
+    }))
+  }
+
   static async claimRun(day: string, kind: string) {
     const inserted = await useDatabase().insert(analyticsRuns).values({ day, kind }).onConflictDoNothing().returning()
     return inserted.length > 0

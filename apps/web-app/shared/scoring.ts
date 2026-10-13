@@ -1,8 +1,9 @@
 import { articleBody } from './address'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
-import { absoluteUrl, collectionDocument, faqFromBody, placeDocument, placeSchemaType } from './seo'
+import { absoluteUrl, collectionDocument, faqFromBody, placeDocument, placeSchemaType, venueDocument } from './seo'
+import { VENUE_NEARBY_LIMIT, VENUE_NEARBY_RADIUS_KM, venueKindMeta, venueNearbyEligible, venueSchemaType } from './venues'
 
-export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest'
+export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest' | 'venue'
 export type PrimaryAction = 'build_route' | 'buy_ticket' | 'go_next_place' | 'claim_offer' | 'read'
 export type ScoreBlock = 'quality' | 'linking' | 'indexing' | 'results'
 
@@ -115,12 +116,24 @@ export interface LinkGroup {
   body: string
 }
 
+export interface LinkVenue {
+  slug: string
+  kind: string
+  regionSlug: string | null
+  latitude: number | null
+  longitude: number | null
+  published: boolean
+  noindex: boolean
+  lastVerifiedAt: string | null
+}
+
 export interface LinkCatalog {
   places: LinkPlace[]
   routes: LinkGroup[]
   collections: LinkGroup[]
   quests: Array<LinkGroup & { routeSlug: string | null }>
   hubs: Array<{ slug: string, title: string, description: string, body: string, noindex: boolean }>
+  venues?: LinkVenue[]
   related: Array<{ fromSlug: string, toSlug: string }>
 }
 
@@ -160,6 +173,9 @@ export function lengthNorm(kind: PageKind, categorySlug: string | null) {
   }
   if (kind === 'quest') {
     return { min: 2000, max: 4000 as number | null }
+  }
+  if (kind === 'venue') {
+    return { min: 300, max: 600 as number | null }
   }
   // Hub landing pages have a floor and no ceiling. Six FAQ questions are scored on their own.
   return { min: 2000, max: null }
@@ -256,12 +272,18 @@ function contentLinks(path: string, catalog: LinkCatalog) {
       }
     }
     links.push(...markdownInternalPaths(place.body))
+    links.push(...nearbyVenueHrefs([{ latitude: place.latitude, longitude: place.longitude }], catalog.venues ?? []))
   }
   const route = catalog.routes.find((item) => `/marshruty/${item.slug}` === path)
   if (route) {
     links.push('/marshruty')
     links.push(...route.placeSlugs.filter((slug) => live.has(slug)).map((slug) => `/${slug}`))
     links.push(...markdownInternalPaths(route.body))
+    const origins = route.placeSlugs.flatMap((slug) => {
+      const stop = catalog.places.find((item) => item.slug === slug)
+      return stop ? [{ latitude: stop.latitude, longitude: stop.longitude }] : []
+    })
+    links.push(...nearbyVenueHrefs(origins, catalog.venues ?? []))
   }
   const collection = catalog.collections.find((item) => `/podborki/${item.slug}` === path)
   if (collection) {
@@ -296,6 +318,7 @@ function contentLinks(path: string, catalog: LinkCatalog) {
   if (path === '/kvesty') {
     links.push(...catalog.quests.filter((item) => item.published).map((item) => `/kvesty/${item.slug}`))
   }
+  links.push(...venueCatalogLinks(path, catalog))
   if (path === '/') {
     const featured = catalog.places
       .filter((item) => item.published && item.categorySlug === 'forty')
@@ -314,19 +337,105 @@ function contentLinks(path: string, catalog: LinkCatalog) {
   return unique(links.filter((href) => href !== path))
 }
 
+function nearbyVenueHrefs(
+  origins: Array<{ latitude: number | null, longitude: number | null }>,
+  venues: LinkVenue[],
+) {
+  const best = new Map<string, number>()
+  for (const origin of origins) {
+    if (origin.latitude == null || origin.longitude == null) {
+      continue
+    }
+    for (const venue of venues) {
+      if (!venue.published || venue.noindex || venue.latitude == null || venue.longitude == null) {
+        continue
+      }
+      if (!venueNearbyEligible(venue.lastVerifiedAt)) {
+        continue
+      }
+      const km = haversineKm(origin.latitude, origin.longitude, venue.latitude, venue.longitude)
+      if (km > VENUE_NEARBY_RADIUS_KM) {
+        continue
+      }
+      const prev = best.get(venue.slug)
+      if (prev == null || km < prev) {
+        best.set(venue.slug, km)
+      }
+    }
+  }
+  return [...best.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, VENUE_NEARBY_LIMIT)
+    .map(([slug]) => `/zavedeniya/${slug}`)
+}
+
+function venueCatalogLinks(path: string, catalog: LinkCatalog) {
+  const venues = (catalog.venues ?? []).filter((item) => item.published && !item.noindex)
+  if (!path.startsWith('/zavedeniya')) {
+    return []
+  }
+  const parts = path.split('/').filter(Boolean)
+  if (parts.length === 1) {
+    return venues.map((item) => `/zavedeniya/${item.slug}`)
+  }
+  if (parts.length === 2) {
+    const venue = (catalog.venues ?? []).find((item) => item.slug === parts[1])
+    if (venue) {
+      const links = ['/zavedeniya']
+      if (venue.regionSlug) {
+        links.push(`/zavedeniya/${venue.regionSlug}`)
+      }
+      const places = catalog.places.filter((item) => item.published && item.latitude != null && item.longitude != null && venue.latitude != null && venue.longitude != null)
+        .map((item) => ({
+          href: `/${item.slug}`,
+          km: haversineKm(venue.latitude!, venue.longitude!, item.latitude!, item.longitude!),
+        }))
+        .filter((item) => item.km <= VENUE_NEARBY_RADIUS_KM)
+        .sort((a, b) => a.km - b.km)
+        .slice(0, 6)
+      links.push(...places.map((item) => item.href))
+      return links
+    }
+    return venues.filter((item) => item.regionSlug === parts[1]).map((item) => `/zavedeniya/${item.slug}`)
+  }
+  if (parts.length === 3) {
+    const kind = parts[2]
+    return venues
+      .filter((item) => item.regionSlug === parts[1] && venueKindMeta(item.kind).slug === kind)
+      .map((item) => `/zavedeniya/${item.slug}`)
+  }
+  return []
+}
+
+function venueListingPaths(catalog: LinkCatalog) {
+  const paths = new Set<string>(['/zavedeniya'])
+  for (const venue of catalog.venues ?? []) {
+    if (!venue.published || venue.noindex || !venue.regionSlug) {
+      continue
+    }
+    paths.add(`/zavedeniya/${venue.regionSlug}`)
+    paths.add(`/zavedeniya/${venue.regionSlug}/${venueKindMeta(venue.kind).slug}`)
+  }
+  return [...paths]
+}
+
 export function linkStats(catalog: LinkCatalog) {
+  const venues = catalog.venues ?? []
   const scored = [
     ...catalog.places.map((item) => ({ path: `/${item.slug}`, published: item.published, noindex: item.noindex })),
     ...catalog.routes.map((item) => ({ path: `/marshruty/${item.slug}`, published: item.published, noindex: item.noindex })),
     ...catalog.collections.map((item) => ({ path: `/podborki/${item.slug}`, published: item.published, noindex: item.noindex })),
     ...catalog.quests.map((item) => ({ path: `/kvesty/${item.slug}`, published: item.published, noindex: item.noindex })),
     ...catalog.hubs.map((item) => ({ path: `/${item.slug}`, published: true, noindex: item.noindex })),
+    ...venues.map((item) => ({ path: `/zavedeniya/${item.slug}`, published: item.published, noindex: item.noindex })),
   ]
   const sources = [
     '/',
     '/marshruty',
     '/podborki',
     '/kvesty',
+    ...venueListingPaths(catalog),
+    ...venues.filter((item) => item.published).map((item) => `/zavedeniya/${item.slug}`),
     ...catalog.hubs.map((item) => `/${item.slug}`),
     ...catalog.places.filter((item) => item.published).map((item) => `/${item.slug}`),
     ...catalog.routes.filter((item) => item.published).map((item) => `/marshruty/${item.slug}`),
@@ -542,6 +651,9 @@ function passportPoints(passport: PassportFields | null) {
 }
 
 function membershipPoints(page: ScoreSource) {
+  if (page.kind === 'venue') {
+    return { points: 30, checks: [] as string[] }
+  }
   if (page.kind === 'place') {
     if (page.inRoute || page.inCollection) {
       return { points: 30, checks: [] as string[] }
@@ -591,6 +703,22 @@ function linkingPoints(page: ScoreSource) {
 }
 
 function rendered(page: ScoreSource) {
+  if (page.kind === 'venue') {
+    return venueDocument({
+      slug: page.path.replace(/^\/zavedeniya\//, ''),
+      name: page.title,
+      description: page.summary,
+      kind: page.categorySlug || 'other',
+      regionTitle: page.regionTitle,
+      address: page.howToGet,
+      latitude: page.latitude,
+      longitude: page.longitude,
+      seoTitle: page.seoTitle,
+      seoDescription: page.seoDescription,
+      noindex: page.noindex,
+      sources: page.sources,
+    })
+  }
   if (page.kind === 'place') {
     const doc = placeDocument({
       slug: page.path.slice(1),
@@ -633,6 +761,9 @@ function rendered(page: ScoreSource) {
 }
 
 function expectedTypes(page: ScoreSource) {
+  if (page.kind === 'venue') {
+    return ['BreadcrumbList', venueSchemaType(page.categorySlug || 'other')]
+  }
   if (page.kind === 'place') {
     return ['BreadcrumbList', placeSchemaType(page.categorySlug || '')]
   }
@@ -779,6 +910,39 @@ function resultsPoints(page: ScoreSource) {
   return { points: clamp(month.points + quarter.points + queryPoints + engagement + next), checks }
 }
 
+function venueQuality(page: ScoreSource, now: Date) {
+  const checks: string[] = []
+  let points = 0
+  const length = page.summary.trim().length
+  if (length >= 300 && length <= 600) {
+    points += 35
+  } else if (length > 600) {
+    points += 15
+    checks.push(`description ${length} chars, above 600`)
+  } else {
+    checks.push(`description ${length} chars, need 300-600`)
+  }
+  if (page.photoCount >= 1) {
+    points += 20
+  } else {
+    checks.push('0 photos')
+  }
+  if (page.hours?.trim()) {
+    points += 20
+  } else {
+    checks.push('no hours')
+  }
+  const fresh = freshPoints(page, now)
+  points += fresh.points
+  checks.push(...fresh.checks)
+  if (page.latitude != null && page.longitude != null) {
+    points += 10
+  } else {
+    checks.push('no coordinates')
+  }
+  return { points: clamp(points), checks }
+}
+
 export function scorePage(page: ScoreSource, now = new Date()): PageScore {
   const text = articleText(page)
   const length = lengthPoints(text.length, lengthNorm(page.kind, page.categorySlug))
@@ -786,12 +950,15 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
   const photos = photoPoints(page)
   const fresh = freshPoints(page, now)
   const passport = passportPoints(page.passport)
-  const quality = clamp(length.points + sections.points + photos.points + fresh.points + passport.points)
+  const venue = page.kind === 'venue' ? venueQuality(page, now) : null
+  const quality = venue
+    ? venue.points
+    : clamp(length.points + sections.points + photos.points + fresh.points + passport.points)
   const linking = linkingPoints(page)
   const indexing = indexingPoints(page)
   const results = resultsPoints(page)
   const checks: ScoreChecks = {
-    quality: [...length.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks],
+    quality: venue ? venue.checks : [...length.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks],
     linking: linking.checks,
     indexing: indexing.checks,
     results: results.checks,
@@ -862,6 +1029,10 @@ export function issueLabel(check: string) {
     [/^no prices$/, () => 'Нет цен или режима'],
     [/^no Как добраться$/, () => 'Нет блока «Как добраться»'],
     [/^0 photos$/, () => 'Нет фотографий'],
+    [/^description (\d+) chars, need 300-600$/, (match) => `Описание ${match[1]} знаков, нужно 300-600`],
+    [/^description (\d+) chars, above 600$/, (match) => `Описание ${match[1]} знаков, больше 600`],
+    [/^no hours$/, () => 'Нет часов'],
+    [/^no coordinates$/, () => 'Нет координат'],
     [/^(\d+) photos?, need (\d+)$/, (match) => `Фотографий: ${match[1]}, нужно ${match[2]}`],
     [/^facts not checked$/, () => 'Факты не проверены'],
     [/^facts checked (\d+) days ago$/, (match) => `Факты проверены ${match[1]} дн. назад`],
@@ -1062,6 +1233,7 @@ const PAGE_TITLE: Record<PageKind, string> = {
   collection: 'подборка',
   hub: 'раздел',
   quest: 'квест',
+  venue: 'заведение',
 }
 
 export function pageKindLabel(kind: PageKind) {

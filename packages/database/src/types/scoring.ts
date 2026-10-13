@@ -1,4 +1,4 @@
-import type { PageKind, PrimaryAction } from './entities'
+import type { PageKind, PrimaryAction, VenueHours } from './entities'
 
 export interface ScoreChecks {
   quality: string[]
@@ -78,6 +78,32 @@ export interface CatalogPassport {
   notes: string | null
 }
 
+export interface ScoreVenue {
+  id: string
+  slug: string
+  name: string
+  kind: string
+  description: string
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  hours: VenueHours
+  priceLevel: number | null
+  avgCheck: number | null
+  phone: string | null
+  website: string | null
+  cuisine: string[]
+  sources: Array<{ title: string, url: string }>
+  status: 'draft' | 'published' | 'closed'
+  lastVerifiedAt: string | null
+  seoTitle: string | null
+  seoDescription: string | null
+  regionSlug: string | null
+  regionTitle: string | null
+  photoCount: number
+  updatedAt: string
+}
+
 export interface ContentCatalog {
   places: ScorePlace[]
   routes: CatalogArticle[]
@@ -87,6 +113,7 @@ export interface ContentCatalog {
   quests: CatalogArticle[]
   questStops: CatalogStop[]
   hubs: CatalogHub[]
+  venues: ScoreVenue[]
   related: Array<{ fromSlug: string, toSlug: string }>
   photos: Array<{ placeId: string, count: number }>
   passports: CatalogPassport[]

@@ -43,6 +43,7 @@ export async function ingestImage(input: {
   sourceUrl?: string | null
   caption?: string | null
   placeId?: string | null
+  venueId?: string | null
   isCover?: boolean
 }) {
   const problem = uploadProblem(input.mime, input.filename, input.bytes.length)
@@ -98,6 +99,10 @@ export async function ingestImage(input: {
     if (input.placeId) {
       const attached = await db.editor.attachMedia(input.placeId, row.id, { isCover: input.isCover })
       isCover = attached?.isCover ?? false
+    }
+    if (input.venueId) {
+      const attached = await db.venues.attachMedia(input.venueId, row.id, { isCover: input.isCover })
+      isCover = attached?.isCover ?? isCover
     }
     return {
       row,

@@ -1,4 +1,4 @@
-import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PrimaryAction, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
+import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PrimaryAction, PublicationStatus, SourceLink, UserRole, VenueHours, VenueKind, VenueSocials, VenueStatus, VisitStatus } from './types/entities'
 import type { ScoreChecks } from './types/scoring'
 import { cuid2 } from 'drizzle-cuid2/postgres'
 import { sql } from 'drizzle-orm'
@@ -253,6 +253,64 @@ export const revisions = pgTable('revisions', {
   updatedBy: cuid2('updated_by').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
 })
 
+export const venues = pgTable('venues', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  slug: varchar('slug').notNull().unique(),
+  name: varchar('name').notNull(),
+  kind: varchar('kind').notNull().$type<VenueKind>(),
+  cuisine: jsonb('cuisine').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  regionId: cuid2('region_id').references(() => regions.id, { onUpdate: 'cascade', onDelete: 'set null' }),
+  address: text('address'),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  priceLevel: integer('price_level'),
+  avgCheck: integer('avg_check'),
+  hours: jsonb('hours').$type<VenueHours>().notNull().default(sql`'{}'::jsonb`),
+  phone: varchar('phone'),
+  website: varchar('website'),
+  socials: jsonb('socials').$type<VenueSocials>().notNull().default(sql`'{}'::jsonb`),
+  description: text('description').notNull().default(''),
+  sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
+  status: varchar('status').notNull().default('draft').$type<VenueStatus>(),
+  lastVerifiedAt: timestamp('last_verified_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  osmId: varchar('osm_id'),
+  seoTitle: varchar('seo_title'),
+  seoDescription: varchar('seo_description'),
+}, (table) => [
+  uniqueIndex('venues_osm_id_unique').on(table.osmId),
+  index('venues_status_idx').on(table.status),
+  index('venues_region_idx').on(table.regionId),
+  index('venues_kind_idx').on(table.kind),
+  check('venues_price_level', sql`${table.priceLevel} is null or ${table.priceLevel} between 1 and 4`),
+  check('venues_avg_check', sql`${table.avgCheck} is null or ${table.avgCheck} >= 0`),
+  check('venues_kind', sql`${table.kind} in ('cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other')`),
+  check('venues_status', sql`${table.status} in ('draft', 'published', 'closed', 'archived')`),
+])
+
+export const venueMedia = pgTable('venue_media', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  venueId: cuid2('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  mediaId: cuid2('media_id').notNull().references(() => media.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isCover: boolean('is_cover').notNull().default(false),
+}, (table) => [
+  uniqueIndex('venue_media_venue_media').on(table.venueId, table.mediaId),
+  index('venue_media_venue_idx').on(table.venueId),
+])
+
+export const venueListingIntros = pgTable('venue_listing_intros', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  regionSlug: varchar('region_slug').notNull().default(''),
+  kindSlug: varchar('kind_slug').notNull().default(''),
+  intro: text('intro').notNull().default(''),
+}, (table) => [
+  uniqueIndex('venue_listing_intros_key').on(table.regionSlug, table.kindSlug),
+])
+
 export const businesses = pgTable('businesses', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),
@@ -270,6 +328,7 @@ export const offers = pgTable('offers', {
   businessId: cuid2('business_id').notNull().references(() => businesses.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   placeId: cuid2('place_id').references(() => places.id, { onUpdate: 'cascade' }),
   routeId: cuid2('route_id').references(() => routes.id, { onUpdate: 'cascade' }),
+  venueId: cuid2('venue_id').references(() => venues.id, { onUpdate: 'cascade', onDelete: 'set null' }),
   title: varchar('title').notNull(),
   terms: text('terms').notNull(),
   kind: varchar('kind').notNull().default('discount').$type<OfferKind>(),

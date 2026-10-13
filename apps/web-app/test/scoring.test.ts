@@ -552,6 +552,7 @@ function catalog(patch: Partial<ContentCatalog> = {}): ContentCatalog {
     quests: [],
     questStops: [],
     hubs: [],
+    venues: [],
     related: [],
     photos: [],
     passports: [],

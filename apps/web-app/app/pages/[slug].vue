@@ -227,6 +227,7 @@
       v-model:index="viewerIndex"
       :photos="photos"
     />
+    <NearbyVenues :items="page.nearbyVenues || []" />
     <LinkList
       v-for="group in otherGroups"
       :key="group.title"
@@ -290,6 +291,15 @@ interface PlacePage {
   groups: Array<{ title: string, links: PlaceLink[] }>
   sources: Array<{ title: string, url: string }>
   offers: Array<{ title: string, terms: string }>
+  nearbyVenues?: Array<{
+    slug: string
+    href: string
+    name: string
+    kindLabel: string
+    distanceLabel: string
+    partner: boolean
+    stale: boolean
+  }>
   routeBand: null | {
     href: string
     title: string

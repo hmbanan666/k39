@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
       sourceUrl: text('sourceUrl') || null,
       caption: text('caption') || null,
       placeId: text('placeId') || null,
+      venueId: text('venueId') || null,
       isCover: text('isCover') === 'true',
     })
     if ('error' in result) {

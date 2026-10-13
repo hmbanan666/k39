@@ -6,6 +6,7 @@
     :lede="page.summary"
   >
     <RouteGuide :stops="page.stops" />
+    <NearbyVenues :items="page.nearbyVenues || []" />
     <div
       class="prose"
       v-html="page.html"
@@ -23,6 +24,15 @@ const page = await fetchPublic<{
   html: string
   summary: string
   stops: RouteStopView[]
+  nearbyVenues?: Array<{
+    slug: string
+    href: string
+    name: string
+    kindLabel: string
+    distanceLabel: string
+    partner: boolean
+    stale: boolean
+  }>
 }>(`/api/public/routes/${slug}`)
 usePublicHead(page.doc)
 </script>
