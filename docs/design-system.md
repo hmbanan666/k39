@@ -41,7 +41,7 @@ Z-index: header 20, dropdown 30, dialog 40, consent 50, tooltip 60.
 
 ## Breakpoints
 
-Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). Phone hub links scroll in one row. Screenshots are checked at 390px and 1440px.
+Layout shifts at 720px (two cards), 900px (desktop nav, three nearby cards), 1000px (place hero and the short-page facts column), and 1100px (reader rail). Phone hub links scroll in one row. Screenshots are checked at 390px and 1440px.
 
 ## Components
 
@@ -64,6 +64,8 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `MapEmbed` | Compact frame on a place, venue, route, hub, collection, or quest. Nearby points within 1.2 km, fullscreen, and «Открыть на карте». |
 | `DirectionsLink` | «Как добраться». Opens Yandex Maps with the point as the destination. |
 | `PartnerOffer` | Only for a real active offer. |
+| `ReaderLayout` | Place, route, and collection articles. Table of contents from body headings when there are at least three `h2`s. Desktop rail from 1100px, mobile «Содержание». |
+| `ReaderPartnerSlot` | One partner offer in the reader rail, or after the first section on a narrow screen. Renders nothing when no partner is passed. |
 | `CookieNotice` | Compact postcard fixed to the bottom: surface, line, radius, pop shadow. One row when the copy and the brick button fit, otherwise the button wraps under the text. Client-only, so it does not shift ordinary pages. On `/map` the panel lifts by the card height so the card does not cover the panel or the map controls. Dismiss is a localStorage flag. |
 | `UiToast` | Short status line, solid paper, brick edge. Auto-hides after 2.5 seconds. Sits clear of the search field. |
 | `UiAccordion` | Reka accordion. Default open when the copy must be read immediately. Content stays in the HTML. |
@@ -81,4 +83,4 @@ Category art lives in `apps/web-app/public/illustrations/` and is the approved m
 
 ## Partner offers
 
-The visible label is the words `партнёр K39`, not only a color. The title and terms are the offer itself. Do not call it free, official, or the best. If there is no active offer, render nothing.
+The visible label is the words `партнёр K39`, not only a color. The title and terms are the offer itself. Do not call it free, official, or the best. If there is no active offer, render nothing. The reader slot uses the same component and stays empty while `FEATURE_SPONSORED_VENUES` is off (ADR 0022).

@@ -21,10 +21,7 @@
         {{ page.cover.caption }}
       </p>
     </div>
-    <div
-      class="prose"
-      v-html="page.html"
-    />
+    <ReaderLayout :html="page.html" />
     <section
       v-if="rest.length"
       class="gallery"

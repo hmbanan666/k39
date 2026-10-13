@@ -57,6 +57,13 @@
   --frame-pad: 1rem;
   --page: var(--frame);
   --wide: var(--frame);
+  --site-header-offset: 7.5rem;
+}
+
+@media (min-width: 900px) {
+  :root {
+    --site-header-offset: 4.75rem;
+  }
 }
 
 [data-theme="dark"] {
