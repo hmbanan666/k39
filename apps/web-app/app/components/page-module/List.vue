@@ -76,4 +76,7 @@ const fitting = computed(() => pickerActive(picker.state.value)
   gap: var(--space-6);
   margin-top: var(--space-5);
 }
+/* Grid items may shrink below their content, so a scrolling chip row
+   stays inside the page instead of widening it. */
+.page-modules > * { min-width: 0; }
 </style>
