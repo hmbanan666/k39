@@ -1,5 +1,6 @@
 import type { MapPoint, RouteOverlay } from '~~/shared/map'
 import maplibregl from 'maplibre-gl'
+import { Protocol } from 'pmtiles'
 import { K39_CENTER, K39_ZOOM } from '~~/shared/map'
 import { k39MapStyle } from '~~/shared/map-style'
 import { mapImages } from './map-icons'
@@ -84,10 +85,21 @@ function geoSource(map: maplibregl.Map, id: string) {
   return source as maplibregl.GeoJSONSource
 }
 
+function ensurePmtilesProtocol() {
+  const flag = globalThis as typeof globalThis & { __k39Pmtiles?: boolean }
+  if (flag.__k39Pmtiles) {
+    return
+  }
+  const protocol = new Protocol()
+  maplibregl.addProtocol('pmtiles', protocol.tile)
+  flag.__k39Pmtiles = true
+}
+
 export async function mountK39Map(el: HTMLElement, options: {
   points: MapPoint[]
   overlay: RouteOverlay | null
   cooperative: boolean
+  pmtilesUrl?: string
   onSelect: (id: string) => void
   onEmpty: () => void
 }): Promise<K39MapHandle> {
@@ -98,9 +110,13 @@ export async function mountK39Map(el: HTMLElement, options: {
   let selected: string | null = null
   let hovered: { source: string, id: string } | null = null
 
+  const pmtilesUrl = options.pmtilesUrl?.trim() || ''
+  if (pmtilesUrl) {
+    ensurePmtilesProtocol()
+  }
   const map = new maplibregl.Map({
     container: el,
-    style: k39MapStyle() as maplibregl.StyleSpecification,
+    style: k39MapStyle({ pmtilesUrl, origin: window.location.origin }) as maplibregl.StyleSpecification,
     center: K39_CENTER,
     zoom: K39_ZOOM,
     attributionControl: { compact: true },

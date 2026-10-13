@@ -4,7 +4,7 @@
       :points="points"
       :overlay="null"
       fullscreen
-      aria-label="Карта заведения"
+      map-label="Карта заведения"
       fit-key="venue"
     />
   </div>

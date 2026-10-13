@@ -41,7 +41,7 @@
           :points="[]"
           :overlay="overlay"
           fullscreen
-          aria-label="Карта маршрута"
+          map-label="Карта маршрута"
           fit-key="route"
           @ready="ready = true"
         />

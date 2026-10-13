@@ -133,18 +133,36 @@ describe('route geometry', () => {
 })
 
 describe('basemap style', () => {
-  it('stays on the paper palette, names towns in Russian, and credits the tiles', () => {
+  it('keeps OpenFreeMap when no archive URL is set', () => {
     const style = k39MapStyle()
     const layers = style.layers as Array<Record<string, unknown>>
     const background = layers.find((layer) => layer.id === 'background') as { paint: { 'background-color': string } }
     const water = layers.find((layer) => layer.id === 'water') as { paint: { 'fill-color': string } }
     expect(background.paint['background-color']).toBe('#efe6d4')
     expect(water.paint['fill-color']).toBe('#c5d4d8')
-    expect(layers.some((layer) => layer['source-layer'] === 'poi')).toBe(false)
+    expect(layers.some((layer) => layer['source-layer'] === 'poi' || layer['source-layer'] === 'pois')).toBe(false)
     expect(JSON.stringify(style.sources)).toContain('openstreetmap.org/copyright')
     expect(JSON.stringify(style.sources)).toContain('openfreemap.org')
     const town = layers.find((layer) => layer.id === 'label-town') as { layout: { 'text-field': unknown } }
     expect(JSON.stringify(town.layout['text-field'])).toContain('name:ru')
     expect(style.glyphs).toContain('tiles.openfreemap.org/fonts')
+  })
+
+  it('points a self-hosted archive at PMTiles, local glyphs, and Protomaps layers', () => {
+    const style = k39MapStyle({ pmtilesUrl: '/basemap/kaliningrad.pmtiles', origin: 'https://k39.online' })
+    const layers = style.layers as Array<Record<string, unknown>>
+    expect(style.glyphs).toBe('/basemap/fonts/{fontstack}/{range}.pbf')
+    expect(style.sprite).toBe('https://k39.online/basemap/sprites/k39')
+    const encoded = JSON.stringify(style.sources)
+    expect(encoded).toContain('pmtiles:///basemap/kaliningrad.pmtiles')
+    expect(encoded).toContain('protomaps.com')
+    expect(encoded).toContain('OpenStreetMap contributors')
+    expect(encoded).not.toContain('openfreemap.org')
+    expect(layers.some((layer) => layer['source-layer'] === 'roads')).toBe(true)
+    expect(layers.some((layer) => layer['source-layer'] === 'pois' || layer['source-layer'] === 'poi')).toBe(false)
+    const water = layers.find((layer) => layer.id === 'water') as { paint: { 'fill-color': string } }
+    expect(water.paint['fill-color']).toBe('#c5d4d8')
+    const town = layers.find((layer) => layer.id === 'label-town') as { layout: { 'text-field': unknown } }
+    expect(JSON.stringify(town.layout['text-field'])).toContain('name:ru')
   })
 })

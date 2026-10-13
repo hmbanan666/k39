@@ -37,7 +37,7 @@ COPY --from=builder /app/node_modules/semver /app/node_modules/semver
 # node:24-alpine already has user `node` (uid 1000). Adding another
 # uid 1000 fails the image build. Dokploy should mount a volume at
 # MEDIA_DIR if uploads must survive a redeploy.
-RUN mkdir -p /app/media && \
+RUN mkdir -p /app/media /app/basemap && \
     chown -R node:node /app && \
     chmod +x ./health-check.sh && \
     node -e "require('sharp')"
@@ -53,7 +53,8 @@ ENV VERSION=${VERSION} \
     PORT=3000 \
     HOST=0.0.0.0 \
     MIGRATIONS_FOLDER=/app/migrations \
-    MEDIA_DIR=/app/media
+    MEDIA_DIR=/app/media \
+    NUXT_BASEMAP_FILE=/app/basemap/kaliningrad.pmtiles
 
 EXPOSE 3000
 

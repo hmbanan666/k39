@@ -43,7 +43,7 @@ Tools: `places_list`, `place_get`, `place_draft_create`, `place_update`, `place_
 }
 ```
 
-The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`). It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve `/map/{region}` with `noindex`. Otherwise those URLs 301 to `/forty`. The visitor map is `/karta` (ADR 0019): MapLibre GL and OpenFreeMap vector tiles, a paper-toned style, and category pins. It is in the header, the footer, and the sitemap. Embedded venue and route maps use the same library, loaded lazily. A route draws a solid line only from `routes.path`. Otherwise the selected route shows numbered stops and a dashed connector. Direction links on the route page stay in ADR 0015. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` does not choose a basemap.
+The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`). It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve `/map/{region}` with `noindex`. Otherwise those URLs 301 to `/forty`. The visitor map is `/karta` (ADR 0019): MapLibre GL, a paper-toned style, and category pins. `NUXT_PUBLIC_PMTILES_URL` loads a self-hosted Protomaps PMTiles extract of the oblast from a volume (`NUXT_BASEMAP_FILE`, served at `/basemap/kaliningrad.pmtiles` with Range) or from object storage. An empty URL keeps the OpenFreeMap fallback. Glyphs and the sprite are on this origin. Rebuild steps are in `docs/basemap.md`. It is in the header, the footer, and the sitemap. Embedded venue and route maps use the same library, loaded lazily. A route draws a solid line only from `routes.path`. Otherwise the selected route shows numbered stops and a dashed connector. Direction links on the route page stay in ADR 0015. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` does not choose a basemap.
 
 Auth is `nuxt-auth-utils`: Yandex and VK use `defineOAuthYandexEventHandler` and `defineOAuthVKEventHandler`, and the admin session is `requireUserSession` / `setUserSession`. Empty client id or secret disables that provider. `ADMIN_EMAILS` promotes those accounts to `admin` on login. Editors and admins can open `/admin`. Anonymous visitors go to `/sign-in?redirectTo=/admin`. The session cookie is sealed with `NUXT_SESSION_PASSWORD` (32+ characters). `nuxt-auth-utils` does not read `NUXT_APP_SECRET`; switch to that when the library supports `appSecret` natively. See ADR 0005.
 
@@ -101,7 +101,8 @@ Target: Dokploy.
 - Port: 3000
 - Auto-deploy: push to `main`
 - Required env: `DATABASE_URL`, `NUXT_SESSION_PASSWORD` (32+ characters), `NODE_ENV=production`
-- Optional env: OAuth client id/secret pairs, `ADMIN_EMAILS`, `CONTENT_API_TOKEN`, `FEATURE_MAP`, `NUXT_PUBLIC_YANDEX_MAPS_API_KEY`, `NUXT_PUBLIC_YANDEX_VERIFICATION`, `NUXT_PUBLIC_GOOGLE_VERIFICATION`
+- Optional env: OAuth client id/secret pairs, `ADMIN_EMAILS`, `CONTENT_API_TOKEN`, `FEATURE_MAP`, `NUXT_PUBLIC_YANDEX_MAPS_API_KEY`, `NUXT_PUBLIC_PMTILES_URL`, `NUXT_BASEMAP_FILE`, `NUXT_PUBLIC_YANDEX_VERIFICATION`, `NUXT_PUBLIC_GOOGLE_VERIFICATION`
+- Volume: mount the PMTiles file's directory at `/app/basemap` when `NUXT_PUBLIC_PMTILES_URL` is the same-origin path. The file is not in the image.
 - Volume: mount a writable directory at `MEDIA_DIR` (image default `/app/media`, process uid 1000). Without the volume, uploads vanish on redeploy.
 
 There is no separate migration job. On boot the Nitro plugin (`server/plugins/01.database.ts`) runs Drizzle migrations from `MIGRATIONS_FOLDER` (the image sets `/app/migrations`) and then applies the one-time content import. The migrate is idempotent. Search console steps are documented in `docs/search-consoles.md` and are not configured from this repo. Empty `NUXT_PUBLIC_YANDEX_VERIFICATION` and `NUXT_PUBLIC_GOOGLE_VERIFICATION` add no meta tags.

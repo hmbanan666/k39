@@ -8,5 +8,6 @@ npm-debug.log
 README.md
 **/.nuxt
 **/*.db
+**/*.pmtiles
 **/.env*
 .git

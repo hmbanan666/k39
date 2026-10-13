@@ -9,7 +9,7 @@
       :overlay="overlay"
       :fit-key="fitKey"
       :lazy="false"
-      aria-label="Карта Калининградской области"
+      map-label="Карта Калининградской области"
     />
     <form
       class="panel"

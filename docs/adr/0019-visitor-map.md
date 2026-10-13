@@ -14,7 +14,13 @@ OpenFreeMap serves OpenMapTiles from OpenStreetMap with no key. MapLibre GL draw
 
 `/karta` is the public map. It is in the footer, the header, and the sitemap. The title is `Карта Калининградской области | K39`. Filter query keys (`s`, `f`, `r`, `q`) are not tracking parameters, so `tuneRobots` marks those URLs `noindex`. The canonical stays `/karta`.
 
-The basemap is a MapLibre style in `shared/map-style.ts`. Land is the paper tone, water is a soft grey-blue, roads stay thin, and town labels use `name:ru` then `name`. POI, housenumbers, shields, and one-way arrows are omitted. The vector source is the OpenFreeMap TileJSON `https://tiles.openfreemap.org/planet`. The wildcard `/{z}/{x}/{y}.pbf` path answers with empty tiles, so the style does not use it. The style source attribution links OpenFreeMap, OpenMapTiles, and OpenStreetMap. The control is MapLibre's compact attribution, collapsed to an `i` button.
+The basemap is a MapLibre style in `shared/map-style.ts`. Land is the paper tone, water is a soft grey-blue, roads stay thin, and town labels use `name:ru` then `name`. POI, housenumbers, shields, and one-way arrows are omitted.
+
+When `NUXT_PUBLIC_PMTILES_URL` is set, the source is a PMTiles archive of Kaliningrad oblast (`bbox` 19.6,54.3,22.95,55.35, zoom 0–15) from a Protomaps daily build. MapLibre reads it with the `pmtiles` protocol (HTTP Range). The style follows the Protomaps basemap schema (`roads`, `places`, `landuse`, `water`, `buildings`, `boundaries`), not OpenMapTiles. Glyphs are Noto Sans files under `/basemap/fonts`. The sprite URL is `/basemap/sprites/k39` and the sprite is empty because the style draws no basemap icons. Attribution is OpenStreetMap contributors and Protomaps. The control stays MapLibre's compact `i` button.
+
+The 2026-10-13 archive is 99,943,373 bytes. It is not in git and not in the image. `NUXT_BASEMAP_FILE` (image default `/app/basemap/kaliningrad.pmtiles`) is a volume file. The route `/basemap/kaliningrad.pmtiles` answers Range with 206 and caches for seven days. An https object-storage URL can be used instead; that bucket must allow Range. Upload steps are in `docs/basemap.md`. `scripts/basemap-extract.sh` rebuilds the file. There is no schedule.
+
+When `NUXT_PUBLIC_PMTILES_URL` is empty, the style uses the OpenFreeMap TileJSON `https://tiles.openfreemap.org/planet` (OpenMapTiles) and remote glyphs. The wildcard `/{z}/{x}/{y}.pbf` path answers with empty tiles, so that fallback does not use it. A set URL that 404s does not fall back.
 
 Pins are canvas images, one per sight facet and food kind: форты, замки, пляжи, музеи, церкви, курорты, and the food kinds. Churches are places whose slug or title matches собор, кирха, or церковь. The cathedral stays in the museum category and also matches the church chip. Clusters are cream bubbles with a brick stroke and a count. Hover and the selected pin scale up. A partner dot is drawn only when `FEATURE_SPONSORED_VENUES` is on and the venue has an active offer.
 
@@ -28,4 +34,4 @@ The library loads in a separate chunk: on `/karta` after mount, and on an embedd
 
 ## Consequences
 
-Visitors' tile requests go to OpenFreeMap. There is no Yandex or Leaflet script on the map. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` no longer chooses a basemap. A route with no stored path never pretends to be a road. The forts booklet is still ADR 0002.
+With the archive URL set, tile bytes stay on our origin or the bucket. Without it, they go to OpenFreeMap. There is no Yandex or Leaflet script on the map. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` no longer chooses a basemap. A route with no stored path never pretends to be a road. Replacing the PMTiles file can take up to seven days to show up in a browser that already cached the archive. The forts booklet is still ADR 0002.

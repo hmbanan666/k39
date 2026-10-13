@@ -21,6 +21,7 @@
     "@vueuse/core": "catalog:integrations",
     "@vueuse/nuxt": "catalog:integrations",
     "maplibre-gl": "catalog:integrations",
+    "pmtiles": "catalog:integrations",
     "reka-ui": "catalog:integrations",
     "sharp": "catalog:integrations",
     "vue": "catalog:integrations",

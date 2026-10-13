@@ -8,7 +8,7 @@
       ref="canvas"
       class="canvas"
       role="region"
-      :aria-label="ariaLabel"
+      :aria-label="mapLabel"
     />
     <p
       v-if="failed"
@@ -96,7 +96,7 @@ import MapCard from '~/components/map/MapCard.vue'
 const props = withDefaults(defineProps<{
   points: MapPoint[]
   overlay: RouteOverlay | null
-  ariaLabel: string
+  mapLabel: string
   lazy?: boolean
   fullscreen?: boolean
   fitKey?: string
@@ -178,6 +178,7 @@ async function boot() {
       points: shownPoints(),
       overlay: props.overlay,
       cooperative: props.lazy || coarse,
+      pmtilesUrl: String(useRuntimeConfig().public.pmtilesUrl || ''),
       onSelect: (id) => {
         selectedId.value = id
       },
