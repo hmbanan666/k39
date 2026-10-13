@@ -99,6 +99,9 @@ export default defineNuxtConfig({
     },
     externals: {
       external: ['sharp'],
+      // A second @iconify/utils under @nuxt/icon was externalized to
+      // /@nuxt/icon/node_modules/@iconify/utils/..., which the image does not contain.
+      inline: ['@iconify/utils', '@iconify/vue'],
     },
   },
   mcp: {

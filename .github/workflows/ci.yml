@@ -19,7 +19,21 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: k39
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d k39"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -49,6 +63,15 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      # Copy .output out of the workspace so Node cannot resolve modules from
+      # the repo node_modules. This is the failure mode of the Docker image.
+      - name: Smoke standalone SSR
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/k39
+          NUXT_SESSION_PASSWORD: smoke-test-session-password-32chars
+          FEATURE_MAP: "true"
+        run: bash apps/web-app/scripts/smoke-ssr.sh
 
   # Dokploy builds this same Dockerfile. A JS-only CI job does not catch a
   # broken image (pnpm on Alpine, filter flags, missing migrations).
