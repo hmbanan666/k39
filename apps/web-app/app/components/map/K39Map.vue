@@ -94,6 +94,7 @@ import type { K39MapHandle } from '~/lib/mount-k39-map'
 import { cardFor } from '@k39/map'
 import { visitorLayers } from '~~/shared/map'
 import MapCard from '~/components/map/MapCard.vue'
+import { fetchBasemapUrl } from '~/lib/basemap-url'
 
 const props = withDefaults(defineProps<{
   points: MapPoint[]
@@ -139,17 +140,25 @@ async function boot() {
   try {
     const { mountK39Map } = await import('~/lib/mount-k39-map')
     const coarse = window.matchMedia('(pointer: coarse)').matches
-    handle = await mountK39Map(el, {
+    const pmtilesUrl = await fetchBasemapUrl()
+    const options = {
       layers: layers.value,
       cooperative: props.lazy || coarse,
-      pmtilesUrl: String(useRuntimeConfig().public.pmtilesUrl || ''),
-      onSelect: (id) => {
+      onSelect: (id: string) => {
         selectedId.value = id
       },
       onEmpty: () => {
         selectedId.value = null
       },
-    })
+    }
+    try {
+      handle = await mountK39Map(el, { ...options, pmtilesUrl })
+    } catch (error) {
+      if (!pmtilesUrl) {
+        throw error
+      }
+      handle = await mountK39Map(el, { ...options, pmtilesUrl: '' })
+    }
     handle.setSelected(selectedId.value)
     handle.fit()
     emit('ready')

@@ -74,13 +74,18 @@ export async function mountK39Map(el: HTMLElement, options: {
     },
   })
 
-  await new Promise<void>((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error('Map style did not load')), 12000)
-    map.once('load', () => {
-      window.clearTimeout(timer)
-      resolve()
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(() => reject(new Error('Map style did not load')), 12000)
+      map.once('load', () => {
+        window.clearTimeout(timer)
+        resolve()
+      })
     })
-  })
+  } catch (error) {
+    map.remove()
+    throw error
+  }
 
   for (const [id, image] of Object.entries(mapImages())) {
     if (!map.hasImage(id)) {
