@@ -4,7 +4,8 @@ import { homeLinks, HUBS } from '../../shared/links'
 import { normalizeRoutePath } from '../../shared/map'
 import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, toPublicMedia } from '../../shared/media'
-import { splitCollections } from '../../shared/month-guide'
+import { monthName, splitCollections } from '../../shared/month-guide'
+import { categoryTags, toPublicModules } from '../../shared/page-modules'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
@@ -359,22 +360,26 @@ export async function loadCollection(slug: string) {
     kind: 'CollectionPage',
     body: loaded.collection.body,
   })
-  const months = isMonth
-    ? splitCollections(await db.content.listPublishedCollections()).months.filter((row) => row.slug !== loaded.collection.slug).map((row) => ({ href: `/podborki/${row.slug}`, text: row.title }))
-    : []
+  const monthRows = isMonth ? splitCollections(await db.content.listPublishedCollections()).months : []
+  const months = monthRows.filter((row) => row.slug !== loaded.collection.slug).map((row) => ({ href: `/podborki/${row.slug}`, text: row.title }))
+  const monthNav = monthRows.map((row) => ({ href: `/podborki/${row.slug}`, text: monthName(row.month), current: row.slug === loaded.collection.slug }))
   const covers = await db.content.coversFor(loaded.items.map((item) => item.id))
   const places = collectionPlaceCards(loaded.items).map((card, index) => {
     const source = loaded.items[index]
     const cover = source ? covers.get(source.id) : undefined
-    return { ...card, media: cover ? toPublicMedia(cover) : null }
+    return { ...card, tags: categoryTags(card.kind), media: cover ? toPublicMedia(cover) : null }
   })
+  const stored = loaded.collection.modules ?? []
+  const modules = stored.length ? toPublicModules(stored, (markdown) => renderMarkdown(markdown)) : null
   return {
     doc,
-    html: renderMarkdown(loaded.collection.body),
+    modules: modules ?? [],
+    html: modules?.length ? '' : renderMarkdown(loaded.collection.body),
     places,
     kind: loaded.collection.kind,
     sources: loaded.collection.sources ?? [],
     months,
+    monthNav,
     cover,
     gallery,
   }

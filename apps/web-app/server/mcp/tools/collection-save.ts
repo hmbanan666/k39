@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
+import { pageModulesSchema } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
 import { auditMcp } from '../../utils/mcp/audit'
 import { rethrowContentWrite } from '../../utils/mcp/content-error'
@@ -9,7 +10,7 @@ import { orderedStops, sources } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'collection_save',
-  description: 'Create or update a collection in place, including one that is already published. Omitting publicationStatus leaves a published collection published. Optional items replace the ordered places; omit them to keep the current list. An empty array clears it. Each placeSlug must exist. A slug rename writes a 301 from /podborki/old. kind \'month\' with month 1..12 makes a month guide; sources render in a separate Sources block, so keep external links out of body.',
+  description: 'Create or update a collection in place, including one that is already published. Omitting publicationStatus leaves a published collection published. Optional items replace the ordered places; omit them to keep the current list. An empty array clears it. Each placeSlug must exist. A slug rename writes a 301 from /podborki/old. kind \'month\' with month 1..12 makes a month guide; sources render in a separate Sources block, so keep external links out of body. modules replaces the ordered page modules (ADR 0023, see content_guide); omit to keep them, an empty array returns the page to the plain article layout.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string(),
@@ -25,6 +26,7 @@ export default defineMcpTool({
     month: z.number().int().min(1).max(12).nullable().optional(),
     sources: sources.describe('Replacement source list. Omit to keep the current one.'),
     items: orderedStops.describe('Replacement ordered places. Omit to keep the current list.'),
+    modules: pageModulesSchema.optional().describe('Replacement ordered page modules: text, month-stats, picker, ideas, plans, places, months. Omit to keep them.'),
   },
   handler: async (input) => {
     const problem = slugError(input.slug)
@@ -51,6 +53,7 @@ export default defineMcpTool({
         kind: input.kind,
         month: input.kind === 'theme' ? null : input.month,
         sources: input.sources,
+        modules: input.modules,
       })
       await auditMcp('collection_save', 'collection', row.id)
       return {
@@ -61,6 +64,7 @@ export default defineMcpTool({
         kind: row.kind,
         month: row.month,
         sources: row.sources,
+        modules: row.modules,
         items: orderedStopView(await db.editor.collectionItems(row.id)),
       }
     } catch (error) {

@@ -64,6 +64,7 @@ Layout shifts at 720px (two cards), 900px (desktop nav, three nearby cards), 100
 | `MapEmbed` | Compact frame on a place, venue, route, hub, collection, or quest. Nearby points within 1.2 km, fullscreen, and «Открыть на карте». |
 | `DirectionsLink` | «Как добраться». Opens Yandex Maps with the point as the destination. |
 | `PartnerOffer` | Only for a real active offer. |
+| `PageModuleList` | Module page (ADR 0023). `PageModulePicker` is a bordered strip with one row of chips per question and a status line with «Сбросить». Selected chips are brick. Fitting cards get a brick border and «Под ваш выбор»; nothing is hidden. `PageModuleMonthStats` shows tiles and a collapsed full table. `PageModuleMonths` is a chip row with the current month filled. |
 | `ReaderLayout` | Place, route, and collection articles. Table of contents from body headings when there are at least three `h2`s. Desktop rail from 1100px, mobile «Содержание». |
 | `ReaderPartnerSlot` | One partner offer in the reader rail, or after the first section on a narrow screen. Renders nothing when no partner is passed. |
 | `CookieNotice` | Compact postcard fixed to the bottom: surface, line, radius, pop shadow. One row when the copy and the brick button fit, otherwise the button wraps under the text. Client-only, so it does not shift ordinary pages. On `/map` the panel lifts by the card height so the card does not cover the panel or the map controls. Dismiss is a localStorage flag. |

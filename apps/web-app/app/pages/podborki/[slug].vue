@@ -21,7 +21,16 @@
         {{ page.cover.caption }}
       </p>
     </div>
-    <ReaderLayout :html="page.html" />
+    <PageModuleList
+      v-if="page.modules.length"
+      :modules="page.modules"
+      :places="page.places"
+      :months="page.monthNav"
+    />
+    <ReaderLayout
+      v-else
+      :html="page.html"
+    />
     <section
       v-if="rest.length"
       class="gallery"
@@ -43,13 +52,13 @@
       </figure>
     </section>
     <MapEmbed
-      v-if="page.places[0]"
+      v-if="!page.modules.length && page.places[0]"
       :label="page.kind === 'month' ? 'Места на карте' : 'Карта подборки'"
       :focus-href="page.places[0].href"
       :hrefs="page.places.map((place) => place.href)"
     />
     <section
-      v-if="page.places.length"
+      v-if="!page.modules.length && page.places.length"
       class="places"
     >
       <h2>{{ page.kind === 'month' ? 'Места из путеводителя' : 'Места подборки' }}</h2>
@@ -70,6 +79,7 @@
       </div>
     </section>
     <LinkList
+      v-if="!page.modules.length"
       title="Другие месяцы"
       :links="page.months"
     />
@@ -104,6 +114,7 @@
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
+import type { PublicPageModule, PublicPlaceCard } from '~~/shared/page-modules'
 import type { SeoDocument } from '~~/shared/seo'
 
 interface TextLink { href: string, text: string }
@@ -112,18 +123,12 @@ const slug = String(useRoute().params.slug || '')
 const page = await fetchPublic<{
   doc: SeoDocument
   html: string
-  places: Array<{
-    href: string
-    title: string
-    summary: string
-    hub: string
-    town: string
-    kind: string
-    media: PublicMedia | null
-  }>
+  modules: PublicPageModule[]
+  places: Array<PublicPlaceCard & { media: PublicMedia | null }>
   kind: string
   sources: { title: string, url: string }[]
   months: TextLink[]
+  monthNav: Array<TextLink & { current: boolean }>
   cover: PublicMedia | null
   gallery: PublicMedia[]
 }>(`/api/public/collections/${slug}`)

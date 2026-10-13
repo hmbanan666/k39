@@ -22,6 +22,7 @@ export function collectionView(row: Collection, items: CollectionStop[]) {
     kind: row.kind,
     month: row.month,
     sources: row.sources,
+    modules: row.modules,
     items: orderedStopView(items),
   } satisfies Collection & { items: ReturnType<typeof orderedStopView> }
 }
