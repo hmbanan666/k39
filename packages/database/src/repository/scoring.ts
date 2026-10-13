@@ -4,7 +4,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, places, quests, questSteps, regions, relatedLinks, routePoints, routes, venues } from '../tables'
+import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, pagePersonas, places, quests, questSteps, regions, relatedLinks, routePoints, routes, venues } from '../tables'
 import { hoursAreSet } from '../venues'
 
 const HUB_SLUGS = ['forty', 'zamki', 'plyazhi', 'kurorty', 'muzei', 'eda']
@@ -365,6 +365,32 @@ export class Scoring {
       updatedAt: sql`now()`,
     }).where(eq(pagePassports.id, existing.id)).returning()
     return row!
+  }
+
+  static async listPagePersonas() {
+    return useDatabase().select().from(pagePersonas)
+  }
+
+  static async pagePersonas(pageType: PageKind, entityId: string) {
+    return useDatabase().select().from(pagePersonas).where(and(eq(pagePersonas.pageType, pageType), eq(pagePersonas.entityId, entityId)))
+  }
+
+  /** Replaces the persona list of one page. The caller validates codes and the single primary. */
+  static async setPagePersonas(pageType: PageKind, entityId: string, rows: Array<{ code: string, weight: number, primary: boolean }>) {
+    return useDatabase().transaction(async (tx) => {
+      await tx.delete(pagePersonas).where(and(eq(pagePersonas.pageType, pageType), eq(pagePersonas.entityId, entityId)))
+      if (!rows.length) {
+        return []
+      }
+      return tx.insert(pagePersonas).values(rows.map((row) => ({
+        id: createId(),
+        pageType,
+        entityId,
+        personaCode: row.code,
+        weight: row.weight,
+        primary: row.primary,
+      }))).returning()
+    })
   }
 
   static async syncPassportPaths(pages: Array<{ pageType: PageKind, entityId: string, path: string }>) {

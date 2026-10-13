@@ -21,6 +21,16 @@
     >
       {{ errorText }}
     </p>
+    <label
+      v-if="rows.length"
+      class="filter"
+    >
+      <input
+        v-model="withoutPersona"
+        type="checkbox"
+      >
+      Только страницы без основной персоны ({{ missingPersona }})
+    </label>
     <p
       v-if="pending && !rows.length"
       class="muted"
@@ -86,6 +96,7 @@
               Результат
             </button>
           </th>
+          <th>Персоны</th>
           <th>Проблема</th>
         </tr>
       </thead>
@@ -115,6 +126,25 @@
           </td>
           <td class="num">
             {{ row.results }}
+          </td>
+          <td>
+            <span
+              v-if="row.personas.length"
+              class="personas"
+            >
+              <b
+                v-for="persona in row.personas.filter((item) => item.primary)"
+                :key="persona.code"
+              >{{ persona.title }}</b>
+              <span
+                v-for="persona in row.personas.filter((item) => !item.primary)"
+                :key="persona.code"
+              >{{ persona.title }}</span>
+            </span>
+            <span
+              v-else
+              class="missing"
+            >нет</span>
           </td>
           <td>{{ row.topIssue ? issueLabel(row.topIssue) : 'нет' }}</td>
         </tr>
@@ -195,6 +225,7 @@ interface ScoreRow {
   results: number
   checks: ScoreChecks
   topIssue: string | null
+  personas: { code: string, title: string, weight: number, primary: boolean }[]
 }
 
 interface Passport {
@@ -233,11 +264,14 @@ const goal90 = ref<string | number>('')
 const notes = ref('')
 
 const { data, pending, error, refresh } = await useFetch<{ rows: ScoreRow[] }>('/api/admin/content-scores')
+const withoutPersona = ref(false)
 const rows = computed(() => data.value?.rows ?? [])
+const missingPersona = computed(() => rows.value.filter((row) => !row.personas.some((item) => item.primary)).length)
+const visible = computed(() => withoutPersona.value ? rows.value.filter((row) => !row.personas.some((item) => item.primary)) : rows.value)
 const sorted = computed(() => {
   const key = sortKey.value
   const direction = sortAsc.value ? 1 : -1
-  return [...rows.value].sort((a, b) => {
+  return [...visible.value].sort((a, b) => {
     const left = a[key]
     const right = b[key]
     if (typeof left === 'string' && typeof right === 'string') {
@@ -334,6 +368,10 @@ async function savePassport() {
 h1 { margin: 0; font-family: var(--font-display); }
 h2 { margin: 0 0 0.8rem; font-size: 1.25rem; }
 .muted { color: var(--muted); }
+.filter { display: inline-flex; gap: 0.4rem; align-items: center; margin: 1rem 0 0.5rem; }
+.personas { display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; font-size: 0.85rem; }
+.personas span { color: var(--muted); }
+.missing { color: var(--color-danger); }
 .error { color: var(--color-brick); }
 table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 th, td { padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--color-line); text-align: left; vertical-align: top; }
