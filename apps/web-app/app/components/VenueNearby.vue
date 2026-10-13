@@ -3,7 +3,9 @@
     v-if="items.length"
     class="eat"
   >
-    <h2>Где поесть рядом</h2>
+    <component :is="level">
+      {{ title }}
+    </component>
     <ul>
       <li
         v-for="item in items"
@@ -36,7 +38,7 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   items: Array<{
     href: string
     slug: string
@@ -47,7 +49,9 @@ const props = defineProps<{
     stale: boolean
     media?: PublicMedia | null
   }>
-}>()
+  title?: string
+  level?: 'h2' | 'h3'
+}>(), { title: 'Где поесть рядом', level: 'h2' })
 
 onMounted(() => {
   if (!props.items.length || typeof window === 'undefined') {
@@ -63,7 +67,7 @@ onMounted(() => {
 
 <style scoped>
 .eat { margin-top: 3rem; }
-h2 { margin-bottom: 1rem; }
+h2, h3 { margin-bottom: 1rem; }
 ul { margin: 0; padding: 0; list-style: none; }
 li {
   display: flex;

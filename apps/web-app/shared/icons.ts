@@ -36,6 +36,9 @@ export const TABLER_ICONS = {
   price: 'ticket',
   address: 'map-pin',
   coordinates: 'compass',
+  duration: 'hourglass',
+  season: 'calendar-event',
+  checked: 'circle-check',
 } as const
 
 export type IconKey = keyof typeof TABLER_ICONS

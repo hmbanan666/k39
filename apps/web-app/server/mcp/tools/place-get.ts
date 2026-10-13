@@ -44,6 +44,9 @@ export default defineMcpTool({
       ogImage: place.ogImage,
       noindex: place.noindex,
       factsCheckedAt: place.lastVerifiedAt,
+      visitDuration: place.visitDuration,
+      bestTime: place.bestTime,
+      faq: place.faq ?? [],
       media: gallery.map((item) => ({
         ...compactMedia(item.media),
         isCover: item.isCover,

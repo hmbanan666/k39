@@ -688,6 +688,44 @@ export interface PlaceSeoInput {
   images?: SeoImage[]
   page?: number
   body?: string | null
+  faq?: Array<{ question: string, answer: string }>
+  updatedAt?: string | null
+  checkedAt?: string | null
+}
+
+// ISO date (YYYY-MM-DD) or null. Accepts a timestamp string from Postgres.
+export function isoDay(value: string | null | undefined) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/.exec(value?.trim() || '')
+  if (!match) {
+    return null
+  }
+  const day = `${match[1]}-${match[2]}-${match[3]}`
+  return Number.isFinite(Date.parse(day)) ? day : null
+}
+
+function placeWebPage(path: string, name: string, description: string, input: { updatedAt?: string | null, checkedAt?: string | null }) {
+  const url = absoluteUrl(path)
+  const node: Record<string, unknown> = {
+    '@type': 'WebPage',
+    '@id': `${url}#webpage`,
+    'url': url,
+    'name': name,
+    'description': description,
+    'inLanguage': 'ru',
+    'isPartOf': { '@id': `${SITE_ORIGIN}/#website` },
+    'about': { '@id': `${url}#place` },
+    'author': { '@id': `${SITE_ORIGIN}/#organization` },
+    'publisher': { '@id': `${SITE_ORIGIN}/#organization` },
+  }
+  const modified = isoDay(input.updatedAt)
+  if (modified) {
+    node.dateModified = modified
+  }
+  const reviewed = isoDay(input.checkedAt)
+  if (reviewed) {
+    node.lastReviewed = reviewed
+  }
+  return node
 }
 
 export function placeDocument(input: PlaceSeoInput): SeoDocument {
@@ -707,6 +745,7 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   const photos = (input.images ?? []).filter((item) => item.url.trim())
   const node: Record<string, unknown> = {
     '@type': placeNodeTypes(input.categorySlug),
+    '@id': `${absoluteUrl(path)}#place`,
     'name': input.title,
     'description': description,
     'url': absoluteUrl(path),
@@ -748,8 +787,14 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     node.citation = citation
   }
   const noindex = Boolean(input.noindex) || page > 1
-  const jsonLd = [breadcrumbNode(crumbs), node]
-  const faq = faqPageNode(input.body)
+  const jsonLd = [
+    breadcrumbNode(crumbs),
+    node,
+    placeWebPage(path, title, description, input),
+    { ...organizationNode(), '@id': `${SITE_ORIGIN}/#organization` },
+    { ...websiteNode(), '@id': `${SITE_ORIGIN}/#website` },
+  ]
+  const faq = faqPageNode(input.body, input.faq)
   if (faq) {
     jsonLd.push(faq)
   }
@@ -765,8 +810,16 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   }
 }
 
-export function faqPageNode(body: string | null | undefined) {
-  const faq = faqFromBody(body || '')
+// Structured FAQ wins. A «Частые вопросы» section in the body is the fallback for older pages.
+export function pageFaq(body: string | null | undefined, structured?: Array<{ question: string, answer: string }> | null) {
+  const listed = (structured ?? [])
+    .map((item) => ({ question: item.question.trim(), answer: item.answer.trim() }))
+    .filter((item) => item.question && item.answer)
+  return listed.length ? listed : faqFromBody(body || '')
+}
+
+export function faqPageNode(body: string | null | undefined, structured?: Array<{ question: string, answer: string }> | null) {
+  const faq = pageFaq(body, structured)
   if (!faq.length) {
     return null
   }
@@ -834,6 +887,21 @@ export function faqFromBody(body: string) {
   }
   commit()
   return items
+}
+
+// Pulls a «## Как добраться» section out of a Markdown body. The rest of the body is returned unchanged.
+export function splitDirections(body: string) {
+  const lines = body.replace(/\r\n/g, '\n').split('\n')
+  const start = lines.findIndex((line) => /^##[ \t]+Как добраться[ \t]*$/.test(line.trim()))
+  if (start < 0) {
+    return { article: body, directions: '' }
+  }
+  const rest = lines.slice(start + 1)
+  const next = rest.findIndex((line) => /^##[ \t]+\S/.test(line.trim()))
+  const section = next < 0 ? rest : rest.slice(0, next)
+  const after = next < 0 ? [] : rest.slice(next)
+  const article = [...lines.slice(0, start), ...after].join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  return { article, directions: section.join('\n').trim() }
 }
 
 export function stripRepeatedLead(summary: string, body: string) {
@@ -1028,6 +1096,7 @@ const SCHEMA_TYPES = new Set([
   'PostalAddress',
   'Person',
   'CreativeWork',
+  'WebPage',
 ])
 
 const OPENING_HOURS = /^(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))? \d{2}:\d{2}-\d{2}:\d{2}$/

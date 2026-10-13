@@ -23,6 +23,11 @@ export interface SourceLink {
   url: string
 }
 
+export interface PlaceFaqItem {
+  question: string
+  answer: string
+}
+
 export type MediaStatus = 'processing' | 'ready' | 'failed'
 
 export type MediaLicense = 'own' | 'cc-by' | 'cc-by-sa' | 'cc0' | 'pd' | 'permission'

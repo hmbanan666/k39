@@ -1,4 +1,4 @@
-import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PrimaryAction, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
+import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
 import type { ScoreChecks } from './types/scoring'
 import type { VenueHours, VenueSocial, VenueStatus } from './venues'
 import { cuid2 } from 'drizzle-cuid2/postgres'
@@ -81,6 +81,10 @@ export const places = pgTable('places', {
   summary: text('summary').notNull().default(''),
   body: text('body').notNull().default(''),
   sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
+  // Guide answer block (ADR 0020). Free text in Russian, each backed by a source.
+  visitDuration: varchar('visit_duration'),
+  bestTime: varchar('best_time'),
+  faq: jsonb('faq').$type<PlaceFaqItem[]>().notNull().default(sql`'[]'::jsonb`),
   lastVerifiedAt: timestamp('last_verified_at', { precision: 3, withTimezone: true, mode: 'string' }),
   authorKind: varchar('author_kind').notNull().default('human').$type<AuthorKind>(),
   seoTitle: varchar('seo_title'),

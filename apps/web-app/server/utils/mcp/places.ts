@@ -28,6 +28,20 @@ export interface PlaceDraftInput {
   noindex?: boolean
   sources?: Array<{ title: string, url: string }>
   factsCheckedAt?: string | null
+  visitDuration?: string | null
+  bestTime?: string | null
+  faq?: Array<{ question: string, answer: string }>
+}
+
+function cleanFaq(items: Array<{ question: string, answer: string }>) {
+  return items
+    .map((item) => ({ question: item.question.replace(/\s+/g, ' ').trim(), answer: item.answer.trim() }))
+    .filter((item) => item.question && item.answer)
+}
+
+function cleanText(value: string | null | undefined) {
+  const text = value?.replace(/\s+/g, ' ').trim()
+  return text || null
 }
 
 function compactPlace(row: {
@@ -103,6 +117,9 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     publicationStatus,
     noindex: Boolean(input.noindex),
     authorKind: 'ai',
+    visitDuration: cleanText(input.visitDuration),
+    bestTime: cleanText(input.bestTime),
+    faq: cleanFaq(input.faq ?? []),
     ...(checked !== undefined ? { lastVerifiedAt: checked } : {}),
   })
   await auditMcp('place_draft_create', 'place', row?.id)
@@ -146,6 +163,9 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     publicationStatus,
     noindex: input.noindex ?? current.noindex,
     authorKind: current.authorKind,
+    visitDuration: input.visitDuration === undefined ? current.visitDuration : cleanText(input.visitDuration),
+    bestTime: input.bestTime === undefined ? current.bestTime : cleanText(input.bestTime),
+    faq: input.faq === undefined ? current.faq : cleanFaq(input.faq),
     lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
   })
   await auditMcp(auditTool, 'place', current.id)

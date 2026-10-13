@@ -11,6 +11,8 @@ Structure:
 
 Facts: if a source does not state it, do not write it. Coordinates, names, and dates come from the source list. Put each source in sources as { title, url }. factsCheckedAt is an ISO date (YYYY-MM-DD or a full timestamp) for the last fact check. place_update and place_draft_update store it as last_verified_at. Send it alone with id or slug to record a check without editing the article. Null clears it. Omit it to keep the stored date. Routes, collections, and hubs have no such field.
 
+Place guide template (ADR 0020): the answer block at the top shows summary, visitDuration ("1–2 часа"), bestTime, hours and price, stamped «проверено <factsCheckedAt>». faq is 3 to 6 real visitor questions, each answered only from facts already in sources. Every block hides when its field is empty, so leave a field empty rather than guess. Do not put a «Частые вопросы» section in body when faq is set.
+
 SEO: seoTitle stays under 70 characters, seoDescription under 170. The visible H1 is the place title. Do not keyword-stuff.
 
 Publishing: you may set publicationStatus to published, or call content_set_publication. Publish only when the facts are in sources and every photo has alt, author, license, and sourceUrl. Unpublish by setting draft. noindex hides a live page from the sitemap, the same checkbox as in /admin. Do not invent a fact in order to publish.
