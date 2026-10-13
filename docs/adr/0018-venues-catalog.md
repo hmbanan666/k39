@@ -71,7 +71,7 @@ Page views of `/zavedeniya/{slug}` are ordinary cookieless `pageview` hits (ADR 
 
 Published venues are scored with the other public pages (ADR 0016). Drafts, closed rows, and archived rows are not. The venue quality block checks the description length, one photo, hours, `last_verified_at` inside 180 days, coordinates, and the passport. Article length, FAQ, and «Как добраться» do not apply. The listing link from `/zavedeniya` is the inbound link the score counts.
 
-The venue URL is in the sitemap when it is published, not `noindex`, and the description is present. JSON-LD is `Restaurant` for a food service kind and `LocalBusiness` for `market`, `other`, and any later non-food kind, plus `BreadcrumbList`. A missing description forces `noindex`.
+The venue URL is in the sitemap when it is published, not `noindex`, and the description is present. Its photos are image entries. JSON-LD is `CafeOrCoffeeShop` for `cafe` and `coffee`, `Restaurant` for the other food kinds, and `LocalBusiness` for `market`, `other`, and any later non-food kind, plus `BreadcrumbList`. `priceRange`, `servesCuisine`, and `openingHoursSpecification` are written only when those facts are stored. A week with no open day omits hours. A missing description forces `noindex`.
 
 `/zavedeniya` is an indexable section. `/zavedeniya/{region}`, `/zavedeniya/{kind}`, and `/zavedeniya/{region}/{kind}` are indexable when `venue_listing_intros` has an intro of at least 300 characters for that pair. A filter without an intro still renders and is `noindex`.
 

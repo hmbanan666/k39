@@ -3,7 +3,7 @@ import { articleBody, shortAddress } from '../shared/address'
 import { externalLinkAttrs, formatDistance } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
 import { describedAlt } from '../shared/media'
-import { faqFromBody, placeDocument, stripRepeatedLead } from '../shared/seo'
+import { faqFromBody, jsonLdTypes, placeDocument, stripRepeatedLead } from '../shared/seo'
 
 describe('place page', () => {
   it('renders one h1 and keeps the source link in the body contract', () => {
@@ -146,7 +146,7 @@ describe('place page', () => {
         sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sobor.jpg',
       }],
     })
-    const node = doc.jsonLd.find((item) => item['@type'] === 'LandmarksOrHistoricalBuildings') as { image?: Array<Record<string, unknown>>, citation?: unknown }
+    const node = doc.jsonLd.find((item) => jsonLdTypes(item).includes('LandmarksOrHistoricalBuildings')) as { image?: Array<Record<string, unknown>>, citation?: unknown }
     const image = node.image?.[0]
     expect(image?.['@type']).toBe('ImageObject')
     expect(image?.creator).toEqual({ '@type': 'Person', 'name': 'Julian Nyča' })

@@ -23,7 +23,7 @@ import {
 } from '@k39/database'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
-import { absoluteUrl, collectionDocument, venueDocument } from '../../../shared/seo'
+import { collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
 
 export function sponsoredVenuesEnabled() {
   return process.env.FEATURE_SPONSORED_VENUES === 'true'
@@ -121,17 +121,7 @@ async function loadVenue(slug: string) {
     seoTitle: venue.seoTitle,
     seoDescription: venue.seoDescription,
     noindex: venue.noindex || closed || missingDescription,
-    image: cover
-      ? {
-          url: absoluteUrl(cover.src),
-          alt: cover.alt || venue.name,
-          width: cover.width,
-          height: cover.height,
-          author: cover.author,
-          license: cover.license,
-          sourceUrl: cover.sourceUrl,
-        }
-      : null,
+    image: cover ? socialImage(cover, cover.alt || venue.name) : null,
   })
   const places = venue.latitude != null && venue.longitude != null
     ? await db.content.nearest(venue.latitude, venue.longitude, '', 4)

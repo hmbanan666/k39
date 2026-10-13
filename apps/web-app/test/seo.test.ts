@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest'
 import seed from '../../../packages/database/src/seed/initial-content.json'
 import { findOrphans, haversineKm, homeLinks, HUBS, indexableHubs, SECTION_LINKS } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
+import { lcpPreload, openGraphFile } from '../shared/media'
 import { decideRedirect } from '../shared/redirects'
-import { brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, imageCredit, pageTitle, placeDocument, placeSchemaType, tuneRobots, venueDocument, verificationMeta } from '../shared/seo'
+import { accessibleForFree, brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, imageCredit, jsonLdTypes, pageTitle, placeDocument, placeNodeTypes, placeSchemaType, schemaOpeningHours, schemaProblems, tuneRobots, venueDocument, venueSchemaType, verificationMeta } from '../shared/seo'
 
 function assertDocument(doc: ReturnType<typeof homeDocument>, htmlBody: string) {
   expect(doc.title.length).toBeGreaterThan(10)
@@ -16,8 +17,15 @@ function assertDocument(doc: ReturnType<typeof homeDocument>, htmlBody: string) 
   expect(countH1(`<h1>${doc.h1}</h1>${htmlBody}`)).toBe(1)
   expect(doc.jsonLd.length).toBeGreaterThan(0)
   for (const node of doc.jsonLd) {
-    expect(node['@type']).toBeTruthy()
+    expect(jsonLdTypes(node).length).toBeGreaterThan(0)
   }
+  expect(schemaProblems(doc.jsonLd)).toEqual([])
+  expect(doc.title.length).toBeGreaterThanOrEqual(15)
+  expect(doc.title.length).toBeLessThanOrEqual(70)
+  expect(doc.description.length).toBeGreaterThanOrEqual(50)
+  expect(doc.description.length).toBeLessThanOrEqual(170)
+  expect(doc.robots).toContain('max-image-preview:large')
+  expect(doc.title).not.toContain('—')
 }
 
 describe('seo documents', () => {
@@ -42,9 +50,15 @@ describe('seo documents', () => {
     expect(place.h1).toBe('Форт № 11 «Дёнхофф»')
     expect(place.title).toContain('Форт № 11')
     expect(placeSchemaType('forty')).toBe('LandmarksOrHistoricalBuildings')
+    expect(placeSchemaType('zamki')).toBe('LandmarksOrHistoricalBuildings')
     expect(placeSchemaType('plyazhi')).toBe('Beach')
     expect(placeSchemaType('muzei')).toBe('Museum')
-    const attraction = place.jsonLd.find((node) => node['@type'] === 'LandmarksOrHistoricalBuildings')
+    expect(placeNodeTypes('forty')).toEqual(['TouristAttraction', 'LandmarksOrHistoricalBuildings'])
+    expect(placeNodeTypes('plyazhi')).toEqual(['TouristAttraction', 'Beach'])
+    expect(placeNodeTypes('muzei')).toEqual(['TouristAttraction', 'Museum'])
+    expect(placeNodeTypes('zamki')).toEqual(['TouristAttraction', 'LandmarksOrHistoricalBuildings'])
+    expect(placeNodeTypes('kurorty')).toBe('TouristAttraction')
+    const attraction = place.jsonLd.find((node) => jsonLdTypes(node).includes('LandmarksOrHistoricalBuildings'))
     expect(attraction?.geo).toMatchObject({ latitude: 54.65, longitude: 20.56 })
 
     const hub = collectionDocument({
@@ -216,18 +230,18 @@ describe('seo documents', () => {
   it('uses the title or seoTitle, a vertical bar, and no repeated type word', () => {
     expect(homeDocument().title).toBe('Куда сходить в Калининградской области | K39')
     const place = placeDocument({ ...placeInput() })
-    expect(place.title).toBe('Форт № 11 «Дёнхофф» | K39')
+    expect(place.title).toBe('Форт № 11 «Дёнхофф»: часы и как добраться | K39')
     expect(placeDocument({ ...placeInput(), seoTitle: 'Форт Дёнхофф: часы и дорога' }).title).toBe('Форт Дёнхофф: часы и дорога | K39')
     expect(pageTitle('Форт', 'Форт Дёнхофф | K39')).toBe('Форт Дёнхофф | K39')
 
     const titled = [
-      ['Форты', 'раздел', undefined, 'Форты | K39'],
-      ['Пять фортов за один выезд', 'маршрут', undefined, 'Пять фортов за один выезд | K39'],
-      ['Форты, куда пускают', 'подборка', undefined, 'Форты, куда пускают | K39'],
-      ['Квест: 5 фортов', 'квест', undefined, 'Квест: 5 фортов | K39'],
-      ['Маршруты', 'список', undefined, 'Маршруты | K39'],
-      ['Подборки', 'список', undefined, 'Подборки | K39'],
-      ['Квесты', 'список', undefined, 'Квесты | K39'],
+      ['Форты', 'раздел', undefined, 'Форты: Калининградская область | K39'],
+      ['Пять фортов за один выезд', 'маршрут', undefined, 'Пять фортов за один выезд: остановки по порядку | K39'],
+      ['Форты, куда пускают', 'подборка', undefined, 'Форты, куда пускают: места по теме | K39'],
+      ['Квест: 5 фортов', 'квест', undefined, 'Квест: 5 фортов: точки и задания | K39'],
+      ['Маршруты', 'список', undefined, 'Маршруты: Калининградская область | K39'],
+      ['Подборки', 'список', undefined, 'Подборки: Калининградская область | K39'],
+      ['Квесты', 'список', undefined, 'Квесты: Калининградская область | K39'],
     ] as const
     for (const [h1, crumbName, seoTitle, title] of titled) {
       const doc = collectionDocument({
@@ -397,6 +411,124 @@ describe('image credit', () => {
   })
 })
 
+describe('schema facts', () => {
+  it('emits opening hours and free admission only from unambiguous facts', () => {
+    expect(schemaOpeningHours('Ежедневно 10:00-18:00')).toBe('Mo-Su 10:00-18:00')
+    expect(schemaOpeningHours('пн-пт 9:00-17:00')).toBe('Mo-Fr 09:00-17:00')
+    expect(schemaOpeningHours('сб 10:00-16:00')).toBe('Sa 10:00-16:00')
+    expect(schemaOpeningHours('10:00-18:00')).toBeNull()
+    expect(schemaOpeningHours('10:00-19:00, касса до 18:00, без выходных')).toBeNull()
+    expect(schemaOpeningHours('Ежедневно. С 1 июня касса 10:00-18:00')).toBeNull()
+    expect(accessibleForFree('бесплатно')).toBe(true)
+    expect(accessibleForFree('0 ₽')).toBe(true)
+    expect(accessibleForFree('600 ₽')).toBe(false)
+    expect(accessibleForFree('уточняйте')).toBeNull()
+    expect(accessibleForFree('бесплатно по выходным, 300 ₽')).toBeNull()
+    expect(accessibleForFree(null)).toBeNull()
+
+    const daily = placeDocument({
+      ...placeInput(),
+      hours: 'Ежедневно 10:00-18:00',
+      price: 'бесплатно',
+    })
+    const node = daily.jsonLd.find((item) => jsonLdTypes(item).includes('TouristAttraction')) as {
+      openingHours?: string
+      isAccessibleForFree?: boolean
+    }
+    expect(node.openingHours).toBe('Mo-Su 10:00-18:00')
+    expect(node.isAccessibleForFree).toBe(true)
+    expect(schemaProblems(daily.jsonLd)).toEqual([])
+
+    const vague = placeDocument({ ...placeInput(), hours: '10:00-18:00', price: 'уточняйте' })
+    const vagueNode = vague.jsonLd.find((item) => jsonLdTypes(item).includes('TouristAttraction')) as Record<string, unknown>
+    expect(vagueNode.openingHours).toBeUndefined()
+    expect(vagueNode.isAccessibleForFree).toBeUndefined()
+    expect(JSON.stringify(vagueNode)).not.toContain('Castle')
+
+    const paid = placeDocument({ ...placeInput(), categorySlug: 'muzei', categoryTitle: 'Музеи', price: '500 ₽' })
+    expect(jsonLdTypes(paid.jsonLd.find((item) => jsonLdTypes(item).includes('Museum')) || {})).toEqual(['TouristAttraction', 'Museum'])
+    expect((paid.jsonLd.find((item) => jsonLdTypes(item).includes('Museum')) as { isAccessibleForFree?: boolean }).isAccessibleForFree).toBe(false)
+
+    const beach = placeDocument({ ...placeInput(), categorySlug: 'plyazhi', categoryTitle: 'Пляжи', hours: null, price: null })
+    expect(jsonLdTypes(beach.jsonLd.find((item) => jsonLdTypes(item).includes('Beach')) || {})).toEqual(['TouristAttraction', 'Beach'])
+
+    const cafe = venueDocument({
+      slug: 'kofe',
+      name: 'Кофейня у форта',
+      kind: 'coffee',
+      description: 'Кофейня у форта варит эспрессо и кормит обедом после экскурсии. '.repeat(3),
+      priceLevel: 2,
+      cuisine: ['coffee', ''],
+      hours: [{ weekday: 'mon', opens: '09:00', closes: '18:00' }],
+    })
+    expect(venueSchemaType('coffee')).toBe('CafeOrCoffeeShop')
+    expect(cafe.jsonLd.map((item) => item['@type'])).toEqual(['BreadcrumbList', 'CafeOrCoffeeShop'])
+    expect(JSON.stringify(cafe.jsonLd)).toContain('priceRange')
+    expect(JSON.stringify(cafe.jsonLd)).toContain('coffee')
+    expect(JSON.stringify(cafe.jsonLd)).not.toContain('""')
+    const closed = venueDocument({
+      slug: 'bez-chasov',
+      name: 'Без часов',
+      kind: 'cafe',
+      description: 'Кафе без расписания на карточке. '.repeat(4),
+      hours: [
+        { weekday: 'mon', closed: true, opens: null, closes: null },
+        { weekday: 'tue', closed: true, opens: null, closes: null },
+      ],
+    })
+    expect(JSON.stringify(closed.jsonLd)).not.toContain('openingHours')
+    expect(schemaProblems(cafe.jsonLd)).toEqual([])
+    expect(schemaProblems(closed.jsonLd)).toEqual([])
+  })
+
+  it('preloads the hero AVIF and reports the og.jpg box', () => {
+    const media = {
+      id: 'photo',
+      alt: 'Форт',
+      caption: null,
+      author: null,
+      license: null,
+      sourceUrl: null,
+      width: 2560,
+      height: 1440,
+      focalX: 0.5,
+      focalY: 0.5,
+      dominantColor: null,
+      lqip: null,
+      src: '/media/photo/master.webp',
+      variants: [
+        { format: 'webp' as const, width: 2560, height: 1440, bytes: 10, file: 'master.webp' },
+        { format: 'avif' as const, width: 640, height: 360, bytes: 4, file: '640.avif' },
+        { format: 'webp' as const, width: 640, height: 360, bytes: 5, file: '640.webp' },
+        { format: 'jpeg' as const, width: 1200, height: 630, bytes: 8, file: 'og.jpg' },
+      ],
+    }
+    expect(openGraphFile(media)).toMatchObject({
+      path: '/media/photo/og.jpg',
+      width: 1200,
+      height: 630,
+      type: 'image/jpeg',
+    })
+    const preload = lcpPreload(media, '(min-width: 1000px) 720px, 100vw')
+    expect(preload).toMatchObject({
+      rel: 'preload',
+      as: 'image',
+      type: 'image/avif',
+      fetchpriority: 'high',
+      imagesizes: '(min-width: 1000px) 720px, 100vw',
+    })
+    expect(preload?.imagesrcset).toContain('/media/photo/640.avif 640w')
+    expect(preload?.imagesrcset).not.toContain('og.jpg')
+  })
+
+  it('sets html lang to ru', () => {
+    const app = readFileSync(resolve(process.cwd(), 'apps/web-app/app/app.vue'), 'utf8')
+    const config = readFileSync(resolve(process.cwd(), 'apps/web-app/nuxt.config.ts'), 'utf8')
+    expect(app).toContain('lang: \'ru\'')
+    expect(config).toContain('lang: \'ru\'')
+  })
+})
+
 describe('redirects', () => {
   it('resolves host, old paths and slug redirects in one hop', () => {
     const moved = decideRedirect({
@@ -466,6 +598,17 @@ describe('default social image', () => {
     expect(metaContent(homeHead.meta, 'og:image:height')).toBe('630')
     expect(metaContent(homeHead.meta, 'og:image:type')).toBe('image/jpeg')
     expect(metaContent(homeHead.meta, 'twitter:image')).toBe('https://k39.online/og-default.jpg')
+    expect(metaContent(homeHead.meta, 'twitter:card')).toBe('summary_large_image')
+    expect(metaContent(homeHead.meta, 'geo.region')).toBe('RU-KGD')
+    expect(metaContent(homeHead.meta, 'robots')).toContain('max-image-preview:large')
+    expect(home.jsonLd[0]).toMatchObject({
+      logo: {
+        '@type': 'ImageObject',
+        'url': 'https://k39.online/logo/moose-head-512.webp',
+        'width': 576,
+        'height': 512,
+      },
+    })
 
     const cover = {
       url: 'https://k39.online/media/fort.jpg',

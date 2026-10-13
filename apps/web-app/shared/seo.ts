@@ -1,4 +1,5 @@
-import { licenseHref, licenseLabel } from './media'
+import type { PublicMedia } from './media'
+import { licenseHref, licenseLabel, openGraphFile } from './media'
 
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
@@ -8,6 +9,21 @@ export const DEFAULT_OG_IMAGE = {
   height: 630,
   alt: 'K39',
   type: 'image/jpeg',
+}
+
+// The file name says 512. The VP8X canvas is 576 by 512, so the logo node uses that box.
+export const ORGANIZATION_LOGO = {
+  url: `${SITE_ORIGIN}/logo/moose-head-512.webp`,
+  width: 576,
+  height: 512,
+}
+
+export const GEO_REGION = 'RU-KGD'
+
+export function publicRobots(noindex = false) {
+  return noindex
+    ? 'noindex, follow, max-image-preview:large'
+    : 'index, follow, max-image-preview:large'
 }
 
 // Unhead dedupes <link> on rel+href unless each tag has its own key.
@@ -174,6 +190,13 @@ export function organizationNode() {
     '@type': 'Organization',
     'name': SITE_NAME,
     'url': SITE_ORIGIN,
+    'logo': {
+      '@type': 'ImageObject',
+      'url': ORGANIZATION_LOGO.url,
+      'contentUrl': ORGANIZATION_LOGO.url,
+      'width': ORGANIZATION_LOGO.width,
+      'height': ORGANIZATION_LOGO.height,
+    },
   }
 }
 
@@ -206,7 +229,7 @@ export function homeDocument(): SeoDocument {
     title,
     description,
     canonical: `${SITE_ORIGIN}/`,
-    robots: 'index, follow',
+    robots: publicRobots(),
     h1: 'Куда сходить в Калининградской области',
     crumbs: [],
     ogImage: DEFAULT_OG_IMAGE,
@@ -219,6 +242,7 @@ export function homeDocument(): SeoDocument {
 
 const SCHEMA_BY_CATEGORY: Record<string, string> = {
   forty: 'LandmarksOrHistoricalBuildings',
+  // schema.org has no Castle type. A castle page is still a historical building.
   zamki: 'LandmarksOrHistoricalBuildings',
   plyazhi: 'Beach',
   muzei: 'Museum',
@@ -230,10 +254,245 @@ export function placeSchemaType(categorySlug: string) {
   return SCHEMA_BY_CATEGORY[categorySlug] ?? 'TouristAttraction'
 }
 
+export function placeNodeTypes(categorySlug: string): string | string[] {
+  const specific = placeSchemaType(categorySlug)
+  if (specific === 'TouristAttraction') {
+    return 'TouristAttraction'
+  }
+  return ['TouristAttraction', specific]
+}
+
 const FOOD_SERVICE = new Set(['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'fastfood'])
 
 export function venueSchemaType(kind: string) {
+  if (kind === 'cafe' || kind === 'coffee') {
+    return 'CafeOrCoffeeShop'
+  }
   return FOOD_SERVICE.has(kind) ? 'Restaurant' : 'LocalBusiness'
+}
+
+const TITLE_MAX = 70
+
+export function intentTitle(name: string, intent: string, seoTitle?: string | null) {
+  const custom = seoTitle?.trim()
+  if (custom) {
+    return pageTitle(name, custom)
+  }
+  const base = name.replace(/\s+/g, ' ').trim()
+  const extra = intent.replace(/\s+/g, ' ').trim()
+  const already = extra && base.toLowerCase().includes(extra.toLowerCase())
+  const combined = !extra || already ? base : `${base}: ${extra}`
+  const titled = pageTitle(combined)
+  if (titled.length >= 15 && titled.length <= TITLE_MAX) {
+    return titled
+  }
+  const plain = pageTitle(base)
+  if (plain.length <= TITLE_MAX) {
+    return plain
+  }
+  const room = TITLE_MAX - ` | ${SITE_NAME}`.length
+  const cut = base.slice(0, room).replace(/\s+\S*$/, '').trim() || base.slice(0, room)
+  return pageTitle(cut)
+}
+
+const DESCRIPTION_FLOOR = 'Справочник K39 по Калининградской области: места, часы и как добраться.'
+
+export function pageDescription(summary: string, override?: string | null, facts: Array<string | null | undefined> = []) {
+  const custom = override?.trim()
+  if (custom) {
+    return metaDescription(custom)
+  }
+  let text = summary.replace(/\s+/g, ' ').trim()
+  for (const fact of facts) {
+    const bit = fact?.replace(/\s+/g, ' ').trim()
+    if (!bit || text.toLowerCase().includes(bit.toLowerCase())) {
+      continue
+    }
+    if (text.length >= 50) {
+      break
+    }
+    text = text ? `${text} ${bit}` : bit
+  }
+  if (text.length < 50 && !text.includes(SITE_NAME)) {
+    const withShort = text ? `${text} Справочник ${SITE_NAME}.` : `Справочник ${SITE_NAME}.`
+    text = withShort.length >= 50 ? withShort : (text ? `${text} ${DESCRIPTION_FLOOR}` : DESCRIPTION_FLOOR)
+  }
+  return metaDescription(text)
+}
+
+const SCHEMA_DAY_RU: Record<string, string> = {
+  пн: 'Mo',
+  вт: 'Tu',
+  ср: 'We',
+  чт: 'Th',
+  пт: 'Fr',
+  сб: 'Sa',
+  вс: 'Su',
+}
+
+function schemaClock(value: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value)
+  if (!match?.[1] || !match[2]) {
+    return null
+  }
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (hour === 24 && minute === 0) {
+    return '23:59'
+  }
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null
+  }
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+// Only a whole string that names the days is emitted. A bare range or a note is left out.
+export function schemaOpeningHours(raw: string | null | undefined) {
+  const text = (raw || '').replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase()
+  if (!text) {
+    return null
+  }
+  const daily = /^(?:ежедневно|каждый день|без выходных|пн-вс)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/.exec(text)
+  if (daily?.[1] && daily[2]) {
+    const opens = schemaClock(daily[1])
+    const closes = schemaClock(daily[2])
+    return opens && closes ? `Mo-Su ${opens}-${closes}` : null
+  }
+  const range = /^(пн|вт|ср|чт|пт|сб|вс)-(пн|вт|ср|чт|пт|сб|вс)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/.exec(text)
+  if (range?.[1] && range[2] && range[3] && range[4]) {
+    const opens = schemaClock(range[3])
+    const closes = schemaClock(range[4])
+    const start = SCHEMA_DAY_RU[range[1]]
+    const end = SCHEMA_DAY_RU[range[2]]
+    if (!opens || !closes || !start || !end) {
+      return null
+    }
+    return start === end ? `${start} ${opens}-${closes}` : `${start}-${end} ${opens}-${closes}`
+  }
+  const one = /^(пн|вт|ср|чт|пт|сб|вс)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/.exec(text)
+  if (one?.[1] && one[2] && one[3]) {
+    const opens = schemaClock(one[2])
+    const closes = schemaClock(one[3])
+    const day = SCHEMA_DAY_RU[one[1]]
+    return opens && closes && day ? `${day} ${opens}-${closes}` : null
+  }
+  return null
+}
+
+export function accessibleForFree(price: string | null | undefined) {
+  const text = (price || '').replace(/\s+/g, ' ').trim().toLowerCase()
+  if (!text) {
+    return null
+  }
+  const amounts = [...text.matchAll(/(\d+(?: \d+)*)\s*(?:₽|руб\.?)/g)]
+    .map((match) => Number((match[1] || '').replace(/\s/g, '')))
+    .filter((value) => Number.isFinite(value))
+  const freeWord = /бесплатн/.test(text)
+  const positive = amounts.filter((value) => value > 0)
+  const zero = amounts.filter((value) => value === 0)
+  if (positive.length && (freeWord || zero.length)) {
+    return null
+  }
+  if (positive.length === 1 && !freeWord) {
+    return false
+  }
+  if (positive.length > 1) {
+    return null
+  }
+  if (freeWord && !positive.length) {
+    return true
+  }
+  if (zero.length && !positive.length && !/[1-9]/.test(text)) {
+    return true
+  }
+  return null
+}
+
+function geoNode(latitude?: number | null, longitude?: number | null) {
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return null
+  }
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null
+  }
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return null
+  }
+  return {
+    '@type': 'GeoCoordinates',
+    latitude,
+    longitude,
+  }
+}
+
+function postalAddress(streetAddress?: string | null, addressLocality?: string | null) {
+  const street = streetAddress?.trim()
+  const locality = addressLocality?.trim()
+  if (!street && !locality) {
+    return null
+  }
+  const address: Record<string, unknown> = {
+    '@type': 'PostalAddress',
+    'addressRegion': 'Калининградская область',
+    'addressCountry': 'RU',
+  }
+  if (street) {
+    address.streetAddress = street
+  }
+  if (locality) {
+    address.addressLocality = locality
+  }
+  return address
+}
+
+export function socialImage(media: PublicMedia, alt: string): SeoImage {
+  const file = openGraphFile(media)
+  return {
+    url: absoluteUrl(file.path),
+    width: file.width,
+    height: file.height,
+    alt,
+    ...(file.type ? { type: file.type } : {}),
+    author: media.author,
+    license: media.license,
+    sourceUrl: media.sourceUrl,
+  }
+}
+
+function placeIntent(hours?: string | null) {
+  return hours?.trim() ? 'часы и как добраться' : 'как добраться'
+}
+
+const COLLECTION_INTENT: Record<string, string> = {
+  раздел: 'Калининградская область',
+  маршрут: 'остановки по порядку',
+  подборка: 'места по теме',
+  квест: 'точки и задания',
+  список: 'Калининградская область',
+}
+
+function collectionIntent(crumbName?: string) {
+  return COLLECTION_INTENT[crumbName || ''] || 'Калининградская область'
+}
+
+function venueIntent(input: { hours?: VenueSeoInput['hours'], cuisine?: string[], priceLevel?: number | null }) {
+  const bits: string[] = []
+  if ((input.hours ?? []).some((day) => !day.closed && day.opens && day.closes)) {
+    bits.push('часы')
+  }
+  if (input.cuisine?.some((item) => item.trim())) {
+    bits.push('кухня')
+  }
+  if (input.priceLevel) {
+    bits.push('чек')
+  }
+  if (!bits.length) {
+    return 'адрес и как дойти'
+  }
+  if (bits.length === 1) {
+    return `${bits[0]} и адрес`
+  }
+  return bits.join(', ')
 }
 
 const SCHEMA_DAY: Record<string, string> = {
@@ -277,8 +536,11 @@ export interface VenueSeoInput {
 
 export function venueDocument(input: VenueSeoInput): SeoDocument {
   const path = `/zavedeniya/${input.slug}`
-  const title = pageTitle(input.name, input.seoTitle)
-  const description = metaDescription(searchBlurb(input.description || input.name), input.seoDescription)
+  const title = intentTitle(input.name, venueIntent(input), input.seoTitle)
+  const description = pageDescription(searchBlurb(input.description || input.name), input.seoDescription, [
+    input.regionTitle,
+    input.address,
+  ])
   const crumbs: Crumb[] = [
     { name: 'Главная', href: '/' },
     { name: 'Заведения', href: '/zavedeniya' },
@@ -290,49 +552,50 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
     'name': input.name,
     'description': description,
     'url': absoluteUrl(path),
-    'image': input.image ? imageObject(input.image) : image.url,
   }
-  if (input.latitude != null && input.longitude != null) {
-    node.geo = {
-      '@type': 'GeoCoordinates',
-      'latitude': input.latitude,
-      'longitude': input.longitude,
-    }
+  if (input.image?.url.trim()) {
+    node.image = imageObject(input.image)
+  } else if (image.url) {
+    node.image = image.url
   }
-  if (input.address || input.regionTitle) {
-    node.address = {
-      '@type': 'PostalAddress',
-      'streetAddress': input.address || undefined,
-      'addressLocality': input.regionTitle || undefined,
-      'addressRegion': 'Калининградская область',
-      'addressCountry': 'RU',
-    }
+  const geo = geoNode(input.latitude, input.longitude)
+  if (geo) {
+    node.geo = geo
   }
-  if (input.phone) {
-    node.telephone = input.phone
+  const address = postalAddress(input.address, input.regionTitle)
+  if (address) {
+    node.address = address
   }
-  if (input.website) {
-    node.sameAs = [input.website]
+  const phone = input.phone?.trim()
+  if (phone) {
+    node.telephone = phone
   }
-  if (input.priceLevel) {
-    node.priceRange = '₽'.repeat(Math.min(4, input.priceLevel))
+  const website = input.website?.trim()
+  if (website?.startsWith('http://') || website?.startsWith('https://')) {
+    node.sameAs = [website]
   }
-  if (input.cuisine?.length) {
-    node.servesCuisine = input.cuisine
+  if (input.priceLevel && input.priceLevel >= 1 && input.priceLevel <= 4) {
+    node.priceRange = '₽'.repeat(input.priceLevel)
+  }
+  const cuisine = (input.cuisine ?? []).map((item) => item.trim()).filter(Boolean)
+  if (cuisine.length) {
+    node.servesCuisine = cuisine
   }
   const specs = (input.hours ?? []).flatMap((day) => {
     if (day.closed || !day.opens || !day.closes) {
       return []
     }
     const name = SCHEMA_DAY[day.weekday]
-    if (!name) {
+    const opens = schemaClock(day.opens)
+    const closes = schemaClock(day.closes)
+    if (!name || !opens || !closes) {
       return []
     }
     return [{
       '@type': 'OpeningHoursSpecification',
       'dayOfWeek': `https://schema.org/${name}`,
-      'opens': day.opens,
-      'closes': day.closes === '24:00' ? '23:59' : day.closes,
+      'opens': opens,
+      'closes': closes,
     }]
   })
   if (specs.length) {
@@ -343,7 +606,7 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
     title,
     description,
     canonical: absoluteUrl(path),
-    robots: input.noindex || missingDescription ? 'noindex, follow' : 'index, follow',
+    robots: publicRobots(Boolean(input.noindex) || missingDescription),
     h1: input.name,
     crumbs,
     ogImage: image,
@@ -376,7 +639,10 @@ function imageObject(image: SeoImage) {
     '@type': 'ImageObject',
     'url': image.url,
     'contentUrl': image.url,
-    'caption': image.alt,
+  }
+  const caption = image.alt.trim()
+  if (caption) {
+    node.caption = caption
   }
   if (image.width) {
     node.width = image.width
@@ -414,6 +680,7 @@ export interface PlaceSeoInput {
   latitude: number | null
   longitude: number | null
   hours: string | null
+  price?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   noindex?: boolean
@@ -427,46 +694,59 @@ export interface PlaceSeoInput {
 export function placeDocument(input: PlaceSeoInput): SeoDocument {
   const path = `/${input.slug}`
   const page = input.page ?? 1
-  const title = pageTitle(input.title, input.seoTitle)
-  const description = metaDescription(input.summary, input.seoDescription)
+  const title = intentTitle(input.title, placeIntent(input.hours), input.seoTitle)
+  const description = pageDescription(input.summary, input.seoDescription, [
+    input.regionTitle,
+    input.hours?.trim() ? `Часы: ${input.hours.trim()}.` : '',
+  ])
   const crumbs: Crumb[] = [
     { name: 'Главная', href: '/' },
     { name: input.categoryTitle, href: `/${input.categorySlug}` },
     { name: input.title, href: path },
   ]
   const image = input.image ?? DEFAULT_OG_IMAGE
+  const photos = (input.images ?? []).filter((item) => item.url.trim())
   const node: Record<string, unknown> = {
-    '@type': placeSchemaType(input.categorySlug),
+    '@type': placeNodeTypes(input.categorySlug),
     'name': input.title,
     'description': description,
     'url': absoluteUrl(path),
-    'image': input.images?.length ? input.images.map((item) => imageObject(item)) : image.url,
   }
-  if (input.latitude != null && input.longitude != null) {
-    node.geo = {
-      '@type': 'GeoCoordinates',
-      'latitude': input.latitude,
-      'longitude': input.longitude,
-    }
+  if (photos.length) {
+    node.image = photos.map((item) => imageObject(item))
+  } else if (image.url) {
+    node.image = image.url
   }
-  if (input.regionTitle) {
-    node.address = {
-      '@type': 'PostalAddress',
-      'addressLocality': input.regionTitle,
-      'addressRegion': 'Калининградская область',
-      'addressCountry': 'RU',
-    }
+  const geo = geoNode(input.latitude, input.longitude)
+  if (geo) {
+    node.geo = geo
   }
-  const sameAs = input.sources.map((source) => source.url).filter((url) => url.startsWith('http'))
+  const address = postalAddress(null, input.regionTitle)
+  if (address) {
+    node.address = address
+  }
+  const hours = schemaOpeningHours(input.hours)
+  if (hours) {
+    node.openingHours = hours
+  }
+  const free = accessibleForFree(input.price)
+  if (free != null) {
+    node.isAccessibleForFree = free
+  }
+  const sameAs = input.sources.map((source) => source.url).filter((url) => url.startsWith('http://') || url.startsWith('https://'))
   if (sameAs.length) {
     node.sameAs = sameAs
   }
-  if (input.sources.length) {
-    node.citation = input.sources.map((source) => ({
-      '@type': 'CreativeWork',
-      'name': source.title,
-      'url': source.url,
-    }))
+  const citation = input.sources.flatMap((source) => {
+    const name = source.title.trim()
+    const url = source.url.trim()
+    if (!name || !url) {
+      return []
+    }
+    return [{ '@type': 'CreativeWork', name, url }]
+  })
+  if (citation.length) {
+    node.citation = citation
   }
   const noindex = Boolean(input.noindex) || page > 1
   const jsonLd = [breadcrumbNode(crumbs), node]
@@ -478,7 +758,7 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     title,
     description,
     canonical: page > 1 ? `${absoluteUrl(path)}?page=${page}` : absoluteUrl(path),
-    robots: noindex ? 'noindex, follow' : 'index, follow',
+    robots: publicRobots(noindex),
     h1: input.title,
     crumbs,
     ogImage: image,
@@ -615,26 +895,30 @@ export function collectionDocument(input: {
   const crumbs: Crumb[] = parent.href === '/'
     ? [{ name: 'Главная', href: '/' }, { name: input.h1, href: input.path }]
     : [{ name: 'Главная', href: '/' }, parent, { name: input.h1, href: input.path }]
-  const title = pageTitle(input.h1, input.seoTitle)
-  const description = metaDescription(input.summary, input.seoDescription)
-  const list = {
+  const title = intentTitle(input.h1, collectionIntent(input.crumbName), input.seoTitle)
+  const description = pageDescription(input.summary, input.seoDescription)
+  const listed = input.items.filter((item) => item.name.trim() && item.url.trim())
+  const list: Record<string, unknown> = {
     '@type': 'ItemList',
-    'numberOfItems': input.items.length,
-    'itemListElement': input.items.map((item, index) => {
+    'numberOfItems': listed.length,
+  }
+  if (listed.length) {
+    list.itemListElement = listed.map((item, index) => {
       const entry: Record<string, unknown> = {
         '@type': 'ListItem',
         'position': index + 1,
-        'name': item.name,
+        'name': item.name.trim(),
         'url': absoluteUrl(item.url),
       }
-      if (item.note) {
-        entry.description = item.note
+      const note = item.note?.trim()
+      if (note) {
+        entry.description = note
       }
       if (input.kind === 'TouristTrip') {
         entry.item = tripPlace(item)
       }
       return entry
-    }),
+    })
   }
   const node: Record<string, unknown> = input.kind === 'TouristTrip'
     ? { '@type': 'TouristTrip', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'itinerary': list }
@@ -652,7 +936,7 @@ export function collectionDocument(input: {
     title,
     description,
     canonical: page > 1 ? `${absoluteUrl(input.path)}?page=${page}` : absoluteUrl(input.path),
-    robots: noindex ? 'noindex, follow' : 'index, follow',
+    robots: publicRobots(noindex),
     h1: input.h1,
     crumbs,
     ogImage: input.ogImage ?? DEFAULT_OG_IMAGE,
@@ -683,7 +967,7 @@ export function tuneRobots(doc: SeoDocument, query: Record<string, unknown>) {
   if (!filters.length) {
     return doc
   }
-  return { ...doc, robots: 'noindex, follow' }
+  return { ...doc, robots: publicRobots(true) }
 }
 
 export function headFromDocument(doc: SeoDocument) {
@@ -692,6 +976,7 @@ export function headFromDocument(doc: SeoDocument) {
     meta: [
       { name: 'description', content: doc.description },
       { name: 'robots', content: doc.robots },
+      { name: 'geo.region', content: GEO_REGION },
       { property: 'og:title', content: doc.title },
       { property: 'og:description', content: doc.description },
       { property: 'og:url', content: doc.canonical },
@@ -718,4 +1003,121 @@ export function headFromDocument(doc: SeoDocument) {
 
 export function countH1(html: string) {
   return [...html.matchAll(/<h1\b/gi)].length
+}
+
+const SCHEMA_TYPES = new Set([
+  'Organization',
+  'WebSite',
+  'ImageObject',
+  'BreadcrumbList',
+  'ListItem',
+  'TouristAttraction',
+  'LandmarksOrHistoricalBuildings',
+  'Beach',
+  'Museum',
+  'TouristTrip',
+  'ItemList',
+  'CollectionPage',
+  'FAQPage',
+  'Question',
+  'Answer',
+  'Restaurant',
+  'CafeOrCoffeeShop',
+  'LocalBusiness',
+  'OpeningHoursSpecification',
+  'GeoCoordinates',
+  'PostalAddress',
+  'Person',
+  'CreativeWork',
+])
+
+const OPENING_HOURS = /^(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))? \d{2}:\d{2}-\d{2}:\d{2}$/
+
+export function jsonLdTypes(node: { '@type'?: unknown }) {
+  const value = node['@type']
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string' && item.length > 0)
+  }
+  if (typeof value === 'string' && value) {
+    return [value]
+  }
+  return []
+}
+
+export function schemaProblems(nodes: unknown[]) {
+  const graph = JSON.parse(JSON.stringify(nodes)) as unknown[]
+  const problems: string[] = []
+  graph.forEach((node, index) => walkSchema(node, `$${index}`, problems))
+  return problems
+}
+
+function walkSchema(value: unknown, path: string, problems: string[]) {
+  if (value == null) {
+    problems.push(`${path} empty`)
+    return
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      problems.push(`${path} not finite`)
+    }
+    return
+  }
+  if (typeof value === 'boolean') {
+    return
+  }
+  if (typeof value === 'string') {
+    if (!value.trim()) {
+      problems.push(`${path} blank`)
+    }
+    return
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) {
+      problems.push(`${path} empty list`)
+    }
+    value.forEach((item, index) => walkSchema(item, `${path}[${index}]`, problems))
+    return
+  }
+  if (typeof value !== 'object') {
+    return
+  }
+  const record = value as Record<string, unknown>
+  if (!Object.keys(record).length) {
+    problems.push(`${path} empty object`)
+    return
+  }
+  for (const [key, item] of Object.entries(record)) {
+    walkSchema(item, `${path}.${key}`, problems)
+  }
+  const types = jsonLdTypes(record)
+  if ('@type' in record && !types.length) {
+    problems.push(`${path} @type`)
+  }
+  for (const type of types) {
+    if (!SCHEMA_TYPES.has(type)) {
+      problems.push(`${path} type ${type}`)
+    }
+  }
+  if (types.includes('GeoCoordinates')) {
+    const latitude = record.latitude
+    const longitude = record.longitude
+    if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
+      problems.push(`${path} latitude`)
+    }
+    if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
+      problems.push(`${path} longitude`)
+    }
+  }
+  if (typeof record.openingHours === 'string' && !OPENING_HOURS.test(record.openingHours)) {
+    problems.push(`${path} openingHours`)
+  }
+  if ('isAccessibleForFree' in record && typeof record.isAccessibleForFree !== 'boolean') {
+    problems.push(`${path} isAccessibleForFree`)
+  }
+  for (const key of ['url', 'contentUrl', 'item', '@id', 'license', 'acquireLicensePage'] as const) {
+    const link = record[key]
+    if (typeof link === 'string' && !/^https?:\/\//.test(link)) {
+      problems.push(`${path}.${key}`)
+    }
+  }
 }

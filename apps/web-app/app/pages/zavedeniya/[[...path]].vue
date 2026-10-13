@@ -69,10 +69,11 @@
       class="photos"
     >
       <PlacePhoto
-        v-for="photo in page.photos"
+        v-for="(photo, index) in page.photos"
         :key="photo.id"
         :media="photo"
-        sizes="(min-width: 900px) 360px, 100vw"
+        :priority="index === 0"
+        :sizes="heroSizes"
         @open="openPhoto(photo.id)"
       />
     </div>
@@ -179,6 +180,7 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
+import { lcpPreload } from '~~/shared/media'
 
 interface ListingPage {
   type: 'listing'
@@ -231,6 +233,12 @@ interface VenuePage {
 
 const route = useRoute()
 const page = await fetchPublic<ListingPage | VenuePage>('/api/public/zavedeniya', { path: route.path })
+const heroSizes = '(min-width: 900px) 360px, 100vw'
+const hero = page.type === 'venue' ? page.photos[0] : null
+const heroPreload = hero ? lcpPreload(hero, heroSizes) : null
+if (heroPreload) {
+  useHead({ link: [heroPreload] })
+}
 usePublicHead(page.doc)
 const viewerOpen = ref(false)
 const viewerIndex = ref(0)

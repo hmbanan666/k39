@@ -2,10 +2,10 @@ import { db } from '@k39/database'
 import { articleBody } from '../../shared/address'
 import { homeLinks, HUBS } from '../../shared/links'
 import { renderMarkdown } from '../../shared/markdown'
-import { describedAlt, ogPath, toPublicMedia } from '../../shared/media'
+import { describedAlt, toPublicMedia } from '../../shared/media'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
-import { absoluteUrl, collectionDocument, homeDocument, placeDocument } from '../../shared/seo'
+import { absoluteUrl, collectionDocument, homeDocument, placeDocument, socialImage } from '../../shared/seo'
 import { eatNearby } from './venues/public'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
@@ -130,16 +130,17 @@ export async function loadPlace(slug: string, page = 1) {
   }
   const gallery = loaded.gallery.map((item) => ({ ...toPublicMedia(item.media), isCover: item.isCover }))
   const cover = gallery.find((item) => item.isCover) ?? gallery[0] ?? null
-  const images = gallery.map((item) => ({
-    src: item.src,
-    url: absoluteUrl(ogPath(item)),
-    alt: item.alt,
-    width: item.width,
-    height: item.height,
-  }))
-  const listed = cover
-    ? { url: absoluteUrl(ogPath(cover)), width: cover.width, height: cover.height, alt: cover.alt || loaded.place.title }
-    : null
+  const images = gallery.map((item) => {
+    const social = socialImage(item, item.alt)
+    return {
+      src: item.src,
+      url: social.url,
+      alt: item.alt,
+      width: social.width,
+      height: social.height,
+    }
+  })
+  const listed = cover ? socialImage(cover, cover.alt || loaded.place.title) : null
   const ogImage = loaded.place.ogImage
   const image = ogImage
     ? {
@@ -147,6 +148,7 @@ export async function loadPlace(slug: string, page = 1) {
         width: listed?.width ?? null,
         height: listed?.height ?? null,
         alt: listed?.alt || loaded.place.title,
+        type: listed?.type,
       }
     : listed
   const doc = placeDocument({
@@ -159,20 +161,24 @@ export async function loadPlace(slug: string, page = 1) {
     latitude: loaded.place.latitude,
     longitude: loaded.place.longitude,
     hours: loaded.place.hours,
+    price: loaded.place.price,
     seoTitle: loaded.place.seoTitle,
     seoDescription: loaded.place.seoDescription,
     noindex: loaded.place.noindex,
     sources: loaded.place.sources ?? [],
     image,
-    images: gallery.map((item) => ({
-      url: absoluteUrl(ogPath(item)),
-      width: item.width,
-      height: item.height,
-      alt: describedAlt(item.alt || loaded.place.title, item.author, item.license),
-      author: item.author,
-      license: item.license,
-      sourceUrl: item.sourceUrl,
-    })),
+    images: gallery.map((item) => {
+      const social = socialImage(item, describedAlt(item.alt || loaded.place.title, item.author, item.license))
+      return {
+        url: social.url,
+        width: social.width,
+        height: social.height,
+        alt: social.alt,
+        author: item.author,
+        license: item.license,
+        sourceUrl: item.sourceUrl,
+      }
+    }),
     page,
     body: loaded.place.body,
   })
