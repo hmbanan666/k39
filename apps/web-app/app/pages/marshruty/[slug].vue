@@ -8,6 +8,7 @@
     <RouteGuide
       :stops="page.stops"
       :path="page.path"
+      :focus-href="`/marshruty/${slug}`"
     />
     <div
       class="prose"

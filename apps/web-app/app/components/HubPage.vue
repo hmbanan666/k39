@@ -9,6 +9,12 @@
       class="prose"
       v-html="articleHtml"
     />
+    <MapEmbed
+      v-if="hrefs.length"
+      :label="`Карта: ${page.doc.h1}`"
+      :focus-href="hrefs[0] || `/${slug}`"
+      :hrefs="hrefs"
+    />
     <h2>Места</h2>
     <div class="card-grid">
       <PlaceCard
@@ -42,5 +48,6 @@ const page = await fetchPublic<{
   routes: { href: string, text: string }[]
 }>(`/api/public/hubs/${props.slug}`)
 const articleHtml = `${page.html}${page.bodyHtml}`
+const hrefs = page.places.map((place) => place.href)
 usePublicHead(page.doc)
 </script>

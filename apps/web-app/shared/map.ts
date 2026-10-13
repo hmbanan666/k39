@@ -97,6 +97,8 @@ export interface MapQueryState {
   route: string | null
   q: string
   category: BrowseCategory | null
+  /** Public path without the leading slash, such as a place slug or `zavedeniya/slug`. */
+  focus: string | null
 }
 
 export interface MapBounds {
@@ -233,7 +235,33 @@ export function parseMapQuery(query: Record<string, unknown>): MapQueryState {
     route: /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(route) ? route : null,
     q,
     category,
+    focus: focusToken(queryValue(query.focus)),
   }
+}
+
+function focusToken(value: string) {
+  const token = value.replace(/^\/+/, '').trim().slice(0, 160)
+  return /^[\w./-]{1,160}$/.test(token) ? token : null
+}
+
+export function kartaFocusHref(href: string) {
+  const token = focusToken(href)
+  return token ? `/karta?focus=${encodeURIComponent(token)}` : '/karta'
+}
+
+export function routeFocusSlug(focus: string | null) {
+  if (!focus?.startsWith('marshruty/')) {
+    return null
+  }
+  const slug = focus.slice('marshruty/'.length)
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : null
+}
+
+export function focusMatch(point: { id: string, slug: string, href: string }, focus: string | null) {
+  if (!focus) {
+    return false
+  }
+  return point.id === focus || point.slug === focus || point.href === `/${focus}` || point.href === focus
 }
 
 function sameSet(list: string[] | null, all: readonly string[]) {
@@ -274,6 +302,9 @@ export function mapQueryRecord(state: MapQueryState, foodAll: readonly string[] 
   }
   if (state.category) {
     query.c = state.category
+  }
+  if (state.focus) {
+    query.focus = state.focus
   }
   return query
 }
@@ -408,7 +439,7 @@ export function queriesEqual(a: Record<string, string>, b: Record<string, unknow
   return true
 }
 
-const EMPTY_QUERY: MapQueryState = { sights: null, food: null, route: null, q: '', category: null }
+const EMPTY_QUERY: MapQueryState = { sights: null, food: null, route: null, q: '', category: null, focus: null }
 
 export function distanceKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
   const toRad = (value: number) => value * Math.PI / 180
@@ -662,27 +693,44 @@ export function popularRoutes(routes: MapRoute[], limit = 3) {
     .slice(0, limit)
 }
 
+export function pointsNear(points: MapPoint[], origins: MapOrigin[], radiusKm = 1.2) {
+  if (!origins.length) {
+    return []
+  }
+  return points.filter((point) => origins.some((origin) => (
+    distanceKm(origin.latitude, origin.longitude, point.latitude, point.longitude) <= radiusKm
+  )))
+}
+
+function withFocus(list: MapPoint[], points: MapPoint[], state: MapQueryState) {
+  if (!state.focus || routeFocusSlug(state.focus)) {
+    return list
+  }
+  const ids = new Set(list.map((point) => point.id))
+  const extra = points.filter((point) => focusMatch(point, state.focus) && !ids.has(point.id))
+  return extra.length ? [...extra, ...list] : list
+}
+
 export function shownPoints(points: MapPoint[], state: MapQueryState) {
   const category = activeCategory(state)
   const matched = state.q.trim()
     ? points.filter((point) => textHit(point, state.q))
     : points
+  let list: MapPoint[]
   if (state.q.trim()) {
-    if (!category || category === 'routes') {
-      return matched
-    }
-    return matched.filter((point) => pointInCategory(point, category, state))
+    list = !category || category === 'routes'
+      ? matched
+      : matched.filter((point) => pointInCategory(point, category, state))
+  } else if (category === 'routes') {
+    list = []
+  } else if (category) {
+    list = matched.filter((point) => pointInCategory(point, category, state))
+  } else if (state.sights != null || state.food != null) {
+    list = points.filter((point) => pointVisible(point, state))
+  } else {
+    list = curatedSights(points)
   }
-  if (category === 'routes') {
-    return []
-  }
-  if (category) {
-    return matched.filter((point) => pointInCategory(point, category, state))
-  }
-  if (state.sights != null || state.food != null) {
-    return points.filter((point) => pointVisible(point, state))
-  }
-  return curatedSights(points)
+  return withFocus(list, points, state)
 }
 
 export function browseList(points: MapPoint[], bounds: MapBounds | null, origin: MapOrigin | null, query = '') {

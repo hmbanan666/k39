@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-ADR 0002 keeps the forts booklet as inline SVG at `/map/{region}`, behind `FEATURE_MAP`. ADR 0015 put a phone map on route pages: Leaflet and OpenStreetMap raster tiles, or Yandex Maps JS API 3 when a key was set, and a straight line through the stops. A straight line reads as a road and it is not one. The raster tiles also cannot take the paper, brick, and sea palette, and a full tourist map needs places, food, and one chosen route without drawing every route at once.
+ADR 0002 keeps the forts booklet as inline SVG at `/map/{region}`, behind `FEATURE_MAP`. ADR 0015 put a phone map on route pages and a straight line through the stops. A straight line reads as a road and it is not one. The raster tiles also cannot take the paper, brick, and sea palette, and a full tourist map needs places, food, and one chosen route without drawing every route at once.
 
 OpenFreeMap serves OpenMapTiles from OpenStreetMap with no key. MapLibre GL draws a vector style we own. The forts SVG stays the booklet. This record is the slippy map.
 
@@ -58,6 +58,8 @@ Routes draw nothing until `r` is set. The selected route shows numbered stops. `
 
 The library loads in a separate chunk: on `/karta` after mount, and on an embedded map after `load`, idle, and an intersection observer, as in ADR 0015. Embedded maps use cooperative gestures so the page can still scroll, and they can go fullscreen. «Я здесь» asks the browser for a one-off location and does not store it. A venue card dispatches the existing cookieless `impression` beacon. `FEATURE_MAP` still governs only `/map/{region}`.
 
+A compact embed uses the same pins and the same basemap. On a place, a venue, or a route it also draws our other points within 1.2 km. A hub, a collection, and a quest draw the points that belong to that page. The frame is 320px tall, 460px from 900px, and offers fullscreen. «Открыть на карте» goes to `/karta?focus=` plus the public path without the leading slash (`fort-1`, `zavedeniya/slug`, `marshruty/slug`). That query selects the object. The forts booklet stays the SVG in ADR 0002.
+
 ## Consequences
 
-When the verified archive is served, tile bytes stay on our origin or the bucket. Otherwise they go to OpenFreeMap. There is no Yandex or Leaflet script on the map. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` no longer chooses a basemap. A route with no stored path never pretends to be a road. Replacing the PMTiles file can take up to seven days to show up in a browser that already cached the archive. The forts booklet is still ADR 0002.
+When the verified archive is served, tile bytes stay on our origin or the bucket. Otherwise they go to OpenFreeMap. There is no Yandex script on the map. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` no longer chooses a basemap. A route with no stored path never pretends to be a road. Replacing the PMTiles file can take up to seven days to show up in a browser that already cached the archive. The forts booklet is still ADR 0002.

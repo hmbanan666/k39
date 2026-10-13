@@ -124,13 +124,13 @@
         :entity="`/zavedeniya/${page.venue.slug}`"
       />
     </p>
-    <K39Map
+    <MapEmbed
       v-if="page.venue.latitude != null && page.venue.longitude != null"
       class="venue-map"
       label="Карта заведения"
+      :focus-href="`/zavedeniya/${page.venue.slug}`"
       :latitude="page.venue.latitude"
       :longitude="page.venue.longitude"
-      :entity="`/zavedeniya/${page.venue.slug}`"
     />
     <div
       v-if="page.venue.description"

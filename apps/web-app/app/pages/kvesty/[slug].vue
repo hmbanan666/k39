@@ -17,6 +17,13 @@
         {{ page.route.title }}
       </UiLink>
     </p>
+    <MapEmbed
+      v-if="page.steps.length"
+      label="Карта квеста"
+      :focus-href="page.route?.href || page.steps[0]?.href || `/kvesty/${slug}`"
+      :hrefs="page.steps.map((step) => step.href)"
+      :overlay="null"
+    />
     <section
       v-if="page.steps.length"
       class="stops"

@@ -8,9 +8,11 @@ import {
   browseList,
   curatedSights,
   facetCounts,
+  focusMatch,
   foodIdsIn,
   formatDistance,
   isChurchPlace,
+  kartaFocusHref,
   mapQueryRecord,
   normalizeRoutePath,
   parseMapQuery,
@@ -68,7 +70,7 @@ describe('map filters', () => {
 
   it('treats an empty query as every sight and every food kind, with routes off', () => {
     const state = parseMapQuery({})
-    expect(state).toEqual({ sights: null, food: null, route: null, q: '', category: null })
+    expect(state).toEqual({ sights: null, food: null, route: null, q: '', category: null, focus: null })
     expect(mapQueryRecord(state)).toEqual({})
     expect(points.filter((item) => pointVisible(item, state)).map((item) => item.id)).toEqual(['fort', 'sobor', 'kofe'])
     expect(routeOverlay(null)).toBeNull()
@@ -82,10 +84,10 @@ describe('map filters', () => {
     expect(counts.sights.muzei).toBe(1)
     expect(counts.sights.tserkvi).toBe(1)
     expect(counts.food.coffee).toBe(1)
-    expect(pointVisible(cathedral, { sights: ['muzei'], food: null, route: null, q: '', category: null })).toBe(true)
-    expect(pointVisible(cathedral, { sights: ['tserkvi'], food: null, route: null, q: '', category: null })).toBe(true)
-    expect(pointVisible(cathedral, { sights: ['forty'], food: null, route: null, q: '', category: null })).toBe(false)
-    expect(pointVisible(fort, { sights: [], food: null, route: null, q: '', category: null })).toBe(false)
+    expect(pointVisible(cathedral, { sights: ['muzei'], food: null, route: null, q: '', category: null, focus: null })).toBe(true)
+    expect(pointVisible(cathedral, { sights: ['tserkvi'], food: null, route: null, q: '', category: null, focus: null })).toBe(true)
+    expect(pointVisible(cathedral, { sights: ['forty'], food: null, route: null, q: '', category: null, focus: null })).toBe(false)
+    expect(pointVisible(fort, { sights: [], food: null, route: null, q: '', category: null, focus: null })).toBe(false)
   })
 
   it('round-trips sight, food, route, and search query keys', () => {
@@ -96,13 +98,17 @@ describe('map filters', () => {
     expect(state.q).toBe('форт')
     expect(mapQueryRecord(state)).toEqual({ s: 'forty,zamki', f: 'kofe,pekarnya', r: 'pyat-fortov', q: 'форт' })
     expect(parseMapQuery({ s: 'none', f: 'none' })).toMatchObject({ sights: [], food: [] })
-    expect(mapQueryRecord({ sights: [], food: [], route: null, q: '', category: null })).toEqual({ s: 'none', f: 'none' })
-    expect(mapQueryRecord({ sights: null, food: null, route: null, q: '', category: 'food' })).toEqual({ c: 'food' })
+    expect(mapQueryRecord({ sights: [], food: [], route: null, q: '', category: null, focus: null })).toEqual({ s: 'none', f: 'none' })
+    expect(mapQueryRecord({ sights: null, food: null, route: null, q: '', category: 'food', focus: null })).toEqual({ c: 'food' })
     expect(parseMapQuery({ c: 'beaches' }).category).toBe('beaches')
     expect(parseMapQuery({ c: 'nope' }).category).toBeNull()
+    expect(parseMapQuery({ focus: '/zavedeniya/kofe' }).focus).toBe('zavedeniya/kofe')
+    expect(kartaFocusHref('/zavedeniya/kofe')).toBe('/karta?focus=zavedeniya%2Fkofe')
+    expect(focusMatch(coffee, 'kofe')).toBe(true)
+    expect(shownPoints(points, { ...parseMapQuery({}), focus: 'kofe' }).some((item) => item.id === 'kofe')).toBe(true)
     expect(pointVisible(coffee, { ...state, sights: null, food: state.food, q: '' })).toBe(true)
     expect(pointVisible(fort, { sights: null, food: null, route: null, q: 'кофе', category: null })).toBe(false)
-    expect(pointVisible(coffee, { sights: null, food: ['restaurant'], route: null, q: '', category: null })).toBe(false)
+    expect(pointVisible(coffee, { sights: null, food: ['restaurant'], route: null, q: '', category: null, focus: null })).toBe(false)
   })
 
   it('drops one chip from the full set and sorts a partner first', () => {
@@ -166,7 +172,7 @@ describe('visitor layers', () => {
 describe('browse panel', () => {
   const beach = point({ id: 'beach', title: 'Пляж', group: 'sight', category: 'plyazhi', marker: 'plyazhi', latitude: 55.1, longitude: 21.2 })
   const points = [fort, cathedral, coffee, beach]
-  const idle = { sights: null, food: null, route: null, q: '', category: null as const }
+  const idle = { sights: null, food: null, route: null, q: '', category: null, focus: null }
 
   it('keeps the idle map to a short curated shelf', () => {
     const shown = shownPoints(points, idle)

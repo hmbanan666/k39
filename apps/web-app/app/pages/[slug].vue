@@ -180,13 +180,13 @@
         </div>
       </aside>
     </div>
-    <K39Map
+    <MapEmbed
       v-if="page.place.latitude != null && page.place.longitude != null"
       class="place-map"
       label="Карта места"
+      :focus-href="`/${slug}`"
       :latitude="page.place.latitude"
       :longitude="page.place.longitude"
-      :entity="`/${slug}`"
     />
     <section
       v-if="morePhotos.length"

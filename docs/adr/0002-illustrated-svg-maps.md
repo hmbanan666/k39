@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The product needs maps that feel like a museum booklet and can show status, filters, and a quest route. Tile maps (Yandex, Leaflet, OSM tiles) already exist on competing sites and do not match the prototype.
+The product needs maps that feel like a museum booklet and can show status, filters, and a quest route. Tile maps already exist on competing sites and do not match the prototype.
 
 ## Decision
 

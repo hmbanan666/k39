@@ -37,13 +37,13 @@
     </div>
     <div class="split">
       <div class="frame">
-        <K39Map
-          :points="[]"
+        <MapEmbed
+          fill
+          label="Карта маршрута"
+          :focus-href="focusHref"
           :overlay="overlay"
-          fullscreen
-          map-label="Карта маршрута"
-          fit-key="route"
           @ready="ready = true"
+          @error="ready = true"
         />
         <ol
           class="fallback"
@@ -106,11 +106,11 @@ import type { RouteStopView, RouteTravelMode } from '~~/shared/route-nav'
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { routeOverlay } from '~~/shared/map'
 import { locatedStops, ROUTE_TRAVEL_MODES, routeLinks } from '~~/shared/route-nav'
-import K39Map from '~/components/map/K39Map.vue'
 
 const props = defineProps<{
   stops: RouteStopView[]
   path?: [number, number][] | null
+  focusHref: string
 }>()
 const mode = ref<RouteTravelMode>('auto')
 const ready = ref(false)

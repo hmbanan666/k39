@@ -47,11 +47,13 @@ import type { MapFramePadding } from '~/lib/mount-k39-map'
 import {
   activeCategory,
   boundsCenter,
+  focusMatch,
   FOOD_FILTERS,
   foodIdsIn,
   mapQueryRecord,
   parseMapQuery,
   queriesEqual,
+  routeFocusSlug,
   routeOverlay,
   shownPoints,
   SIGHT_BROWSE,
@@ -70,8 +72,14 @@ const page = await fetchPublic<{
 usePublicHead(page.doc)
 
 const foodAll = foodIdsIn(page.points)
-const state = ref<MapQueryState>(parseMapQuery(route.query))
-const selectedId = ref<string | null>(null)
+const parsed = parseMapQuery(route.query)
+const linkedRoute = routeFocusSlug(parsed.focus)
+if (linkedRoute && page.routes.some((item) => item.slug === linkedRoute)) {
+  parsed.category = 'routes'
+  parsed.route = linkedRoute
+}
+const state = ref<MapQueryState>(parsed)
+const selectedId = ref<string | null>(page.points.find((point) => focusMatch(point, parsed.focus))?.id ?? null)
 const bounds = ref<MapBounds | null>(null)
 const userOrigin = ref<MapOrigin | null>(null)
 const collapsed = ref(false)
@@ -106,6 +114,7 @@ const controlsBottom = computed(() => {
 
 function chooseCategory(id: BrowseCategory) {
   selectedId.value = null
+  state.value.focus = null
   const current = activeCategory(state.value)
   state.value.sights = null
   state.value.food = null
@@ -135,6 +144,7 @@ function choosePoint(id: string) {
 
 function chooseRoute(slug: string) {
   selectedId.value = null
+  state.value.focus = null
   state.value.category = 'routes'
   state.value.sights = null
   state.value.food = null
@@ -147,6 +157,7 @@ function chooseRoute(slug: string) {
 function back() {
   if (selectedId.value) {
     selectedId.value = null
+    state.value.focus = null
     return
   }
   if (state.value.route) {
