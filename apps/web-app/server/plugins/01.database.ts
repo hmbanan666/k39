@@ -11,6 +11,7 @@ export default defineNitroPlugin(async () => {
       throw new Error('DATABASE_URL is not defined')
     }
     logger.warn('DATABASE_URL is not defined. Database features are off.')
+    markDatabaseReady()
     return
   }
 
@@ -21,5 +22,6 @@ export default defineNitroPlugin(async () => {
   await mkdir(mediaDir, { recursive: true }).catch((error: unknown) => {
     logger.warn('MEDIA_DIR is not writable', mediaDir, error)
   })
+  markDatabaseReady()
   logger.success('Database ready')
 })
