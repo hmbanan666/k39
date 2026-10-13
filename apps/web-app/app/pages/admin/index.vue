@@ -1,7 +1,7 @@
 <template>
   <main class="admin">
     <h1>Админка K39</h1>
-    <p>Черновики, проверка и публикация. Буклет фортов на /map/forty скрыт, пока не включён FEATURE_MAP.</p>
+    <p>Черновики, проверка и публикация.</p>
     <p><a href="/admin/places">Места</a></p>
     <p><a href="/admin/venues">Заведения</a></p>
     <p><a href="/admin/routes">Маршруты</a></p>

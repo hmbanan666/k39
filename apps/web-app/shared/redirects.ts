@@ -9,7 +9,6 @@ export interface RedirectInput {
   protoHeader?: string
   path: string
   search?: string
-  mapEnabled?: boolean
   redirects?: StoredRedirect[]
 }
 
@@ -31,7 +30,7 @@ function isPublicHost(hostname: string) {
   return hostname === 'k39.online' || hostname === 'www.k39.online'
 }
 
-export function rewritePath(path: string, _mapEnabled: boolean) {
+export function rewritePath(path: string) {
   const normalized = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path
   const place = /^\/place\/([^/]+)$/.exec(normalized)
   if (place?.[1]) {
@@ -68,7 +67,7 @@ export function decideRedirect(input: RedirectInput): RedirectDecision {
   const hostname = hostnameOf(input.hostHeader)
   const publicHost = isPublicHost(hostname)
   const search = input.search ?? ''
-  const rewritten = rewritePath(input.path || '/', input.mapEnabled === true)
+  const rewritten = rewritePath(input.path || '/')
   const followed = followRedirects(rewritten, input.redirects ?? [])
   if (followed.gone) {
     return { kind: 'gone' }

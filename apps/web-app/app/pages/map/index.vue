@@ -1,5 +1,5 @@
 <template>
-  <div class="karta">
+  <div class="visitor-map">
     <h1 class="sr">
       {{ page.doc.h1 }}
     </h1>
@@ -202,7 +202,7 @@ function syncChrome() {
 
 function syncPanelVar() {
   const width = mobile.value || collapsed.value ? 0 : panelWidth.value
-  document.documentElement.style.setProperty('--karta-panel', `${width}px`)
+  document.documentElement.style.setProperty('--map-panel', `${width}px`)
 }
 
 let headerObserver: ResizeObserver | undefined
@@ -239,12 +239,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
   headerObserver?.disconnect()
   window.removeEventListener('resize', syncChrome)
-  document.documentElement.style.removeProperty('--karta-panel')
+  document.documentElement.style.removeProperty('--map-panel')
 })
 </script>
 
 <style scoped>
-.karta {
+.visitor-map {
   position: relative;
   height: calc(100dvh - var(--site-header-offset, 7.5rem));
   background: #efe6d4;
@@ -261,22 +261,22 @@ onBeforeUnmount(() => {
   border: 0;
 }
 @media (min-width: 900px) {
-  .karta { height: calc(100dvh - var(--site-header-offset, 4.75rem)); }
+  .visitor-map { height: calc(100dvh - var(--site-header-offset, 4.75rem)); }
 }
 </style>
 
 <style>
-html:has(.karta),
-body:has(.karta) {
+html:has(.visitor-map),
+body:has(.visitor-map) {
   height: 100%;
   overflow: clip;
 }
-body:has(.karta) .site-footer { margin-top: 0; }
-body:has([aria-label="Уведомление о cookie"]) .karta {
+body:has(.visitor-map) .site-footer { margin-top: 0; }
+body:has([aria-label="Уведомление о cookie"]) .visitor-map {
   height: calc(100dvh - var(--site-header-offset, 7.5rem) - 56px);
 }
 @media (min-width: 900px) {
-  body:has([aria-label="Уведомление о cookie"]) .karta {
+  body:has([aria-label="Уведомление о cookie"]) .visitor-map {
     height: calc(100dvh - var(--site-header-offset, 4.75rem) - 56px);
   }
 }

@@ -99,7 +99,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.embed {
+figure.embed {
   position: relative;
   height: 320px;
   margin: 1rem 0 1.4rem;
@@ -124,8 +124,8 @@ onMounted(() => {
   box-shadow: var(--shadow-card);
 }
 .open:hover { color: var(--color-brick); }
-.fill { height: 100%; margin: 0; }
+figure.fill { height: 100%; margin: 0; }
 @media (min-width: 900px) {
-  .embed:not(.fill) { height: 460px; }
+  figure.embed:not(.fill) { height: 460px; }
 }
 </style>

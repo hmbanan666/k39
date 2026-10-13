@@ -551,19 +551,21 @@ describe('redirects', () => {
       hostHeader: 'k39.online',
       protoHeader: 'https',
       path: '/map',
-      mapEnabled: false,
     }).kind).toBe('none')
     expect(decideRedirect({
       hostHeader: 'k39.online',
       protoHeader: 'https',
       path: '/map/forty',
-      mapEnabled: false,
+    }).kind).toBe('none')
+    expect(decideRedirect({
+      hostHeader: 'k39.online',
+      protoHeader: 'https',
+      path: '/karta',
     }).kind).toBe('none')
     expect(decideRedirect({
       hostHeader: 'k39.online',
       protoHeader: 'https',
       path: '/map/kaliningrad',
-      mapEnabled: false,
     }).kind).toBe('none')
 
     const gone = decideRedirect({

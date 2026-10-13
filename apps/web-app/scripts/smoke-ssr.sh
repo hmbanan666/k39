@@ -97,11 +97,8 @@ check /fort-11-denhoff 200 'Форт'
 check /forty 200
 check /zavedeniya 200
 check /map 200 'Карта Калининградской области'
-if [[ "${FEATURE_MAP:-}" == true ]]; then
-  check /map/forty 200 'Иллюстрированная карта фортов'
-else
-  check /map/forty 404
-fi
+check /map/forty 404
+check /karta 404
 
 if [[ "$fail" != 0 ]]; then
   echo '--- server log ---'
