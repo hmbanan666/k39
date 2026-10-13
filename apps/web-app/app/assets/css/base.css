@@ -8,6 +8,7 @@ html {
   background: var(--bg);
   color: var(--text);
   scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--site-header-offset) + var(--anchor-gap));
 }
 
 body {
@@ -72,7 +73,6 @@ img {
 .prose h3 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
-  scroll-margin-top: calc(var(--site-header-offset, 7.5rem) + 1.75rem);
 }
 .prose h2 { margin: 2.2rem 0 0.8rem; font-size: clamp(1.7rem, 1.3rem + 0.8vw, 2rem); }
 .prose h2:first-child,

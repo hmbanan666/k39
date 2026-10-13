@@ -23,7 +23,7 @@ const { items } = useToast()
 .host {
   position: fixed;
   z-index: 70;
-  top: calc(var(--site-header-offset, 4.75rem) + 0.85rem);
+  top: calc(var(--site-header-offset) + 0.85rem);
   left: calc(50% + (var(--map-panel, 0px) / 2));
   display: grid;
   gap: 0.4rem;

@@ -1,5 +1,8 @@
 <template>
-  <header class="site-header">
+  <header
+    ref="headerRef"
+    class="site-header"
+  >
     <div class="frame bar">
       <a
         href="/"
@@ -71,6 +74,29 @@ const { loggedIn, user } = useUserSession()
 const hubs = HUBS
 const path = computed(() => route.path)
 const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
+
+// The tokens give the exact height for the usual layout. When the pill row
+// wraps (narrow desktop with an extra admin link, zoomed text), the live
+// height replaces it, so sticky offsets and anchor jumps stay correct.
+const headerRef = ref<HTMLElement | null>(null)
+let resizeObserver: ResizeObserver | undefined
+
+function syncOffset() {
+  const height = headerRef.value?.getBoundingClientRect().height
+  if (height) {
+    document.documentElement.style.setProperty('--site-header-offset', `${height}px`)
+  }
+}
+
+onMounted(() => {
+  syncOffset()
+  if (headerRef.value && 'ResizeObserver' in window) {
+    resizeObserver = new ResizeObserver(syncOffset)
+    resizeObserver.observe(headerRef.value)
+  }
+})
+
+onBeforeUnmount(() => resizeObserver?.disconnect())
 </script>
 
 <style scoped>
@@ -78,14 +104,14 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
   position: sticky;
   top: 0;
   z-index: var(--z-header);
-  border-bottom: 1px solid var(--color-line);
+  border-bottom: var(--header-border) solid var(--color-line);
   background-color: var(--color-surface);
 }
 .bar {
   display: flex;
   align-items: center;
   gap: 2rem;
-  min-height: 72px;
+  min-height: var(--header-bar);
 }
 .logo {
   display: flex;
@@ -138,14 +164,14 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
 @media (max-width: 899px) {
   .bar {
     flex-wrap: wrap;
-    gap: 0.5rem 0;
+    gap: var(--header-row-gap) 0;
     min-height: 0;
-    padding-bottom: 0.7rem;
+    padding-bottom: var(--header-pad-bottom);
   }
   .logo {
     display: flex;
     align-items: center;
-    height: 60px;
+    height: var(--header-logo-row);
   }
   .logo-word { font-size: 1.3rem; }
   .logo-word small { display: none; }
@@ -157,8 +183,11 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
   }
   .account { margin-left: 0; }
   .nav a {
+    display: inline-flex;
     flex: none;
-    padding: 0.45rem 0.75rem;
+    align-items: center;
+    height: var(--header-pill);
+    padding: 0 0.75rem;
     border: 1px solid var(--color-line);
     border-radius: 999px;
     background: var(--color-surface);
