@@ -14,6 +14,7 @@ export interface AnalyticsHitDraft {
   path: string
   placeId?: string | null
   routeId?: string | null
+  venueId?: string | null
   referrer?: string | null
   referrerHost?: string | null
   utmSource?: string | null
@@ -63,6 +64,7 @@ export class Analytics {
       path: row.path.slice(0, 500),
       placeId: row.placeId ?? null,
       routeId: row.routeId ?? null,
+      venueId: row.venueId ?? null,
       referrer: row.referrer?.slice(0, 1000) ?? null,
       referrerHost: row.referrerHost ?? null,
       utmSource: row.utmSource ?? null,
@@ -117,17 +119,44 @@ export class Analytics {
   static async resolvePath(path: string) {
     const clean = path.split('?')[0] || '/'
     const parts = clean.split('/').filter(Boolean)
+    const empty = { placeId: null as string | null, routeId: null as string | null, venueId: null as string | null }
     if (parts.length === 1 && parts[0]) {
       const result = await useDatabase().execute(sql`select id from places where slug = ${parts[0]} limit 1`)
       const id = rowsOf<{ id: string }>(result)[0]?.id ?? null
-      return { placeId: id, routeId: null as string | null }
+      return { ...empty, placeId: id }
     }
     if (parts[0] === 'marshruty' && parts[1]) {
       const result = await useDatabase().execute(sql`select id from routes where slug = ${parts[1]} limit 1`)
       const id = rowsOf<{ id: string }>(result)[0]?.id ?? null
-      return { placeId: null as string | null, routeId: id }
+      return { ...empty, routeId: id }
     }
-    return { placeId: null as string | null, routeId: null as string | null }
+    if (parts[0] === 'zavedeniya' && parts[1] && !parts[2]) {
+      const result = await useDatabase().execute(sql`select id from venues where slug = ${parts[1]} limit 1`)
+      const id = rowsOf<{ id: string }>(result)[0]?.id ?? null
+      return { ...empty, venueId: id }
+    }
+    return empty
+  }
+
+  static async venueStats(venueId: string | null, from: Date, to: Date) {
+    const venueClause = venueId ? sql`and venue_id = ${venueId}` : sql`and venue_id is not null`
+    const result = await useDatabase().execute(sql`
+      select venue_id,
+        count(*) filter (where event_type = 'impression')::int as impressions,
+        count(*) filter (where event_type = 'pageview')::int as pageviews
+      from analytics_hits
+      where is_bot = false
+        and occurred_at >= ${from.toISOString()}
+        and occurred_at < ${to.toISOString()}
+        ${venueClause}
+      group by venue_id
+      order by impressions desc, pageviews desc
+    `)
+    return rowsOf<{ venue_id: string, impressions: number, pageviews: number }>(result).map((row) => ({
+      venueId: row.venue_id,
+      impressions: Number(row.impressions) || 0,
+      pageviews: Number(row.pageviews) || 0,
+    }))
   }
 
   static async overview(from: Date, to: Date) {

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const pageKindSchema = z.enum(['place', 'route', 'collection', 'hub', 'quest'])
+export const pageKindSchema = z.enum(['place', 'route', 'collection', 'hub', 'quest', 'venue'])
 export const primaryActionSchema = z.enum(['build_route', 'buy_ticket', 'go_next_place', 'claim_offer', 'read'])
 export const scoreBlockSchema = z.enum(['quality', 'linking', 'indexing', 'results'])
 

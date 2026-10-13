@@ -78,6 +78,25 @@ export interface CatalogPassport {
   notes: string | null
 }
 
+export interface CatalogVenue {
+  id: string
+  slug: string
+  name: string
+  kind: string
+  description: string
+  hoursSet: boolean
+  latitude: number | null
+  longitude: number | null
+  publicationStatus: 'draft' | 'published'
+  noindex: boolean
+  seoTitle: string | null
+  seoDescription: string | null
+  factsCheckedAt: string | null
+  regionSlug: string | null
+  regionTitle: string | null
+  updatedAt: string
+}
+
 export interface ContentCatalog {
   places: ScorePlace[]
   routes: CatalogArticle[]
@@ -87,8 +106,10 @@ export interface ContentCatalog {
   quests: CatalogArticle[]
   questStops: CatalogStop[]
   hubs: CatalogHub[]
+  venues: CatalogVenue[]
   related: Array<{ fromSlug: string, toSlug: string }>
   photos: Array<{ placeId: string, count: number }>
+  venuePhotos: Array<{ venueId: string, count: number }>
   passports: CatalogPassport[]
 }
 

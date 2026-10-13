@@ -1,5 +1,7 @@
 export * from './database'
 export { repository as db } from './repository'
+export type { VenueListFilter, VenueWrite } from './repository/venues'
 export { applyInitialContent } from './seed/apply'
 export * as tables from './tables'
 export type * from './types'
+export * from './venues'

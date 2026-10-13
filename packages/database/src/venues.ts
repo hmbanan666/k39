@@ -1,0 +1,553 @@
+import type { SourceLink } from './types/entities'
+
+export const FOOD_KINDS = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other'] as const
+
+export type FoodKind = (typeof FOOD_KINDS)[number]
+
+export type VenueStatus = 'draft' | 'published' | 'closed' | 'archived'
+
+export const VENUE_STATUSES: VenueStatus[] = ['draft', 'published', 'closed', 'archived']
+
+export const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
+
+export type Weekday = (typeof WEEKDAYS)[number]
+
+export const STALE_DAYS = 180
+
+export const NEARBY_MAX_DAYS = 365
+
+export const NEARBY_RADIUS_KM = 5
+
+export const NEARBY_LIMIT = 5
+
+export const DESCRIPTION_MIN = 300
+
+export const DESCRIPTION_MAX = 600
+
+export const LISTING_INTRO_MIN = 300
+
+export const KIND_PATH: Record<FoodKind, string> = {
+  cafe: 'kafe',
+  restaurant: 'restoran',
+  coffee: 'kofe',
+  bar: 'bar',
+  bakery: 'pekarnya',
+  market: 'rynok',
+  fastfood: 'fastfud',
+  other: 'drugoe',
+}
+
+export const KIND_LABEL: Record<FoodKind, string> = {
+  cafe: 'кафе',
+  restaurant: 'ресторан',
+  coffee: 'кофейня',
+  bar: 'бар',
+  bakery: 'пекарня',
+  market: 'рынок',
+  fastfood: 'фастфуд',
+  other: 'другое',
+}
+
+export const KIND_HEADING: Record<FoodKind, string> = {
+  cafe: 'Кафе',
+  restaurant: 'Рестораны',
+  coffee: 'Кофейни',
+  bar: 'Бары',
+  bakery: 'Пекарни',
+  market: 'Рынки',
+  fastfood: 'Фастфуд',
+  other: 'Другие заведения',
+}
+
+const PATH_KIND = new Map<string, FoodKind>(FOOD_KINDS.map((kind) => [KIND_PATH[kind], kind]))
+
+const WEEKDAY_LABEL: Record<Weekday, string> = {
+  mon: 'пн',
+  tue: 'вт',
+  wed: 'ср',
+  thu: 'чт',
+  fri: 'пт',
+  sat: 'сб',
+  sun: 'вс',
+}
+
+const OSM_DAY: Record<string, Weekday> = {
+  Mo: 'mon',
+  Tu: 'tue',
+  We: 'wed',
+  Th: 'thu',
+  Fr: 'fri',
+  Sa: 'sat',
+  Su: 'sun',
+}
+
+const RU: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y',
+  к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f',
+  х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+}
+
+export interface VenueDayHours {
+  weekday: Weekday
+  closed: boolean
+  opens: string | null
+  closes: string | null
+}
+
+export interface VenueHours {
+  days: VenueDayHours[]
+  note: string | null
+}
+
+export interface VenueSocial {
+  network: string
+  url: string
+}
+
+export interface NearbyCandidate {
+  id: string
+  distanceKm: number
+  sponsored: boolean
+}
+
+export interface OsmElement {
+  type: string
+  id: number
+  lat?: number
+  lon?: number
+  center?: { lat?: number, lon?: number }
+  tags?: Record<string, string>
+}
+
+export interface OsmDraft {
+  osmId: string
+  name: string
+  slug: string
+  kind: string
+  cuisineTags: string[]
+  latitude: number
+  longitude: number
+  address: string | null
+  phone: string | null
+  website: string | null
+  hours: VenueHours
+  sources: SourceLink[]
+}
+
+export class VenueInputError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'VenueInputError'
+  }
+}
+
+export function isFoodKind(kind: string): kind is FoodKind {
+  return (FOOD_KINDS as readonly string[]).includes(kind)
+}
+
+export function kindFromPath(segment: string): FoodKind | null {
+  return PATH_KIND.get(segment) ?? null
+}
+
+export function kindPath(kind: string) {
+  return isFoodKind(kind) ? KIND_PATH[kind] : kind
+}
+
+export function kindLabel(kind: string) {
+  return isFoodKind(kind) ? KIND_LABEL[kind] : kind
+}
+
+export function kindHeading(kind: string) {
+  return isFoodKind(kind) ? KIND_HEADING[kind] : kind
+}
+
+export function venueSchemaType(kind: string) {
+  if (kind === 'market' || kind === 'other' || !isFoodKind(kind)) {
+    return 'LocalBusiness'
+  }
+  return 'Restaurant'
+}
+
+export function transliterateVenueSlug(value: string) {
+  const lowered = value.trim().toLowerCase()
+  const mapped = lowered.split('').map((char) => RU[char] ?? char).join('')
+  return mapped.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+export function assertKind(kind: string) {
+  if (!/^[a-z][a-z0-9_]{0,31}$/.test(kind)) {
+    throw new VenueInputError('Тип заведения: латиница, с маленькой буквы')
+  }
+}
+
+export function assertVenueSlug(slug: string, reserved: ReadonlySet<string>) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    throw new VenueInputError('Адрес: только латиница, цифры и дефисы')
+  }
+  if (reserved.has(slug) || PATH_KIND.has(slug)) {
+    throw new VenueInputError('Этот адрес занят разделом или регионом')
+  }
+}
+
+export function descriptionLength(value: string) {
+  return value.trim().length
+}
+
+export function descriptionPublishError(value: string) {
+  const length = descriptionLength(value)
+  if (length < DESCRIPTION_MIN || length > DESCRIPTION_MAX) {
+    return `Описание для публикации: ${DESCRIPTION_MIN}-${DESCRIPTION_MAX} знаков, сейчас ${length}`
+  }
+  return null
+}
+
+export function emptyHours(note: string | null = null): VenueHours {
+  return {
+    days: WEEKDAYS.map((weekday) => ({ weekday, closed: true, opens: null, closes: null })),
+    note,
+  }
+}
+
+const CLOCK = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+
+export function normalizeHours(value: unknown): VenueHours {
+  const raw = value && typeof value === 'object' ? value as { days?: unknown, note?: unknown } : {}
+  const note = typeof raw.note === 'string' ? raw.note.trim().slice(0, 300) || null : null
+  const given = new Map<Weekday, VenueDayHours>()
+  if (Array.isArray(raw.days)) {
+    for (const item of raw.days) {
+      if (!item || typeof item !== 'object') {
+        continue
+      }
+      const day = item as { weekday?: unknown, closed?: unknown, opens?: unknown, closes?: unknown }
+      if (typeof day.weekday !== 'string' || !(WEEKDAYS as readonly string[]).includes(day.weekday)) {
+        continue
+      }
+      const weekday = day.weekday as Weekday
+      const closed = day.closed === true
+      const opens = typeof day.opens === 'string' && CLOCK.test(day.opens) ? day.opens : null
+      const closes = typeof day.closes === 'string' && (CLOCK.test(day.closes) || day.closes === '24:00') ? day.closes : null
+      if (!closed && (!opens || !closes)) {
+        throw new VenueInputError(`Часы ${weekday}: нужны opens и closes, либо closed`)
+      }
+      given.set(weekday, { weekday, closed: closed || !opens, opens: closed ? null : opens, closes: closed ? null : closes })
+    }
+  }
+  return {
+    days: WEEKDAYS.map((weekday) => given.get(weekday) ?? { weekday, closed: true, opens: null, closes: null }),
+    note,
+  }
+}
+
+export function hoursAreSet(hours: VenueHours) {
+  return Boolean(hours.note?.trim()) || hours.days.some((day) => !day.closed && day.opens && day.closes)
+}
+
+export function formatHoursLines(hours: VenueHours) {
+  const lines: string[] = []
+  let index = 0
+  while (index < hours.days.length) {
+    const day = hours.days[index]!
+    const key = day.closed ? 'closed' : `${day.opens}-${day.closes}`
+    let end = index
+    while (end + 1 < hours.days.length) {
+      const next = hours.days[end + 1]!
+      const nextKey = next.closed ? 'closed' : `${next.opens}-${next.closes}`
+      if (nextKey !== key) {
+        break
+      }
+      end += 1
+    }
+    const label = index === end
+      ? WEEKDAY_LABEL[day.weekday]
+      : `${WEEKDAY_LABEL[day.weekday]}-${WEEKDAY_LABEL[hours.days[end]!.weekday]}`
+    lines.push(day.closed ? `${label} выходной` : `${label} ${day.opens}-${day.closes}`)
+    index = end + 1
+  }
+  if (hours.note?.trim()) {
+    lines.push(hours.note.trim())
+  }
+  return lines
+}
+
+export function verifiedAgeDays(value: string | null | undefined, now: Date) {
+  if (!value) {
+    return null
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+  return Math.floor((now.getTime() - date.getTime()) / 86_400_000)
+}
+
+export function isStale(value: string | null | undefined, now: Date) {
+  const age = verifiedAgeDays(value, now)
+  return age == null || age > STALE_DAYS
+}
+
+export function nearbyFresh(value: string | null | undefined, now: Date) {
+  const age = verifiedAgeDays(value, now)
+  return age != null && age <= NEARBY_MAX_DAYS
+}
+
+export function formatVenueDistance(km: number) {
+  if (!Number.isFinite(km) || km < 0) {
+    return ''
+  }
+  if (km < 1) {
+    const meters = Math.max(10, Math.round((km * 1000) / 10) * 10)
+    return `${meters} м`
+  }
+  if (km < 10) {
+    const rounded = Math.round(km * 10) / 10
+    return `${rounded.toFixed(1).replace('.', ',')} км`
+  }
+  return `${Math.round(km)} км`
+}
+
+export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
+  const toRad = (value: number) => value * Math.PI / 180
+  const dLat = toRad(bLat - aLat)
+  const dLng = toRad(bLng - aLng)
+  const lat1 = toRad(aLat)
+  const lat2 = toRad(bLat)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
+
+export function rankNearby<T extends NearbyCandidate>(rows: T[], options: { sponsoredSlot: boolean, limit?: number }) {
+  const limit = options.limit ?? NEARBY_LIMIT
+  const byDistance = [...rows].sort((a, b) => a.distanceKm - b.distanceKm || a.id.localeCompare(b.id))
+  const sponsor = options.sponsoredSlot ? byDistance.find((row) => row.sponsored) : undefined
+  const ordered = sponsor
+    ? [sponsor, ...byDistance.filter((row) => row.id !== sponsor.id)]
+    : byDistance
+  return ordered.slice(0, limit).map((row) => ({
+    ...row,
+    partner: Boolean(sponsor && row.id === sponsor.id),
+  }))
+}
+
+export function listingPath(regionSlug?: string | null, kind?: string | null) {
+  const parts = ['/zavedeniya']
+  if (regionSlug) {
+    parts.push(regionSlug)
+  }
+  if (kind) {
+    parts.push(kindPath(kind))
+  }
+  return parts.join('/')
+}
+
+export type VenuePath
+  = | { type: 'listing', regionSlug: string | null, kind: string | null }
+    | { type: 'venue', slug: string }
+
+export function resolveVenuePath(segments: string[], regionSlugs: ReadonlySet<string>): VenuePath | null {
+  if (segments.length === 0) {
+    return { type: 'listing', regionSlug: null, kind: null }
+  }
+  if (segments.length === 1) {
+    const [segment] = segments
+    if (!segment) {
+      return null
+    }
+    if (regionSlugs.has(segment)) {
+      return { type: 'listing', regionSlug: segment, kind: null }
+    }
+    const kind = kindFromPath(segment)
+    if (kind) {
+      return { type: 'listing', regionSlug: null, kind }
+    }
+    return { type: 'venue', slug: segment }
+  }
+  if (segments.length === 2) {
+    const [region, kindSegment] = segments
+    const kind = kindSegment ? kindFromPath(kindSegment) : null
+    if (!region || !regionSlugs.has(region) || !kind) {
+      return null
+    }
+    return { type: 'listing', regionSlug: region, kind }
+  }
+  return null
+}
+
+function weekdaySpan(start: string, end: string) {
+  const from = OSM_DAY[start]
+  const to = OSM_DAY[end]
+  if (!from || !to) {
+    return null
+  }
+  const startIndex = WEEKDAYS.indexOf(from)
+  const endIndex = WEEKDAYS.indexOf(to)
+  if (startIndex < 0 || endIndex < startIndex) {
+    return null
+  }
+  return WEEKDAYS.slice(startIndex, endIndex + 1)
+}
+
+function applyHoursRule(hours: VenueHours, days: Weekday[], opens: string, closes: string) {
+  for (const weekday of days) {
+    const current = hours.days.find((day) => day.weekday === weekday)
+    if (!current || !current.closed) {
+      continue
+    }
+    current.closed = false
+    current.opens = opens
+    current.closes = closes
+  }
+}
+
+export function parseOsmHours(raw: string | undefined): VenueHours {
+  const text = raw?.trim() || ''
+  if (!text) {
+    return emptyHours()
+  }
+  if (text === '24/7') {
+    const hours = emptyHours()
+    for (const day of hours.days) {
+      day.closed = false
+      day.opens = '00:00'
+      day.closes = '24:00'
+    }
+    return hours
+  }
+  const hours = emptyHours()
+  const rules = text.split(';').map((part) => part.trim()).filter(Boolean)
+  let parsed = 0
+  for (const rule of rules) {
+    const match = /^([A-Z][a-z])(?:-([A-Z][a-z]))?\s+(\d{2}:\d{2})-(\d{2}:\d{2})/.exec(rule)
+    if (!match) {
+      continue
+    }
+    const days = weekdaySpan(match[1] || '', match[2] || match[1] || '')
+    const opens = match[3] || ''
+    const closes = match[4] || ''
+    if (!days || !CLOCK.test(opens) || !(CLOCK.test(closes) || closes === '24:00')) {
+      continue
+    }
+    applyHoursRule(hours, days, opens, closes)
+    parsed += 1
+  }
+  if (!parsed) {
+    return emptyHours(text.slice(0, 300))
+  }
+  if (parsed < rules.length) {
+    hours.note = text.slice(0, 300)
+  }
+  return hours
+}
+
+function cuisineTags(raw: string | undefined) {
+  return [...new Set((raw || '').split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean))].slice(0, 12)
+}
+
+export function osmKind(tags: Record<string, string>) {
+  if (tags.shop === 'bakery') {
+    return { kind: 'bakery', cuisine: cuisineTags(tags.cuisine) }
+  }
+  const amenity = tags.amenity || ''
+  const cuisine = cuisineTags(tags.cuisine)
+  if (amenity === 'fast_food') {
+    return { kind: 'fastfood', cuisine }
+  }
+  if (amenity === 'bar' || amenity === 'pub') {
+    return { kind: 'bar', cuisine }
+  }
+  if (amenity === 'restaurant') {
+    return { kind: 'restaurant', cuisine }
+  }
+  if (amenity === 'ice_cream') {
+    return { kind: 'other', cuisine: cuisine.includes('ice_cream') ? cuisine : ['ice_cream', ...cuisine].slice(0, 12) }
+  }
+  if (amenity === 'cafe') {
+    return { kind: cuisine.includes('coffee') ? 'coffee' : 'cafe', cuisine }
+  }
+  return null
+}
+
+export function osmElementToDraft(element: OsmElement): OsmDraft | null {
+  if (element.type !== 'node' && element.type !== 'way' && element.type !== 'relation') {
+    return null
+  }
+  const tags = element.tags || {}
+  const mapped = osmKind(tags)
+  const name = (tags['name:ru'] || tags.name || '').trim()
+  const latitude = element.lat ?? element.center?.lat
+  const longitude = element.lon ?? element.center?.lon
+  if (!mapped || !name || latitude == null || longitude == null) {
+    return null
+  }
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return null
+  }
+  const street = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(', ')
+  const city = tags['addr:city']?.trim()
+  const address = [city, street].filter(Boolean).join(', ') || null
+  const slug = transliterateVenueSlug(name)
+  if (!slug) {
+    return null
+  }
+  return {
+    osmId: `${element.type}/${element.id}`,
+    name: name.slice(0, 160),
+    slug,
+    kind: mapped.kind,
+    cuisineTags: mapped.cuisine,
+    latitude,
+    longitude,
+    address: address ? address.slice(0, 300) : null,
+    phone: (tags.phone || tags['contact:phone'] || '').trim().slice(0, 40) || null,
+    website: (tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null,
+    hours: parseOsmHours(tags.opening_hours),
+    sources: [{ title: 'OpenStreetMap', url: `https://www.openstreetmap.org/${element.type}/${element.id}` }],
+  }
+}
+
+const AMENITY = 'cafe|restaurant|bar|fast_food|pub|ice_cream'
+
+export function overpassQuery(input: { latitude: number, longitude: number, radiusMeters: number } | { south: number, west: number, north: number, east: number }) {
+  const clause = 'latitude' in input
+    ? `(around:${Math.round(input.radiusMeters)},${input.latitude},${input.longitude})`
+    : `(${input.south},${input.west},${input.north},${input.east})`
+  return `[out:json][timeout:25];(node["amenity"~"^(${AMENITY})$"]${clause};way["amenity"~"^(${AMENITY})$"]${clause};node["shop"="bakery"]${clause};way["shop"="bakery"]${clause};);out center tags;`
+}
+
+export function assertOverpassArea(input: { latitude: number, longitude: number, radiusMeters: number } | { south: number, west: number, north: number, east: number }) {
+  if ('latitude' in input) {
+    if (input.latitude < -90 || input.latitude > 90 || input.longitude < -180 || input.longitude > 180) {
+      throw new VenueInputError('Координаты вне диапазона')
+    }
+    if (input.radiusMeters < 50 || input.radiusMeters > 20_000) {
+      throw new VenueInputError('Радиус: от 50 до 20000 метров')
+    }
+    return
+  }
+  if (input.south >= input.north || input.west >= input.east) {
+    throw new VenueInputError('bbox: south < north и west < east')
+  }
+  if (input.north - input.south > 0.5 || input.east - input.west > 0.5) {
+    throw new VenueInputError('bbox слишком большой')
+  }
+}
+
+export function priceMarks(level: number | null) {
+  if (level == null || level < 1) {
+    return ''
+  }
+  return '₽'.repeat(Math.min(4, level))
+}
+
+export function formatAvgCheck(rubles: number | null) {
+  if (rubles == null) {
+    return ''
+  }
+  return `средний чек ${new Intl.NumberFormat('ru-RU').format(rubles)} ₽`
+}
+
+export const STALE_NOTE = 'Сведения не проверялись больше 180 дней. Уточните часы перед визитом.'
+
+export const STALE_CARD_NOTE = 'Давно не проверяли'
+
+export const CLOSED_NOTE = 'Заведение закрыто.'

@@ -12,7 +12,7 @@ export type OfferStatus = 'draft' | 'active' | 'paused' | 'ended'
 
 export type OfferCodeStatus = 'issued' | 'redeemed'
 
-export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest'
+export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest' | 'venue'
 
 export type PrimaryAction = 'build_route' | 'buy_ticket' | 'go_next_place' | 'claim_offer' | 'read'
 

@@ -23,6 +23,8 @@ Regions: regionSlug must be a slug from region_list. region_upsert creates or up
 
 Page passports: page_passport_get and page_passport_set store targetQueries, audience, primaryAction (build_route, buy_ticket, go_next_place, claim_offer, read), goal30d, goal90d, and notes for a place, route, collection, hub, or quest. claim_offer names the action. It does not create an offer. content_scores_list, content_score_get, and content_report_weekly read the 0-100 score. A score is quality, linking, indexing, and results. Refresh on content_score_get recomputes every page.
 
+Venues: venue_create and venue_update edit cafes and other businesses. kind is cafe, restaurant, coffee, bar, bakery, market, fastfood, other, or a later latin token such as shop. OSM import (venue_import_osm) only creates drafts and does not overwrite an osmId that already exists. Publish only after a check, with a Russian description of 300-600 characters, and set lastVerifiedAt. A venue is stale after 180 days and leaves «Где поесть рядом» after 365. Do not invent hours or a bill. venue_listing_intro_set writes the text for /zavedeniya/{region}/{kind}. An intro of at least 300 characters is what makes that filter URL indexable.
+
 Hubs: hub_update edits a category. body is markdown shown on the hub page. A heading line "## Частые вопросы" in that body becomes FAQPage, the same parser as a place. A question is a line "**…?**" or a "###" heading. The next "##" heading ends the section. seoTitle, seoDescription, ogImage, and noindex match /admin. Omitting a field keeps the stored value. The write is an mcp_audits row.
 `
 

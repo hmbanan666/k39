@@ -1,0 +1,608 @@
+import type { SourceLink } from '../types/entities'
+import type { OsmDraft, VenueSocial, VenueStatus } from '../venues'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { useDatabase } from '../database'
+import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
+import {
+  assertKind,
+  assertVenueSlug,
+  descriptionPublishError,
+  emptyHours,
+  FOOD_KINDS,
+  isFoodKind,
+  NEARBY_MAX_DAYS,
+  NEARBY_RADIUS_KM,
+  normalizeHours,
+  STALE_DAYS,
+  transliterateVenueSlug,
+  VenueInputError,
+} from '../venues'
+
+export interface VenueWrite {
+  slug?: string
+  name?: string
+  kind?: string
+  cuisineTags?: string[]
+  regionId?: string | null
+  address?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  priceLevel?: number | null
+  avgCheck?: number | null
+  hours?: unknown
+  phone?: string | null
+  website?: string | null
+  socials?: VenueSocial[]
+  description?: string
+  sources?: SourceLink[]
+  status?: VenueStatus
+  lastVerifiedAt?: string | null
+  osmId?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  noindex?: boolean
+}
+
+export interface VenueListFilter {
+  regionId?: string | null
+  kind?: string
+  status?: VenueStatus
+  stale?: boolean
+  near?: { latitude: number, longitude: number, radiusKm: number }
+  foodOnly?: boolean
+  limit?: number
+}
+
+function cleanText(value: string | null | undefined, max: number) {
+  if (value == null) {
+    return null
+  }
+  const trimmed = value.trim()
+  return trimmed ? trimmed.slice(0, max) : null
+}
+
+function cleanTags(tags: string[] | undefined) {
+  if (!tags) {
+    return undefined
+  }
+  return [...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter((tag) => tag.length > 0 && tag.length <= 40))].slice(0, 12)
+}
+
+function cleanSocials(rows: VenueSocial[] | undefined) {
+  if (!rows) {
+    return undefined
+  }
+  return rows
+    .map((row) => ({ network: row.network.trim().toLowerCase().slice(0, 24), url: row.url.trim().slice(0, 300) }))
+    .filter((row) => row.network && /^https?:\/\//.test(row.url))
+    .slice(0, 8)
+}
+
+function cleanSources(rows: SourceLink[] | undefined) {
+  if (!rows) {
+    return undefined
+  }
+  return rows
+    .map((row) => ({ title: row.title.trim().slice(0, 160), url: row.url.trim().slice(0, 500) }))
+    .filter((row) => row.title && /^https?:\/\//.test(row.url))
+    .slice(0, 12)
+}
+
+function assertMoney(priceLevel: number | null | undefined, avgCheck: number | null | undefined) {
+  if (priceLevel != null && (!Number.isInteger(priceLevel) || priceLevel < 1 || priceLevel > 4)) {
+    throw new VenueInputError('Уровень цен: от 1 до 4')
+  }
+  if (avgCheck != null && (!Number.isInteger(avgCheck) || avgCheck < 0 || avgCheck > 1_000_000)) {
+    throw new VenueInputError('Средний чек: целое число рублей')
+  }
+}
+
+function assertPoint(latitude: number | null | undefined, longitude: number | null | undefined) {
+  if (latitude == null && longitude == null) {
+    return
+  }
+  if (latitude == null || longitude == null || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    throw new VenueInputError('Координаты вне диапазона')
+  }
+}
+
+function isUniqueViolation(error: unknown) {
+  const row = error as { code?: string, cause?: { code?: string } }
+  return row.code === '23505' || row.cause?.code === '23505'
+}
+
+async function reservedSlugs() {
+  const rows = await useDatabase().select({ slug: regions.slug }).from(regions)
+  return new Set(rows.map((row) => row.slug))
+}
+
+async function markGone(fromPath: string) {
+  const db = useDatabase()
+  const [existing] = await db.select().from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
+  if (!existing) {
+    await db.insert(slugRedirects).values({ fromPath, toPath: null, statusCode: 410 })
+    return
+  }
+  await db.update(slugRedirects).set({ toPath: null, statusCode: 410 }).where(eq(slugRedirects.id, existing.id))
+}
+
+async function clearGone(fromPath: string) {
+  await useDatabase().delete(slugRedirects).where(and(eq(slugRedirects.fromPath, fromPath), eq(slugRedirects.statusCode, 410)))
+}
+
+async function rememberSlug(fromSlug: string, toSlug: string) {
+  const fromPath = `/zavedeniya/${fromSlug}`
+  const toPath = `/zavedeniya/${toSlug}`
+  const db = useDatabase()
+  const [existing] = await db.select().from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
+  if (!existing) {
+    await db.insert(slugRedirects).values({ fromPath, toPath, statusCode: 301 })
+    return
+  }
+  await db.update(slugRedirects).set({ toPath, statusCode: 301 }).where(eq(slugRedirects.id, existing.id))
+}
+
+function rowsOf<T>(result: unknown): T[] {
+  if (Array.isArray(result)) {
+    return result as T[]
+  }
+  return (result as { rows?: T[] }).rows ?? []
+}
+
+function numArray(values: number[]) {
+  return sql`array[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::float8[]`
+}
+
+export class Venues {
+  static async byId(id: string) {
+    const [row] = await useDatabase().select().from(venues).where(eq(venues.id, id)).limit(1)
+    return row ?? null
+  }
+
+  static async bySlug(slug: string) {
+    const [row] = await useDatabase().select().from(venues).where(eq(venues.slug, slug)).limit(1)
+    return row ?? null
+  }
+
+  static async byOsmId(osmId: string) {
+    const [row] = await useDatabase().select().from(venues).where(eq(venues.osmId, osmId)).limit(1)
+    return row ?? null
+  }
+
+  static async regionBySlug(slug: string) {
+    const [row] = await useDatabase().select().from(regions).where(eq(regions.slug, slug)).limit(1)
+    return row ?? null
+  }
+
+  static async create(input: VenueWrite, userId?: string | null) {
+    const name = input.name?.trim()
+    if (!name) {
+      throw new VenueInputError('Нужно название')
+    }
+    if (!input.kind) {
+      throw new VenueInputError('Нужен тип заведения')
+    }
+    assertKind(input.kind)
+    const slug = (input.slug?.trim() || transliterateVenueSlug(name))
+    assertVenueSlug(slug, await reservedSlugs())
+    const status = input.status ?? 'draft'
+    const description = input.description ?? ''
+    if (status === 'published') {
+      const problem = descriptionPublishError(description)
+      if (problem) {
+        throw new VenueInputError(problem)
+      }
+    }
+    assertMoney(input.priceLevel, input.avgCheck)
+    assertPoint(input.latitude, input.longitude)
+    const hours = input.hours === undefined ? emptyHours() : normalizeHours(input.hours)
+    try {
+      const [created] = await useDatabase().insert(venues).values({
+        slug,
+        name: name.slice(0, 160),
+        kind: input.kind,
+        cuisineTags: cleanTags(input.cuisineTags) ?? [],
+        regionId: input.regionId ?? null,
+        address: cleanText(input.address, 300),
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
+        priceLevel: input.priceLevel ?? null,
+        avgCheck: input.avgCheck ?? null,
+        hours,
+        phone: cleanText(input.phone, 40),
+        website: cleanText(input.website, 300),
+        socials: cleanSocials(input.socials) ?? [],
+        description,
+        sources: cleanSources(input.sources) ?? [],
+        status,
+        lastVerifiedAt: input.lastVerifiedAt ?? null,
+        osmId: cleanText(input.osmId, 80),
+        seoTitle: cleanText(input.seoTitle, 180),
+        seoDescription: cleanText(input.seoDescription, 300),
+        noindex: input.noindex ?? false,
+        updatedBy: userId ?? null,
+      }).returning()
+      if (!created) {
+        throw new VenueInputError('Не удалось сохранить заведение')
+      }
+      if (status === 'archived') {
+        await markGone(`/zavedeniya/${created.slug}`)
+      }
+      return created
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new VenueInputError('Такой адрес или osmId уже есть')
+      }
+      throw error
+    }
+  }
+
+  static async update(id: string, input: VenueWrite, userId?: string | null) {
+    const current = await this.byId(id)
+    if (!current) {
+      return null
+    }
+    const nextStatus = input.status ?? current.status
+    const nextDescription = input.description ?? current.description
+    if (nextStatus === 'published') {
+      const problem = descriptionPublishError(nextDescription)
+      if (problem) {
+        throw new VenueInputError(problem)
+      }
+    }
+    if (input.kind) {
+      assertKind(input.kind)
+    }
+    const nextSlug = input.slug?.trim() || current.slug
+    if (nextSlug !== current.slug) {
+      assertVenueSlug(nextSlug, await reservedSlugs())
+    }
+    const latitude = input.latitude === undefined ? current.latitude : input.latitude
+    const longitude = input.longitude === undefined ? current.longitude : input.longitude
+    assertPoint(latitude, longitude)
+    const priceLevel = input.priceLevel === undefined ? current.priceLevel : input.priceLevel
+    const avgCheck = input.avgCheck === undefined ? current.avgCheck : input.avgCheck
+    assertMoney(priceLevel, avgCheck)
+    const hours = input.hours === undefined ? current.hours : normalizeHours(input.hours)
+    await useDatabase().insert(revisions).values({
+      entityType: 'venue',
+      entityId: current.id,
+      snapshot: current,
+      updatedBy: userId ?? null,
+    })
+    if (nextSlug !== current.slug) {
+      await rememberSlug(current.slug, nextSlug)
+    }
+    try {
+      const [updated] = await useDatabase().update(venues).set({
+        slug: nextSlug,
+        name: input.name === undefined ? current.name : input.name.trim().slice(0, 160),
+        kind: input.kind ?? current.kind,
+        cuisineTags: cleanTags(input.cuisineTags) ?? current.cuisineTags,
+        regionId: input.regionId === undefined ? current.regionId : input.regionId,
+        address: input.address === undefined ? current.address : cleanText(input.address, 300),
+        latitude,
+        longitude,
+        priceLevel,
+        avgCheck,
+        hours,
+        phone: input.phone === undefined ? current.phone : cleanText(input.phone, 40),
+        website: input.website === undefined ? current.website : cleanText(input.website, 300),
+        socials: cleanSocials(input.socials) ?? current.socials,
+        description: nextDescription,
+        sources: cleanSources(input.sources) ?? current.sources,
+        status: nextStatus,
+        lastVerifiedAt: input.lastVerifiedAt === undefined ? current.lastVerifiedAt : input.lastVerifiedAt,
+        osmId: input.osmId === undefined ? current.osmId : cleanText(input.osmId, 80),
+        seoTitle: input.seoTitle === undefined ? current.seoTitle : cleanText(input.seoTitle, 180),
+        seoDescription: input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
+        noindex: input.noindex ?? current.noindex,
+        updatedBy: userId ?? null,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(venues.id, current.id)).returning()
+      const saved = updated ?? current
+      const path = `/zavedeniya/${saved.slug}`
+      if (nextStatus === 'archived') {
+        await markGone(path)
+      } else if (current.status === 'archived') {
+        await clearGone(path)
+        if (current.slug !== saved.slug) {
+          await clearGone(`/zavedeniya/${current.slug}`)
+        }
+      }
+      return saved
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new VenueInputError('Такой адрес или osmId уже есть')
+      }
+      throw error
+    }
+  }
+
+  static async list(filter: VenueListFilter = {}) {
+    const where = []
+    if (filter.regionId) {
+      where.push(eq(venues.regionId, filter.regionId))
+    }
+    if (filter.kind) {
+      where.push(eq(venues.kind, filter.kind))
+    }
+    if (filter.status) {
+      where.push(eq(venues.status, filter.status))
+    }
+    if (filter.foodOnly) {
+      where.push(inArray(venues.kind, [...FOOD_KINDS]))
+    }
+    if (filter.stale === true) {
+      where.push(sql`(${venues.lastVerifiedAt} is null or ${venues.lastVerifiedAt} < now() - (${STALE_DAYS} || ' days')::interval)`)
+    }
+    if (filter.stale === false) {
+      where.push(sql`${venues.lastVerifiedAt} >= now() - (${STALE_DAYS} || ' days')::interval`)
+    }
+    const base = useDatabase().select().from(venues).where(where.length ? and(...where) : undefined).orderBy(asc(venues.name))
+    const rows = filter.limit ? await base.limit(filter.limit) : await base
+    if (!filter.near) {
+      return rows.map((row) => ({ ...row, distanceKm: null as number | null }))
+    }
+    const { latitude, longitude, radiusKm } = filter.near
+    return rows.flatMap((row) => {
+      if (row.latitude == null || row.longitude == null) {
+        return []
+      }
+      const distanceKm = haversineLocal(latitude, longitude, row.latitude, row.longitude)
+      if (distanceKm > radiusKm) {
+        return []
+      }
+      return [{ ...row, distanceKm }]
+    }).sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
+  }
+
+  static async nearby(origins: Array<{ latitude: number, longitude: number }>, now = new Date()) {
+    const points = origins.filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude))
+    if (!points.length) {
+      return []
+    }
+    const cutoff = new Date(now.getTime() - NEARBY_MAX_DAYS * 86_400_000).toISOString()
+    const result = await useDatabase().execute(sql`
+      select v.id, v.slug, v.name, v.kind, v.address, v.price_level, v.avg_check,
+        v.last_verified_at, v.latitude, v.longitude, v.description,
+        d.distance_km
+      from venues v
+      cross join lateral (
+        select min(6371 * acos(least(1::float8, greatest(-1::float8,
+          cos(radians(o.lat)) * cos(radians(v.latitude)) * cos(radians(v.longitude) - radians(o.lng))
+          + sin(radians(o.lat)) * sin(radians(v.latitude))
+        )))) as distance_km
+        from unnest(${numArray(points.map((point) => point.latitude))}, ${numArray(points.map((point) => point.longitude))}) as o(lat, lng)
+      ) d
+      where v.status = 'published'
+        and v.kind = any(${sql`array[${sql.join(FOOD_KINDS.map((kind) => sql`${kind}`), sql`, `)}]::varchar[]`})
+        and v.latitude is not null
+        and v.longitude is not null
+        and v.last_verified_at is not null
+        and v.last_verified_at >= ${cutoff}
+        and d.distance_km <= ${NEARBY_RADIUS_KM}
+      order by d.distance_km asc
+      limit 20
+    `)
+    const found = rowsOf<{
+      id: string
+      slug: string
+      name: string
+      kind: string
+      address: string | null
+      price_level: number | null
+      avg_check: number | null
+      last_verified_at: string | null
+      latitude: number
+      longitude: number
+      description: string
+      distance_km: number
+    }>(result)
+    const ids = found.map((row) => row.id)
+    const sponsored = await this.sponsoredIds(ids)
+    return found.map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      kind: row.kind,
+      address: row.address,
+      priceLevel: row.price_level,
+      avgCheck: row.avg_check,
+      lastVerifiedAt: row.last_verified_at,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      description: row.description,
+      distanceKm: Number(row.distance_km),
+      sponsored: sponsored.has(row.id),
+    }))
+  }
+
+  static async sponsoredIds(ids: string[]) {
+    if (!ids.length) {
+      return new Set<string>()
+    }
+    const rows = await useDatabase().select({ venueId: offers.venueId }).from(offers).where(and(
+      inArray(offers.venueId, ids),
+      eq(offers.status, 'active'),
+    ))
+    return new Set(rows.map((row) => row.venueId).filter((id): id is string => Boolean(id)))
+  }
+
+  static async importDrafts(drafts: OsmDraft[], regionId: string | null) {
+    const created: string[] = []
+    const existing: string[] = []
+    const skipped: string[] = []
+    for (const draft of drafts) {
+      const prior = await this.byOsmId(draft.osmId)
+      if (prior) {
+        existing.push(prior.id)
+        continue
+      }
+      let slug = draft.slug
+      let suffix = 2
+      while (await this.bySlug(slug)) {
+        slug = `${draft.slug}-${suffix}`
+        suffix += 1
+        if (suffix > 20) {
+          skipped.push(draft.osmId)
+          slug = ''
+          break
+        }
+      }
+      if (!slug) {
+        continue
+      }
+      try {
+        const row = await this.create({
+          slug,
+          name: draft.name,
+          kind: draft.kind,
+          cuisineTags: draft.cuisineTags,
+          regionId,
+          address: draft.address,
+          latitude: draft.latitude,
+          longitude: draft.longitude,
+          phone: draft.phone,
+          website: draft.website,
+          hours: draft.hours,
+          sources: draft.sources,
+          osmId: draft.osmId,
+          status: 'draft',
+          description: '',
+        })
+        created.push(row.id)
+      } catch (error) {
+        if (error instanceof VenueInputError) {
+          const again = await this.byOsmId(draft.osmId)
+          if (again) {
+            existing.push(again.id)
+            continue
+          }
+          skipped.push(draft.osmId)
+          continue
+        }
+        throw error
+      }
+    }
+    return { created, existing, skipped }
+  }
+
+  static async gallery(venueId: string) {
+    return useDatabase().select({
+      linkId: venueMedia.id,
+      sortOrder: venueMedia.sortOrder,
+      isCover: venueMedia.isCover,
+      media,
+    }).from(venueMedia).innerJoin(media, eq(venueMedia.mediaId, media.id)).where(eq(venueMedia.venueId, venueId)).orderBy(asc(venueMedia.sortOrder))
+  }
+
+  static async coversFor(venueIds: string[]) {
+    const unique = [...new Set(venueIds)]
+    if (!unique.length) {
+      return new Map<string, typeof media.$inferSelect>()
+    }
+    const links = await useDatabase().select().from(venueMedia).where(inArray(venueMedia.venueId, unique)).orderBy(asc(venueMedia.sortOrder))
+    const coverLink = new Map<string, { mediaId: string, rank: number }>()
+    for (const link of links) {
+      const rank = link.isCover ? -1 : link.sortOrder
+      const current = coverLink.get(link.venueId)
+      if (!current || rank < current.rank) {
+        coverLink.set(link.venueId, { mediaId: link.mediaId, rank })
+      }
+    }
+    const ids = [...coverLink.values()].map((row) => row.mediaId)
+    if (!ids.length) {
+      return new Map<string, typeof media.$inferSelect>()
+    }
+    const rows = await useDatabase().select().from(media).where(inArray(media.id, ids))
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    const result = new Map<string, typeof media.$inferSelect>()
+    for (const [venueId, link] of coverLink) {
+      const row = byId.get(link.mediaId)
+      if (row) {
+        result.set(venueId, row)
+      }
+    }
+    return result
+  }
+
+  static async attachMedia(venueId: string, mediaId: string, options?: { isCover?: boolean }) {
+    const db = useDatabase()
+    const existing = await db.select().from(venueMedia).where(eq(venueMedia.venueId, venueId))
+    const found = existing.find((row) => row.mediaId === mediaId)
+    const cover = options?.isCover === true || existing.length === 0
+    if (cover) {
+      await db.update(venueMedia).set({ isCover: false }).where(eq(venueMedia.venueId, venueId))
+    }
+    if (found) {
+      const [updated] = await db.update(venueMedia).set({
+        isCover: cover || found.isCover,
+        sortOrder: found.sortOrder,
+      }).where(eq(venueMedia.id, found.id)).returning()
+      return updated ?? found
+    }
+    const [created] = await db.insert(venueMedia).values({
+      venueId,
+      mediaId,
+      sortOrder: existing.length,
+      isCover: cover,
+    }).returning()
+    return created
+  }
+
+  static async listingIntro(regionId: string | null, kind: string | null) {
+    const regionClause = regionId ? eq(venueListingIntros.regionId, regionId) : sql`${venueListingIntros.regionId} is null`
+    const kindClause = kind ? eq(venueListingIntros.kind, kind) : sql`${venueListingIntros.kind} is null`
+    const [row] = await useDatabase().select().from(venueListingIntros).where(and(regionClause, kindClause)).limit(1)
+    return row ?? null
+  }
+
+  static async setListingIntro(input: {
+    regionId: string | null
+    kind: string | null
+    body: string
+    seoTitle?: string | null
+    seoDescription?: string | null
+  }) {
+    if (input.kind && !isFoodKind(input.kind)) {
+      assertKind(input.kind)
+    }
+    const current = await this.listingIntro(input.regionId, input.kind)
+    const body = input.body.trim()
+    if (current) {
+      const [updated] = await useDatabase().update(venueListingIntros).set({
+        body,
+        seoTitle: input.seoTitle === undefined ? current.seoTitle : cleanText(input.seoTitle, 180),
+        seoDescription: input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
+        updatedAt: new Date().toISOString(),
+      }).where(eq(venueListingIntros.id, current.id)).returning()
+      return updated ?? current
+    }
+    const [created] = await useDatabase().insert(venueListingIntros).values({
+      regionId: input.regionId,
+      kind: input.kind,
+      body,
+      seoTitle: cleanText(input.seoTitle, 180),
+      seoDescription: cleanText(input.seoDescription, 300),
+    }).returning()
+    if (!created) {
+      throw new VenueInputError('Не удалось сохранить вступление')
+    }
+    return created
+  }
+
+  static async listIntros() {
+    return useDatabase().select().from(venueListingIntros)
+  }
+}
+
+function haversineLocal(aLat: number, aLng: number, bLat: number, bLng: number) {
+  const toRad = (value: number) => value * Math.PI / 180
+  const dLat = toRad(bLat - aLat)
+  const dLng = toRad(bLng - aLng)
+  const lat1 = toRad(aLat)
+  const lat2 = toRad(bLat)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
