@@ -18,6 +18,8 @@ export type PrimaryAction = 'build_route' | 'buy_ticket' | 'go_next_place' | 'cl
 
 export type ScoreBlock = 'quality' | 'linking' | 'indexing' | 'results'
 
+export type CollectionKind = 'theme' | 'month'
+
 export interface SourceLink {
   title: string
   url: string

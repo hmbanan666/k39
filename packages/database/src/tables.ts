@@ -1,4 +1,4 @@
-import type { AuthorKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
+import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
 import type { ScoreChecks } from './types/scoring'
 import type { VenueHours, VenueSocial, VenueStatus } from './venues'
 import { cuid2 } from 'drizzle-cuid2/postgres'
@@ -207,6 +207,10 @@ export const collections = pgTable('collections', {
   publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
   noindex: boolean('noindex').notNull().default(false),
   updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
+  // 'theme' is a plain collection. 'month' is a month guide with month 1..12.
+  kind: varchar('kind').notNull().default('theme').$type<CollectionKind>(),
+  month: integer('month'),
+  sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
 })
 
 export const collectionItems = pgTable('collection_items', {
