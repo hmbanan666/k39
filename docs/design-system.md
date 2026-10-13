@@ -33,6 +33,8 @@ Dark values are prepared under `[data-theme="dark"]` and are not applied.
 
 Spacing is `--space-1` (0.25rem) through `--space-8`. Radii are small (`3px`), medium (`8px`), and a slightly uneven card radius. Shadows are soft ink, not glass.
 
+`--frame` (76rem) and `--frame-pad` (1rem) are the shared column. The `.frame` class, `.page`, and `.page-wide` all use that width and those side insets. The header and footer backgrounds stay full-bleed; their inner rows use `.frame`. `/map` keeps the map full-bleed.
+
 Motion is `--duration-fast` (120ms) and `--duration` (200ms). `prefers-reduced-motion: reduce` sets those to 0 and disables transitions.
 
 Z-index: header 20, dropdown 30, dialog 40, consent 50, tooltip 60.
@@ -54,7 +56,7 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `PlaceCard` | A postcard for a place. Real media wins; otherwise the category SVG. No tilt and no stamp, so long lists stay quiet. |
 | `PostcardHero` | One `h1`, optional kicker and lede, breadcrumb nav. Text pages, not the place hero. |
 | `UiBreadcrumbs` | Visible crumbs. The same list is the BreadcrumbList JSON-LD. |
-| `SiteHeader` / `SiteFooter` | Moose head, then the plain-text wordmark K39, hub pills. The header background is solid surface, sticky, with a bottom border. The active hub is highlighted. Админка is shown only to a logged-in admin. |
+| `SiteHeader` / `SiteFooter` | Moose head, then the plain-text wordmark K39, hub pills. The header background is solid surface, sticky, with a bottom border. Logo and section links sit on the left of `.frame`; «Войти» or «Админка» sits on the right. On a phone the same links stay one scrolling pill row, inset with the frame. The active hub is highlighted. Админка is shown only to a logged-in admin. The subtitle under K39 is the `tagline` prop, default «Калининградская область», and it hides below 900px. |
 | `NearbyList` | Nearest places, name plus kilometres. |
 | `RouteSteps` | Ordered stops on a place page. Each step is the place name. |
 | `RouteGuide` | Route page: MapLibre map of numbered stops, deep links, stop cards with the note and the straight-line leg, and «Как добраться» on each stop. |
@@ -62,7 +64,7 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `MapEmbed` | Compact frame on a place, venue, route, hub, collection, or quest. Nearby points within 1.2 km, fullscreen, and «Открыть на карте». |
 | `DirectionsLink` | «Как добраться». Opens Yandex Maps with the point as the destination. |
 | `PartnerOffer` | Only for a real active offer. |
-| `CookieNotice` | Full-width bar fixed to the bottom, ink background, brick button. Client-only, so it does not shift layout. Dismiss is a localStorage flag. |
+| `CookieNotice` | Compact postcard fixed to the bottom: surface, line, radius, pop shadow. One row when the copy and the brick button fit, otherwise the button wraps under the text. Client-only, so it does not shift ordinary pages. On `/map` the panel lifts by the card height so the card does not cover the panel or the map controls. Dismiss is a localStorage flag. |
 | `UiToast` | Short status line, solid paper, brick edge. Auto-hides after 2.5 seconds. Sits clear of the search field. |
 | `UiAccordion` | Reka accordion. Default open when the copy must be read immediately. Content stays in the HTML. |
 | `UiDialog` | Reka dialog. The public header uses a pill row instead of a menu button. |

@@ -51,14 +51,15 @@ img {
   height: auto;
 }
 
-.page {
-  width: min(var(--page), calc(100% - 2rem));
-  margin: 0 auto;
-  padding: var(--space-5) 0 var(--space-8);
+.frame,
+.page,
+.page-wide {
+  width: min(var(--frame), calc(100% - 2 * var(--frame-pad)));
+  margin-inline: auto;
 }
 
-.page-wide {
-  width: min(var(--wide), calc(100% - 2rem));
+.page {
+  padding: var(--space-5) 0 var(--space-8);
 }
 
 .prose {

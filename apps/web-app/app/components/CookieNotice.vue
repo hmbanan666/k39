@@ -1,6 +1,7 @@
 <template>
   <div
     v-if="visible"
+    ref="root"
     class="notice"
     role="region"
     aria-label="Уведомление о cookie"
@@ -8,8 +9,8 @@
     <p>
       Мы используем cookie, чтобы сайт работал корректно.
       <NuxtLink to="/privacy">
-        Подробнее в Политике конфиденциальности
-      </NuxtLink>.
+        Подробнее
+      </NuxtLink>
     </p>
     <button
       type="button"
@@ -23,6 +24,21 @@
 <script setup lang="ts">
 const STORAGE_KEY = 'k39_cookie_notice'
 const visible = ref(false)
+const root = ref<HTMLElement | null>(null)
+
+let observer: ResizeObserver | undefined
+
+function publishOffset() {
+  const el = root.value
+  if (!visible.value || !el?.isConnected) {
+    document.documentElement.style.removeProperty('--cookie-notice-offset')
+    return
+  }
+  // offsetHeight ignores the enter transform, so the map panel clears the settled card.
+  const bottom = Number.parseFloat(getComputedStyle(el).bottom) || 0
+  const gap = Math.ceil(el.offsetHeight + bottom)
+  document.documentElement.style.setProperty('--cookie-notice-offset', `${Math.max(gap, 0)}px`)
+}
 
 onMounted(() => {
   try {
@@ -30,14 +46,30 @@ onMounted(() => {
   } catch {
     visible.value = true
   }
+  nextTick(() => {
+    publishOffset()
+    const el = root.value
+    if (el && 'ResizeObserver' in window) {
+      observer = new ResizeObserver(() => publishOffset())
+      observer.observe(el)
+    }
+  })
+  window.addEventListener('resize', publishOffset)
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  window.removeEventListener('resize', publishOffset)
+  document.documentElement.style.removeProperty('--cookie-notice-offset')
 })
 
 function dismiss() {
   visible.value = false
+  document.documentElement.style.removeProperty('--cookie-notice-offset')
   try {
     localStorage.setItem(STORAGE_KEY, '1')
   } catch {
-    // A private browser can refuse storage. Hiding the bar is enough.
+    // A private browser can refuse storage. Hiding the card is enough.
   }
 }
 </script>
@@ -46,51 +78,76 @@ function dismiss() {
 .notice {
   position: fixed;
   z-index: var(--z-consent);
-  right: 0;
-  bottom: 0;
-  left: 0;
+  right: auto;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: max(12px, env(safe-area-inset-left));
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  height: 56px;
-  max-height: 56px;
-  padding: 0 1rem 0 1.1rem;
-  background: var(--color-ink);
-  color: var(--color-paper);
+  gap: 0.75rem 1rem;
+  width: min(26.25rem, calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  max-width: 26.25rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-pop);
   font-family: var(--font-body);
-  font-size: 0.8125rem;
-  line-height: 1.25;
+  font-size: var(--step--1);
+  line-height: 1.35;
+  animation: notice-in var(--duration) var(--ease);
 }
-p { margin: 0; }
+p {
+  flex: 1 1 14rem;
+  margin: 0;
+}
 a {
-  color: var(--color-amber-soft);
+  color: var(--color-sea);
   font-weight: 700;
   text-underline-offset: 0.12em;
 }
 button {
   flex: none;
-  height: 2rem;
-  padding: 0 0.85rem;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--color-brick);
-  color: var(--color-paper);
-  font-family: var(--font-body);
-  font-size: 0.8125rem;
-  font-weight: 700;
+  color: var(--color-surface);
+  font: 700 0.875rem/1 var(--font-body);
   cursor: pointer;
 }
 button:hover { background: var(--color-brick-dark); }
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @media (max-width: 720px) {
   .notice {
-    height: auto;
-    max-height: none;
-    align-items: center;
-    padding: 0.35rem 0.65rem;
-    font-size: 0.6875rem;
-    line-height: 1.3;
+    right: max(12px, env(safe-area-inset-right));
+    width: auto;
+    max-width: none;
   }
-  p { flex: 1 1 11rem; }
-  button { height: 1.65rem; padding: 0 0.65rem; font-size: 0.6875rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice { animation: none; }
+}
+</style>
+
+<style>
+html:has([aria-label="Уведомление о cookie"]) {
+  --cookie-notice-offset: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 721px) {
+  html:has([aria-label="Уведомление о cookie"]) {
+    --cookie-notice-offset: 5.75rem;
+  }
 }
 </style>

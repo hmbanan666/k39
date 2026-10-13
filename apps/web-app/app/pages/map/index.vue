@@ -93,24 +93,36 @@ const selectedRoute = computed(() => page.routes.find((item) => item.slug === st
 const overlay = computed(() => routeOverlay(selectedRoute.value))
 const fitKey = computed(() => `${activeCategory(state.value) || ''}|${state.value.route || ''}`)
 const origin = computed(() => userOrigin.value || (bounds.value ? boundsCenter(bounds.value) : null))
-const padding = computed<MapFramePadding>(() => ({
-  top: 16,
-  right: 72,
-  bottom: mobile.value ? Math.min(sheetHeight.value, 280) + 12 : 28,
-  left: mobile.value ? 16 : (collapsed.value ? 16 : panelWidth.value + 8),
-}))
+const noticeOffset = ref(0)
+const padding = computed<MapFramePadding>(() => {
+  const sheet = mobile.value ? Math.min(sheetHeight.value, 280) + 12 : 28
+  const lift = mobile.value || collapsed.value ? noticeOffset.value : 0
+  return {
+    top: 16,
+    right: 72,
+    bottom: sheet + lift,
+    left: mobile.value ? 16 : (collapsed.value ? 16 : panelWidth.value + 8),
+  }
+})
 const controlsBottom = computed(() => {
   if (!mobile.value) {
     return '0.6rem'
   }
+  const lift = ' + var(--cookie-notice-offset, 0px)'
   if (snap.value === 'full') {
     return 'calc(100% - 4.6rem)'
   }
   if (snap.value === 'half') {
-    return 'calc(min(52dvh, 28rem) + 2.4rem)'
+    return `calc(min(52dvh, 28rem) + 2.4rem${lift})`
   }
-  return '14rem'
+  return `calc(14rem${lift})`
 })
+
+function readNoticeOffset() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--cookie-notice-offset').trim()
+  const value = Number.parseFloat(raw)
+  noticeOffset.value = Number.isFinite(value) ? value : 0
+}
 
 function chooseCategory(id: BrowseCategory) {
   selectedId.value = null
@@ -206,6 +218,7 @@ function syncPanelVar() {
 }
 
 let headerObserver: ResizeObserver | undefined
+let noticeObserver: MutationObserver | undefined
 
 watch(() => route.query, (query) => {
   if (queriesEqual(mapQueryRecord(state.value, foodAll), query)) {
@@ -228,6 +241,9 @@ onMounted(() => {
   useTrack().track('page_view')
   syncChrome()
   syncPanelVar()
+  readNoticeOffset()
+  noticeObserver = new MutationObserver(() => readNoticeOffset())
+  noticeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
   const header = document.querySelector('.site-header')
   if (header && 'ResizeObserver' in window) {
     headerObserver = new ResizeObserver(() => syncChrome())
@@ -238,6 +254,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   headerObserver?.disconnect()
+  noticeObserver?.disconnect()
   window.removeEventListener('resize', syncChrome)
   document.documentElement.style.removeProperty('--map-panel')
 })
@@ -272,12 +289,7 @@ body:has(.visitor-map) {
   overflow: clip;
 }
 body:has(.visitor-map) .site-footer { margin-top: 0; }
-body:has([aria-label="Уведомление о cookie"]) .visitor-map {
-  height: calc(100dvh - var(--site-header-offset, 7.5rem) - 56px);
-}
-@media (min-width: 900px) {
-  body:has([aria-label="Уведомление о cookie"]) .visitor-map {
-    height: calc(100dvh - var(--site-header-offset, 4.75rem) - 56px);
-  }
+body:has([aria-label="Уведомление о cookie"]) .dock {
+  bottom: var(--cookie-notice-offset, 0px);
 }
 </style>
