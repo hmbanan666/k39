@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import type { Crumb } from '~~/shared/seo'
-import { breadcrumbNode, DEFAULT_OG_IMAGE, metaDescription, pageTitle } from '~~/shared/seo'
+import { breadcrumbNode, DEFAULT_OG_IMAGE, metaDescription, pageTitle, publicRobots } from '~~/shared/seo'
 
 const props = defineProps<{
   h1: string
@@ -29,7 +29,7 @@ usePublicHead({
   title: pageTitle(props.h1),
   description: metaDescription(props.description),
   canonical: `https://k39.online${props.path}`,
-  robots: 'index, follow',
+  robots: publicRobots(),
   h1: props.h1,
   crumbs,
   ogImage: DEFAULT_OG_IMAGE,

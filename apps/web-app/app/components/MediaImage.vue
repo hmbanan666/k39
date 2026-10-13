@@ -43,7 +43,7 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 import { externalLinkAttrs } from '~~/shared/links'
-import { describedAlt, licenseHref, licenseLabel } from '~~/shared/media'
+import { describedAlt, licenseHref, licenseLabel, variantSrcset } from '~~/shared/media'
 
 const props = withDefaults(defineProps<{
   media: PublicMedia
@@ -70,13 +70,7 @@ const imageStyle = computed(() => ({
 }))
 
 function srcset(format: 'avif' | 'webp') {
-  const items = props.media.variants
-    .filter((item) => item.format === format && item.file !== 'og.jpg')
-    .sort((a, b) => a.width - b.width)
-  if (!items.length) {
-    return ''
-  }
-  return items.map((item) => `/media/${props.media.id}/${item.file} ${item.width}w`).join(', ')
+  return variantSrcset(props.media, format)
 }
 </script>
 

@@ -25,7 +25,7 @@
           <PlacePhoto
             :media="page.cover"
             priority
-            sizes="(min-width: 1000px) 720px, 100vw"
+            :sizes="heroSizes"
             @open="openPhoto(page.cover.id)"
           />
         </template>
@@ -272,6 +272,7 @@ import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
 import { illustrationFor } from '~~/shared/illustrations'
 import { yandexDestinationUrl } from '~~/shared/map'
+import { lcpPreload } from '~~/shared/media'
 
 interface PlaceLink {
   href: string
@@ -357,6 +358,11 @@ const hasFacts = Boolean(
 )
 const nearby = page.groups.find((group) => group.title === 'Рядом')
 const otherGroups = page.groups.filter((group) => group.title !== 'Рядом' && group.title !== 'Маршруты')
+const heroSizes = '(min-width: 1000px) 720px, 100vw'
+const heroPreload = page.cover ? lcpPreload(page.cover, heroSizes) : null
+if (heroPreload) {
+  useHead({ link: [heroPreload] })
+}
 usePublicHead(page.doc)
 onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 </script>

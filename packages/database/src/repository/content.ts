@@ -2,7 +2,7 @@ import type { PlaceDraft } from '../types'
 import type { MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venues } from '../tables'
+import { categories, collectionItems, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
 const published = 'published' as const
@@ -235,11 +235,16 @@ export class Content {
     const collectionRows = await db.select({ slug: collections.slug, updatedAt: collections.updatedAt }).from(collections).where(and(eq(collections.publicationStatus, published), eq(collections.noindex, false)))
     const questRows = await db.select({ slug: quests.slug, updatedAt: quests.updatedAt }).from(quests).where(and(eq(quests.publicationStatus, published), eq(quests.noindex, false)))
     const venueRows = await db.select({
+      id: venues.id,
       slug: venues.slug,
       updatedAt: venues.updatedAt,
       description: venues.description,
       noindex: venues.noindex,
     }).from(venues).where(eq(venues.status, 'published'))
+    const venuePhotoLinks = await db.select({
+      venueId: venueMedia.venueId,
+      mediaId: venueMedia.mediaId,
+    }).from(venueMedia)
     const introRows = await db.select({
       body: venueListingIntros.body,
       updatedAt: venueListingIntros.updatedAt,
@@ -261,7 +266,14 @@ export class Content {
       quests: questRows.map((row) => ({ loc: `/kvesty/${row.slug}`, lastmod: row.updatedAt })),
       venues: venueRows
         .filter((row) => !row.noindex && descriptionLength(row.description) > 0)
-        .map((row) => ({ loc: `/zavedeniya/${row.slug}`, lastmod: row.updatedAt })),
+        .map((row) => ({
+          loc: `/zavedeniya/${row.slug}`,
+          lastmod: row.updatedAt,
+          images: imagesForIds(venuePhotoLinks.filter((link) => link.venueId === row.id).map((link) => link.mediaId), images).map((image) => ({
+            loc: mediaPublicPath(image),
+            title: image.alt,
+          })),
+        })),
       venueListings: introRows.flatMap((row) => {
         if (descriptionLength(row.body) < LISTING_INTRO_MIN) {
           return []
@@ -842,6 +854,11 @@ function mediaPublicPath(image: { id: string, filename: string, variants: MediaV
     return `/media/${image.id}/og.jpg`
   }
   return `/media/${image.filename}`
+}
+
+function imagesForIds(ids: string[], images: Array<typeof media.$inferSelect>) {
+  const wanted = new Set(ids)
+  return images.filter((image) => wanted.has(image.id))
 }
 
 function galleryImages(placeId: string, images: Array<typeof media.$inferSelect>, links: Array<typeof placeMedia.$inferSelect>) {

@@ -78,8 +78,10 @@ describe('venue scores', () => {
 })
 
 describe('venue json-ld', () => {
-  it('uses Restaurant and hides a page without a description', () => {
-    expect(venueSchemaType('coffee')).toBe('Restaurant')
+  it('uses CafeOrCoffeeShop for coffee and hides a page without a description', () => {
+    expect(venueSchemaType('coffee')).toBe('CafeOrCoffeeShop')
+    expect(venueSchemaType('cafe')).toBe('CafeOrCoffeeShop')
+    expect(venueSchemaType('restaurant')).toBe('Restaurant')
     expect(venueSchemaType('market')).toBe('LocalBusiness')
     const hidden = venueDocument({
       slug: 'bez-teksta',
@@ -97,8 +99,8 @@ describe('venue json-ld', () => {
       longitude: 20.56,
       hours: [{ weekday: 'mon', opens: '09:00', closes: '18:00' }],
     })
-    expect(live.robots).toBe('index, follow')
-    expect(live.jsonLd.map((node) => node['@type'])).toEqual(['BreadcrumbList', 'Restaurant'])
+    expect(live.robots).toBe('index, follow, max-image-preview:large')
+    expect(live.jsonLd.map((node) => node['@type'])).toEqual(['BreadcrumbList', 'CafeOrCoffeeShop'])
     expect(JSON.stringify(live.jsonLd)).toContain('OpeningHoursSpecification')
     const unknown = venueDocument({
       slug: 'bez-chasov',

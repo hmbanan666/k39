@@ -1,18 +1,29 @@
 import { db, isDatabaseReady } from '@k39/database'
 import { CONSENT_PATH } from '../../shared/consent'
-import { indexableHubs, LEGAL_LINKS, SECTION_LINKS } from '../../shared/links'
+import { indexableHubs, LEGAL_LINKS } from '../../shared/links'
 import { absoluteUrl } from '../../shared/seo'
+import { latestSitemapLastmod, sitemapLastmod } from '../utils/sitemap-fields'
 
-function lastmod(value: string | null | undefined) {
-  if (!value) {
-    return undefined
+function imageEntries(images: Array<{ loc: string, title?: string | null }>) {
+  const listed = images.flatMap((image) => {
+    const loc = image.loc.trim()
+    if (!loc) {
+      return []
+    }
+    const title = image.title?.trim()
+    return [{ loc: absoluteUrl(loc), ...(title ? { title } : {}) }]
+  })
+  return listed.length ? listed : undefined
+}
+
+function entry(loc: string, lastmod?: string | null, images?: Array<{ loc: string, title?: string | null }>) {
+  const pictures = images ? imageEntries(images) : undefined
+  const stamp = sitemapLastmod(lastmod)
+  return {
+    loc: absoluteUrl(loc),
+    ...(stamp ? { lastmod: stamp } : {}),
+    ...(pictures ? { images: pictures } : {}),
   }
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T').replace(/\+00$/, 'Z')
-  const date = new Date(normalized)
-  if (Number.isNaN(date.getTime())) {
-    return undefined
-  }
-  return date.toISOString()
 }
 
 export default defineEventHandler(async () => {
@@ -21,30 +32,33 @@ export default defineEventHandler(async () => {
   }
   const rows = await db.content.sitemapRows()
   const categories = await db.content.categories()
-  const hubs = indexableHubs(categories.filter((row) => row.noindex).map((row) => row.slug))
-  const newest = [...rows.places, ...rows.routes, ...rows.collections, ...rows.quests, ...rows.venues, ...rows.venueListings]
-    .map((row) => lastmod(row.lastmod))
-    .filter((value): value is string => Boolean(value))
-    .sort()
-    .at(-1)
-  const staticPages = [
-    { loc: absoluteUrl('/'), lastmod: newest },
-    ...LEGAL_LINKS.map((link) => ({ loc: absoluteUrl(link.href) })),
-    { loc: absoluteUrl(CONSENT_PATH) },
-    ...hubs.map((link) => ({ loc: absoluteUrl(link.href) })),
-    ...SECTION_LINKS.map((link) => ({ loc: absoluteUrl(link.href) })),
+  const hidden = categories.filter((row) => row.noindex).map((row) => row.slug)
+  const updated = new Map(categories.map((row) => [row.slug, row.updatedAt]))
+  const contentLastmod = latestSitemapLastmod([
+    ...rows.places,
+    ...rows.routes,
+    ...rows.collections,
+    ...rows.quests,
+    ...rows.venues,
+    ...rows.venueListings,
+  ].map((row) => row.lastmod))
+  const sections = [
+    { href: '/marshruty', lastmods: rows.routes.map((row) => row.lastmod) },
+    { href: '/podborki', lastmods: rows.collections.map((row) => row.lastmod) },
+    { href: '/kvesty', lastmods: rows.quests.map((row) => row.lastmod) },
+    { href: '/zavedeniya', lastmods: rows.venues.map((row) => row.lastmod) },
   ]
   return [
-    ...staticPages,
-    ...rows.places.map((row) => ({
-      loc: absoluteUrl(row.loc),
-      lastmod: lastmod(row.lastmod),
-      images: row.images.map((image) => ({ loc: absoluteUrl(image.loc), title: image.title })),
-    })),
-    ...rows.routes.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
-    ...rows.collections.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
-    ...rows.quests.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
-    ...rows.venues.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
-    ...rows.venueListings.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
+    entry('/', contentLastmod),
+    ...LEGAL_LINKS.map((link) => entry(link.href)),
+    entry(CONSENT_PATH),
+    ...indexableHubs(hidden).map((link) => entry(link.href, updated.get(link.href.slice(1)))),
+    ...sections.map((section) => entry(section.href, latestSitemapLastmod(section.lastmods))),
+    ...rows.places.map((row) => entry(row.loc, row.lastmod, row.images)),
+    ...rows.routes.map((row) => entry(row.loc, row.lastmod)),
+    ...rows.collections.map((row) => entry(row.loc, row.lastmod)),
+    ...rows.quests.map((row) => entry(row.loc, row.lastmod)),
+    ...rows.venues.map((row) => entry(row.loc, row.lastmod, row.images)),
+    ...rows.venueListings.map((row) => entry(row.loc, row.lastmod)),
   ]
 })

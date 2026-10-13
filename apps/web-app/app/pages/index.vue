@@ -32,7 +32,7 @@
               :media="page.photo"
               priority
               :show-credit="false"
-              sizes="(min-width: 980px) 440px, 100vw"
+              :sizes="heroSizes"
             />
           </template>
         </Postcard>
@@ -130,6 +130,7 @@
 import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 import { illustrationFor, POSTMARK_SRC } from '~~/shared/illustrations'
+import { lcpPreload } from '~~/shared/media'
 
 const romans = ['I', 'II', 'III', 'IV', 'V', 'VI']
 const page = await fetchPublic<{
@@ -139,6 +140,11 @@ const page = await fetchPublic<{
   quest: { href: string, title: string, summary: string } | null
   photo: PublicMedia | null
 }>('/api/public/home')
+const heroSizes = '(min-width: 980px) 440px, 100vw'
+const heroPreload = page.photo ? lcpPreload(page.photo, heroSizes) : null
+if (heroPreload) {
+  useHead({ link: [heroPreload] })
+}
 usePublicHead(page.doc)
 onMounted(() => useTrack().track('page_view'))
 </script>

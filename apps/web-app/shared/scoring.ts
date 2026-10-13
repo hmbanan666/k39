@@ -1,6 +1,6 @@
 import { articleBody } from './address'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
-import { absoluteUrl, collectionDocument, faqFromBody, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
+import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
 
 export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest' | 'venue'
 export type PrimaryAction = 'build_route' | 'buy_ticket' | 'go_next_place' | 'claim_offer' | 'read'
@@ -776,7 +776,7 @@ function indexingPoints(page: ScoreSource) {
   } else {
     checks.push('not 200')
   }
-  const types = doc.jsonLd.map((node) => String(node['@type'] || ''))
+  const types = doc.jsonLd.flatMap((node) => jsonLdTypes(node))
   const missing = expectedTypes(page).filter((type) => !types.includes(type))
   if (!missing.length) {
     points += 20
