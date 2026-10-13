@@ -57,12 +57,25 @@
   --frame-pad: 1rem;
   --page: var(--frame);
   --wide: var(--frame);
-  --site-header-offset: 7.5rem;
+  /* Site header geometry. SiteHeader.vue sizes itself from these, so the
+     offset below is the real header height, not a guess. Below 900px the
+     header is the logo row plus the scrollable pill row. */
+  --header-border: 1px;
+  --header-bar: 72px;
+  --header-logo-row: 60px;
+  --header-row-gap: 0.5rem;
+  --header-pill: calc(0.875rem + 0.9rem + 2px);
+  --header-pad-bottom: 0.7rem;
+  --site-header-offset: calc(
+    var(--header-logo-row) + var(--header-row-gap) + var(--header-pill) + var(--header-pad-bottom) + var(--header-border)
+  );
+  /* Space between the sticky header and an anchor target after a jump. */
+  --anchor-gap: 1.5rem;
 }
 
 @media (min-width: 900px) {
   :root {
-    --site-header-offset: 4.75rem;
+    --site-header-offset: calc(var(--header-bar) + var(--header-border));
   }
 }
 

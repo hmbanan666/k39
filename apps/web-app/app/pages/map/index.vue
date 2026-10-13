@@ -205,11 +205,6 @@ function onMetrics(size: { width: number, height: number }) {
 
 function syncChrome() {
   mobile.value = window.matchMedia('(max-width: 720px)').matches
-  const header = document.querySelector('.site-header')
-  if (!header) {
-    return
-  }
-  document.documentElement.style.setProperty('--site-header-offset', `${header.getBoundingClientRect().height}px`)
 }
 
 function syncPanelVar() {
@@ -217,7 +212,6 @@ function syncPanelVar() {
   document.documentElement.style.setProperty('--map-panel', `${width}px`)
 }
 
-let headerObserver: ResizeObserver | undefined
 let noticeObserver: MutationObserver | undefined
 
 watch(() => route.query, (query) => {
@@ -244,16 +238,10 @@ onMounted(() => {
   readNoticeOffset()
   noticeObserver = new MutationObserver(() => readNoticeOffset())
   noticeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
-  const header = document.querySelector('.site-header')
-  if (header && 'ResizeObserver' in window) {
-    headerObserver = new ResizeObserver(() => syncChrome())
-    headerObserver.observe(header)
-  }
   window.addEventListener('resize', syncChrome)
 })
 
 onBeforeUnmount(() => {
-  headerObserver?.disconnect()
   noticeObserver?.disconnect()
   window.removeEventListener('resize', syncChrome)
   document.documentElement.style.removeProperty('--map-panel')
@@ -263,7 +251,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .visitor-map {
   position: relative;
-  height: calc(100dvh - var(--site-header-offset, 7.5rem));
+  height: calc(100dvh - var(--site-header-offset));
   background: #efe6d4;
 }
 .sr {
@@ -278,7 +266,7 @@ onBeforeUnmount(() => {
   border: 0;
 }
 @media (min-width: 900px) {
-  .visitor-map { height: calc(100dvh - var(--site-header-offset, 4.75rem)); }
+  .visitor-map { height: calc(100dvh - var(--site-header-offset)); }
 }
 </style>
 

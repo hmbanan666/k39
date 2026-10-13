@@ -84,9 +84,10 @@ const parts = computed(() => props.partner ? splitAfterFirstSection(props.html) 
 const activeId = ref('')
 const bodyRef = ref<HTMLElement | null>(null)
 
+// A heading becomes current once it passes just below the sticky header.
 function activationLine() {
-  const header = document.querySelector('.site-header')
-  return (header?.getBoundingClientRect().height ?? 76) + 40
+  const styles = getComputedStyle(document.documentElement)
+  return Number.parseFloat(styles.scrollPaddingTop) + 16
 }
 
 function syncActive() {
@@ -220,8 +221,8 @@ onBeforeUnmount(() => {
     flex-direction: column;
     gap: 1.25rem;
     position: sticky;
-    top: calc(var(--site-header-offset, 4.75rem) + 1rem);
-    max-height: calc(100dvh - var(--site-header-offset, 4.75rem) - 2rem);
+    top: calc(var(--site-header-offset) + 1rem);
+    max-height: calc(100dvh - var(--site-header-offset) - 2rem);
     overflow: auto;
     padding-bottom: 0.5rem;
     background-color: var(--bg);
