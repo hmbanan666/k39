@@ -1,6 +1,6 @@
 <template>
   <footer class="site-footer">
-    <div class="inner">
+    <div class="frame inner">
       <div>
         <a
           href="/"
@@ -54,8 +54,6 @@ const legal = LEGAL_LINKS
 .inner {
   display: grid;
   gap: var(--space-5);
-  width: min(var(--wide), calc(100% - 2rem));
-  margin: 0 auto;
   padding: var(--space-6) 0;
 }
 .mark {

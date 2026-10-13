@@ -1,6 +1,6 @@
 <template>
   <header class="site-header">
-    <div class="in">
+    <div class="frame bar">
       <a
         href="/"
         class="logo"
@@ -23,40 +23,48 @@
         </picture>
         <span class="logo-word">
           K39
-          <small>Калининградская область</small>
+          <small>{{ tagline }}</small>
         </span>
       </a>
+      <nav
+        class="nav"
+        aria-label="Разделы"
+      >
+        <a
+          v-for="link in hubs"
+          :key="link.href"
+          :href="link.href"
+          :class="{ active: path === link.href }"
+        >{{ link.text }}</a>
+        <a
+          href="/map"
+          :class="{ active: path === '/map' }"
+        >Карта</a>
+        <a
+          v-if="!loggedIn"
+          href="/sign-in"
+          class="account"
+          :class="{ active: path === '/sign-in' }"
+        >Войти</a>
+        <a
+          v-else-if="isAdmin"
+          href="/admin"
+          class="account"
+          :class="{ active: path.startsWith('/admin') }"
+        >Админка</a>
+      </nav>
     </div>
-    <nav
-      class="nav"
-      aria-label="Разделы"
-    >
-      <a
-        v-for="link in hubs"
-        :key="link.href"
-        :href="link.href"
-        :class="{ active: path === link.href }"
-      >{{ link.text }}</a>
-      <a
-        href="/map"
-        :class="{ active: path === '/map' }"
-      >Карта</a>
-      <a
-        v-if="!loggedIn"
-        href="/sign-in"
-        :class="{ active: path === '/sign-in' }"
-      >Войти</a>
-      <a
-        v-else-if="isAdmin"
-        href="/admin"
-        :class="{ active: path.startsWith('/admin') }"
-      >Админка</a>
-    </nav>
   </header>
 </template>
 
 <script setup lang="ts">
 import { HUBS } from '~~/shared/links'
+
+withDefaults(defineProps<{
+  tagline?: string
+}>(), {
+  tagline: 'Калининградская область',
+})
 
 const route = useRoute()
 const { loggedIn, user } = useUserSession()
@@ -70,13 +78,14 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
   position: sticky;
   top: 0;
   z-index: var(--z-header);
+  border-bottom: 1px solid var(--color-line);
+  background-color: var(--color-surface);
+}
+.bar {
   display: flex;
   align-items: center;
   gap: 2rem;
   min-height: 72px;
-  padding: 0 1.25rem;
-  border-bottom: 1px solid var(--color-line);
-  background-color: var(--color-surface);
 }
 .logo {
   display: flex;
@@ -109,9 +118,12 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
 }
 .nav {
   display: flex;
+  flex: 1;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.25rem;
 }
+.account { margin-left: auto; }
 .nav a {
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
@@ -124,24 +136,26 @@ const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
   color: var(--color-brick);
 }
 @media (max-width: 899px) {
-  .site-header {
-    display: block;
-    padding: 0;
+  .bar {
+    flex-wrap: wrap;
+    gap: 0.5rem 0;
+    min-height: 0;
+    padding-bottom: 0.7rem;
   }
-  .in {
+  .logo {
     display: flex;
     align-items: center;
     height: 60px;
-    padding: 0 1rem;
   }
   .logo-word { font-size: 1.3rem; }
   .logo-word small { display: none; }
   .nav {
+    flex: 1 0 100%;
     flex-wrap: nowrap;
     gap: 0.5rem;
     overflow-x: auto;
-    padding: 0 1rem 0.7rem;
   }
+  .account { margin-left: 0; }
   .nav a {
     flex: none;
     padding: 0.45rem 0.75rem;
