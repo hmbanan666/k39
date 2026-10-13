@@ -56,6 +56,7 @@ Page analytics (ADR 0013) is cookieless for every visitor. `public/collect.js` b
 - User-facing UI copy and place/quest/legal content: Russian. Do not use em dashes in UI chrome or in the HTML title. The title pattern is `{title} | K39`, or `{seoTitle} | K39` when that field is set. Do not append a second type word.
 - ADRs, this file, the README, code comments: English.
 - Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). Husky runs lint-staged and commitlint.
+- Never add invented Co-authored-by trailers; noreply emails map to real GitHub users.
 - Architecture decisions: `docs/adr/NNNN-title.md`.
 - Vue files: template, then script, then style. ESLint is `@antfu/eslint-config` with the local overrides in `eslint.config.mjs`.
 
