@@ -69,15 +69,21 @@ export default defineNuxtConfig({
       '/og-default.png',
     ].map((path) => [path, { headers: { 'cache-control': 'public, max-age=604800' } }])),
     '/site.webmanifest': { headers: { 'cache-control': 'public, max-age=86400' } },
+    '/basemap/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+    '/basemap/sprites/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
   },
   runtimeConfig: {
+    // NUXT_BASEMAP_FILE. The PMTiles archive stays on a volume, not in the image.
+    basemapFile: '/app/basemap/kaliningrad.pmtiles',
     public: {
       featureMap: false,
       consentBanner: false,
       yandexVerification: '',
       googleVerification: '',
-      // Directions are plain Yandex URLs. The K39 map does not load the JS API.
+      // Kept so an existing deploy env does not fail validation. ADR 0019 does not load Yandex Maps.
       yandexMapsApiKey: '',
+      // Empty keeps the OpenFreeMap fallback. A path or https URL loads the self-hosted archive.
+      pmtilesUrl: '',
     },
   },
   nitro: {

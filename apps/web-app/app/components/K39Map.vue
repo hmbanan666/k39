@@ -133,8 +133,8 @@
 </template>
 
 <script setup lang="ts">
-import type { MapPayload, MapPoint } from '~~/shared/map'
-import type { DrawPoint, MountedK39Map } from '~/lib/mount-k39-map'
+import type { MapPayload, MapPoint } from '~~/shared/embed-map'
+import type { DrawPoint, MountedK39Map } from '~/lib/mount-embed-map'
 
 const props = withDefaults(defineProps<{
   variant?: 'embed' | 'page'
@@ -331,7 +331,7 @@ async function openMap() {
     return
   }
   try {
-    const { mountK39Map } = await import('~/lib/mount-k39-map')
+    const { mountK39Map } = await import('~/lib/mount-embed-map')
     mounted = await mountK39Map(host, {
       fallbackHeight: props.variant === 'page' ? 420 : 320,
       onSelect: select,

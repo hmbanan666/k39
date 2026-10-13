@@ -177,6 +177,43 @@ export class Content {
     return { route, points }
   }
 
+  static async mapPlaces() {
+    return useDatabase().select({
+      id: places.id,
+      slug: places.slug,
+      title: places.title,
+      summary: places.summary,
+      latitude: places.latitude,
+      longitude: places.longitude,
+      categorySlug: categories.slug,
+      categoryTitle: categories.title,
+    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).where(and(
+      eq(places.publicationStatus, published),
+      eq(places.noindex, false),
+      sql`${places.latitude} is not null`,
+      sql`${places.longitude} is not null`,
+    )).orderBy(asc(places.title))
+  }
+
+  static async mapRouteStops() {
+    return useDatabase().select({
+      routeSlug: routes.slug,
+      routeTitle: routes.title,
+      path: routes.path,
+      position: routePoints.position,
+      placeId: places.id,
+      slug: places.slug,
+      title: places.title,
+      summary: places.summary,
+      latitude: places.latitude,
+      longitude: places.longitude,
+    }).from(routePoints).innerJoin(routes, eq(routePoints.routeId, routes.id)).innerJoin(places, eq(routePoints.placeId, places.id)).where(and(
+      eq(routes.publicationStatus, published),
+      eq(routes.noindex, false),
+      eq(places.publicationStatus, published),
+    )).orderBy(asc(routes.title), asc(routePoints.position))
+  }
+
   static async listPublishedCollections() {
     return useDatabase().select().from(collections).where(eq(collections.publicationStatus, published)).orderBy(asc(collections.title))
   }
@@ -464,7 +501,7 @@ export class Editor {
     return useDatabase().select().from(regions).orderBy(asc(regions.title))
   }
 
-  static async saveRoute(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[] }, userId?: string | null) {
+  static async saveRoute(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null) {
     const resolvedPoints = data.points ? await resolveStops(data.points) : null
     const db = useDatabase()
     const [existing] = data.id
@@ -485,6 +522,7 @@ export class Editor {
       noindex: data.noindex ?? existing?.noindex ?? false,
       updatedBy: userId ?? null,
       updatedAt: new Date().toISOString(),
+      ...(data.path !== undefined ? { path: data.path } : {}),
     }
     const row = existing
       ? (await db.update(routes).set(values).where(eq(routes.id, existing.id)).returning())[0] ?? existing

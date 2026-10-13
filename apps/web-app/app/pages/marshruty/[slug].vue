@@ -7,7 +7,7 @@
   >
     <RouteGuide
       :stops="page.stops"
-      :route-slug="slug"
+      :path="page.path"
     />
     <div
       class="prose"
@@ -26,6 +26,7 @@ const page = await fetchPublic<{
   doc: SeoDocument
   html: string
   summary: string
+  path: [number, number][] | null
   stops: RouteStopView[]
   eatNearby: Array<{
     href: string

@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { articleBody } from '../../shared/address'
 import { homeLinks, HUBS } from '../../shared/links'
+import { normalizeRoutePath } from '../../shared/map'
 import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, toPublicMedia } from '../../shared/media'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
@@ -285,6 +286,7 @@ export async function loadRoute(slug: string) {
     doc,
     html: renderMarkdown(loaded.route.body),
     summary: loaded.route.summary || '',
+    path: normalizeRoutePath(loaded.route.path),
     stops,
     items: stops.map((stop) => ({ href: stop.href, text: stop.text, note: stop.note })),
     eatNearby: await eatNearby(loaded.points.map((point) => ({

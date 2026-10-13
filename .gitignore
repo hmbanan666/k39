@@ -15,6 +15,8 @@ dist-ssr
 .env.*
 !.env.example
 *.token.json
+*.pmtiles
+/basemap/
 
 # Editor directories and files
 .vscode/*

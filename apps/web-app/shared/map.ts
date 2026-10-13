@@ -1,228 +1,374 @@
-import { formatDistance } from './links'
+import type { MapCard, MapLayer, MapPointInput, MapStopInput } from '@k39/map'
+import { lineLayer, pointsLayer, stopsLayer } from '@k39/map'
+import { illustrationFor } from './illustrations'
 
-// Straight line, about a fifteen-minute walk. The same approximation as the «около» legs.
-export const WALKING_RADIUS_KM = 1.2
+export const SIGHT_FACETS = [
+  { id: 'forty', label: 'Форты' },
+  { id: 'zamki', label: 'Замки' },
+  { id: 'plyazhi', label: 'Пляжи' },
+  { id: 'muzei', label: 'Музеи' },
+  { id: 'tserkvi', label: 'Церкви' },
+  { id: 'kurorty', label: 'Курорты' },
+] as const
 
-export const MAP_FRAME_MIN_PX = 160
+export type SightId = (typeof SIGHT_FACETS)[number]['id']
 
-// OpenFreeMap Positron: OSM data (ODbL), no API key. The style credits OpenStreetMap.
-export const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
+const SIGHT_IDS = new Set<string>(SIGHT_FACETS.map((item) => item.id))
 
-export const MAP_MAX_ZOOM = 18
+// Path segments match the venue catalog (kofe, kafe, ...). Kept here so the
+// client map does not import the database package.
+export const FOOD_FILTERS = [
+  { id: 'coffee', path: 'kofe', label: 'Кофейни' },
+  { id: 'restaurant', path: 'restoran', label: 'Рестораны' },
+  { id: 'cafe', path: 'kafe', label: 'Кафе' },
+  { id: 'bakery', path: 'pekarnya', label: 'Пекарни' },
+  { id: 'bar', path: 'bar', label: 'Бары' },
+  { id: 'market', path: 'rynok', label: 'Рынки' },
+  { id: 'fastfood', path: 'fastfud', label: 'Фастфуд' },
+  { id: 'other', path: 'drugoe', label: 'Другое' },
+] as const
 
-const GLYPHS: Record<string, string> = {
-  place: '<path d="M8 1.2 13.2 6v8.2H2.8V6z"/>',
-  cafe: '<path d="M3 6h6.2v3.2a3.1 3.1 0 0 1-6.2 0zM9.2 6.4h2.4a2 2 0 0 1 0 4H9.2"/>',
-  restaurant: '<path d="M5 2v5M8 2v5M11 2v5M5 4.5h6M8 7v7"/>',
-  coffee: '<path d="M3.2 7h5.6v2.6a2.8 2.8 0 0 1-5.6 0zM8.8 7.3h2.2a1.7 1.7 0 0 1 0 3.4H8.8M6 2.2c.4.8-.4 1.2 0 2"/>',
-  bar: '<path d="M4 2h8L10.2 8.2A2.4 2.4 0 0 1 5.8 8.2zM8 10.4V14M5.5 14h5"/>',
-  bakery: '<path d="M2.5 10.5C3.5 5 12.5 5 13.5 10.5V14h-11z"/>',
-  market: '<path d="M2 8.5 8 2.2 14 8.5V14H2z"/>',
-  fastfood: '<path d="M4.2 4.5h7.6L10.6 14H5.4z"/>',
-  other: '<circle cx="8" cy="8" r="3"/>',
-}
+export type FoodId = (typeof FOOD_FILTERS)[number]['id'] | 'eda'
 
-export interface MapPhoto {
-  src: string
-  alt: string
-}
+const FOOD_BY_PATH = new Map<string, string>(FOOD_FILTERS.map((item) => [item.path, item.id]))
+const FOOD_BY_ID = new Map<string, string>(FOOD_FILTERS.map((item) => [item.id, item.path]))
+
+const CHURCH = /sobor|kirha|kirkha|tserkov|kostyol|kostel|собор|кирх|церков|костёл|костел/i
 
 export interface MapPoint {
   id: string
-  layer: 'place' | 'venue' | 'route'
-  kind: string
+  group: 'sight' | 'food'
+  slug: string
   title: string
-  typeLabel: string
+  href: string
+  latitude: number
+  longitude: number
+  category: string
+  marker: string
+  church: boolean
+  kindLabel: string
+  summary: string
+  photo: string | null
+  partner: boolean
+  stale: boolean
+}
+
+export interface MapRouteStop {
+  position: number
+  title: string
   href: string
   latitude: number
   longitude: number
   summary: string
-  distanceKm: number | null
-  distance: string
-  photo: MapPhoto | null
-  partner: boolean
-  offer: string | null
-  label: string
+  photo: string | null
 }
 
-export interface MapRouteLine {
+export interface MapRoute {
   slug: string
   title: string
   href: string
-  stops: Array<{
-    latitude: number
-    longitude: number
-    label: string
-    href: string
-    title: string
-  }>
+  stops: MapRouteStop[]
+  path: [number, number][] | null
 }
 
-export interface MapPayload {
-  sponsored: boolean
-  walkingKm: number
-  points: MapPoint[]
-  routes: MapRouteLine[]
+export interface RouteOverlay {
+  stops: Array<MapRouteStop & { id: string }>
+  line: [number, number][] | null
+  dashed: boolean
 }
 
-export interface MapQuery {
-  scope: 'nearby' | 'catalog'
-  latitude: number | null
-  longitude: number | null
-  route: string
-  radiusKm: number
+export interface MapQueryState {
+  sights: SightId[] | null
+  food: string[] | null
+  route: string | null
+  q: string
 }
 
-export function yandexDestinationUrl(latitude: number, longitude: number) {
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return ''
+export function isChurchPlace(slug: string, title: string) {
+  return CHURCH.test(`${slug} ${title}`)
+}
+
+export function markerArt(marker: string, slug?: string | null) {
+  if (marker === 'tserkvi') {
+    return illustrationFor('cathedral', slug)
   }
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-    return ''
+  if (marker === 'eda' || FOOD_BY_ID.has(marker)) {
+    return illustrationFor('eda', slug)
   }
-  return `https://yandex.ru/maps/?rtext=~${latitude.toFixed(5)},${longitude.toFixed(5)}&rtt=auto`
+  return illustrationFor(marker, slug)
 }
 
-export function resolvedFrameHeight(measured: number, fallback: number) {
-  if (Number.isFinite(measured) && measured >= MAP_FRAME_MIN_PX) {
-    return Math.round(measured)
-  }
-  return fallback
-}
-
-export function mapDistanceLabel(km: number | null) {
-  if (km == null || !Number.isFinite(km) || km < 0.05) {
-    return ''
-  }
-  return formatDistance(km)
-}
-
-export function shortMapText(value: string, max = 140) {
-  const text = value.replace(/\s+/g, ' ').trim()
+export function blurb(value: string | null | undefined, max = 120) {
+  const text = (value || '').replace(/\s+/g, ' ').trim()
   if (text.length <= max) {
     return text
   }
-  const cut = text.slice(0, max - 1).replace(/\s+\S*$/, '').trim()
-  return `${cut || text.slice(0, max - 1)}…`
+  const cut = text.slice(0, max - 3).replace(/\s+\S*$/, '')
+  return `${cut || text.slice(0, max - 3)}...`
 }
 
-export function pinOffer(input: { partner: boolean, offer: string | null }, enabled: boolean) {
-  if (!enabled || !input.partner || !input.offer?.trim()) {
-    return { partner: false, offer: null as string | null }
-  }
-  return { partner: true, offer: input.offer.trim() }
+export function partnerVisible(flag: boolean, sponsored: boolean) {
+  return flag === true && sponsored === true
 }
 
-function finiteIn(value: string | undefined, min: number, max: number) {
-  if (!value?.trim()) {
+export function normalizeRoutePath(value: unknown): [number, number][] | null {
+  if (!Array.isArray(value) || value.length < 2 || value.length > 5000) {
     return null
   }
-  const number = Number(value)
-  if (!Number.isFinite(number) || number < min || number > max) {
+  const coords: [number, number][] = []
+  for (const pair of value) {
+    if (!Array.isArray(pair) || pair.length < 2) {
+      return null
+    }
+    const lng = Number(pair[0])
+    const lat = Number(pair[1])
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+      return null
+    }
+    if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+      return null
+    }
+    coords.push([lng, lat])
+  }
+  return coords
+}
+
+export function routeOverlay(route: MapRoute | null): RouteOverlay | null {
+  if (!route) {
     return null
   }
-  return number
-}
-
-export function parseMapQuery(input: { scope?: string, lat?: string, lng?: string, route?: string, radius?: string }): MapQuery {
-  const latitude = finiteIn(input.lat, -90, 90)
-  const longitude = finiteIn(input.lng, -180, 180)
-  const routeRaw = (input.route || '').trim().toLowerCase()
-  const route = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(routeRaw) ? routeRaw.slice(0, 80) : ''
-  const hasPoint = latitude != null && longitude != null
-  const scope: MapQuery['scope'] = input.scope === 'catalog' || (!hasPoint && !route) ? 'catalog' : 'nearby'
-  let radiusKm = WALKING_RADIUS_KM
-  const asked = input.radius?.trim() ? Number(input.radius) : Number.NaN
-  if (Number.isFinite(asked)) {
-    radiusKm = Math.min(8, Math.max(0.2, asked))
+  const stops = route.stops
+    .filter((stop) => Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude))
+    .sort((a, b) => a.position - b.position)
+    .map((stop, index) => ({ ...stop, position: index + 1, id: `stop:${stop.href}` }))
+  const path = normalizeRoutePath(route.path)
+  if (path) {
+    return { stops, line: path, dashed: false }
   }
-  return { scope, latitude, longitude, route, radiusKm }
-}
-
-export interface ClusterInput {
-  id: string
-  latitude: number
-  longitude: number
-}
-
-export interface PointCluster<T> {
-  latitude: number
-  longitude: number
-  points: T[]
-}
-
-function project(latitude: number, longitude: number, zoom: number) {
-  const scale = 256 * 2 ** zoom
-  const x = ((longitude + 180) / 360) * scale
-  const sine = Math.sin((latitude * Math.PI) / 180)
-  const y = (0.5 - Math.log((1 + sine) / (1 - sine)) / (4 * Math.PI)) * scale
-  return { x, y }
-}
-
-export function clusterPoints<T extends ClusterInput>(points: T[], zoom: number, radiusPx = 46): Array<PointCluster<T>> {
-  const pending = points.filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude))
-  const clusters: Array<PointCluster<T>> = []
-  const radiusSq = radiusPx * radiusPx
-  while (pending.length) {
-    const seed = pending.shift()
-    if (!seed) {
-      break
+  if (stops.length >= 2) {
+    return {
+      stops,
+      line: stops.map((stop) => [stop.longitude, stop.latitude]),
+      dashed: true,
     }
-    const group = [seed]
-    const origin = project(seed.latitude, seed.longitude, zoom)
-    for (let index = pending.length - 1; index >= 0; index -= 1) {
-      const other = pending[index]
-      if (!other) {
-        continue
-      }
-      const pos = project(other.latitude, other.longitude, zoom)
-      const dx = pos.x - origin.x
-      const dy = pos.y - origin.y
-      if (dx * dx + dy * dy <= radiusSq) {
-        group.push(other)
-        pending.splice(index, 1)
-      }
-    }
-    const latitude = group.reduce((sum, point) => sum + point.latitude, 0) / group.length
-    const longitude = group.reduce((sum, point) => sum + point.longitude, 0) / group.length
-    clusters.push({ latitude, longitude, points: group })
   }
-  return clusters
+  return { stops, line: null, dashed: false }
 }
 
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (char) => {
-    const named: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }
-    return named[char] ?? char
+function queryValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item)).join(',')
+  }
+  if (value == null) {
+    return ''
+  }
+  return String(value)
+}
+
+function parseIdList(raw: string, allowed: Set<string>) {
+  if (!raw) {
+    return null
+  }
+  if (raw === 'none' || raw === '0') {
+    return []
+  }
+  const ids = raw.split(',').map((item) => item.trim()).filter((item) => allowed.has(item))
+  return [...new Set(ids)]
+}
+
+export function foodIdsIn(points: MapPoint[]) {
+  const ids: string[] = FOOD_FILTERS.map((item) => item.id)
+  if (points.some((point) => point.group === 'food' && point.category === 'eda')) {
+    ids.push('eda')
+  }
+  return ids
+}
+
+export function parseMapQuery(query: Record<string, unknown>): MapQueryState {
+  const sightRaw = parseIdList(queryValue(query.s), SIGHT_IDS)
+  const foodAllowed = new Set<string>([...FOOD_FILTERS.map((item) => item.id), 'eda'])
+  const foodTokens = queryValue(query.f)
+  const foodRaw = foodTokens
+    ? parseIdList(
+        foodTokens.split(',').map((token) => FOOD_BY_PATH.get(token.trim()) || token.trim()).join(','),
+        foodAllowed,
+      )
+    : null
+  const route = queryValue(query.r).trim()
+  const q = queryValue(query.q).replace(/\s+/g, ' ').trim().slice(0, 80)
+  return {
+    sights: sightRaw as SightId[] | null,
+    food: foodRaw,
+    route: /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(route) ? route : null,
+    q,
+  }
+}
+
+function sameSet(list: string[] | null, all: readonly string[]) {
+  if (list == null) {
+    return true
+  }
+  if (list.length !== all.length) {
+    return false
+  }
+  const have = new Set(list)
+  return all.every((id) => have.has(id))
+}
+
+export function canonicalSights(sights: SightId[] | null): SightId[] | null {
+  return sameSet(sights, SIGHT_FACETS.map((item) => item.id)) ? null : sights
+}
+
+export function canonicalFood(food: string[] | null, all: readonly string[]): string[] | null {
+  return sameSet(food, all) ? null : food
+}
+
+export function mapQueryRecord(state: MapQueryState, foodAll: readonly string[] = FOOD_FILTERS.map((item) => item.id)) {
+  const query: Record<string, string> = {}
+  const sights = canonicalSights(state.sights)
+  const food = canonicalFood(state.food, foodAll)
+  if (sights) {
+    query.s = sights.length ? sights.join(',') : 'none'
+  }
+  if (food) {
+    const tokens = food.map((id) => FOOD_BY_ID.get(id) || id)
+    query.f = tokens.length ? tokens.join(',') : 'none'
+  }
+  if (state.route) {
+    query.r = state.route
+  }
+  if (state.q) {
+    query.q = state.q
+  }
+  return query
+}
+
+export function toggleId(current: string[] | null, id: string, all: readonly string[]) {
+  const base = current == null ? [...all] : [...current]
+  const next = base.includes(id) ? base.filter((item) => item !== id) : [...base, id]
+  return sameSet(next, all) ? null : next
+}
+
+export function pointVisible(point: MapPoint, state: MapQueryState) {
+  const q = state.q.trim().toLocaleLowerCase('ru')
+  if (q && !`${point.title} ${point.kindLabel}`.toLocaleLowerCase('ru').includes(q)) {
+    return false
+  }
+  if (point.group === 'sight') {
+    if (state.sights == null) {
+      return true
+    }
+    if (!state.sights.length) {
+      return false
+    }
+    if (state.sights.includes(point.category as SightId)) {
+      return true
+    }
+    return point.church && state.sights.includes('tserkvi')
+  }
+  if (state.food == null) {
+    return true
+  }
+  if (!state.food.length) {
+    return false
+  }
+  return state.food.includes(point.category)
+}
+
+export function facetCounts(points: MapPoint[]) {
+  const sights = Object.fromEntries(SIGHT_FACETS.map((item) => [item.id, 0])) as Record<SightId, number>
+  const food: Record<string, number> = Object.fromEntries(FOOD_FILTERS.map((item) => [item.id, 0]))
+  for (const point of points) {
+    if (point.group === 'sight') {
+      const key = point.category as SightId
+      if (sights[key] != null) {
+        sights[key] += 1
+      }
+      if (point.church) {
+        sights.tserkvi += 1
+      }
+      continue
+    }
+    food[point.category] = (food[point.category] || 0) + 1
+  }
+  return { sights, food }
+}
+
+export function sortMapPoints(points: MapPoint[]) {
+  return [...points].sort((a, b) => {
+    if (a.partner !== b.partner) {
+      return a.partner ? -1 : 1
+    }
+    return a.title.localeCompare(b.title, 'ru')
   })
 }
 
-export function pinClassName(point: { layer: string, kind: string, partner: boolean, focus: boolean }) {
-  const names = ['k39-pin', `k39-pin-${point.layer}`]
-  if (point.layer === 'venue' && point.kind) {
-    names.push(`k39-kind-${point.kind}`)
+function placeCard(point: MapPoint): MapCard {
+  return {
+    id: point.id,
+    title: point.title,
+    href: point.href,
+    kindLabel: point.kindLabel,
+    summary: point.summary,
+    photo: point.photo,
+    partner: point.partner,
+    stale: point.stale,
+    marker: point.marker,
   }
-  if (point.partner) {
-    names.push('k39-pin-partner')
-  }
-  if (point.focus) {
-    names.push('k39-pin-focus')
-  }
-  return names.join(' ')
 }
 
-function glyphFor(point: { layer: string, kind: string }) {
-  if (point.layer === 'route') {
-    return ''
+function placeInput(point: MapPoint): MapPointInput {
+  return {
+    id: point.id,
+    coordinates: [point.longitude, point.latitude],
+    marker: point.marker,
+    title: point.title,
+    sponsored: point.partner,
+    card: placeCard(point),
   }
-  const key = point.layer === 'place' ? 'place' : (GLYPHS[point.kind] ? point.kind : 'other')
-  const path = GLYPHS[key] || GLYPHS.other
-  return `<svg viewBox="0 0 16 16" aria-hidden="true">${path}</svg>`
 }
 
-export function pinButtonHtml(point: { title: string, label: string, layer: string, kind: string, partner: boolean, focus: boolean }) {
-  const inner = point.layer === 'route'
-    ? `<span>${escapeHtml(point.label)}</span>`
-    : glyphFor(point)
-  return `<button type="button" class="${pinClassName(point)}" aria-label="${escapeHtml(point.title)}">${inner}</button>`
+function stopInput(stop: RouteOverlay['stops'][number]): MapStopInput {
+  return {
+    id: stop.id,
+    n: stop.position,
+    coordinates: [stop.longitude, stop.latitude],
+    title: stop.title,
+    card: {
+      id: stop.id,
+      title: stop.title,
+      href: stop.href,
+      kindLabel: `Остановка ${stop.position}`,
+      summary: stop.summary,
+      photo: stop.photo,
+      partner: false,
+      stale: false,
+      marker: 'forty',
+    },
+  }
+}
+
+/** Visitor scene: one clustered point layer, then an optional route line under it and numbered stops on top. */
+export function visitorLayers(points: MapPoint[], overlay: RouteOverlay | null): MapLayer[] {
+  const hrefs = new Set((overlay?.stops ?? []).map((stop) => stop.href))
+  const visible = hrefs.size ? points.filter((point) => !hrefs.has(point.href)) : points
+  const layers: MapLayer[] = []
+  if (overlay?.line && overlay.line.length >= 2) {
+    layers.push(lineLayer('route', overlay.line, { dashed: overlay.dashed }))
+  }
+  layers.push(pointsLayer('places', visible.map(placeInput), { cluster: true }))
+  if (overlay?.stops.length) {
+    layers.push(stopsLayer('route-stops', overlay.stops.map(stopInput)))
+  }
+  return layers
+}
+
+export function queriesEqual(a: Record<string, string>, b: Record<string, unknown>) {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const key of keys) {
+    if ((a[key] || '') !== queryValue(b[key])) {
+      return false
+    }
+  }
+  return true
 }

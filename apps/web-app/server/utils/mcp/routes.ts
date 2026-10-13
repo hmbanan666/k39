@@ -17,6 +17,7 @@ export interface RouteWriteInput {
   seoTitle?: string | null
   seoDescription?: string | null
   points?: StopInput[]
+  path?: [number, number][] | null
 }
 
 export function orderedStopView(rows: Array<{ placeSlug: string, title: string, note: string | null, position: number }>) {
@@ -38,6 +39,7 @@ export async function createRouteDraft(input: {
   seoTitle?: string | null
   seoDescription?: string | null
   points?: StopInput[]
+  path?: [number, number][] | null
 }) {
   const problem = slugError(input.slug)
   if (problem) {
@@ -53,6 +55,7 @@ export async function createRouteDraft(input: {
       seoTitle: input.seoTitle,
       seoDescription: input.seoDescription,
       points: input.points,
+      path: input.path,
     })
     await auditMcp('route_draft_create', 'route', row.id)
     return {
@@ -91,6 +94,7 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
       seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
       points: input.points,
+      path: input.path,
     })
     await auditMcp(auditTool, 'route', current.id)
     return {

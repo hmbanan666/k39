@@ -1,7 +1,7 @@
-import type { MapPayload, MapPoint, MapQuery, MapRouteLine } from '../../../shared/map'
+import type { MapPayload, MapPoint, MapQuery, MapRouteLine } from '../../../shared/embed-map'
 import type { MediaVariant } from '../../../shared/media'
 import { db, kindLabel } from '@k39/database'
-import { mapDistanceLabel, pinOffer, shortMapText, WALKING_RADIUS_KM } from '../../../shared/map'
+import { mapDistanceLabel, pinOffer, shortMapText, WALKING_RADIUS_KM } from '../../../shared/embed-map'
 import { toPublicMedia } from '../../../shared/media'
 import { sponsoredVenuesEnabled } from '../venues/public'
 

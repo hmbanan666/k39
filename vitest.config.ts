@@ -7,6 +7,14 @@ export default defineConfig({
     projects: [
       {
         test: {
+          name: 'packages/map',
+          root: './packages/map',
+          environment: 'node',
+          include: ['test/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'packages/database',
           root: './packages/database',
           environment: 'node',

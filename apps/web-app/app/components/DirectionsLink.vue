@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { yandexDestinationUrl } from '~~/shared/map'
+import { yandexDestinationUrl } from '~~/shared/embed-map'
 
 const props = withDefaults(defineProps<{
   latitude: number

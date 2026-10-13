@@ -15,6 +15,11 @@ export const orderedStop = z.object({
 
 export const orderedStops = z.array(orderedStop).optional()
 
+export const routePath = z.array(z.tuple([
+  z.number().gte(-180).lte(180),
+  z.number().gte(-90).lte(90),
+])).min(2).max(5000).nullable().optional().describe('Real walked or driven line as [longitude, latitude] pairs. Omit to keep the current line. Null clears it. The map draws this line only when the route is selected.')
+
 export const placeFields = {
   slug: z.string().optional().describe('URL slug, latin'),
   title: z.string().optional().describe('Visible Russian title'),

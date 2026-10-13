@@ -300,4 +300,48 @@ describe('ordered stops and archive', () => {
     expect(retargeted?.route).toBeNull()
     expect(retargeted?.steps[0]?.prompt).toBe('Найдите табличку у входа.')
   })
+
+  it('stores a route path, keeps it when omitted, and lists the stop', async () => {
+    await Editor.savePlace({
+      slug: 'stop-live',
+      title: 'Живой форт',
+      summary: 'Коротко',
+      body: '',
+      publicationStatus: 'published',
+      latitude: 54.71,
+      longitude: 20.51,
+    })
+    const line: [number, number][] = [[20.51, 54.71], [20.52, 54.72]]
+    const route = await Editor.saveRoute({
+      slug: 'with-path',
+      title: 'С линией',
+      publicationStatus: 'published',
+      points: [{ placeSlug: 'stop-live' }],
+      path: line,
+    })
+    expect(route.path).toEqual(line)
+    const kept = await Editor.saveRoute({
+      id: route.id,
+      slug: 'with-path',
+      title: 'С линией',
+      publicationStatus: 'published',
+    })
+    expect(kept.path).toEqual(line)
+    const stops = await Content.mapRouteStops()
+    expect(stops).toEqual([expect.objectContaining({
+      routeSlug: 'with-path',
+      placeId: expect.any(String),
+      latitude: 54.71,
+      longitude: 20.51,
+      path: line,
+    })])
+    const cleared = await Editor.saveRoute({
+      id: route.id,
+      slug: 'with-path',
+      title: 'С линией',
+      publicationStatus: 'published',
+      path: null,
+    })
+    expect(cleared.path).toBeNull()
+  })
 })

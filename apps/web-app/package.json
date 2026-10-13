@@ -16,11 +16,13 @@
   },
   "dependencies": {
     "@k39/database": "workspace:*",
+    "@k39/map": "workspace:*",
     "@k39/types": "workspace:*",
     "@paralleldrive/cuid2": "catalog:integrations",
     "@vueuse/core": "catalog:integrations",
     "@vueuse/nuxt": "catalog:integrations",
     "maplibre-gl": "catalog:integrations",
+    "pmtiles": "catalog:integrations",
     "reka-ui": "catalog:integrations",
     "sharp": "catalog:integrations",
     "vue": "catalog:integrations",
