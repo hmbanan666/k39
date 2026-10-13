@@ -1,4 +1,5 @@
 import { externalLinkAttrs } from './links'
+import { headingId } from './reader-nav'
 
 function escapeHtml(value: string) {
   return value
@@ -44,9 +45,11 @@ function renderTable(rows: string[]) {
   return `<div class="table-scroll"><table>${head}<tbody>${cells}</tbody></table></div>`
 }
 
-export function renderMarkdown(source: string) {
+export function renderMarkdown(source: string, options?: { headingPrefix?: string }) {
   const lines = source.replace(/\r\n/g, '\n').split('\n')
   const html: string[] = []
+  const usedIds = new Map<string, number>()
+  const headingPrefix = options?.headingPrefix ?? ''
   let list: 'ul' | 'ol' | null = null
   const closeList = () => {
     if (list) {
@@ -77,7 +80,8 @@ export function renderMarkdown(source: string) {
     if (heading) {
       closeList()
       const level = heading[1]?.length === 2 ? 'h2' : 'h3'
-      html.push(`<${level}>${inline(heading[2] ?? '')}</${level}>`)
+      const id = headingId(heading[2] ?? '', usedIds, headingPrefix)
+      html.push(`<${level} id="${id}">${inline(heading[2] ?? '')}</${level}>`)
       continue
     }
     const unordered = /^[-*][ \t]+(\S.*)$/.exec(trimmed)

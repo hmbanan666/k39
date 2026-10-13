@@ -10,10 +10,7 @@
       :path="page.path"
       :focus-href="`/marshruty/${slug}`"
     />
-    <div
-      class="prose"
-      v-html="page.html"
-    />
+    <ReaderLayout :html="page.html" />
     <VenueNearby :items="page.eatNearby || []" />
   </ArticleShell>
 </template>

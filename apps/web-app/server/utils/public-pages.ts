@@ -230,7 +230,7 @@ export async function loadPlace(slug: string, page = 1) {
   return {
     doc,
     html: renderMarkdown(body),
-    directionsHtml: directionsSource ? renderMarkdown(directionsSource) : '',
+    directionsHtml: directionsSource ? renderMarkdown(directionsSource, { headingPrefix: 'directions-' }) : '',
     faq: structuredFaq,
     checkedAt: isoDay(loaded.place.lastVerifiedAt),
     place: loaded.place,

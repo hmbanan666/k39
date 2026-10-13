@@ -7,6 +7,7 @@
 html {
   background: var(--bg);
   color: var(--text);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -71,9 +72,20 @@ img {
 .prose h3 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
+  scroll-margin-top: calc(var(--site-header-offset, 7.5rem) + 1.75rem);
 }
 .prose h2 { margin: 2.2rem 0 0.8rem; font-size: clamp(1.7rem, 1.3rem + 0.8vw, 2rem); }
-.prose h2:first-child { margin-top: 0; }
+.prose h2:first-child,
+.prose > .reader-html:first-child > h2:first-child { margin-top: 0; }
+.prose > .reader-html ~ .reader-html > p:first-of-type::first-letter {
+  float: none;
+  margin: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
 .prose p:first-of-type::first-letter {
   float: left;
   margin: 0.08em 0.12em 0 0;

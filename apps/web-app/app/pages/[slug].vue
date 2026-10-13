@@ -70,87 +70,86 @@
         </p>
       </div>
     </header>
-    <div class="columns">
-      <div class="article">
-        <div
-          class="prose"
-          v-html="page.html"
-        />
-      </div>
-      <aside class="aside">
-        <section
-          v-if="hasFacts"
-          class="facts"
+    <div class="place-body">
+      <ReaderLayout :html="page.html">
+        <template
+          v-if="hasFacts || page.offers.length"
+          #lead
         >
-          <h2>Коротко</h2>
-          <div
-            v-for="row in facts"
-            :key="row.key"
-            class="fact"
+          <section
+            v-if="hasFacts"
+            class="facts"
           >
-            <Icon :name="tablerIcon(row.key)" size="22" />
-            <div>
-              <p class="label">
-                {{ row.label }}
-              </p>
-              <p>{{ row.value }}</p>
+            <h2>Коротко</h2>
+            <div
+              v-for="row in facts"
+              :key="row.key"
+              class="fact"
+            >
+              <Icon :name="tablerIcon(row.key)" size="22" />
+              <div>
+                <p class="label">
+                  {{ row.label }}
+                </p>
+                <p>{{ row.value }}</p>
+              </div>
             </div>
-          </div>
-          <div
-            v-if="address"
-            class="fact"
-          >
-            <Icon :name="tablerIcon('address')" size="22" />
-            <div>
-              <p class="label">
-                Адрес
-              </p>
-              <p>{{ address }}</p>
+            <div
+              v-if="address"
+              class="fact"
+            >
+              <Icon :name="tablerIcon('address')" size="22" />
+              <div>
+                <p class="label">
+                  Адрес
+                </p>
+                <p>{{ address }}</p>
+              </div>
             </div>
-          </div>
-          <div
-            v-if="page.place.latitude != null && page.place.longitude != null"
-            class="fact"
-          >
-            <Icon :name="tablerIcon('coordinates')" size="22" />
-            <div>
-              <p class="label">
-                Координаты
-              </p>
-              <p>
-                {{ page.place.latitude.toFixed(5) }}, {{ page.place.longitude.toFixed(5) }}
-                <UiLink
-                  v-if="yandex"
-                  :href="yandex"
-                  data-track="directions"
-                  data-track-name="directions"
-                  :data-track-entity="`/${slug}`"
-                >
-                  Яндекс Карты
-                </UiLink>
-              </p>
+            <div
+              v-if="page.place.latitude != null && page.place.longitude != null"
+              class="fact"
+            >
+              <Icon :name="tablerIcon('coordinates')" size="22" />
+              <div>
+                <p class="label">
+                  Координаты
+                </p>
+                <p>
+                  {{ page.place.latitude.toFixed(5) }}, {{ page.place.longitude.toFixed(5) }}
+                  <UiLink
+                    v-if="yandex"
+                    :href="yandex"
+                    data-track="directions"
+                    data-track-name="directions"
+                    :data-track-entity="`/${slug}`"
+                  >
+                    Яндекс Карты
+                  </UiLink>
+                </p>
+              </div>
             </div>
-          </div>
-          <p
-            v-if="checkedLabel"
-            class="checked"
+            <p
+              v-if="checkedLabel"
+              class="checked"
+            >
+              <Icon :name="tablerIcon('checked')" size="16" />
+              Проверено {{ checkedLabel }}
+            </p>
+          </section>
+          <div
+            v-if="page.offers.length"
+            class="offers"
           >
-            <Icon :name="tablerIcon('checked')" size="16" />
-            Проверено {{ checkedLabel }}
-          </p>
-        </section>
-        <div
-          v-if="page.offers.length"
-          class="offers"
-        >
-          <PartnerOffer
-            v-for="offer in page.offers"
-            :key="offer.title"
-            :title="offer.title"
-            :terms="offer.terms"
-          />
-        </div>
-      </aside>
+            <PartnerOffer
+              v-for="offer in page.offers"
+              :key="offer.title"
+              :title="offer.title"
+              :terms="offer.terms"
+            />
+          </div>
+        </template>
+      </ReaderLayout>
     </div>
     <section
       v-if="nearby || page.eatNearby?.length"
@@ -393,8 +392,8 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 .tags,
 .actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .tags { margin: 1rem 0 1.1rem; }
-.columns { display: grid; gap: 1.6rem; margin-top: 2.4rem; }
-.aside { display: grid; gap: 1.2rem; align-content: start; }
+.place-body { margin-top: 2.4rem; }
+.offers { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.2rem; }
 .facts {
   position: relative;
   overflow: hidden;
@@ -467,7 +466,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   line-height: 1.6;
 }
 .sources-date { margin: 0 0 0.8rem; }
-.offers { display: flex; flex-direction: column; gap: 1rem; }
 .nearby-block { margin-top: 3rem; }
 .nearby-block h2 { margin-bottom: 1rem; }
 .nearby {
@@ -505,10 +503,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   font-weight: 500;
   text-underline-offset: 0.15em;
 }
-@media (max-width: 999px) {
-  .aside { display: contents; }
-  .facts { order: -1; }
-}
 @media (min-width: 900px) {
   .nearby {
     display: grid;
@@ -519,11 +513,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 }
 @media (min-width: 1000px) {
   .hero { grid-template-columns: 1.2fr 0.95fr; gap: 3rem; }
-  .columns {
-    grid-template-columns: 1fr 22.5rem;
-    gap: 3.5rem;
-    margin-top: 4rem;
-    align-items: start;
-  }
+  .place-body { margin-top: 4rem; }
 }
 </style>
