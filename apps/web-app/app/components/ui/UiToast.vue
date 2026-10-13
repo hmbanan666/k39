@@ -24,10 +24,10 @@ const { items } = useToast()
   position: fixed;
   z-index: 70;
   top: calc(var(--site-header-offset, 4.75rem) + 0.85rem);
-  left: calc(50% + (var(--karta-panel, 0px) / 2));
+  left: calc(50% + (var(--map-panel, 0px) / 2));
   display: grid;
   gap: 0.4rem;
-  width: min(20rem, calc(100vw - var(--karta-panel, 0px) - 5.5rem));
+  width: min(20rem, calc(100vw - var(--map-panel, 0px) - 5.5rem));
   pointer-events: none;
   transform: translateX(-50%);
 }

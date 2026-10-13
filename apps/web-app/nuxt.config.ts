@@ -6,7 +6,7 @@ export default defineNuxtConfig({
   devServer: {
     port: 3000,
   },
-  css: ['~/assets/css/tokens.css', '~/assets/css/base.css', '~/assets/css/styles.css', '~/assets/css/forts-map.css'],
+  css: ['~/assets/css/tokens.css', '~/assets/css/base.css', '~/assets/css/styles.css'],
   site: {
     url: 'https://k39.online',
     name: 'K39',

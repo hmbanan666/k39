@@ -1,6 +1,6 @@
 # K39
 
-Russian-language site for places in Kaliningrad Oblast: one page per place, illustrated SVG maps, routes, and quests. Local businesses will later attach pay-per-result offers. This repository is the clean base for that product.
+Russian-language site for places in Kaliningrad Oblast: one page per place, a visitor map at `/map`, routes, and quests. Local businesses will later attach pay-per-result offers. This repository is the clean base for that product.
 
 The previous social product (reviews, follows, pins, feed, advent calendar, badges) has been removed.
 

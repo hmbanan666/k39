@@ -2,18 +2,18 @@
 
 ## Status
 
-Accepted
+Superseded by ADR 0019. The forts booklet and its assets are removed.
 
 ## Context
 
-The product needs maps that feel like a museum booklet and can show status, filters, and a quest route. Tile maps already exist on competing sites and do not match the prototype.
+The product needed maps that feel like a museum booklet and can show status, filters, and a quest route. Tile maps already existed on competing sites and did not match the prototype.
 
 ## Decision
 
-Maps are inline SVG drawn from preprojected geometry. The first map is the Konigsberg forts at `/map/forty`, ported from the static prototype (markers, filters, quest, bottom sheet). Coastline, rivers, and the city boundary come from OpenStreetMap under ODbL and are simplified. Object coordinates and prose keep their source links.
+The first map was inline SVG at `/map/forty`, drawn from preprojected geometry (markers, filters, quest, bottom sheet). That page, `FortsMap`, its geometry, and the booklet data are deleted. `/map/forty` is a normal 404. There is no redirect from `/map/forty` or from `/karta`.
 
-Other region slugs render a short "not drawn yet" page. A Yandex Maps deep link remains on each place for turn-by-turn navigation. That link is not an embedded tile map.
+The visitor map is `/map`, drawn by `@k39/map` (ADR 0019). Category SVG files under `public/illustrations/` stay. They are the card and hero fallback from `illustrationFor()`, not a map.
 
 ## Consequences
 
-A new region needs new artwork and projected paths. It cannot be a drop-in of a slippy map. Pan and zoom are custom. The quest "I am here" control does not check geolocation. Route pages are the exception in ADR 0015: a lazy map of the ordered stops. This forts map stays SVG.
+A new region does not need projected SVG artwork. Pan and zoom belong to the MapLibre visitor map. Yandex and Google links on a place or a route stay turn-by-turn directions, not an embedded tile map.

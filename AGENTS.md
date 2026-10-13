@@ -2,7 +2,7 @@
 
 ## Product
 
-K39 (https://k39.online) is a Russian-language SEO site for tourists in Kaliningrad Oblast. One page per place (forts, castles, beaches, resort towns, food). Illustrated SVG maps in a museum-booklet style, not tile maps. Routes and quests (visit points, progress in the browser). Later, local businesses create offers (a discount or a booking) attached to a place or a route and pay per result: a redeemed one-time code or a confirmed booking. Auction bids come after that. Every consented user action is stored as an event for aggregated, anonymized location analytics. Consent is required under 152-FZ.
+K39 (https://k39.online) is a Russian-language SEO site for tourists in Kaliningrad Oblast. One page per place (forts, castles, beaches, resort towns, food). The visitor map is `/map` (`@k39/map`, MapLibre). Routes and quests (visit points, progress in the browser). Later, local businesses create offers (a discount or a booking) attached to a place or a route and pay per result: a redeemed one-time code or a confirmed booking. Auction bids come after that. Every consented user action is stored as an event for aggregated, anonymized location analytics. Consent is required under 152-FZ.
 
 Out of scope for this base: an internal messenger, booking through Dostigus agents, payment capture, and tile maps.
 
@@ -20,7 +20,7 @@ Brand files live in `apps/web-app/public/`: `favicon.ico` (16, 32 and 48), `favi
 
 Published pages are server-rendered from Postgres. Place body is markdown text in the database. See ADR 0007, ADR 0008 and ADR 0009.
 
-URLs: `/{slug}` for a place, `/forty` `/zamki` `/plyazhi` `/kurorty` `/muzei` `/eda` for hubs, `/marshruty/{slug}`, `/podborki/{slug}`, `/kvesty/{slug}`. Regions are not in the path. Old `/place/*` and `/quest/*` 301 in one hop. `/map` is the visitor map. `/map/forty` is the forts booklet and does not redirect. Details and the crawl rules are in ADR 0008. Search console setup is in `docs/search-consoles.md`.
+URLs: `/{slug}` for a place, `/forty` `/zamki` `/plyazhi` `/kurorty` `/muzei` `/eda` for hubs, `/marshruty/{slug}`, `/podborki/{slug}`, `/kvesty/{slug}`. Regions are not in the path. Old `/place/*` and `/quest/*` 301 in one hop. `/map` is the visitor map. `/map/forty` and `/karta` are not redirected. Details and the crawl rules are in ADR 0008. Search console setup is in `docs/search-consoles.md`.
 
 On boot the Nitro plugin migrates, then `applyInitialContent()` inserts categories, the 27 fort pages, one route, one collection and the five-fort quest if `content_imports` does not already contain `initial-content-v1`. `initial-content-v2` then fills seeded slugs that are still empty drafts from the old catalog and publishes them. A later boot skips both. An empty `ADMIN_EMAILS` is fine: the site still serves public pages, and nobody is promoted to admin until that list is set. Later edits happen in `/admin` or through `POST`/`PATCH /api/content/places` and the MCP server with `Authorization: Bearer $CONTENT_API_TOKEN`. That token can publish and edit live content. It cannot manage users or settings.
 
@@ -43,7 +43,7 @@ Tools: `places_list`, `place_get`, `place_draft_create`, `place_update`, `place_
 }
 ```
 
-The forts map component remains `MapFortsMap` (`app/components/map/FortsMap.vue`) at `/map/forty`. It is not linked and not in the sitemap. Set `FEATURE_MAP=true` to serve it with `noindex`. Otherwise that URL is 404. There is no redirect. `@k39/map` is the map core (ADR 0019): basemap choice, the `paper` style, and layers for points, lines, numbered stops, and sponsored pins. The visitor map is `/map`: MapLibre GL draws one scene from that API. The server resolves the basemap at runtime. When the file at `NUXT_BASEMAP_FILE` exists and its sha256 matches `BASEMAP_SHA256`, the client receives `/basemap/kaliningrad.pmtiles` (Range). Otherwise the map uses OpenFreeMap, including when the file is missing. A background task on boot downloads `BASEMAP_SOURCE_URL` when the file is missing or the hash does not match. Those defaults are baked into the image. An https `NUXT_PUBLIC_PMTILES_URL` is an optional object-storage override. Glyphs and the sprite are on this origin. Rebuild steps are in `docs/basemap.md`. It is in the header, the footer, and the sitemap. Embedded venue and route maps use the same library, loaded lazily. A route draws a solid line only from `routes.path`. Otherwise the selected route shows numbered stops and a dashed connector. Direction links on the route page stay in ADR 0015. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` does not choose a basemap.
+`@k39/map` is the map core (ADR 0019): basemap choice, the `paper` style, and layers for points, lines, numbered stops, and sponsored pins. The visitor map is `/map`: MapLibre GL draws one scene from that API. The server resolves the basemap at runtime. When the file at `NUXT_BASEMAP_FILE` exists and its sha256 matches `BASEMAP_SHA256`, the client receives `/basemap/kaliningrad.pmtiles` (Range). Otherwise the map uses OpenFreeMap, including when the file is missing. A background task on boot downloads `BASEMAP_SOURCE_URL` when the file is missing or the hash does not match. Those defaults are baked into the image. An https `NUXT_PUBLIC_PMTILES_URL` is an optional object-storage override. Glyphs and the sprite are on this origin. Rebuild steps are in `docs/basemap.md`. It is in the header, the footer, and the sitemap. Embedded venue and route maps use the same library, loaded lazily. A route draws a solid line only from `routes.path`. Otherwise the selected route shows numbered stops and a dashed connector. Direction links on the route page stay in ADR 0015. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` does not choose a basemap.
 
 Auth is `nuxt-auth-utils`: Yandex and VK use `defineOAuthYandexEventHandler` and `defineOAuthVKEventHandler`, and the admin session is `requireUserSession` / `setUserSession`. Empty client id or secret disables that provider. `ADMIN_EMAILS` promotes those accounts to `admin` on login. Editors and admins can open `/admin`. Anonymous visitors go to `/sign-in?redirectTo=/admin`. The session cookie is sealed with `NUXT_SESSION_PASSWORD` (32+ characters). `nuxt-auth-utils` does not read `NUXT_APP_SECRET`; switch to that when the library supports `appSecret` natively. See ADR 0005.
 
@@ -101,7 +101,7 @@ Target: Dokploy.
 - Port: 3000
 - Auto-deploy: push to `main`
 - Required env: `DATABASE_URL`, `NUXT_SESSION_PASSWORD` (32+ characters), `NODE_ENV=production`
-- Optional env: OAuth client id/secret pairs, `ADMIN_EMAILS`, `CONTENT_API_TOKEN`, `FEATURE_MAP`, `NUXT_PUBLIC_YANDEX_MAPS_API_KEY`, `NUXT_PUBLIC_PMTILES_URL` (https override only), `NUXT_BASEMAP_FILE`, `BASEMAP_SOURCE_URL`, `BASEMAP_SHA256`, `NUXT_PUBLIC_YANDEX_VERIFICATION`, `NUXT_PUBLIC_GOOGLE_VERIFICATION`. The basemap source and hash have defaults in the image.
+- Optional env: OAuth client id/secret pairs, `ADMIN_EMAILS`, `CONTENT_API_TOKEN`, `NUXT_PUBLIC_YANDEX_MAPS_API_KEY`, `NUXT_PUBLIC_PMTILES_URL` (https override only), `NUXT_BASEMAP_FILE`, `BASEMAP_SOURCE_URL`, `BASEMAP_SHA256`, `NUXT_PUBLIC_YANDEX_VERIFICATION`, `NUXT_PUBLIC_GOOGLE_VERIFICATION`. The basemap source and hash have defaults in the image.
 - Volume: mount a writable directory at `/app/basemap` so the downloaded PMTiles file survives a redeploy. The file is not in the image. The map still loads from OpenFreeMap when the file is absent.
 - Volume: mount a writable directory at `MEDIA_DIR` (image default `/app/media`, process uid 1000). Without the volume, uploads vanish on redeploy.
 
@@ -117,7 +117,7 @@ Do not add Kubernetes manifests or GitHub Actions deploy workflows.
 
 - `/{slug}`: place. Hub, nearest, same-region, routes, collections, manual related links. JSON-LD matches the category.
 - Hubs: `/forty`, `/zamki`, `/plyazhi`, `/kurorty`, `/muzei`, `/eda`. A hub stores a markdown `body`, rendered with the place article renderer. A `## Частые вопросы` section adds FAQPage. `hub_update` writes the body and the SEO fields and is audit-logged. `/admin` edits the same fields.
-- `/map`: full-bleed visitor map. Filter query is `noindex`; the canonical is `/map`. `/map/forty` is the flagged forts booklet.
+- `/map`: full-bleed visitor map. Filter query is `noindex`; the canonical is `/map`. `/map/forty` is a normal 404 and is not in the sitemap.
 - `/marshruty`, `/podborki`, `/kvesty` and their slugs.
 - `/zavedeniya` and `/zavedeniya/{slug}`. Filter URLs such as `/zavedeniya/svetlogorsk/kofe` are indexable when a listing intro is set. Place and route pages list nearby food venues.
 - `/admin`: editors and admins. `/preview/{slug}` shows a draft to those users and is `noindex`.

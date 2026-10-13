@@ -2,16 +2,16 @@
 
 ## Status
 
-Accepted. Narrows ADR 0002.
+Superseded. The flag and the forts booklet are removed. See ADR 0002 and ADR 0019.
 
 ## Context
 
-The forts map component is large client-side SVG. It is not ready to be a primary crawl target, and the public information architecture is now hubs and place pages.
+The forts map component was a large client-side SVG. It was not ready to be a primary crawl target, so it lived at `/map/forty` behind `FEATURE_MAP`.
 
 ## Decision
 
-`FortsMap` stays in the repo at `/map/forty`. Nothing in the header, footer or sitemap links to it. `robots.txt` disallows `/map/`. The visitor map at `/map` is public and is not behind the flag. With the flag off, `/map/forty` answers 404. With the flag on, it renders the booklet and sends `noindex`. There is no redirect from `/map` or from older booklet paths.
+`FEATURE_MAP` is gone, including `.env.example`, the public flags endpoint, and the unused `mapEnabled` argument on redirects. `/map` is the only map. `/map/forty` is a normal 404 and is not in the sitemap. Nothing redirects `/map/forty` or `/karta`.
 
 ## Consequences
 
-Turning the flag on changes the 404 into a 200. Do that only when the booklet should be reachable again, and keep it out of the sitemap until it is meant to be indexed.
+There is no flag to turn the booklet back on. Serving that page again would be a new page, not a revival of `FortsMap`.

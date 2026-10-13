@@ -1,4 +1,3 @@
-import process from 'node:process'
 import { db, isDatabaseReady } from '@k39/database'
 import { decideRedirect } from '../../shared/redirects'
 
@@ -19,7 +18,6 @@ export default defineEventHandler(async (event) => {
     protoHeader: getRequestHeader(event, 'x-forwarded-proto'),
     path: url.pathname,
     search: url.search,
-    mapEnabled: process.env.FEATURE_MAP === 'true',
     redirects: stored,
   })
   if (decision.kind === 'gone') {

@@ -18,4 +18,4 @@ The prototype's richer visit status (museum, military, restoration, and so on) i
 
 ## Consequences
 
-Markdown and the catalog JSON can drift if someone edits only one of them. `tools/build-place-content.mjs` regenerates both from `app/data/forts/objects.json`. A business offer cannot point at a place until that place is in the catalog snapshot.
+Place text lives in Postgres. The booklet geometry under `app/data/forts/` was removed with ADR 0002. A business offer cannot point at a place until that place is in the catalog snapshot.
