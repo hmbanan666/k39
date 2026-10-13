@@ -1,23 +1,6 @@
+import type { MapCard, MapLayer, MapPointInput, MapStopInput } from '@k39/map'
+import { lineLayer, pointsLayer, stopsLayer } from '@k39/map'
 import { illustrationFor } from './illustrations'
-
-export const K39_CENTER: [number, number] = [20.55, 54.72]
-export const K39_ZOOM = 8
-
-export const MAP_ATTRIBUTION = '<a href="https://openfreemap.org/" target="_blank" rel="noopener nofollow">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener nofollow">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener nofollow">OpenStreetMap</a>'
-
-export const MAP_ATTRIBUTION_PMTILES = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener nofollow">OpenStreetMap contributors</a> © <a href="https://protomaps.com" target="_blank" rel="noopener nofollow">Protomaps</a>'
-
-export const BASEMAP_GLYPHS = '/basemap/fonts/{fontstack}/{range}.pbf'
-
-export const BASEMAP_SPRITE = '/basemap/sprites/k39'
-
-export function pmtilesSourceUrl(url: string) {
-  const value = url.trim()
-  if (value.startsWith('pmtiles://')) {
-    return value
-  }
-  return `pmtiles://${value}`
-}
 
 export const SIGHT_FACETS = [
   { id: 'forty', label: 'Форты' },
@@ -318,6 +301,66 @@ export function sortMapPoints(points: MapPoint[]) {
     }
     return a.title.localeCompare(b.title, 'ru')
   })
+}
+
+function placeCard(point: MapPoint): MapCard {
+  return {
+    id: point.id,
+    title: point.title,
+    href: point.href,
+    kindLabel: point.kindLabel,
+    summary: point.summary,
+    photo: point.photo,
+    partner: point.partner,
+    stale: point.stale,
+    marker: point.marker,
+  }
+}
+
+function placeInput(point: MapPoint): MapPointInput {
+  return {
+    id: point.id,
+    coordinates: [point.longitude, point.latitude],
+    marker: point.marker,
+    title: point.title,
+    sponsored: point.partner,
+    card: placeCard(point),
+  }
+}
+
+function stopInput(stop: RouteOverlay['stops'][number]): MapStopInput {
+  return {
+    id: stop.id,
+    n: stop.position,
+    coordinates: [stop.longitude, stop.latitude],
+    title: stop.title,
+    card: {
+      id: stop.id,
+      title: stop.title,
+      href: stop.href,
+      kindLabel: `Остановка ${stop.position}`,
+      summary: stop.summary,
+      photo: stop.photo,
+      partner: false,
+      stale: false,
+      marker: 'forty',
+    },
+  }
+}
+
+/** Visitor scene: one clustered point layer, then an optional route line under it and numbered stops on top. */
+export function visitorLayers(points: MapPoint[], overlay: RouteOverlay | null): MapLayer[] {
+  const hrefs = new Set((overlay?.stops ?? []).map((stop) => stop.href))
+  const visible = hrefs.size ? points.filter((point) => !hrefs.has(point.href)) : points
+  const layers: MapLayer[] = []
+  if (overlay?.line && overlay.line.length >= 2) {
+    layers.push(lineLayer('route', overlay.line, { dashed: overlay.dashed }))
+  }
+  layers.push(pointsLayer('places', visible.map(placeInput), { cluster: true }))
+  if (overlay?.stops.length) {
+    layers.push(stopsLayer('route-stops', overlay.stops.map(stopInput)))
+  }
+  return layers
 }
 
 export function queriesEqual(a: Record<string, string>, b: Record<string, unknown>) {

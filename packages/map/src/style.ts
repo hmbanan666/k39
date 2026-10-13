@@ -1,4 +1,6 @@
-import { BASEMAP_GLYPHS, BASEMAP_SPRITE, MAP_ATTRIBUTION, MAP_ATTRIBUTION_PMTILES, pmtilesSourceUrl } from './map'
+import type { BasemapSpec } from './basemap'
+import type { StyleVariant } from './variant'
+import { BASEMAP_GLYPHS, BASEMAP_SPRITE, MAP_ATTRIBUTION, MAP_ATTRIBUTION_PMTILES, pmtilesSourceUrl } from './basemap'
 
 const LAND = '#efe6d4'
 const WATER = '#c5d4d8'
@@ -426,10 +428,13 @@ function protomapsStyle(pmtilesUrl: string, origin?: string) {
   }
 }
 
-export function k39MapStyle(options?: { pmtilesUrl?: string | null, origin?: string }) {
-  const url = options?.pmtilesUrl?.trim()
+export function mapStyle(variant: StyleVariant, basemap: BasemapSpec) {
+  if (variant !== 'paper') {
+    throw new Error(`Unknown map style variant: ${String(variant)}`)
+  }
+  const url = basemap.pmtilesUrl?.trim()
   if (url) {
-    return protomapsStyle(url, options?.origin)
+    return protomapsStyle(url, basemap.origin)
   }
   return openFreeMapStyle()
 }

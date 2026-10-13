@@ -1,12 +1,13 @@
 import type { MapPoint, MapRoute } from '../shared/map'
+import { mapStyle } from '@k39/map'
 import { describe, expect, it } from 'vitest'
 import {
   blurb,
   facetCounts,
   foodIdsIn,
   isChurchPlace,
-
   mapQueryRecord,
+
   normalizeRoutePath,
   parseMapQuery,
   partnerVisible,
@@ -14,8 +15,8 @@ import {
   routeOverlay,
   sortMapPoints,
   toggleId,
+  visitorLayers,
 } from '../shared/map'
-import { k39MapStyle } from '../shared/map-style'
 
 function point(partial: Partial<MapPoint> & Pick<MapPoint, 'id' | 'title' | 'group' | 'category'>): MapPoint {
   return {
@@ -132,9 +133,28 @@ describe('route geometry', () => {
   })
 })
 
+describe('visitor layers', () => {
+  it('builds a clustered point layer and a dashed route only when one is selected', () => {
+    const quiet = visitorLayers([fort, coffee], null)
+    expect(quiet.map((layer) => layer.type)).toEqual(['points'])
+    expect(quiet[0]?.type === 'points' && quiet[0].points.find((point) => point.id === 'kofe')?.sponsored).toBe(true)
+    const layers = visitorLayers([fort, coffee], {
+      dashed: true,
+      line: [[20.5, 54.7], [20.6, 54.8]],
+      stops: [
+        { position: 1, title: 'Один', href: '/fort', latitude: 54.7, longitude: 20.5, summary: '', photo: null, id: 'stop:/fort' },
+        { position: 2, title: 'Два', href: '/b', latitude: 54.8, longitude: 20.6, summary: '', photo: null, id: 'stop:/b' },
+      ],
+    })
+    expect(layers.map((layer) => layer.id)).toEqual(['route', 'places', 'route-stops'])
+    expect(layers[0]).toMatchObject({ type: 'line', dashed: true })
+    expect(layers[1]?.type === 'points' && layers[1].points.some((point) => point.id === 'fort')).toBe(false)
+  })
+})
+
 describe('basemap style', () => {
   it('keeps OpenFreeMap when no archive URL is set', () => {
-    const style = k39MapStyle()
+    const style = mapStyle('paper', {})
     const layers = style.layers as Array<Record<string, unknown>>
     const background = layers.find((layer) => layer.id === 'background') as { paint: { 'background-color': string } }
     const water = layers.find((layer) => layer.id === 'water') as { paint: { 'fill-color': string } }
@@ -149,7 +169,7 @@ describe('basemap style', () => {
   })
 
   it('points a self-hosted archive at PMTiles, local glyphs, and Protomaps layers', () => {
-    const style = k39MapStyle({ pmtilesUrl: '/basemap/kaliningrad.pmtiles', origin: 'https://k39.online' })
+    const style = mapStyle('paper', { pmtilesUrl: '/basemap/kaliningrad.pmtiles', origin: 'https://k39.online' })
     const layers = style.layers as Array<Record<string, unknown>>
     expect(style.glyphs).toBe('/basemap/fonts/{fontstack}/{range}.pbf')
     expect(style.sprite).toBe('https://k39.online/basemap/sprites/k39')

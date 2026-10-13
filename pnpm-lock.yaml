@@ -197,6 +197,9 @@ importers:
       '@k39/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@k39/map':
+        specifier: workspace:*
+        version: link:../../packages/map
       '@k39/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -271,6 +274,15 @@ importers:
       drizzle-kit:
         specifier: catalog:dev
         version: 0.31.8
+      typescript:
+        specifier: catalog:dev
+        version: 5.9.3
+
+  packages/map:
+    devDependencies:
+      '@types/node':
+        specifier: catalog:types
+        version: 25.0.0
       typescript:
         specifier: catalog:dev
         version: 5.9.3

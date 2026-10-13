@@ -14,7 +14,19 @@ OpenFreeMap serves OpenMapTiles from OpenStreetMap with no key. MapLibre GL draw
 
 `/karta` is the public map. It is in the footer, the header, and the sitemap. The title is `Карта Калининградской области | K39`. Filter query keys (`s`, `f`, `r`, `q`) are not tracking parameters, so `tuneRobots` marks those URLs `noindex`. The canonical stays `/karta`.
 
-The basemap is a MapLibre style in `shared/map-style.ts`. Land is the paper tone, water is a soft grey-blue, roads stay thin, and town labels use `name:ru` then `name`. POI, housenumbers, shields, and one-way arrows are omitted.
+`@k39/map` is the reusable core. It has no Vue and no MapLibre. A host passes a scene: a style variant, a basemap, and layers in paint order (bottom to top). The only variant that ships is `paper` (muted land, soft water, thin roads, town names from `name:ru` then `name`, no POI). Another variant, such as a print sheet, is a new id in that module. It is not built here.
+
+The layer API is three kinds:
+
+- `points`. Each pin has an id, `[longitude, latitude]`, a marker name the host has registered as an image, and a card. `sponsored: true` draws the amber partner dot. `cluster: true` groups nearby pins. The visitor map turns sponsored on only when `FEATURE_SPONSORED_VENUES` is on and the venue has an active offer.
+- `line`. A list of `[longitude, latitude]`. `dashed: true` means the stroke is stop order, not a road. Fewer than two positions draws nothing.
+- `stops`. Numbered markers. `n` is the label. Each stop has a card.
+
+Layer ids match `^[a-z][a-z0-9-]{0,40}$` and are unique in one scene. `cardFor(layers, id)` is the card for a selected pin or stop. `mapStyle(variant, basemap)` builds the MapLibre style. An empty `pmtilesUrl` is the OpenFreeMap fallback. A set URL is the PMTiles source.
+
+The web app mounts that scene in `mountK39Map`. `/karta`, the venue frame, and the route frame are callers. A later guide, quest, or offline sheet builds its own layers and, if it needs a different look, its own variant. It should not fork the basemap or the pin renderer.
+
+The paper basemap omits POI, housenumbers, shields, and one-way arrows.
 
 When `NUXT_PUBLIC_PMTILES_URL` is set, the source is a PMTiles archive of Kaliningrad oblast (`bbox` 19.6,54.3,22.95,55.35, zoom 0–15) from a Protomaps daily build. MapLibre reads it with the `pmtiles` protocol (HTTP Range). The style follows the Protomaps basemap schema (`roads`, `places`, `landuse`, `water`, `buildings`, `boundaries`), not OpenMapTiles. Glyphs are Noto Sans files under `/basemap/fonts`. The sprite URL is `/basemap/sprites/k39` and the sprite is empty because the style draws no basemap icons. Attribution is OpenStreetMap contributors and Protomaps. The control stays MapLibre's compact `i` button.
 

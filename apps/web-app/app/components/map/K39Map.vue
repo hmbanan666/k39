@@ -91,6 +91,8 @@
 <script setup lang="ts">
 import type { MapPoint, RouteOverlay } from '~~/shared/map'
 import type { K39MapHandle } from '~/lib/mount-k39-map'
+import { cardFor } from '@k39/map'
+import { visitorLayers } from '~~/shared/map'
 import MapCard from '~/components/map/MapCard.vue'
 
 const props = withDefaults(defineProps<{
@@ -121,45 +123,8 @@ let handle: K39MapHandle | null = null
 let observer: IntersectionObserver | undefined
 let booted = false
 
-const card = computed(() => {
-  const id = selectedId.value
-  if (!id) {
-    return null
-  }
-  const point = props.points.find((item) => item.id === id)
-  if (point) {
-    return point
-  }
-  const stop = props.overlay?.stops.find((item) => item.id === id)
-  if (!stop) {
-    return null
-  }
-  return {
-    id: stop.id,
-    group: 'sight' as const,
-    slug: stop.href.replace(/^\//, ''),
-    title: stop.title,
-    href: stop.href,
-    latitude: stop.latitude,
-    longitude: stop.longitude,
-    category: 'route',
-    marker: 'forty',
-    church: false,
-    kindLabel: `Остановка ${stop.position}`,
-    summary: stop.summary,
-    photo: stop.photo,
-    partner: false,
-    stale: false,
-  }
-})
-
-function shownPoints() {
-  const hrefs = new Set((props.overlay?.stops || []).map((stop) => stop.href))
-  if (!hrefs.size) {
-    return props.points
-  }
-  return props.points.filter((point) => !hrefs.has(point.href))
-}
+const layers = computed(() => visitorLayers(props.points, props.overlay))
+const card = computed(() => cardFor(layers.value, selectedId.value))
 
 function syncSheet() {
   sheet.value = window.matchMedia('(max-width: 720px)').matches
@@ -175,8 +140,7 @@ async function boot() {
     const { mountK39Map } = await import('~/lib/mount-k39-map')
     const coarse = window.matchMedia('(pointer: coarse)').matches
     handle = await mountK39Map(el, {
-      points: shownPoints(),
-      overlay: props.overlay,
+      layers: layers.value,
       cooperative: props.lazy || coarse,
       pmtilesUrl: String(useRuntimeConfig().public.pmtilesUrl || ''),
       onSelect: (id) => {
@@ -238,16 +202,12 @@ function onFullscreen() {
   handle?.resize()
 }
 
-watch(() => props.points, () => {
-  handle?.setPoints(shownPoints())
+watch(layers, (next) => {
+  handle?.setLayers(next)
   const id = selectedId.value
-  if (id && !id.startsWith('stop:') && !props.points.some((point) => point.id === id)) {
+  if (id && !cardFor(next, id)) {
     selectedId.value = null
   }
-})
-
-watch(() => props.overlay, () => {
-  handle?.setOverlay(props.overlay)
 })
 
 watch(() => props.fitKey, () => {

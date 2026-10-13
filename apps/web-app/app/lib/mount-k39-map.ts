@@ -1,24 +1,13 @@
-import type { MapPoint, RouteOverlay } from '~~/shared/map'
+import type { MapLayer } from '@k39/map'
+import { basemapFromUrl, layerCoordinates, lonePoint, MAP_CENTER, MAP_ZOOM, mapStyle } from '@k39/map'
 import maplibregl from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
-import { K39_CENTER, K39_ZOOM } from '~~/shared/map'
-import { k39MapStyle } from '~~/shared/map-style'
 import { mapImages } from './map-icons'
+import { eraseMapLayer, interactivePaintIds, paintMapLayer, replaceMapLayerData } from './sync-map-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-interface FeatureCollection {
-  type: 'FeatureCollection'
-  features: Array<{
-    type: 'Feature'
-    id?: string
-    geometry: { type: 'Point', coordinates: [number, number] } | { type: 'LineString', coordinates: [number, number][] }
-    properties: Record<string, string | number>
-  }>
-}
-
 export interface K39MapHandle {
-  setPoints: (points: MapPoint[]) => void
-  setOverlay: (overlay: RouteOverlay | null) => void
+  setLayers: (layers: MapLayer[]) => void
   setSelected: (id: string | null) => void
   reveal: (id: string) => void
   fit: () => void
@@ -27,54 +16,6 @@ export interface K39MapHandle {
   locate: () => Promise<'ok' | 'denied' | 'unavailable'>
   resize: () => void
   destroy: () => void
-}
-
-const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] }
-
-function pointsData(points: MapPoint[]): FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: points.map((point) => ({
-      type: 'Feature',
-      id: point.id,
-      geometry: { type: 'Point', coordinates: [point.longitude, point.latitude] },
-      properties: {
-        id: point.id,
-        marker: point.marker,
-        partner: point.partner ? 1 : 0,
-        title: point.title,
-      },
-    })),
-  }
-}
-
-function stopsData(overlay: RouteOverlay | null): FeatureCollection {
-  if (!overlay) {
-    return EMPTY
-  }
-  return {
-    type: 'FeatureCollection',
-    features: overlay.stops.map((stop) => ({
-      type: 'Feature',
-      id: stop.id,
-      geometry: { type: 'Point', coordinates: [stop.longitude, stop.latitude] },
-      properties: { id: stop.id, n: stop.position, title: stop.title },
-    })),
-  }
-}
-
-function lineData(overlay: RouteOverlay | null): FeatureCollection {
-  if (!overlay?.line || overlay.line.length < 2) {
-    return EMPTY
-  }
-  return {
-    type: 'FeatureCollection',
-    features: [{
-      type: 'Feature',
-      geometry: { type: 'LineString', coordinates: overlay.line },
-      properties: { dashed: overlay.dashed ? 1 : 0 },
-    }],
-  }
 }
 
 function geoSource(map: maplibregl.Map, id: string) {
@@ -96,8 +37,7 @@ function ensurePmtilesProtocol() {
 }
 
 export async function mountK39Map(el: HTMLElement, options: {
-  points: MapPoint[]
-  overlay: RouteOverlay | null
+  layers: MapLayer[]
   cooperative: boolean
   pmtilesUrl?: string
   onSelect: (id: string) => void
@@ -105,10 +45,11 @@ export async function mountK39Map(el: HTMLElement, options: {
 }): Promise<K39MapHandle> {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const duration = reduce ? 0 : 450
-  let points = options.points
-  let overlay = options.overlay
+  const known = new Set(Object.keys(mapImages()))
+  let layers = options.layers
   let selected: string | null = null
   let hovered: { source: string, id: string } | null = null
+  const mounted = new Map<string, MapLayer>()
 
   const pmtilesUrl = options.pmtilesUrl?.trim() || ''
   if (pmtilesUrl) {
@@ -116,9 +57,9 @@ export async function mountK39Map(el: HTMLElement, options: {
   }
   const map = new maplibregl.Map({
     container: el,
-    style: k39MapStyle({ pmtilesUrl, origin: window.location.origin }) as maplibregl.StyleSpecification,
-    center: K39_CENTER,
-    zoom: K39_ZOOM,
+    style: mapStyle('paper', basemapFromUrl(pmtilesUrl, window.location.origin)) as maplibregl.StyleSpecification,
+    center: MAP_CENTER,
+    zoom: MAP_ZOOM,
     attributionControl: { compact: true },
     cooperativeGestures: options.cooperative,
     dragRotate: false,
@@ -147,157 +88,54 @@ export async function mountK39Map(el: HTMLElement, options: {
     }
   }
 
-  map.addSource('places', {
-    type: 'geojson',
-    data: pointsData(points),
-    cluster: true,
-    clusterRadius: 48,
-    clusterMaxZoom: 13,
-  })
-  map.addSource('route-line', { type: 'geojson', data: lineData(overlay) })
-  map.addSource('stops', { type: 'geojson', data: stopsData(overlay) })
+  function sync(next: MapLayer[]) {
+    const keep = new Set(next.map((layer) => layer.id))
+    for (const [id, previous] of [...mounted]) {
+      if (!keep.has(id)) {
+        eraseMapLayer(map, previous)
+        mounted.delete(id)
+      }
+    }
+    for (const layer of next) {
+      const previous = mounted.get(layer.id)
+      const clusterChanged = previous?.type === 'points' && layer.type === 'points' && previous.cluster !== layer.cluster
+      if (previous && (previous.type !== layer.type || clusterChanged)) {
+        eraseMapLayer(map, previous)
+        mounted.delete(layer.id)
+      }
+      if (!mounted.has(layer.id)) {
+        paintMapLayer(map, layer, known)
+        mounted.set(layer.id, layer)
+      } else {
+        replaceMapLayerData(map, layer, known)
+      }
+    }
+    layers = next
+  }
 
-  map.addLayer({
-    id: 'clusters',
-    type: 'circle',
-    source: 'places',
-    filter: ['has', 'point_count'],
-    paint: {
-      'circle-color': '#fffbf3',
-      'circle-stroke-color': '#a3402a',
-      'circle-stroke-width': 2,
-      'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 30, 24],
-    },
-  })
-  map.addLayer({
-    id: 'cluster-count',
-    type: 'symbol',
-    source: 'places',
-    filter: ['has', 'point_count'],
-    layout: {
-      'text-field': ['get', 'point_count_abbreviated'],
-      'text-font': ['Noto Sans Bold'],
-      'text-size': 13,
-    },
-    paint: { 'text-color': '#2b2420' },
-  })
-  map.addLayer({
-    id: 'route-line',
-    type: 'line',
-    source: 'route-line',
-    filter: ['==', ['get', 'dashed'], 0],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#a3402a',
-      'line-width': 3,
-      'line-opacity': 0.9,
-    },
-  })
-  map.addLayer({
-    id: 'route-dashed',
-    type: 'line',
-    source: 'route-line',
-    filter: ['==', ['get', 'dashed'], 1],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#a3402a',
-      'line-width': 2.5,
-      'line-opacity': 0.75,
-      'line-dasharray': [1.2, 1.15],
-    },
-  })
-  map.addLayer({
-    id: 'pin-halo',
-    type: 'circle',
-    source: 'places',
-    filter: ['!', ['has', 'point_count']],
-    paint: {
-      'circle-radius': [
-        'case',
-        ['boolean', ['feature-state', 'selected'], false],
-        20,
-        ['boolean', ['feature-state', 'hover'], false],
-        16,
-        0,
-      ],
-      'circle-color': '#a3402a',
-      'circle-opacity': 0.22,
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#fffbf3',
-      'circle-translate': [0, -16],
-    },
-  })
-  map.addLayer({
-    id: 'pins',
-    type: 'symbol',
-    source: 'places',
-    filter: ['!', ['has', 'point_count']],
-    layout: {
-      'icon-image': ['get', 'marker'],
-      'icon-anchor': 'bottom',
-      'icon-allow-overlap': true,
-      'icon-size': 1,
-    },
-  })
-  map.addLayer({
-    id: 'partner-dot',
-    type: 'circle',
-    source: 'places',
-    filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'partner'], 1]],
-    paint: {
-      'circle-color': '#d68a22',
-      'circle-stroke-color': '#fffbf3',
-      'circle-stroke-width': 1.5,
-      'circle-radius': 4.5,
-      'circle-translate': [11, -30],
-    },
-  })
-  map.addLayer({
-    id: 'stop-halo',
-    type: 'circle',
-    source: 'stops',
-    paint: {
-      'circle-radius': [
-        'case',
-        ['boolean', ['feature-state', 'selected'], false],
-        18,
-        ['boolean', ['feature-state', 'hover'], false],
-        15,
-        0,
-      ],
-      'circle-color': '#a3402a',
-      'circle-opacity': 0.2,
-    },
-  })
-  map.addLayer({
-    id: 'stops',
-    type: 'symbol',
-    source: 'stops',
-    layout: {
-      'icon-image': 'stop',
-      'icon-anchor': 'center',
-      'icon-allow-overlap': true,
-      'text-field': ['to-string', ['get', 'n']],
-      'text-font': ['Noto Sans Bold'],
-      'text-size': 12,
-      'text-allow-overlap': true,
-      'icon-size': 1,
-    },
-    paint: { 'text-color': '#fffbf3' },
-  })
+  sync(layers)
+
+  function paintIds() {
+    return layers.flatMap((layer) => interactivePaintIds(layer)).filter((id) => map.getLayer(id))
+  }
 
   function applySelected(id: string | null) {
     if (selected) {
-      for (const source of ['places', 'stops']) {
-        map.setFeatureState({ source, id: selected }, { selected: false })
+      for (const layer of layers) {
+        map.setFeatureState({ source: layer.id, id: selected }, { selected: false })
       }
     }
     selected = id
     if (!id) {
       return
     }
-    const source = id.startsWith('stop:') ? 'stops' : 'places'
-    map.setFeatureState({ source, id }, { selected: true })
+    const source = layers.find((layer) => (
+      (layer.type === 'points' && layer.points.some((point) => point.id === id))
+      || (layer.type === 'stops' && layer.stops.some((stop) => stop.id === id))
+    ))?.id
+    if (source && map.getSource(source)) {
+      map.setFeatureState({ source, id }, { selected: true })
+    }
   }
 
   function hover(source: string, id: string | null) {
@@ -314,112 +152,100 @@ export async function mountK39Map(el: HTMLElement, options: {
     map.getCanvas().style.cursor = 'pointer'
   }
 
-  function featureId(event: maplibregl.MapLayerMouseEvent) {
-    const feature = event.features?.[0]
-    const id = feature?.properties?.id
-    return id == null ? null : String(id)
-  }
-
-  map.on('click', 'clusters', (event) => {
-    const feature = event.features?.[0]
-    const clusterId = feature?.properties?.cluster_id
-    const geometry = feature?.geometry
-    if (clusterId == null || geometry?.type !== 'Point') {
+  map.on('click', (event) => {
+    const names = paintIds()
+    const hits = names.length ? map.queryRenderedFeatures(event.point, { layers: names }) : []
+    const hit = hits[0]
+    if (!hit) {
+      options.onEmpty()
       return
     }
-    const source = geoSource(map, 'places')
-    const center = geometry.coordinates as [number, number]
-    void source?.getClusterExpansionZoom(Number(clusterId)).then((zoom) => {
-      map.easeTo({ center, zoom, duration })
-    }).catch(() => {})
-  })
-  map.on('click', 'pins', (event) => {
-    const id = featureId(event)
-    if (id) {
-      options.onSelect(id)
+    const clusterId = hit.properties?.cluster_id
+    const layerId = hit.layer?.id || ''
+    const sourceId = hit.layer?.source || ''
+    if (clusterId != null && hit.geometry.type === 'Point' && layerId.endsWith('-clusters')) {
+      const source = geoSource(map, sourceId)
+      const center = hit.geometry.coordinates as [number, number]
+      void source?.getClusterExpansionZoom(Number(clusterId)).then((zoom) => {
+        map.easeTo({ center, zoom, duration })
+      }).catch(() => {})
+      return
+    }
+    const id = hit.properties?.id
+    if (id != null) {
+      options.onSelect(String(id))
     }
   })
-  map.on('click', 'stops', (event) => {
-    const id = featureId(event)
-    if (id) {
-      options.onSelect(id)
+  map.on('mousemove', (event) => {
+    const names = paintIds()
+    const hits = names.length ? map.queryRenderedFeatures(event.point, { layers: names }) : []
+    const hit = hits[0]
+    if (!hit) {
+      hover('', null)
+      return
     }
-  })
-  map.on('click', (event) => {
-    const layers = ['pins', 'stops', 'clusters'].filter((id) => map.getLayer(id))
-    const hits = layers.length ? map.queryRenderedFeatures(event.point, { layers }) : []
-    if (!hits.length) {
-      options.onEmpty()
+    if (hit.properties?.cluster_id != null) {
+      map.getCanvas().style.cursor = 'pointer'
+      return
     }
+    const id = hit.properties?.id
+    if (id == null) {
+      hover('', null)
+      return
+    }
+    hover(hit.layer?.source || '', String(id))
   })
-  map.on('mousemove', 'pins', (event) => hover('places', featureId(event)))
-  map.on('mouseleave', 'pins', () => hover('places', null))
-  map.on('mousemove', 'stops', (event) => hover('stops', featureId(event)))
-  map.on('mouseleave', 'stops', () => hover('stops', null))
-  map.on('mousemove', 'clusters', () => {
-    map.getCanvas().style.cursor = 'pointer'
-  })
-  map.on('mouseleave', 'clusters', () => {
-    map.getCanvas().style.cursor = ''
-  })
+  map.on('mouseleave', () => hover('', null))
 
   function boundsOf() {
     const bounds = new maplibregl.LngLatBounds()
-    const coords = [
-      ...points.map((point) => [point.longitude, point.latitude] as [number, number]),
-      ...(overlay?.line || []),
-      ...(overlay?.stops.map((stop) => [stop.longitude, stop.latitude] as [number, number]) || []),
-    ]
-    for (const coord of coords) {
+    for (const coord of layerCoordinates(layers)) {
       bounds.extend(coord)
     }
     return bounds.isEmpty() ? null : bounds
   }
 
   function fit() {
-    if (points.length === 1 && !overlay?.stops.length) {
-      const point = points[0]
-      if (point) {
-        map.easeTo({ center: [point.longitude, point.latitude], zoom: 15, duration })
-      }
+    const single = lonePoint(layers)
+    if (single) {
+      map.easeTo({ center: single, zoom: 15, duration })
       return
     }
     const bounds = boundsOf()
     if (!bounds) {
-      map.easeTo({ center: K39_CENTER, zoom: K39_ZOOM, duration })
+      map.easeTo({ center: MAP_CENTER, zoom: MAP_ZOOM, duration })
       return
     }
     map.fitBounds(bounds, { padding: 56, maxZoom: 15, duration })
   }
 
   function findCoord(id: string): [number, number] | null {
-    const point = points.find((item) => item.id === id)
-    if (point) {
-      return [point.longitude, point.latitude]
+    for (const layer of layers) {
+      if (layer.type === 'points') {
+        const point = layer.points.find((item) => item.id === id)
+        if (point) {
+          return point.coordinates
+        }
+      }
+      if (layer.type === 'stops') {
+        const stop = layer.stops.find((item) => item.id === id)
+        if (stop) {
+          return stop.coordinates
+        }
+      }
     }
-    const stop = overlay?.stops.find((item) => item.id === id)
-    return stop ? [stop.longitude, stop.latitude] : null
+    return null
   }
 
   const details = map.getContainer().querySelector('details.maplibregl-ctrl-attrib')
   if (details instanceof HTMLDetailsElement) {
     details.open = false
   }
-
   requestAnimationFrame(() => map.resize())
 
   return {
-    setPoints(next) {
-      points = next
-      geoSource(map, 'places')?.setData(pointsData(points))
-      if (selected) {
-        applySelected(selected)
-      }
-    },
-    setOverlay(next) {
-      overlay = next
-      geoSource(map, 'route-line')?.setData(lineData(overlay))
-      geoSource(map, 'stops')?.setData(stopsData(overlay))
+    setLayers(next) {
+      sync(next)
       if (selected) {
         applySelected(selected)
       }

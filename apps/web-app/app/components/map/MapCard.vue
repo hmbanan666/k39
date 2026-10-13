@@ -28,7 +28,7 @@
     <img
       class="photo"
       :class="{ art: !point.photo }"
-      :src="point.photo || markerArt(point.marker, point.slug)"
+      :src="point.photo || markerArt(point.marker)"
       alt=""
     >
     <div class="copy">
@@ -62,11 +62,11 @@
 </template>
 
 <script setup lang="ts">
-import type { MapPoint } from '~~/shared/map'
+import type { MapCard } from '@k39/map'
 import { markerArt } from '~~/shared/map'
 
 defineProps<{
-  point: MapPoint | null
+  point: MapCard | null
   sheet: boolean
 }>()
 

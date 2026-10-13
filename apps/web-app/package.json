@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@k39/database": "workspace:*",
+    "@k39/map": "workspace:*",
     "@k39/types": "workspace:*",
     "@paralleldrive/cuid2": "catalog:integrations",
     "@vueuse/core": "catalog:integrations",

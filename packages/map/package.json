@@ -1,0 +1,17 @@
+{
+  "name": "@k39/map",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "clean:modules": "rm -rf node_modules",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:types",
+    "typescript": "catalog:dev"
+  }
+}
