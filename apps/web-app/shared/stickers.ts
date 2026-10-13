@@ -1,0 +1,313 @@
+// Moose mascot stickers. Catalog for people and agents: docs/stickers.md.
+// Files live in public/stickers/{slug}-{width}.{avif|webp} and {slug}-256.png.
+
+export const STICKER_WIDTHS = [128, 256, 512] as const
+
+export type StickerSeason = 'all' | 'winter' | 'spring' | 'summer' | 'autumn'
+
+export interface StickerMeta {
+  /** Russian alt text. */
+  alt: string
+  /** What the moose is doing, in English. */
+  scene: string
+  mood: string
+  pageTypes: string[]
+  themes: string[]
+  seasons: StickerSeason[]
+  /** Intrinsic size of the 512 px variant. */
+  width: number
+  height: number
+}
+
+export const STICKERS = {
+  'amber': {
+    alt: 'Лось держит большой светящийся кусок янтаря',
+    scene: 'Holds a big glowing raw amber nugget in both hands, proud smile.',
+    mood: 'proud',
+    pageTypes: ['place', 'hub', 'collection', 'longread'],
+    themes: ['amber', 'museums', 'souvenirs', 'Yantarny'],
+    seasons: ['all'],
+    width: 512,
+    height: 626,
+  },
+  'beach-1': {
+    alt: 'Лось в тёмных очках и гавайской рубашке с рюкзаком и ракушкой',
+    scene: 'Tourist in sunglasses and a blue Hawaiian shirt, backpack on, shows a scallop shell.',
+    mood: 'cheerful',
+    pageTypes: ['hub', 'month-guide', 'route', 'collection'],
+    themes: ['beaches', 'resorts', 'seaside holiday', 'arrival'],
+    seasons: ['summer'],
+    width: 512,
+    height: 696,
+  },
+  'cook-with-pan': {
+    alt: 'Лось в поварском колпаке со сковородой овощей',
+    scene: 'Chef hat, holds a frying pan with sizzling vegetables.',
+    mood: 'busy, happy',
+    pageTypes: ['venue', 'venue-listing', 'hub', 'longread'],
+    themes: ['food', 'restaurants', 'recipes', 'local cuisine'],
+    seasons: ['all'],
+    width: 512,
+    height: 626,
+  },
+  'detective': {
+    alt: 'Лось в кепке с лупой разглядывает древнюю амфору',
+    scene: 'Flat cap and magnifying glass, inspects an ancient amphora.',
+    mood: 'curious',
+    pageTypes: ['place', 'longread', 'quest', 'search'],
+    themes: ['history', 'archaeology', 'museums', 'quests', 'mysteries', 'not found'],
+    seasons: ['all'],
+    width: 512,
+    height: 596,
+  },
+  'fish': {
+    alt: 'Лось с копчёной рыбой и кружкой',
+    scene: 'Holds a smoked fish and a mug, eyes closed with pleasure.',
+    mood: 'content',
+    pageTypes: ['venue', 'venue-listing', 'place'],
+    themes: ['fish', 'smokehouses', 'Curonian Spit', 'street food', 'fishing villages'],
+    seasons: ['all'],
+    width: 512,
+    height: 670,
+  },
+  'fishing': {
+    alt: 'Лось с удочкой, на крючке рыбка',
+    scene: 'Holds a fishing rod with a small fish on the line.',
+    mood: 'cheerful, patient',
+    pageTypes: ['place', 'route', 'month-guide'],
+    themes: ['fishing', 'lagoons', 'lakes', 'rivers', 'slow day'],
+    seasons: ['spring', 'summer', 'autumn'],
+    width: 512,
+    height: 501,
+  },
+  'hungry': {
+    alt: 'Лось с вилкой, ножом и салфеткой ждёт еду',
+    scene: 'Napkin tucked in, fork and knife in hands, waiting for food.',
+    mood: 'hungry, eager',
+    pageTypes: ['venue-listing', 'hub', 'route'],
+    themes: ['where to eat', 'lunch stop', 'food'],
+    seasons: ['all'],
+    width: 512,
+    height: 638,
+  },
+  'knight': {
+    alt: 'Лось в рыцарских доспехах с мечом у замковой башни',
+    scene: 'Knight armor and visor, wooden sword, stands by a castle tower.',
+    mood: 'brave, playful',
+    pageTypes: ['place', 'hub', 'collection', 'quest'],
+    themes: ['castles', 'forts', 'Teutonic Order', 'kids', 'quests'],
+    seasons: ['all'],
+    width: 512,
+    height: 551,
+  },
+  'on-beach': {
+    alt: 'Лось загорает на полосатом полотенце под зонтом',
+    scene: 'Lies on a striped towel under a beach umbrella, relaxed.',
+    mood: 'lazy, relaxed',
+    pageTypes: ['hub', 'month-guide', 'collection'],
+    themes: ['beaches', 'rest', 'resorts', 'weekend'],
+    seasons: ['summer'],
+    width: 512,
+    height: 506,
+  },
+  'photographer': {
+    alt: 'Лось в кепке фотографирует',
+    scene: 'Flat cap, takes a photo with a big camera.',
+    mood: 'focused',
+    pageTypes: ['place', 'route', 'collection', 'longread'],
+    themes: ['viewpoints', 'photo spots', 'architecture', 'media upload'],
+    seasons: ['all'],
+    width: 512,
+    height: 671,
+  },
+  'postman': {
+    alt: 'Лось-почтальон в жёлтом шарфе с сумкой',
+    scene: 'Yellow scarf and blue mail bag, stands and smiles.',
+    mood: 'friendly, calm',
+    pageTypes: ['about', 'modal', 'auth'],
+    themes: ['mail', 'postcards', 'subscriptions', 'success messages'],
+    seasons: ['all'],
+    width: 512,
+    height: 806,
+  },
+  'postman-hi': {
+    alt: 'Лось-почтальон в жёлтом шарфе машет рукой',
+    scene: 'Yellow scarf and blue mail bag, waves hello.',
+    mood: 'friendly',
+    pageTypes: ['home', 'about', 'auth', 'modal'],
+    themes: ['greeting', 'sign-in', 'newsletter', 'contacts', 'welcome'],
+    seasons: ['all'],
+    width: 512,
+    height: 702,
+  },
+  'shocked': {
+    alt: 'Удивлённый лось, вокруг молнии',
+    scene: 'Open-mouthed surprise with lightning bolts around.',
+    mood: 'shocked',
+    pageTypes: ['error', 'modal', 'longread'],
+    themes: ['errors', '404', 'surprising facts', 'warnings', 'storms'],
+    seasons: ['all'],
+    width: 512,
+    height: 554,
+  },
+  'swimming': {
+    alt: 'Лось в очках для плавания в розовом круге на воде',
+    scene: 'Swim goggles, floats in a pink rubber ring.',
+    mood: 'joyful',
+    pageTypes: ['hub', 'month-guide', 'place'],
+    themes: ['swimming', 'sea', 'lakes', 'water parks', 'kids'],
+    seasons: ['summer'],
+    width: 512,
+    height: 502,
+  },
+  'with-amber-chest': {
+    alt: 'Лось открывает сундук с янтарём',
+    scene: 'Opens a wooden treasure chest full of glowing amber.',
+    mood: 'delighted',
+    pageTypes: ['quest', 'collection', 'modal'],
+    themes: ['treasure', 'rewards', 'quests', 'amber', 'hidden gems'],
+    seasons: ['all'],
+    width: 512,
+    height: 547,
+  },
+  'with-bag-and-stick': {
+    alt: 'Лось с большим рюкзаком и посохом',
+    scene: 'Big hiking backpack and walking stick, ready to go.',
+    mood: 'adventurous',
+    pageTypes: ['route', 'hub', 'month-guide'],
+    themes: ['hiking', 'trails', 'nature', 'eco paths', 'national park'],
+    seasons: ['spring', 'summer', 'autumn'],
+    width: 512,
+    height: 679,
+  },
+  'with-bicycle': {
+    alt: 'Лось едет на велосипеде с корзинкой',
+    scene: 'Rides a blue bicycle with a wicker basket.',
+    mood: 'cheerful',
+    pageTypes: ['route', 'place', 'month-guide'],
+    themes: ['cycling', 'bike routes', 'promenades', 'coast'],
+    seasons: ['spring', 'summer', 'autumn'],
+    width: 512,
+    height: 738,
+  },
+  'with-coffee-and-croissant': {
+    alt: 'Лось с чашкой кофе и круассаном',
+    scene: 'Cup of coffee and a croissant.',
+    mood: 'cozy',
+    pageTypes: ['venue', 'venue-listing', 'route'],
+    themes: ['coffee', 'breakfast', 'cafes', 'morning'],
+    seasons: ['all'],
+    width: 512,
+    height: 650,
+  },
+  'with-heart': {
+    alt: 'Лось обнимает большое красное сердце',
+    scene: 'Hugs a big red heart.',
+    mood: 'warm',
+    pageTypes: ['modal', 'auth', 'about'],
+    themes: ['favorites', 'thanks', 'saved places', 'dates', 'Valentine\'s'],
+    seasons: ['all'],
+    width: 512,
+    height: 682,
+  },
+  'with-icecream': {
+    alt: 'Лось облизывает рожок мороженого',
+    scene: 'Licks a strawberry-vanilla ice cream cone.',
+    mood: 'happy',
+    pageTypes: ['venue-listing', 'month-guide', 'route'],
+    themes: ['sweets', 'promenade', 'kids', 'hot day'],
+    seasons: ['summer'],
+    width: 512,
+    height: 722,
+  },
+  'with-lamp-and-raincoat': {
+    alt: 'Лось в жёлтом дождевике с фонарём',
+    scene: 'Yellow raincoat and hat, backpack, holds a lit lantern.',
+    mood: 'brave, cozy',
+    pageTypes: ['month-guide', 'route', 'longread', 'modal'],
+    themes: ['rain', 'bad weather', 'evening', 'night walks', 'lighthouses', 'forts underground'],
+    seasons: ['autumn', 'winter', 'spring'],
+    width: 512,
+    height: 620,
+  },
+  'with-map': {
+    alt: 'Лось с бумажной картой и сумкой',
+    scene: 'Reads a paper map, neckerchief and shoulder bag.',
+    mood: 'thoughtful',
+    pageTypes: ['route', 'hub', 'map', 'empty-state'],
+    themes: ['planning', 'routes', 'navigation', 'self-guided trips'],
+    seasons: ['all'],
+    width: 512,
+    height: 612,
+  },
+  'with-organ': {
+    alt: 'Лось играет на органе, вокруг ноты',
+    scene: 'Plays a wooden pipe organ, music notes around.',
+    mood: 'inspired',
+    pageTypes: ['place', 'month-guide', 'longread'],
+    themes: ['organ concerts', 'Cathedral', 'music', 'events'],
+    seasons: ['all'],
+    width: 512,
+    height: 501,
+  },
+  'with-sandcastle': {
+    alt: 'Лось строит замок из песка',
+    scene: 'Kneels in sand with a red bucket next to a sandcastle.',
+    mood: 'playful',
+    pageTypes: ['hub', 'month-guide', 'collection'],
+    themes: ['beaches', 'kids', 'family'],
+    seasons: ['summer'],
+    width: 512,
+    height: 511,
+  },
+  'with-snowman': {
+    alt: 'Лось в вязаной шапке рядом со снеговиком',
+    scene: 'Red knitted hat, hugs a snowman in a matching hat and scarf.',
+    mood: 'cozy, festive',
+    pageTypes: ['month-guide', 'hub', 'modal'],
+    themes: ['winter', 'New Year', 'holidays', 'kids'],
+    seasons: ['winter'],
+    width: 512,
+    height: 578,
+  },
+  'with-soup': {
+    alt: 'Лось ест суп ложкой из миски',
+    scene: 'Eats a hearty soup with a spoon.',
+    mood: 'satisfied',
+    pageTypes: ['venue', 'venue-listing', 'month-guide'],
+    themes: ['local cuisine', 'warm food', 'cold weather'],
+    seasons: ['autumn', 'winter'],
+    width: 512,
+    height: 656,
+  },
+  'with-tree': {
+    alt: 'Лось обнимает дерево в лесу',
+    scene: 'Hugs a big pine trunk among small firs.',
+    mood: 'peaceful',
+    pageTypes: ['place', 'route', 'hub'],
+    themes: ['forests', 'nature', 'Curonian Spit', 'dancing forest', 'parks', 'eco'],
+    seasons: ['all'],
+    width: 512,
+    height: 514,
+  },
+  'with-trophy': {
+    alt: 'Лось с кубком и медалью',
+    scene: 'Gold cup and medal around the neck.',
+    mood: 'triumphant',
+    pageTypes: ['quest', 'modal', 'admin'],
+    themes: ['achievements', 'quest finished', 'top lists', 'awards'],
+    seasons: ['all'],
+    width: 512,
+    height: 606,
+  },
+} as const satisfies Record<string, StickerMeta>
+
+export type StickerSlug = keyof typeof STICKERS
+
+export function stickerSrc(slug: StickerSlug, width: number, format: 'avif' | 'webp' | 'png') {
+  return `/stickers/${slug}-${width}.${format}`
+}
+
+export function stickerSrcset(slug: StickerSlug, format: 'avif' | 'webp') {
+  return STICKER_WIDTHS.map((w) => `${stickerSrc(slug, w, format)} ${w}w`).join(', ')
+}
