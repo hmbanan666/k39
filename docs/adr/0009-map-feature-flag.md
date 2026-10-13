@@ -14,4 +14,4 @@ The forts map component is large client-side SVG. It is not ready to be a primar
 
 ## Consequences
 
-Turning the flag on changes a redirect into a 200. Do that only when the map should be reachable again, and keep it out of the sitemap until it is meant to be indexed.
+Turning the flag on changes the 404 into a 200. Do that only when the booklet should be reachable again, and keep it out of the sitemap until it is meant to be indexed.

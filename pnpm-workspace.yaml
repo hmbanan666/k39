@@ -38,7 +38,7 @@ catalogs:
     vue-tsc: ^3.1.8
   integrations:
     '@iconify-json/tabler': ^1.2.27
-    '@iconify/utils': ^2.3.0
+    '@iconify/utils': ^3.1.4
     '@nuxt/icon': ^2.2.0
     '@paralleldrive/cuid2': 2.2.2
     '@vueuse/core': ^14.1.0
