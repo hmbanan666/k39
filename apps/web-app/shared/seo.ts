@@ -889,6 +889,21 @@ export function faqFromBody(body: string) {
   return items
 }
 
+// Pulls a «## Как добраться» section out of a Markdown body. The rest of the body is returned unchanged.
+export function splitDirections(body: string) {
+  const lines = body.replace(/\r\n/g, '\n').split('\n')
+  const start = lines.findIndex((line) => /^##[ \t]+Как добраться[ \t]*$/.test(line.trim()))
+  if (start < 0) {
+    return { article: body, directions: '' }
+  }
+  const rest = lines.slice(start + 1)
+  const next = rest.findIndex((line) => /^##[ \t]+\S/.test(line.trim()))
+  const section = next < 0 ? rest : rest.slice(0, next)
+  const after = next < 0 ? [] : rest.slice(next)
+  const article = [...lines.slice(0, start), ...after].join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  return { article, directions: section.join('\n').trim() }
+}
+
 export function stripRepeatedLead(summary: string, body: string) {
   const lead = summary.replace(/\s+/g, ' ').trim()
   if (!lead) {

@@ -14,13 +14,16 @@ Our editorial rule is that every fact has a source. The page did not say when th
 
 Every place page follows one template. Each block hides when its data is empty, so a thin page stays honest instead of showing placeholders.
 
-1. **Hero.** Title, category, region, and the summary as the lede: what the place is in one or two sentences. Actions: «Как добраться» (Yandex Maps route) and the route link when the place is a stop.
-2. **«Коротко» answer block.** Rows in reading order: «Сколько времени» (`visit_duration`), «Когда ехать» (`best_time`), «Часы» (`hours`), «Цена» (`price`), address, coordinates. A footer stamp «Проверено {date}» comes from `last_verified_at`. On mobile the block sits right under the hero; on desktop it is the aside next to the body.
-3. **Body.** The Markdown article.
-4. **«Вопросы перед поездкой».** `faq`, 3 to 6 real visitor questions. Answers use only facts already listed in sources. The first item is open.
-5. **Map, photos, «Где поесть рядом», «Рядом».** Nearby venues and places come from our own map data, sorted by distance.
-6. **Route band and link lists.**
-7. **«Источники».** The source list plus «Факты сверены с источниками {date}».
+The page stays calm: few blocks, one clear order, no widgets. In order:
+
+1. **Short answer.** The hero gives the title, category, region, and the summary as the lede, with «Как добраться» (Yandex Maps route) and the route link. The «Коротко» block lists «Сколько времени» (`visit_duration`), «Когда ехать» (`best_time`), «Часы», «Цена», address, coordinates, and «Проверено {date}» from `last_verified_at`. On mobile it sits right under the hero; on desktop it is the aside next to the text.
+2. **Text.** The Markdown article.
+3. **«Рядом».** Nearby places, then «Где поесть» venues, from our own map data, by distance.
+4. **«Как добраться».** `how_to_get` (or a «## Как добраться» section moved out of the body, so it never shows twice) and our map.
+5. **«Вопросы перед поездкой».** `faq`, 3 to 6 real visitor questions answered only from facts already in sources.
+6. **«Источники».** The source list and «Факты сверены с источниками {date}».
+
+The old photo grid, route band, and link lists are gone from the page. Photos still open from the hero in the viewer.
 
 ### Data
 

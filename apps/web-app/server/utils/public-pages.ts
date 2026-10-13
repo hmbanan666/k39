@@ -1,12 +1,11 @@
 import { db } from '@k39/database'
-import { articleBody } from '../../shared/address'
 import { homeLinks, HUBS } from '../../shared/links'
 import { normalizeRoutePath } from '../../shared/map'
 import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, toPublicMedia } from '../../shared/media'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
-import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage } from '../../shared/seo'
+import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
 import { eatNearby } from './venues/public'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
@@ -221,11 +220,15 @@ export async function loadPlace(slug: string, page = 1) {
       }
     : null
   const structuredFaq = (loaded.place.faq ?? []).filter((item) => item.question.trim() && item.answer.trim())
-  // A body FAQ section stays in the prose; the structured list renders as its own block.
-  const body = articleBody(loaded.place.summary, loaded.place.body, loaded.place.howToGet)
+  // The template renders «Как добраться» as its own block. A body section with that heading
+  // moves into the block, so the page never shows it twice.
+  const split = splitDirections(stripRepeatedLead(loaded.place.summary, loaded.place.body))
+  const body = split.article
+  const directionsSource = split.directions || loaded.place.howToGet?.trim() || ''
   return {
     doc,
     html: renderMarkdown(body),
+    directionsHtml: directionsSource ? renderMarkdown(directionsSource) : '',
     faq: structuredFaq,
     checkedAt: isoDay(loaded.place.lastVerifiedAt),
     place: loaded.place,

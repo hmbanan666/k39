@@ -76,24 +76,6 @@
           class="prose"
           v-html="page.html"
         />
-        <section
-          v-if="page.faq.length"
-          class="faq"
-          aria-labelledby="faq-title"
-        >
-          <h2 id="faq-title">
-            Вопросы перед поездкой
-          </h2>
-          <details
-            v-for="(item, index) in page.faq"
-            :key="item.question"
-            class="faq-item"
-            :open="index === 0"
-          >
-            <summary>{{ item.question }}</summary>
-            <p>{{ item.answer }}</p>
-          </details>
-        </section>
       </div>
       <aside class="aside">
         <section
@@ -170,36 +152,15 @@
         </div>
       </aside>
     </div>
-    <MapEmbed
-      v-if="page.place.latitude != null && page.place.longitude != null"
-      class="place-map"
-      label="Карта места"
-      :focus-href="`/${slug}`"
-      :latitude="page.place.latitude"
-      :longitude="page.place.longitude"
-    />
     <section
-      v-if="morePhotos.length"
-      class="gallery"
-    >
-      <h2>Фотографии</h2>
-      <div class="gallery-grid">
-        <PlacePhoto
-          v-for="item in morePhotos"
-          :key="item.id"
-          :media="item"
-          sizes="(min-width: 900px) 360px, 100vw"
-          @open="openPhoto(item.id)"
-        />
-      </div>
-    </section>
-    <VenueNearby :items="page.eatNearby || []" />
-    <section
-      v-if="nearby"
+      v-if="nearby || page.eatNearby?.length"
       class="nearby-block"
     >
       <h2>Рядом</h2>
-      <div class="nearby">
+      <div
+        v-if="nearby"
+        class="nearby"
+      >
         <PlaceCard
           v-for="link in nearby.links"
           :key="link.href"
@@ -210,28 +171,55 @@
           :media="link.media"
         />
       </div>
+      <VenueNearby
+        class="nearby-eat"
+        :items="page.eatNearby || []"
+        title="Где поесть"
+        level="h3"
+      />
     </section>
-    <RouteSteps
-      v-if="page.routeBand"
-      kicker="Маршрут"
-      :title="page.routeBand.title"
-      :summary="page.routeBand.summary"
-      :href="page.routeBand.href"
-      :steps="page.routeBand.steps"
-      :next="page.routeBand.next"
-      action="К маршруту"
-    />
+    <section
+      v-if="hasCoords || page.directionsHtml"
+      class="directions"
+    >
+      <h2>Как добраться</h2>
+      <div
+        v-if="page.directionsHtml"
+        class="directions-text"
+        v-html="page.directionsHtml"
+      />
+      <MapEmbed
+        v-if="hasCoords"
+        class="place-map"
+        label="Карта места"
+        :focus-href="`/${slug}`"
+        :latitude="page.place.latitude!"
+        :longitude="page.place.longitude!"
+      />
+    </section>
+    <section
+      v-if="page.faq.length"
+      class="faq"
+      aria-labelledby="faq-title"
+    >
+      <h2 id="faq-title">
+        Вопросы перед поездкой
+      </h2>
+      <details
+        v-for="(item, index) in page.faq"
+        :key="item.question"
+        class="faq-item"
+        :open="index === 0"
+      >
+        <summary>{{ item.question }}</summary>
+        <p>{{ item.answer }}</p>
+      </details>
+    </section>
     <PhotoViewer
       v-if="photos.length"
       v-model:open="viewerOpen"
       v-model:index="viewerIndex"
       :photos="photos"
-    />
-    <LinkList
-      v-for="group in otherGroups"
-      :key="group.title"
-      :title="group.title"
-      :links="group.links"
     />
     <details
       v-if="page.sources.length"
@@ -282,6 +270,7 @@ interface PlaceLink {
 interface PlacePage {
   doc: SeoDocument
   html: string
+  directionsHtml: string
   faq: Array<{ question: string, answer: string }>
   checkedAt: string | null
   place: {
@@ -328,7 +317,6 @@ const pageQuery = Number(route.query.page ?? 1)
 const page = await fetchPublic<PlacePage>(`/api/public/places/${slug}`, { page: Number.isFinite(pageQuery) ? pageQuery : 1 })
 const heroSrc = page.cover?.src || illustrationFor(page.categorySlug, slug)
 const heroAlt = page.cover?.alt || page.doc.h1
-const morePhotos = page.gallery.filter((item) => item.id !== page.cover?.id)
 const photos = page.cover && !page.gallery.some((item) => item.id === page.cover?.id)
   ? [page.cover, ...page.gallery]
   : page.gallery
@@ -357,8 +345,8 @@ const hasFacts = Boolean(
   || address
   || (page.place.latitude != null && page.place.longitude != null),
 )
+const hasCoords = page.place.latitude != null && page.place.longitude != null
 const nearby = page.groups.find((group) => group.title === 'Рядом')
-const otherGroups = page.groups.filter((group) => group.title !== 'Рядом' && group.title !== 'Маршруты')
 const heroSizes = '(min-width: 1000px) 720px, 100vw'
 const heroPreload = page.cover ? lcpPreload(page.cover, heroSizes) : null
 if (heroPreload) {
@@ -369,7 +357,12 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 </script>
 
 <style scoped>
-.place-map { margin: 1.2rem 0 0; }
+.place-map { margin: 1rem 0 0; }
+.directions { margin-top: 3rem; }
+.directions h2 { margin-bottom: 0.8rem; }
+.directions-text { max-width: 65ch; line-height: 1.6; }
+.directions-text :deep(p) { margin: 0 0 0.6rem; }
+.nearby-eat { margin-top: 1.6rem; }
 .hero {
   display: grid;
   gap: 1.6rem;
@@ -456,7 +449,7 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   font: 600 0.8rem/1.2 var(--font-body);
 }
 .checked svg { flex: none; }
-.faq { margin-top: 2.6rem; }
+.faq { margin-top: 3rem; }
 .faq h2 { margin: 0 0 0.9rem; }
 .faq-item {
   border-top: 1px solid var(--color-line);
@@ -475,11 +468,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 }
 .sources-date { margin: 0 0 0.8rem; }
 .offers { display: flex; flex-direction: column; gap: 1rem; }
-.gallery { margin-top: 2.5rem; }
-.gallery-grid {
-  display: grid;
-  gap: 1rem;
-}
 .nearby-block { margin-top: 3rem; }
 .nearby-block h2 { margin-bottom: 1rem; }
 .nearby {
@@ -520,9 +508,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 @media (max-width: 999px) {
   .aside { display: contents; }
   .facts { order: -1; }
-}
-@media (min-width: 720px) {
-  .gallery-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (min-width: 900px) {
   .nearby {

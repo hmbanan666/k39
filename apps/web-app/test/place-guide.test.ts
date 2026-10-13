@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { guideFacts, russianDay } from '../shared/place-guide'
-import { isoDay, pageFaq, placeDocument, schemaProblems } from '../shared/seo'
+import { isoDay, pageFaq, placeDocument, schemaProblems, splitDirections } from '../shared/seo'
 
 const base = {
   slug: 'fort-test',
@@ -54,5 +54,12 @@ describe('place guide template', () => {
     const withFaq = placeDocument({ ...base, faq: [{ question: 'Сколько стоит вход?', answer: '300 ₽ по данным музея.' }] })
     expect(withFaq.jsonLd.some((node) => node['@type'] === 'FAQPage')).toBe(true)
     expect(schemaProblems(withFaq.jsonLd)).toEqual([])
+  })
+
+  it('moves the body directions section into its own block', () => {
+    const split = splitDirections('Текст.\n\n## Как добраться\n\nАвтобус 1.\n\n## История\n\nДавно.')
+    expect(split.directions).toBe('Автобус 1.')
+    expect(split.article).toBe('Текст.\n\n## История\n\nДавно.')
+    expect(splitDirections('Только текст.')).toEqual({ article: 'Только текст.', directions: '' })
   })
 })
