@@ -12,7 +12,7 @@ import {
   foodIdsIn,
   formatDistance,
   isChurchPlace,
-  kartaFocusHref,
+  mapFocusHref,
   mapQueryRecord,
   normalizeRoutePath,
   parseMapQuery,
@@ -103,7 +103,7 @@ describe('map filters', () => {
     expect(parseMapQuery({ c: 'beaches' }).category).toBe('beaches')
     expect(parseMapQuery({ c: 'nope' }).category).toBeNull()
     expect(parseMapQuery({ focus: '/zavedeniya/kofe' }).focus).toBe('zavedeniya/kofe')
-    expect(kartaFocusHref('/zavedeniya/kofe')).toBe('/karta?focus=zavedeniya%2Fkofe')
+    expect(mapFocusHref('/zavedeniya/kofe')).toBe('/map?focus=zavedeniya%2Fkofe')
     expect(focusMatch(coffee, 'kofe')).toBe(true)
     expect(shownPoints(points, { ...parseMapQuery({}), focus: 'kofe' }).some((item) => item.id === 'kofe')).toBe(true)
     expect(pointVisible(coffee, { ...state, sights: null, food: state.food, q: '' })).toBe(true)

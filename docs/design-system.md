@@ -58,7 +58,7 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `NearbyList` | Nearest places, name plus kilometres. |
 | `RouteSteps` | Ordered stops on a place page. Each step is the place name. |
 | `RouteGuide` | Route page: MapLibre map of numbered stops, deep links, stop cards with the note and the straight-line leg, and «Как добраться» on each stop. |
-| `K39Map` | MapLibre frame: paper basemap, round pins, clusters, and a pin card. `/karta` is the full page. |
+| `K39Map` | MapLibre frame: paper basemap, round pins, clusters, and a pin card. `/map` is the full page. |
 | `MapEmbed` | Compact frame on a place, venue, route, hub, collection, or quest. Nearby points within 1.2 km, fullscreen, and «Открыть на карте». |
 | `DirectionsLink` | «Как добраться». Opens Yandex Maps with the point as the destination. |
 | `PartnerOffer` | Only for a real active offer. |

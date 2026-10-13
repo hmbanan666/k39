@@ -547,13 +547,24 @@ describe('redirects', () => {
     })
     expect(quest).toEqual({ kind: 'redirect', location: 'https://k39.online/kvesty/pyat-fortov' })
 
-    const map = decideRedirect({
+    expect(decideRedirect({
+      hostHeader: 'k39.online',
+      protoHeader: 'https',
+      path: '/map',
+      mapEnabled: false,
+    }).kind).toBe('none')
+    expect(decideRedirect({
+      hostHeader: 'k39.online',
+      protoHeader: 'https',
+      path: '/map/forty',
+      mapEnabled: false,
+    }).kind).toBe('none')
+    expect(decideRedirect({
       hostHeader: 'k39.online',
       protoHeader: 'https',
       path: '/map/kaliningrad',
       mapEnabled: false,
-    })
-    expect(map).toEqual({ kind: 'redirect', location: 'https://k39.online/forty' })
+    }).kind).toBe('none')
 
     const gone = decideRedirect({
       hostHeader: 'k39.online',

@@ -6,7 +6,7 @@ The visitor map (ADR 0019) uses a PMTiles extract of Kaliningrad oblast when the
 
 The 2026-10-13 extract is release `basemap-20261013`. It is 99,943,373 bytes (95.3 MiB). It is not part of the Docker image and not committed.
 
-A desktop session that opens `/karta` and then moves to Svetlogorsk at zoom 14 transferred 2,604,822 bytes of basemap responses: 2,059,202 bytes of PMTiles ranges, 545,547 bytes of glyphs, and 73 bytes of sprite. The oblast view before that jump was 2,487,825 bytes. The archive itself stays on disk. The browser only reads the header, directory, and the tiles in view.
+A desktop session that opens `/map` and then moves to Svetlogorsk at zoom 14 transferred 2,604,822 bytes of basemap responses: 2,059,202 bytes of PMTiles ranges, 545,547 bytes of glyphs, and 73 bytes of sprite. The oblast view before that jump was 2,487,825 bytes. The archive itself stays on disk. The browser only reads the header, directory, and the tiles in view.
 
 ## Startup download
 

@@ -244,9 +244,9 @@ function focusToken(value: string) {
   return /^[\w./-]{1,160}$/.test(token) ? token : null
 }
 
-export function kartaFocusHref(href: string) {
+export function mapFocusHref(href: string) {
   const token = focusToken(href)
-  return token ? `/karta?focus=${encodeURIComponent(token)}` : '/karta'
+  return token ? `/map?focus=${encodeURIComponent(token)}` : '/map'
 }
 
 export function routeFocusSlug(focus: string | null) {

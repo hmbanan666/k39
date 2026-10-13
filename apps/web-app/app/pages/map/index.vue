@@ -219,7 +219,7 @@ watch(state, (value) => {
   if (queriesEqual(next, route.query)) {
     return
   }
-  void router.replace({ path: '/karta', query: next })
+  void router.replace({ path: '/map', query: next })
 }, { deep: true })
 
 watch([collapsed, mobile, panelWidth], () => syncPanelVar())

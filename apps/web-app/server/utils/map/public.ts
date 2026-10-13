@@ -136,7 +136,7 @@ export async function loadMap() {
 
   const routeList = [...routes.values()].sort((a, b) => a.title.localeCompare(b.title, 'ru'))
   const doc = collectionDocument({
-    path: '/karta',
+    path: '/map',
     h1: 'Карта Калининградской области',
     summary: 'Достопримечательности, где поесть и маршруты на одной карте Калининградской области.',
     items: [

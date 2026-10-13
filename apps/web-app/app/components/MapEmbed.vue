@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import type { MapPoint, RouteOverlay } from '~~/shared/map'
 import { WALKING_RADIUS_KM } from '~~/shared/embed-map'
-import { kartaFocusHref, pointsNear } from '~~/shared/map'
+import { mapFocusHref, pointsNear } from '~~/shared/map'
 import K39Map from '~/components/map/K39Map.vue'
 
 const props = withDefaults(defineProps<{
@@ -53,7 +53,7 @@ const catalog = ref<MapPoint[]>([])
 const loaded = ref(false)
 const failed = ref(false)
 
-const href = computed(() => kartaFocusHref(props.focusHref))
+const href = computed(() => mapFocusHref(props.focusHref))
 const wanted = computed(() => new Set(props.hrefs))
 
 const shown = computed(() => {

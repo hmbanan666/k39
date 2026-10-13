@@ -6,7 +6,7 @@ Accepted. The embedded basemap in this record is superseded by ADR 0019. Directi
 
 ## Context
 
-A route page listed its stops as names. On a phone that is not enough: the visitor needs the stops in geographic order, a straight-line sense of the next leg, and a way to open turn-by-turn navigation. ADR 0002 still draws the forts booklet at `/map/{region}` as inline SVG and keeps that map behind `FEATURE_MAP`. A route such as the east castles spans tens of kilometres, so a schematic with no basemap is hard to read on a small screen.
+A route page listed its stops as names. On a phone that is not enough: the visitor needs the stops in geographic order, a straight-line sense of the next leg, and a way to open turn-by-turn navigation. ADR 0002 still draws the forts booklet at `/map/forty` as inline SVG and keeps that map behind `FEATURE_MAP`. A route such as the east castles spans tens of kilometres, so a schematic with no basemap is hard to read on a small screen.
 
 Yandex Maps JS API 3 matches the maps Russian visitors already use, and it needs an API key that is not a required production variable. MapLibre GL is a WebGL bundle built for custom vector styles. A single static image cannot be panned or pinched.
 
@@ -28,4 +28,4 @@ OSM's public tile servers are not a production CDN. Replacing the tile URL does 
 
 ## Consequences
 
-An empty key keeps the Yandex script off the page. The map library loads only when the frame is near the viewport. Tile requests follow ADR 0019. The dormant consent banner does not gate that request. ADR 0002 still governs `/map/{region}`.
+An empty key keeps the Yandex script off the page. The map library loads only when the frame is near the viewport. Tile requests follow ADR 0019. The dormant consent banner does not gate that request. ADR 0002 still governs `/map/forty`.

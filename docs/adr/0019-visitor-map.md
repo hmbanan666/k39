@@ -12,7 +12,7 @@ OpenFreeMap serves OpenMapTiles from OpenStreetMap with no key. MapLibre GL draw
 
 ## Decision
 
-`/karta` is the public map. It is in the footer, the header, and the sitemap. The title is `Карта Калининградской области | K39`. Filter query keys (`s`, `f`, `r`, `q`) are not tracking parameters, so `tuneRobots` marks those URLs `noindex`. The canonical stays `/karta`.
+`/map` is the public map. It is in the footer, the header, and the sitemap. The title is `Карта Калининградской области | K39`. Filter query keys (`s`, `f`, `r`, `q`) are not tracking parameters, so `tuneRobots` marks those URLs `noindex`. The canonical stays `/map`.
 
 `@k39/map` is the reusable core. It has no Vue and no MapLibre. A host passes a scene: a style variant, a basemap, and layers in paint order (bottom to top). The only variant that ships is `paper` (muted land, soft water, thin roads, town names from `name:ru` then `name`, no POI). Another variant, such as a print sheet, is a new id in that module. It is not built here.
 
@@ -24,7 +24,7 @@ The layer API is three kinds:
 
 Layer ids match `^[a-z][a-z0-9-]{0,40}$` and are unique in one scene. `cardFor(layers, id)` is the card for a selected pin or stop. `mapStyle(variant, basemap)` builds the MapLibre style. An empty `pmtilesUrl` is the OpenFreeMap fallback. A set URL is the PMTiles source.
 
-The web app mounts that scene in `mountK39Map`. `/karta`, the venue frame, and the route frame are callers. A later guide, quest, or offline sheet builds its own layers and, if it needs a different look, its own variant. It should not fork the basemap or the pin renderer.
+The web app mounts that scene in `mountK39Map`. `/map`, the venue frame, and the route frame are callers. A later guide, quest, or offline sheet builds its own layers and, if it needs a different look, its own variant. It should not fork the basemap or the pin renderer.
 
 The paper basemap omits POI, housenumbers, shields, and one-way arrows.
 
@@ -36,9 +36,9 @@ When the archive is missing or the hash does not match, `pmtilesUrl` is empty. T
 
 Pins are retina canvas images (drawn at 2×), one round marker per sight facet and food kind: форты, замки, пляжи, музеи, церкви, курорты, and the food kinds. Each marker is a paper-ringed disc, a soft shadow, and one filled icon. Churches are places whose slug or title matches собор, кирха, or церковь. The cathedral stays in the museum category and also matches the church chip. Clusters are cream bubbles with a brick stroke, a soft shadow, and a count. Hover and the selected pin scale up. A sponsored pin, drawn only when `FEATURE_SPONSORED_VENUES` is on and the venue has an active offer, adds an amber ring and a small amber badge.
 
-The card has one action, «Открыть». «Как добраться» stays on the place and route pages. On an embedded map the card still closes on a map tap, Escape, or a downward swipe. On `/karta` the card lives in the panel, described under UX.
+The card has one action, «Открыть». «Как добраться» stays on the place and route pages. On an embedded map the card still closes on a map tap, Escape, or a downward swipe. On `/map` the card lives in the panel, described under UX.
 
-`/karta` fills `100dvh` minus the header. Choices live in the query: `c` for the panel category (`sights`, `food`, `beaches`, `routes`), `s` for sight ids (`none` clears them), `f` for food path segments such as `kofe`, `r` for one route slug, `q` for the name. Omitting `s` or `f` inside a category means every sub-chip of that category. An idle URL, with none of those keys, does not dump every object onto the map.
+`/map` fills `100dvh` minus the header. Choices live in the query: `c` for the panel category (`sights`, `food`, `beaches`, `routes`), `s` for sight ids (`none` clears them), `f` for food path segments such as `kofe`, `r` for one route slug, `q` for the name. Omitting `s` or `f` inside a category means every sub-chip of that category. An idle URL, with none of those keys, does not dump every object onto the map.
 
 ## UX
 
@@ -56,9 +56,9 @@ A denied or failed «Я здесь» uses the shared toast, «Не удалос�
 
 Routes draw nothing until `r` is set. The selected route shows numbered stops. `routes.path` is an optional list of `[longitude, latitude]`. When that line has at least two points, the map draws it solid. Otherwise the stops are joined in order with a dashed stroke, which is not a road. The same rule is used on `/marshruty/{slug}`. The Yandex and Google direction links on that page are unchanged. `route_draft_create`, `route_draft_update`, and `route_update` accept `path`. Omit it to keep the stored line. Null clears it.
 
-The library loads in a separate chunk: on `/karta` after mount, and on an embedded map after `load`, idle, and an intersection observer, as in ADR 0015. Embedded maps use cooperative gestures so the page can still scroll, and they can go fullscreen. «Я здесь» asks the browser for a one-off location and does not store it. A venue card dispatches the existing cookieless `impression` beacon. `FEATURE_MAP` still governs only `/map/{region}`.
+The library loads in a separate chunk: on `/map` after mount, and on an embedded map after `load`, idle, and an intersection observer, as in ADR 0015. Embedded maps use cooperative gestures so the page can still scroll, and they can go fullscreen. «Я здесь» asks the browser for a one-off location and does not store it. A venue card dispatches the existing cookieless `impression` beacon. `FEATURE_MAP` still governs only the forts booklet at `/map/forty`. There is no redirect from `/karta` or from the old booklet paths.
 
-A compact embed uses the same pins and the same basemap. On a place, a venue, or a route it also draws our other points within 1.2 km. A hub, a collection, and a quest draw the points that belong to that page. The frame is 320px tall, 460px from 900px, and offers fullscreen. «Открыть на карте» goes to `/karta?focus=` plus the public path without the leading slash (`fort-1`, `zavedeniya/slug`, `marshruty/slug`). That query selects the object. The forts booklet stays the SVG in ADR 0002.
+A compact embed uses the same pins and the same basemap. On a place, a venue, or a route it also draws our other points within 1.2 km. A hub, a collection, and a quest draw the points that belong to that page. The frame is 320px tall, 460px from 900px, and offers fullscreen. «Открыть на карте» goes to `/map?focus=` plus the public path without the leading slash (`fort-1`, `zavedeniya/slug`, `marshruty/slug`). That query selects the object. The forts booklet stays the SVG in ADR 0002.
 
 ## Consequences
 
