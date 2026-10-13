@@ -6,7 +6,7 @@
     <h2 v-if="title">
       {{ title }}
     </h2>
-    <ul>
+    <ul ref="listRef">
       <li
         v-for="month in months"
         :key="month.href"
@@ -30,6 +30,16 @@ defineProps<{
   title?: string
   months: { href: string, text: string, current: boolean }[]
 }>()
+
+// On a phone the row scrolls; start it at the current month.
+const listRef = ref<HTMLElement | null>(null)
+onMounted(() => {
+  const list = listRef.value
+  const current = list?.querySelector<HTMLElement>('[aria-current="page"]')
+  if (list && current && list.scrollWidth > list.clientWidth) {
+    list.scrollLeft = current.offsetLeft - (list.clientWidth - current.offsetWidth) / 2
+  }
+})
 </script>
 
 <style scoped>
@@ -39,6 +49,7 @@ h2 {
   font-size: 1.25rem;
 }
 ul {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -61,6 +72,18 @@ a, .current {
 a:hover {
   border-color: var(--color-brick);
   color: var(--color-brick);
+}
+/* One scrollable row on phones, like the header pills, so twelve months
+   do not push the lead below the first screen. */
+@media (max-width: 899px) {
+  ul {
+    flex-wrap: nowrap;
+    margin-inline: calc(-1 * var(--frame-pad));
+    padding-inline: var(--frame-pad);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  li { flex: none; }
 }
 .current {
   border-color: var(--color-brick);
