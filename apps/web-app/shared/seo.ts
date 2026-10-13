@@ -1,4 +1,4 @@
-import { licenseHref } from './media'
+import { licenseHref, licenseLabel } from './media'
 
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
@@ -289,7 +289,7 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
     'name': input.name,
     'description': description,
     'url': absoluteUrl(path),
-    'image': image.url,
+    'image': input.image ? imageObject(input.image) : image.url,
   }
   if (input.latitude != null && input.longitude != null) {
     node.geo = {
@@ -350,6 +350,26 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
   }
 }
 
+const PUBLIC_DOMAIN_LICENSES = new Set(['pd', 'cc0'])
+
+export function imageCredit(image: Pick<SeoImage, 'author' | 'license'>) {
+  const author = image.author?.trim() || ''
+  const license = image.license?.trim() || ''
+  if (!author && !license) {
+    return null
+  }
+  if (PUBLIC_DOMAIN_LICENSES.has(license)) {
+    return { creditText: author || 'Wikimedia Commons' }
+  }
+  const short = licenseLabel(license)
+  const name = author || 'Wikimedia Commons'
+  const creditText = short ? `${name}, ${short}` : name
+  if (!author) {
+    return { creditText }
+  }
+  return { creditText, copyrightNotice: `© ${author}` }
+}
+
 function imageObject(image: SeoImage) {
   const node: Record<string, unknown> = {
     '@type': 'ImageObject',
@@ -372,6 +392,13 @@ function imageObject(image: SeoImage) {
   }
   if (image.sourceUrl) {
     node.acquireLicensePage = image.sourceUrl
+  }
+  const credit = imageCredit(image)
+  if (credit) {
+    node.creditText = credit.creditText
+    if (credit.copyrightNotice) {
+      node.copyrightNotice = credit.copyrightNotice
+    }
   }
   return node
 }
@@ -579,6 +606,7 @@ export function collectionDocument(input: {
   page?: number
   kind: 'CollectionPage' | 'TouristTrip'
   ogImage?: SeoImage
+  images?: SeoImage[]
   body?: string | null
 }): SeoDocument {
   const page = input.page ?? 1
@@ -610,6 +638,9 @@ export function collectionDocument(input: {
   const node: Record<string, unknown> = input.kind === 'TouristTrip'
     ? { '@type': 'TouristTrip', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'itinerary': list }
     : { '@type': 'CollectionPage', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'mainEntity': list }
+  if (input.images?.length) {
+    node.image = input.images.map((item) => imageObject(item))
+  }
   const noindex = Boolean(input.noindex) || page > 1
   const jsonLd = [breadcrumbNode(crumbs), node]
   const faq = faqPageNode(input.body)

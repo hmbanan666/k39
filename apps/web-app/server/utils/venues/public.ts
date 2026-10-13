@@ -127,6 +127,9 @@ async function loadVenue(slug: string) {
           alt: cover.alt || venue.name,
           width: cover.width,
           height: cover.height,
+          author: cover.author,
+          license: cover.license,
+          sourceUrl: cover.sourceUrl,
         }
       : null,
   })
