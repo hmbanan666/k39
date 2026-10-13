@@ -329,6 +329,9 @@ export async function loadCollection(slug: string) {
     return null
   }
   const isMonth = loaded.collection.kind === 'month'
+  const gallery = (await db.content.collectionGallery(loaded.collection.id)).map((item) => ({ ...toPublicMedia(item.media), isCover: item.isCover }))
+  const cover = gallery.find((item) => item.isCover) ?? gallery[0] ?? null
+  const coverImage = cover ? socialImage(cover, cover.alt || loaded.collection.title) : undefined
   const doc = collectionDocument({
     path: `/podborki/${loaded.collection.slug}`,
     h1: loaded.collection.title,
@@ -339,7 +342,19 @@ export async function loadCollection(slug: string) {
     seoTitle: loaded.collection.seoTitle,
     seoDescription: loaded.collection.seoDescription,
     noindex: loaded.collection.noindex,
-    ogImage: storedImage(loaded.collection.ogImage, loaded.collection.title),
+    ogImage: storedImage(loaded.collection.ogImage, loaded.collection.title) ?? coverImage,
+    images: gallery.map((item) => {
+      const social = socialImage(item, describedAlt(item.alt || loaded.collection.title, item.author, item.license))
+      return {
+        url: social.url,
+        width: social.width,
+        height: social.height,
+        alt: social.alt,
+        author: item.author,
+        license: item.license,
+        sourceUrl: item.sourceUrl,
+      }
+    }),
     kind: 'CollectionPage',
     body: loaded.collection.body,
   })
@@ -353,6 +368,8 @@ export async function loadCollection(slug: string) {
     kind: loaded.collection.kind,
     sources: loaded.collection.sources ?? [],
     months,
+    cover,
+    gallery,
   }
 }
 

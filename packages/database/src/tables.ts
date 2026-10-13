@@ -134,6 +134,17 @@ export const placeMedia = pgTable('place_media', {
   index('place_media_place_idx').on(table.placeId),
 ])
 
+export const collectionMedia = pgTable('collection_media', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  collectionId: cuid2('collection_id').notNull().references(() => collections.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  mediaId: cuid2('media_id').notNull().references(() => media.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isCover: boolean('is_cover').notNull().default(false),
+}, (table) => [
+  uniqueIndex('collection_media_collection_media').on(table.collectionId, table.mediaId),
+  index('collection_media_collection_idx').on(table.collectionId),
+])
+
 export const routes = pgTable('routes', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),

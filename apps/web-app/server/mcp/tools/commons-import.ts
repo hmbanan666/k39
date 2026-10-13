@@ -7,10 +7,12 @@ import { license } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'commons_import',
-  description: 'Import one allowed Wikimedia Commons file into the photo pipeline and attach it to a place. The same pageUrl or fileUrl on that place returns the existing photo. The first photo on an empty place becomes the cover. A later import stays in the gallery unless isCover is true.',
+  description: 'Import one allowed Wikimedia Commons file into the photo pipeline and attach it to a place or a collection (pass exactly one of placeId or collectionId). The same pageUrl or fileUrl on that target returns the existing photo. The first photo on an empty target becomes the cover. A later import stays in the gallery unless isCover is true. caption is shown under the photo on collection pages.',
   annotations: { openWorldHint: true },
   inputSchema: {
-    placeId: z.string(),
+    placeId: z.string().optional(),
+    collectionId: z.string().optional(),
+    caption: z.string().optional(),
     fileUrl: z.string(),
     pageUrl: z.string(),
     alt: z.string(),
@@ -19,9 +21,15 @@ export default defineMcpTool({
     isCover: z.boolean().optional(),
   },
   handler: async (input) => {
-    const existing = await db.editor.mediaForPlaceSource(input.placeId, [input.pageUrl, input.fileUrl])
+    if (Boolean(input.placeId) === Boolean(input.collectionId)) {
+      throw createError({ statusCode: 400, statusMessage: 'Нужен ровно один из placeId или collectionId' })
+    }
+    const urls = [input.pageUrl, input.fileUrl]
+    const existing = input.placeId
+      ? await db.editor.mediaForPlaceSource(input.placeId, urls)
+      : await db.editor.mediaForCollectionSource(input.collectionId ?? '', urls)
     if (existing) {
-      return { id: existing.id, placeId: input.placeId, duplicate: true, warning: null }
+      return { id: existing.id, placeId: input.placeId ?? null, collectionId: input.collectionId ?? null, duplicate: true, warning: null }
     }
     let file
     try {
@@ -38,13 +46,15 @@ export default defineMcpTool({
       author: input.author,
       license: input.license,
       sourceUrl: input.pageUrl,
+      caption: input.caption,
       placeId: input.placeId,
+      collectionId: input.collectionId,
       isCover: input.isCover,
     })
     if ('error' in saved) {
       throw createError({ statusCode: saved.statusCode, statusMessage: saved.error })
     }
     await auditMcp('commons_import', 'media', saved.row?.id)
-    return { id: saved.row?.id, placeId: input.placeId, duplicate: false, warning: saved.warning || null }
+    return { id: saved.row?.id, placeId: input.placeId ?? null, collectionId: input.collectionId ?? null, duplicate: false, warning: saved.warning || null }
   },
 })

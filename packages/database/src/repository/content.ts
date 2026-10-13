@@ -2,7 +2,7 @@ import type { PlaceDraft } from '../types'
 import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
+import { categories, collectionItems, collectionMedia, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
 const published = 'published' as const
@@ -59,6 +59,14 @@ export class Content {
     const collectionRows = await db.select({ slug: collections.slug, title: collections.title }).from(collectionItems).innerJoin(collections, eq(collectionItems.collectionId, collections.id)).where(and(eq(collectionItems.placeId, place.id), eq(collections.publicationStatus, published)))
     const related = await db.select({ slug: places.slug, title: places.title, anchor: relatedLinks.anchor }).from(relatedLinks).innerJoin(places, eq(relatedLinks.toPlaceId, places.id)).where(and(eq(relatedLinks.fromPlaceId, place.id), eq(places.publicationStatus, published))).orderBy(asc(relatedLinks.position))
     return { place, category, region, images, gallery, nearest, sameRegion, routeRows, collectionRows, related }
+  }
+
+  static async collectionGallery(collectionId: string) {
+    return useDatabase().select({
+      sortOrder: collectionMedia.sortOrder,
+      isCover: collectionMedia.isCover,
+      media,
+    }).from(collectionMedia).innerJoin(media, eq(collectionMedia.mediaId, media.id)).where(and(eq(collectionMedia.collectionId, collectionId), eq(media.status, 'ready'))).orderBy(desc(collectionMedia.isCover), asc(collectionMedia.sortOrder))
   }
 
   static async galleryFor(placeId: string) {
@@ -832,6 +840,55 @@ export class Editor {
     for (const [index, mediaId] of orderedIds.entries()) {
       await db.update(placeMedia).set({ sortOrder: index }).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId)))
     }
+  }
+
+  static async mediaForCollectionSource(collectionId: string, urls: string[]) {
+    const wanted = urls.filter(Boolean)
+    if (!wanted.length) {
+      return undefined
+    }
+    const [row] = await useDatabase().select({ media }).from(collectionMedia).innerJoin(media, eq(collectionMedia.mediaId, media.id)).where(and(
+      eq(collectionMedia.collectionId, collectionId),
+      inArray(media.sourceUrl, wanted),
+    )).limit(1)
+    return row?.media
+  }
+
+  /** Links a stored photo to a collection. The first photo becomes the cover unless told otherwise. */
+  static async attachCollectionMedia(collectionId: string, mediaId: string, options?: { sortOrder?: number, isCover?: boolean }) {
+    const db = useDatabase()
+    const [existing] = await db.select().from(collectionMedia).where(and(eq(collectionMedia.collectionId, collectionId), eq(collectionMedia.mediaId, mediaId))).limit(1)
+    if (options?.isCover) {
+      await db.update(collectionMedia).set({ isCover: false }).where(eq(collectionMedia.collectionId, collectionId))
+    }
+    if (existing) {
+      const [row] = await db.update(collectionMedia).set({
+        sortOrder: options?.sortOrder ?? existing.sortOrder,
+        isCover: options?.isCover ?? existing.isCover,
+      }).where(eq(collectionMedia.id, existing.id)).returning()
+      return row
+    }
+    const [countRow] = await db.select({ value: sql<number>`count(*)::int` }).from(collectionMedia).where(eq(collectionMedia.collectionId, collectionId))
+    const count = countRow?.value ?? 0
+    const [row] = await db.insert(collectionMedia).values({
+      collectionId,
+      mediaId,
+      sortOrder: options?.sortOrder ?? count,
+      isCover: options?.isCover ?? count === 0,
+    }).returning()
+    return row
+  }
+
+  static async detachCollectionMedia(collectionId: string, mediaId: string) {
+    const db = useDatabase()
+    const [removed] = await db.delete(collectionMedia).where(and(eq(collectionMedia.collectionId, collectionId), eq(collectionMedia.mediaId, mediaId))).returning()
+    if (removed?.isCover) {
+      const [next] = await db.select().from(collectionMedia).where(eq(collectionMedia.collectionId, collectionId)).orderBy(asc(collectionMedia.sortOrder)).limit(1)
+      if (next) {
+        await db.update(collectionMedia).set({ isCover: true }).where(eq(collectionMedia.id, next.id))
+      }
+    }
+    return removed
   }
 
   static async setCover(placeId: string, mediaId: string) {

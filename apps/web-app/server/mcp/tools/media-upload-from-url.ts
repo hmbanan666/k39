@@ -15,6 +15,7 @@ export default defineMcpTool({
     sourceUrl: z.string(),
     caption: z.string().optional(),
     placeId: z.string().optional(),
+    collectionId: z.string().optional().describe('Attach to a collection instead of a place'),
     isCover: z.boolean().optional(),
   },
   handler: async (input) => {
@@ -29,6 +30,7 @@ export default defineMcpTool({
       sourceUrl: input.sourceUrl,
       caption: input.caption,
       placeId: input.placeId,
+      collectionId: input.placeId ? null : input.collectionId,
       isCover: input.isCover,
     })
     if ('error' in saved) {
