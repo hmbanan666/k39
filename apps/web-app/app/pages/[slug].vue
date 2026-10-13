@@ -87,14 +87,7 @@
             v-if="hours"
             class="fact"
           >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            ><circle
-              cx="12"
-              cy="12"
-              r="8"
-            /><path d="M12 8v5l3 2" /></svg>
+            <Icon :name="tablerIcon('hours')" size="22" />
             <div>
               <p class="label">
                 Часы
@@ -106,10 +99,7 @@
             v-if="price"
             class="fact"
           >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            ><path d="M4 8h16v10H4z" /><path d="M8 8V6h8v2" /></svg>
+            <Icon :name="tablerIcon('price')" size="22" />
             <div>
               <p class="label">
                 Цена
@@ -121,14 +111,7 @@
             v-if="address"
             class="fact"
           >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            ><circle
-              cx="12"
-              cy="12"
-              r="8"
-            /><path d="M12 8l3 7-3-1.2L9 15z" /></svg>
+            <Icon :name="tablerIcon('address')" size="22" />
             <div>
               <p class="label">
                 Адрес
@@ -140,14 +123,7 @@
             v-if="page.place.latitude != null && page.place.longitude != null"
             class="fact"
           >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            ><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z" /><circle
-              cx="12"
-              cy="11"
-              r="1.6"
-            /></svg>
+            <Icon :name="tablerIcon('coordinates')" size="22" />
             <div>
               <p class="label">
                 Координаты
@@ -180,13 +156,13 @@
         </div>
       </aside>
     </div>
-    <K39Map
+    <MapEmbed
       v-if="page.place.latitude != null && page.place.longitude != null"
       class="place-map"
       label="Карта места"
+      :focus-href="`/${slug}`"
       :latitude="page.place.latitude"
       :longitude="page.place.longitude"
-      :entity="`/${slug}`"
     />
     <section
       v-if="morePhotos.length"
@@ -271,6 +247,7 @@ import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
 import { yandexDestinationUrl } from '~~/shared/embed-map'
+import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
 

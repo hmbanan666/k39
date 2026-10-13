@@ -1,4 +1,5 @@
 import { DEFAULT_BASEMAP_FILE, DEFAULT_BASEMAP_SHA256, DEFAULT_BASEMAP_SOURCE_URL } from './server/utils/basemap-defaults'
+import { tablerIconList } from './shared/icons'
 import { brandHeadLinks } from './shared/seo'
 
 export default defineNuxtConfig({
@@ -108,9 +109,19 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
     '@nuxtjs/seo',
     '@nuxt/fonts',
+    '@nuxt/icon',
     '@vueuse/nuxt',
     '@nuxtjs/mcp-toolkit',
   ],
+  icon: {
+    mode: 'svg',
+    serverBundle: 'local',
+    clientBundle: {
+      scan: true,
+      icons: tablerIconList(),
+    },
+    fallbackToApi: false,
+  },
   experimental: {
     typedPages: false,
   },

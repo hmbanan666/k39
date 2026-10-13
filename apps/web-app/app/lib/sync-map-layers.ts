@@ -31,7 +31,7 @@ function drawPoints(layer: Extract<MapLayer, { type: 'points' }>, known: Set<str
 
 export function layerPaintIds(layer: Pick<MapLayer, 'id' | 'type'>) {
   if (layer.type === 'points') {
-    return [`${layer.id}-clusters`, `${layer.id}-cluster-count`, `${layer.id}-halo`, `${layer.id}-pins`, `${layer.id}-sponsored`]
+    return [`${layer.id}-cluster-shadow`, `${layer.id}-clusters`, `${layer.id}-cluster-count`, `${layer.id}-halo`, `${layer.id}-pins`]
   }
   if (layer.type === 'line') {
     return [`${layer.id}-solid`, `${layer.id}-dashed`]
@@ -73,6 +73,18 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
     })
     if (layer.cluster) {
       map.addLayer({
+        id: `${layer.id}-cluster-shadow`,
+        type: 'circle',
+        source: layer.id,
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': '#2b2420',
+          'circle-opacity': 0.16,
+          'circle-radius': ['step', ['get', 'point_count'], 20, 10, 24, 30, 28],
+          'circle-translate': [0, 1],
+        },
+      })
+      map.addLayer({
         id: `${layer.id}-clusters`,
         type: 'circle',
         source: layer.id,
@@ -81,7 +93,7 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
           'circle-color': '#fffbf3',
           'circle-stroke-color': '#a3402a',
           'circle-stroke-width': 2,
-          'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 30, 24],
+          'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 30, 26],
         },
       })
       map.addLayer({
@@ -106,16 +118,15 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
         'circle-radius': [
           'case',
           ['boolean', ['feature-state', 'selected'], false],
-          20,
+          26,
           ['boolean', ['feature-state', 'hover'], false],
-          16,
+          22,
           0,
         ],
         'circle-color': '#a3402a',
-        'circle-opacity': 0.22,
+        'circle-opacity': 0.2,
         'circle-stroke-width': 2,
         'circle-stroke-color': '#fffbf3',
-        'circle-translate': [0, -16],
       },
     })
     map.addLayer({
@@ -124,23 +135,15 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
       source: layer.id,
       filter: ['!', ['has', 'point_count']],
       layout: {
-        'icon-image': ['get', 'marker'],
-        'icon-anchor': 'bottom',
+        'icon-image': [
+          'case',
+          ['==', ['get', 'sponsored'], 1],
+          ['concat', 's-', ['get', 'marker']],
+          ['get', 'marker'],
+        ],
+        'icon-anchor': 'center',
         'icon-allow-overlap': true,
-        'icon-size': 1,
-      },
-    })
-    map.addLayer({
-      id: `${layer.id}-sponsored`,
-      type: 'circle',
-      source: layer.id,
-      filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'sponsored'], 1]],
-      paint: {
-        'circle-color': '#d68a22',
-        'circle-stroke-color': '#fffbf3',
-        'circle-stroke-width': 1.5,
-        'circle-radius': 4.5,
-        'circle-translate': [11, -30],
+        'icon-size': ['case', ['==', ['get', 'picked'], 1], 1.5, 1],
       },
     })
     return
@@ -200,10 +203,27 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
       'text-font': ['Noto Sans Bold'],
       'text-size': 12,
       'text-allow-overlap': true,
-      'icon-size': 1,
+      'icon-size': ['case', ['==', ['get', 'picked'], 1], 1.28, 1],
     },
     paint: { 'text-color': '#fffbf3' },
   })
+}
+
+export function applyPicked(map: MapLibreMap, layers: MapLayer[], known: Set<string>, id: string | null) {
+  for (const layer of layers) {
+    if (layer.type === 'line') {
+      continue
+    }
+    const source = sourceOf(map, layer.id)
+    if (!source) {
+      continue
+    }
+    const data = layer.type === 'points' ? drawPoints(layer, known) : layerCollection(layer)
+    for (const feature of data.features) {
+      feature.properties.picked = feature.properties.id === id ? 1 : 0
+    }
+    source.setData(asGeoJson(data.features.length ? data : EMPTY))
+  }
 }
 
 export function replaceMapLayerData(map: MapLibreMap, layer: MapLayer, known: Set<string>) {

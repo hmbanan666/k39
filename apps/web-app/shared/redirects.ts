@@ -31,7 +31,7 @@ function isPublicHost(hostname: string) {
   return hostname === 'k39.online' || hostname === 'www.k39.online'
 }
 
-export function rewritePath(path: string, mapEnabled: boolean) {
+export function rewritePath(path: string, _mapEnabled: boolean) {
   const normalized = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path
   const place = /^\/place\/([^/]+)$/.exec(normalized)
   if (place?.[1]) {
@@ -41,9 +41,6 @@ export function rewritePath(path: string, mapEnabled: boolean) {
   if (quest?.[1]) {
     const slug = QUEST_SLUGS[quest[1]] ?? quest[1]
     return `/kvesty/${slug}`
-  }
-  if (!mapEnabled && (normalized === '/map' || normalized.startsWith('/map/'))) {
-    return '/forty'
   }
   return normalized
 }

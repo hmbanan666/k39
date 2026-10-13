@@ -5,6 +5,7 @@
     </NuxtLayout>
     <ClientOnly>
       <CookieNotice />
+      <UiToast />
     </ClientOnly>
   </TooltipProvider>
 </template>

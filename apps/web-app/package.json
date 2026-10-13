@@ -15,9 +15,12 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@iconify-json/tabler": "catalog:integrations",
+    "@iconify/utils": "catalog:integrations",
     "@k39/database": "workspace:*",
     "@k39/map": "workspace:*",
     "@k39/types": "workspace:*",
+    "@nuxt/icon": "catalog:integrations",
     "@paralleldrive/cuid2": "catalog:integrations",
     "@vueuse/core": "catalog:integrations",
     "@vueuse/nuxt": "catalog:integrations",

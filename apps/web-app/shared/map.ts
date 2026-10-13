@@ -51,6 +51,8 @@ export interface MapPoint {
   photo: string | null
   partner: boolean
   stale: boolean
+  address?: string | null
+  hours?: string | null
 }
 
 export interface MapRouteStop {
@@ -69,6 +71,7 @@ export interface MapRoute {
   href: string
   stops: MapRouteStop[]
   path: [number, number][] | null
+  summary?: string
 }
 
 export interface RouteOverlay {
@@ -77,11 +80,37 @@ export interface RouteOverlay {
   dashed: boolean
 }
 
+export const BROWSE_CATEGORIES = [
+  { id: 'sights', label: 'Достопримечательности' },
+  { id: 'food', label: 'Где поесть' },
+  { id: 'beaches', label: 'Пляжи' },
+  { id: 'routes', label: 'Маршруты' },
+] as const
+
+export type BrowseCategory = (typeof BROWSE_CATEGORIES)[number]['id']
+
+export const SIGHT_BROWSE = SIGHT_FACETS.filter((item) => item.id !== 'plyazhi')
+
 export interface MapQueryState {
   sights: SightId[] | null
   food: string[] | null
   route: string | null
   q: string
+  category: BrowseCategory | null
+  /** Public path without the leading slash, such as a place slug or `zavedeniya/slug`. */
+  focus: string | null
+}
+
+export interface MapBounds {
+  west: number
+  south: number
+  east: number
+  north: number
+}
+
+export interface MapOrigin {
+  latitude: number
+  longitude: number
 }
 
 export function isChurchPlace(slug: string, title: string) {
@@ -196,12 +225,43 @@ export function parseMapQuery(query: Record<string, unknown>): MapQueryState {
     : null
   const route = queryValue(query.r).trim()
   const q = queryValue(query.q).replace(/\s+/g, ' ').trim().slice(0, 80)
+  const categoryRaw = queryValue(query.c).trim()
+  const category = BROWSE_CATEGORIES.some((item) => item.id === categoryRaw)
+    ? categoryRaw as BrowseCategory
+    : null
   return {
     sights: sightRaw as SightId[] | null,
     food: foodRaw,
     route: /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(route) ? route : null,
     q,
+    category,
+    focus: focusToken(queryValue(query.focus)),
   }
+}
+
+function focusToken(value: string) {
+  const token = value.replace(/^\/+/, '').trim().slice(0, 160)
+  return /^[\w./-]{1,160}$/.test(token) ? token : null
+}
+
+export function mapFocusHref(href: string) {
+  const token = focusToken(href)
+  return token ? `/map?focus=${encodeURIComponent(token)}` : '/map'
+}
+
+export function routeFocusSlug(focus: string | null) {
+  if (!focus?.startsWith('marshruty/')) {
+    return null
+  }
+  const slug = focus.slice('marshruty/'.length)
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : null
+}
+
+export function focusMatch(point: { id: string, slug: string, href: string }, focus: string | null) {
+  if (!focus) {
+    return false
+  }
+  return point.id === focus || point.slug === focus || point.href === `/${focus}` || point.href === focus
 }
 
 function sameSet(list: string[] | null, all: readonly string[]) {
@@ -239,6 +299,12 @@ export function mapQueryRecord(state: MapQueryState, foodAll: readonly string[] 
   }
   if (state.q) {
     query.q = state.q
+  }
+  if (state.category) {
+    query.c = state.category
+  }
+  if (state.focus) {
+    query.focus = state.focus
   }
   return query
 }
@@ -371,4 +437,306 @@ export function queriesEqual(a: Record<string, string>, b: Record<string, unknow
     }
   }
   return true
+}
+
+const EMPTY_QUERY: MapQueryState = { sights: null, food: null, route: null, q: '', category: null, focus: null }
+
+export function distanceKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
+  const toRad = (value: number) => value * Math.PI / 180
+  const dLat = toRad(toLat - fromLat)
+  const dLng = toRad(toLng - fromLng)
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLng / 2) ** 2
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+export function formatDistance(km: number) {
+  if (!Number.isFinite(km) || km < 0) {
+    return ''
+  }
+  if (km < 0.95) {
+    const meters = Math.max(50, Math.round((km * 1000) / 10) * 10)
+    return `${meters} м`
+  }
+  const digits = km < 10 ? 1 : 0
+  return `${km.toFixed(digits).replace('.', ',')} км`
+}
+
+export function stopsLabel(count: number) {
+  const n = Math.abs(count) % 100
+  const n1 = n % 10
+  if (n > 10 && n < 20) {
+    return `${count} остановок`
+  }
+  if (n1 === 1) {
+    return `${count} остановка`
+  }
+  if (n1 >= 2 && n1 <= 4) {
+    return `${count} остановки`
+  }
+  return `${count} остановок`
+}
+
+export function routeLengthKm(route: MapRoute) {
+  const line = route.path && route.path.length >= 2
+    ? route.path
+    : [...route.stops]
+        .filter((stop) => Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude))
+        .sort((a, b) => a.position - b.position)
+        .map((stop) => [stop.longitude, stop.latitude] as [number, number])
+  let km = 0
+  for (let index = 1; index < line.length; index += 1) {
+    const prev = line[index - 1]
+    const next = line[index]
+    if (!prev || !next) {
+      continue
+    }
+    km += distanceKm(prev[1], prev[0], next[1], next[0])
+  }
+  return km
+}
+
+export function routeDurationLabel(route: MapRoute) {
+  const km = routeLengthKm(route)
+  if (km <= 0.05) {
+    return ''
+  }
+  const minutes = Math.max(10, Math.round(km < 8 ? (km / 4.5) * 60 : (km / 45) * 60))
+  if (minutes < 60) {
+    return `около ${minutes} мин`
+  }
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  if (rest < 10) {
+    return `около ${hours} ч`
+  }
+  return `около ${hours} ч ${rest} мин`
+}
+
+export function routeThumb(route: MapRoute) {
+  return route.stops.find((stop) => stop.photo)?.photo ?? null
+}
+
+export function inBounds(point: { latitude: number, longitude: number }, bounds: MapBounds) {
+  return point.longitude >= bounds.west
+    && point.longitude <= bounds.east
+    && point.latitude >= bounds.south
+    && point.latitude <= bounds.north
+}
+
+export function boundsCenter(bounds: MapBounds): MapOrigin {
+  return {
+    latitude: (bounds.south + bounds.north) / 2,
+    longitude: (bounds.west + bounds.east) / 2,
+  }
+}
+
+function sightChosen(point: MapPoint, sights: SightId[] | null) {
+  if (sights == null) {
+    return true
+  }
+  if (!sights.length) {
+    return false
+  }
+  if (sights.includes(point.category as SightId)) {
+    return true
+  }
+  return point.church && sights.includes('tserkvi')
+}
+
+export function pointInCategory(point: MapPoint, category: BrowseCategory, state: MapQueryState = EMPTY_QUERY) {
+  if (category === 'beaches') {
+    return point.group === 'sight' && point.category === 'plyazhi'
+  }
+  if (category === 'food') {
+    if (point.group !== 'food') {
+      return false
+    }
+    if (state.food == null) {
+      return true
+    }
+    if (!state.food.length) {
+      return false
+    }
+    return state.food.includes(point.category)
+  }
+  if (category === 'sights') {
+    if (point.group !== 'sight' || point.category === 'plyazhi') {
+      return false
+    }
+    return sightChosen(point, state.sights)
+  }
+  return false
+}
+
+export function activeCategory(state: MapQueryState): BrowseCategory | null {
+  if (state.category) {
+    return state.category
+  }
+  if (state.route) {
+    return 'routes'
+  }
+  const foodOn = state.food != null && state.food.length > 0
+  const sightsOn = state.sights != null && state.sights.length > 0
+  if (foodOn && !sightsOn) {
+    return 'food'
+  }
+  if (state.sights?.length === 1 && state.sights[0] === 'plyazhi' && !foodOn) {
+    return 'beaches'
+  }
+  if (sightsOn && !foodOn) {
+    return 'sights'
+  }
+  return null
+}
+
+export function browseCounts(points: MapPoint[], routeCount: number) {
+  return {
+    sights: points.filter((point) => pointInCategory(point, 'sights')).length,
+    food: points.filter((point) => pointInCategory(point, 'food')).length,
+    beaches: points.filter((point) => pointInCategory(point, 'beaches')).length,
+    routes: routeCount,
+  }
+}
+
+function textHit(point: MapPoint, query: string) {
+  const q = query.trim().toLocaleLowerCase('ru')
+  if (!q) {
+    return true
+  }
+  return `${point.title} ${point.kindLabel} ${point.address || ''}`.toLocaleLowerCase('ru').includes(q)
+}
+
+function relevance(point: MapPoint, query: string) {
+  const q = query.trim().toLocaleLowerCase('ru')
+  if (!q) {
+    return point.partner ? 1 : 0
+  }
+  const title = point.title.toLocaleLowerCase('ru')
+  if (title.startsWith(q)) {
+    return 3
+  }
+  if (title.includes(q)) {
+    return 2
+  }
+  return 1
+}
+
+export function sortForBrowse(points: MapPoint[], origin: MapOrigin | null, query = '') {
+  return [...points].sort((a, b) => {
+    const rank = relevance(b, query) - relevance(a, query)
+    if (rank) {
+      return rank
+    }
+    if (origin) {
+      const left = distanceKm(origin.latitude, origin.longitude, a.latitude, a.longitude)
+      const right = distanceKm(origin.latitude, origin.longitude, b.latitude, b.longitude)
+      if (Math.abs(left - right) > 0.04) {
+        return left - right
+      }
+    }
+    if (a.partner !== b.partner) {
+      return a.partner ? -1 : 1
+    }
+    return a.title.localeCompare(b.title, 'ru')
+  })
+}
+
+const CURATED_ORDER = ['forty', 'zamki', 'plyazhi', 'muzei', 'tserkvi', 'kurorty'] as const
+
+function byPhoto(pool: MapPoint[]) {
+  return [...pool].sort((a, b) => {
+    const photo = Number(Boolean(b.photo)) - Number(Boolean(a.photo))
+    if (photo) {
+      return photo
+    }
+    return a.title.localeCompare(b.title, 'ru')
+  })
+}
+
+export function curatedSights(points: MapPoint[], limit = 6) {
+  const sights = points.filter((point) => point.group === 'sight')
+  const picked: MapPoint[] = []
+  const used = new Set<string>()
+  for (const category of CURATED_ORDER) {
+    const pool = sights.filter((point) => !used.has(point.id) && (category === 'tserkvi'
+      ? point.church || point.category === 'tserkvi'
+      : point.category === category))
+    const best = byPhoto(pool)[0]
+    if (best) {
+      picked.push(best)
+      used.add(best.id)
+    }
+  }
+  const perCategory = new Map<string, number>()
+  for (const item of picked) {
+    const key = item.church ? 'tserkvi' : item.category
+    perCategory.set(key, (perCategory.get(key) || 0) + 1)
+  }
+  for (const item of byPhoto(sights.filter((point) => !used.has(point.id)))) {
+    if (picked.length >= limit) {
+      break
+    }
+    const key = item.church ? 'tserkvi' : item.category
+    if ((perCategory.get(key) || 0) >= 2) {
+      continue
+    }
+    picked.push(item)
+    perCategory.set(key, (perCategory.get(key) || 0) + 1)
+  }
+  return picked.slice(0, limit)
+}
+
+export function popularRoutes(routes: MapRoute[], limit = 3) {
+  return [...routes]
+    .sort((a, b) => b.stops.length - a.stops.length || a.title.localeCompare(b.title, 'ru'))
+    .slice(0, limit)
+}
+
+export function pointsNear(points: MapPoint[], origins: MapOrigin[], radiusKm = 1.2) {
+  if (!origins.length) {
+    return []
+  }
+  return points.filter((point) => origins.some((origin) => (
+    distanceKm(origin.latitude, origin.longitude, point.latitude, point.longitude) <= radiusKm
+  )))
+}
+
+function withFocus(list: MapPoint[], points: MapPoint[], state: MapQueryState) {
+  if (!state.focus || routeFocusSlug(state.focus)) {
+    return list
+  }
+  const ids = new Set(list.map((point) => point.id))
+  const extra = points.filter((point) => focusMatch(point, state.focus) && !ids.has(point.id))
+  return extra.length ? [...extra, ...list] : list
+}
+
+export function shownPoints(points: MapPoint[], state: MapQueryState) {
+  const category = activeCategory(state)
+  const matched = state.q.trim()
+    ? points.filter((point) => textHit(point, state.q))
+    : points
+  let list: MapPoint[]
+  if (state.q.trim()) {
+    list = !category || category === 'routes'
+      ? matched
+      : matched.filter((point) => pointInCategory(point, category, state))
+  } else if (category === 'routes') {
+    list = []
+  } else if (category) {
+    list = matched.filter((point) => pointInCategory(point, category, state))
+  } else if (state.sights != null || state.food != null) {
+    list = points.filter((point) => pointVisible(point, state))
+  } else {
+    list = curatedSights(points)
+  }
+  return withFocus(list, points, state)
+}
+
+export function browseList(points: MapPoint[], bounds: MapBounds | null, origin: MapOrigin | null, query = '') {
+  const inside = bounds ? points.filter((point) => inBounds(point, bounds)) : points
+  if (inside.length || !query.trim()) {
+    return { items: sortForBrowse(inside, origin, query), nearby: false }
+  }
+  return { items: sortForBrowse(points, origin, query).slice(0, 8), nearby: true }
 }

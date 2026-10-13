@@ -3,6 +3,7 @@
     ref="frame"
     class="frame"
     :class="{ embed: fullscreen }"
+    :style="{ '--map-ui-bottom': controlsBottom }"
   >
     <div
       ref="canvas"
@@ -22,44 +23,28 @@
         aria-label="Приблизить"
         @click="zoomIn"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><path d="M8 3v10M3 8h10" /></svg>
+        <Icon :name="tablerIcon('zoomIn')" size="16" />
       </button>
       <button
         type="button"
         aria-label="Отдалить"
         @click="zoomOut"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><path d="M3 8h10" /></svg>
+        <Icon :name="tablerIcon('zoomOut')" size="16" />
       </button>
       <button
         type="button"
         aria-label="Я здесь"
         @click="locate"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><circle
-          cx="8"
-          cy="8"
-          r="2.2"
-        /><path d="M8 1.5v2.2M8 12.3v2.2M1.5 8h2.2M12.3 8h2.2" /></svg>
+        <Icon :name="tablerIcon('locate')" size="16" />
       </button>
       <button
         type="button"
         aria-label="Показать всё"
         @click="fit"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><path d="M3 6V3h3M10 3h3v3M13 10v3h-3M6 13H3v-3" /></svg>
+        <Icon :name="tablerIcon('fit')" size="16" />
       </button>
       <button
         v-if="fullscreen"
@@ -67,20 +52,11 @@
         :aria-label="expanded ? 'Выйти из полного экрана' : 'На весь экран'"
         @click="toggleFullscreen"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
+        <Icon :name="tablerIcon('fullscreen')" size="16" />
       </button>
     </div>
-    <p
-      v-if="locateMessage"
-      class="locate"
-      role="status"
-    >
-      {{ locateMessage }}
-    </p>
     <MapCard
+      v-if="cardVisible"
       :point="card"
       :sheet="sheet"
       @close="selectedId = null"
@@ -89,9 +65,10 @@
 </template>
 
 <script setup lang="ts">
-import type { MapPoint, RouteOverlay } from '~~/shared/map'
-import type { K39MapHandle } from '~/lib/mount-k39-map'
+import type { MapBounds, MapPoint, RouteOverlay } from '~~/shared/map'
+import type { K39MapHandle, MapFramePadding } from '~/lib/mount-k39-map'
 import { cardFor } from '@k39/map'
+import { tablerIcon } from '~~/shared/icons'
 import { visitorLayers } from '~~/shared/map'
 import MapCard from '~/components/map/MapCard.vue'
 import { fetchBasemapUrl } from '~/lib/basemap-url'
@@ -103,13 +80,24 @@ const props = withDefaults(defineProps<{
   lazy?: boolean
   fullscreen?: boolean
   fitKey?: string
+  cardVisible?: boolean
+  padding?: MapFramePadding
+  controlsBottom?: string
 }>(), {
   lazy: true,
   fullscreen: false,
   fitKey: '',
+  cardVisible: true,
+  padding: undefined,
+  controlsBottom: '0.6rem',
 })
 
-const emit = defineEmits<{ ready: [], error: [] }>()
+const emit = defineEmits<{
+  ready: []
+  error: []
+  bounds: [bounds: MapBounds]
+  located: [point: { latitude: number, longitude: number }]
+}>()
 const selectedId = defineModel<string | null>('selected', { default: null })
 
 const frame = ref<HTMLElement | null>(null)
@@ -117,7 +105,7 @@ const canvas = ref<HTMLElement | null>(null)
 const failed = ref(false)
 const expanded = ref(false)
 const sheet = ref(false)
-const locateMessage = ref('')
+const toast = useToast()
 const impressed = new Set<string>()
 
 let handle: K39MapHandle | null = null
@@ -150,6 +138,13 @@ async function boot() {
       onEmpty: () => {
         selectedId.value = null
       },
+      padding: props.padding,
+      onBounds: (bounds: MapBounds) => {
+        emit('bounds', bounds)
+      },
+      onLocate: (point: { latitude: number, longitude: number }) => {
+        emit('located', point)
+      },
     }
     try {
       handle = await mountK39Map(el, { ...options, pmtilesUrl })
@@ -181,10 +176,9 @@ function fit() {
 }
 
 async function locate() {
-  locateMessage.value = ''
   const result = await handle?.locate()
   if (result === 'denied' || result === 'unavailable') {
-    locateMessage.value = 'Не удалось определить место'
+    toast.push('Не удалось определить место')
   }
 }
 
@@ -222,6 +216,12 @@ watch(layers, (next) => {
 watch(() => props.fitKey, () => {
   handle?.fit()
 })
+
+watch(() => props.padding, (padding) => {
+  if (padding) {
+    handle?.setPadding(padding)
+  }
+}, { deep: true })
 
 watch(selectedId, (id) => {
   handle?.setSelected(id)
@@ -329,25 +329,13 @@ onBeforeUnmount(() => {
 .tools button:last-child { border-bottom: 0; }
 .tools button:hover { background: rgb(163 64 42 / 8%); color: var(--color-brick); }
 .tools svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.locate {
-  position: absolute;
-  z-index: 4;
-  top: 0.8rem;
-  left: 0.8rem;
-  margin: 0;
-  padding: 0.35rem 0.6rem;
-  border-radius: 8px;
-  background: rgb(255 251 243 / 94%);
-  color: var(--color-ink);
-  font-size: 0.82rem;
-}
 :deep(.maplibregl-ctrl-attrib) {
   background: transparent;
   font-family: var(--font-body);
   font-size: 11px;
 }
 :deep(.maplibregl-ctrl-bottom-right),
-:deep(.maplibregl-ctrl-bottom-left) { bottom: 3.6rem; }
+:deep(.maplibregl-ctrl-bottom-left) { bottom: var(--map-ui-bottom, 0.6rem); }
 :deep(.maplibregl-ctrl-attrib.maplibregl-compact) { margin: 0 4px 4px 0; }
 :deep(.maplibregl-ctrl-attrib-button) {
   background-color: rgb(255 251 243 / 94%) !important;

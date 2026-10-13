@@ -58,10 +58,12 @@ Layout shifts at 720px (two cards) and 900px (desktop nav, three nearby cards). 
 | `NearbyList` | Nearest places, name plus kilometres. |
 | `RouteSteps` | Ordered stops on a place page. Each step is the place name. |
 | `RouteGuide` | Route page: MapLibre map of numbered stops, deep links, stop cards with the note and the straight-line leg, and «Как добраться» on each stop. |
-| `K39Map` | Nearby embed on a place or venue: OpenFreeMap pins, clusters, and a pin card. |
+| `K39Map` | MapLibre frame: paper basemap, round pins, clusters, and a pin card. `/map` is the full page. |
+| `MapEmbed` | Compact frame on a place, venue, route, hub, collection, or quest. Nearby points within 1.2 km, fullscreen, and «Открыть на карте». |
 | `DirectionsLink` | «Как добраться». Opens Yandex Maps with the point as the destination. |
 | `PartnerOffer` | Only for a real active offer. |
 | `CookieNotice` | Full-width bar fixed to the bottom, ink background, brick button. Client-only, so it does not shift layout. Dismiss is a localStorage flag. |
+| `UiToast` | Short status line, solid paper, brick edge. Auto-hides after 2.5 seconds. Sits clear of the search field. |
 | `UiAccordion` | Reka accordion. Default open when the copy must be read immediately. Content stays in the HTML. |
 | `UiDialog` | Reka dialog. The public header uses a pill row instead of a menu button. |
 | `UiTooltip` | Extra hint. The visible label still states the fact. |

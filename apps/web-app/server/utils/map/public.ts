@@ -1,5 +1,5 @@
 import type { MapPoint, MapRoute } from '../../../shared/map'
-import { db, isStale, kindHeading } from '@k39/database'
+import { db, formatHoursLines, hoursAreSet, isStale, kindHeading } from '@k39/database'
 import { blurb, FOOD_FILTERS, isChurchPlace, normalizeRoutePath, partnerVisible, SIGHT_FACETS } from '../../../shared/map'
 import { toPublicMedia } from '../../../shared/media'
 import { collectionDocument } from '../../../shared/seo'
@@ -57,6 +57,8 @@ export async function loadMap() {
         photo: thumb(placeCovers.get(row.id)),
         partner: false,
         stale: false,
+        address: null,
+        hours: row.hours?.trim() || null,
       })
       continue
     }
@@ -76,6 +78,8 @@ export async function loadMap() {
       photo: thumb(placeCovers.get(row.id)),
       partner: false,
       stale: false,
+      address: null,
+      hours: row.hours?.trim() || null,
     })
   }
 
@@ -96,10 +100,12 @@ export async function loadMap() {
       marker: FOOD_FILTERS.some((item) => item.id === row.kind) ? row.kind : 'other',
       church: false,
       kindLabel: kindHeading(row.kind),
-      summary: blurb(row.address || row.description),
+      summary: blurb(row.description),
       photo: thumb(venueCovers.get(row.id)),
       partner: partnerVisible(flag, sponsored.has(row.id)),
       stale,
+      address: row.address?.trim() || null,
+      hours: hoursAreSet(row.hours) ? formatHoursLines(row.hours).join(', ') : null,
     })
   }
 
@@ -113,6 +119,7 @@ export async function loadMap() {
         href: `/marshruty/${row.routeSlug}`,
         stops: [],
         path: normalizeRoutePath(row.path),
+        summary: blurb(row.routeSummary, 160),
       }
       routes.set(row.routeSlug, route)
     }
@@ -129,7 +136,7 @@ export async function loadMap() {
 
   const routeList = [...routes.values()].sort((a, b) => a.title.localeCompare(b.title, 'ru'))
   const doc = collectionDocument({
-    path: '/karta',
+    path: '/map',
     h1: 'Карта Калининградской области',
     summary: 'Достопримечательности, где поесть и маршруты на одной карте Калининградской области.',
     items: [

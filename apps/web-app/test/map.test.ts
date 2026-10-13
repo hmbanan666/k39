@@ -2,18 +2,28 @@ import type { MapPoint, MapRoute } from '../shared/map'
 import { mapStyle } from '@k39/map'
 import { describe, expect, it } from 'vitest'
 import {
+  activeCategory,
   blurb,
+  browseCounts,
+  browseList,
+  curatedSights,
   facetCounts,
+  focusMatch,
   foodIdsIn,
+  formatDistance,
   isChurchPlace,
+  mapFocusHref,
   mapQueryRecord,
-
   normalizeRoutePath,
   parseMapQuery,
   partnerVisible,
+  pointInCategory,
   pointVisible,
+  routeDurationLabel,
   routeOverlay,
+  shownPoints,
   sortMapPoints,
+  stopsLabel,
   toggleId,
   visitorLayers,
 } from '../shared/map'
@@ -60,7 +70,7 @@ describe('map filters', () => {
 
   it('treats an empty query as every sight and every food kind, with routes off', () => {
     const state = parseMapQuery({})
-    expect(state).toEqual({ sights: null, food: null, route: null, q: '' })
+    expect(state).toEqual({ sights: null, food: null, route: null, q: '', category: null, focus: null })
     expect(mapQueryRecord(state)).toEqual({})
     expect(points.filter((item) => pointVisible(item, state)).map((item) => item.id)).toEqual(['fort', 'sobor', 'kofe'])
     expect(routeOverlay(null)).toBeNull()
@@ -74,10 +84,10 @@ describe('map filters', () => {
     expect(counts.sights.muzei).toBe(1)
     expect(counts.sights.tserkvi).toBe(1)
     expect(counts.food.coffee).toBe(1)
-    expect(pointVisible(cathedral, { sights: ['muzei'], food: null, route: null, q: '' })).toBe(true)
-    expect(pointVisible(cathedral, { sights: ['tserkvi'], food: null, route: null, q: '' })).toBe(true)
-    expect(pointVisible(cathedral, { sights: ['forty'], food: null, route: null, q: '' })).toBe(false)
-    expect(pointVisible(fort, { sights: [], food: null, route: null, q: '' })).toBe(false)
+    expect(pointVisible(cathedral, { sights: ['muzei'], food: null, route: null, q: '', category: null, focus: null })).toBe(true)
+    expect(pointVisible(cathedral, { sights: ['tserkvi'], food: null, route: null, q: '', category: null, focus: null })).toBe(true)
+    expect(pointVisible(cathedral, { sights: ['forty'], food: null, route: null, q: '', category: null, focus: null })).toBe(false)
+    expect(pointVisible(fort, { sights: [], food: null, route: null, q: '', category: null, focus: null })).toBe(false)
   })
 
   it('round-trips sight, food, route, and search query keys', () => {
@@ -88,10 +98,17 @@ describe('map filters', () => {
     expect(state.q).toBe('форт')
     expect(mapQueryRecord(state)).toEqual({ s: 'forty,zamki', f: 'kofe,pekarnya', r: 'pyat-fortov', q: 'форт' })
     expect(parseMapQuery({ s: 'none', f: 'none' })).toMatchObject({ sights: [], food: [] })
-    expect(mapQueryRecord({ sights: [], food: [], route: null, q: '' })).toEqual({ s: 'none', f: 'none' })
+    expect(mapQueryRecord({ sights: [], food: [], route: null, q: '', category: null, focus: null })).toEqual({ s: 'none', f: 'none' })
+    expect(mapQueryRecord({ sights: null, food: null, route: null, q: '', category: 'food', focus: null })).toEqual({ c: 'food' })
+    expect(parseMapQuery({ c: 'beaches' }).category).toBe('beaches')
+    expect(parseMapQuery({ c: 'nope' }).category).toBeNull()
+    expect(parseMapQuery({ focus: '/zavedeniya/kofe' }).focus).toBe('zavedeniya/kofe')
+    expect(mapFocusHref('/zavedeniya/kofe')).toBe('/map?focus=zavedeniya%2Fkofe')
+    expect(focusMatch(coffee, 'kofe')).toBe(true)
+    expect(shownPoints(points, { ...parseMapQuery({}), focus: 'kofe' }).some((item) => item.id === 'kofe')).toBe(true)
     expect(pointVisible(coffee, { ...state, sights: null, food: state.food, q: '' })).toBe(true)
-    expect(pointVisible(fort, { sights: null, food: null, route: null, q: 'кофе' })).toBe(false)
-    expect(pointVisible(coffee, { sights: null, food: ['restaurant'], route: null, q: '' })).toBe(false)
+    expect(pointVisible(fort, { sights: null, food: null, route: null, q: 'кофе', category: null })).toBe(false)
+    expect(pointVisible(coffee, { sights: null, food: ['restaurant'], route: null, q: '', category: null, focus: null })).toBe(false)
   })
 
   it('drops one chip from the full set and sorts a partner first', () => {
@@ -149,6 +166,63 @@ describe('visitor layers', () => {
     expect(layers.map((layer) => layer.id)).toEqual(['route', 'places', 'route-stops'])
     expect(layers[0]).toMatchObject({ type: 'line', dashed: true })
     expect(layers[1]?.type === 'points' && layers[1].points.some((point) => point.id === 'fort')).toBe(false)
+  })
+})
+
+describe('browse panel', () => {
+  const beach = point({ id: 'beach', title: 'Пляж', group: 'sight', category: 'plyazhi', marker: 'plyazhi', latitude: 55.1, longitude: 21.2 })
+  const points = [fort, cathedral, coffee, beach]
+  const idle = { sights: null, food: null, route: null, q: '', category: null, focus: null }
+
+  it('keeps the idle map to a short curated shelf', () => {
+    const shown = shownPoints(points, idle)
+    expect(shown.map((item) => item.id)).not.toContain('kofe')
+    expect(shown.length).toBeLessThanOrEqual(6)
+    expect(curatedSights(points).some((item) => item.category === 'plyazhi')).toBe(true)
+    expect(activeCategory(idle)).toBeNull()
+    expect(activeCategory({ ...idle, category: 'routes' })).toBe('routes')
+    expect(activeCategory({ ...idle, sights: ['forty'] })).toBe('sights')
+  })
+
+  it('hides empty categories and lists only what is inside the view', () => {
+    expect(browseCounts(points, 1)).toMatchObject({ sights: 2, food: 1, beaches: 1, routes: 1 })
+    expect(browseCounts([fort], 0).beaches).toBe(0)
+    expect(pointInCategory(beach, 'sights')).toBe(false)
+    expect(pointInCategory(beach, 'beaches')).toBe(true)
+    expect(pointInCategory(cathedral, 'sights', { ...idle, sights: ['tserkvi'] })).toBe(true)
+    const box = { west: 20.4, south: 54.6, east: 20.6, north: 54.75 }
+    const list = browseList(points, box, { latitude: 54.7, longitude: 20.5 })
+    expect(list.items.map((item) => item.id)).toEqual(['kofe', 'sobor', 'fort'])
+    expect(list.nearby).toBe(false)
+    const nearby = browseList(
+      [{ ...beach, latitude: 55.2, longitude: 20.9 }],
+      box,
+      { latitude: 54.7, longitude: 20.5 },
+      'пляж',
+    )
+    expect(nearby.nearby).toBe(true)
+    expect(nearby.items).toHaveLength(1)
+    expect(formatDistance(0.4)).toBe('400 м')
+    expect(formatDistance(2.5)).toBe('2,5 км')
+    expect(stopsLabel(1)).toBe('1 остановка')
+    expect(stopsLabel(2)).toBe('2 остановки')
+    expect(stopsLabel(5)).toBe('5 остановок')
+  })
+
+  it('estimates a route duration from the stop spacing', () => {
+    const route: MapRoute = {
+      slug: 'pyat-fortov',
+      title: 'Пять фортов',
+      href: '/marshruty/pyat-fortov',
+      path: null,
+      stops: [
+        { position: 1, title: 'Один', href: '/a', latitude: 54.7, longitude: 20.5, summary: '', photo: null },
+        { position: 2, title: 'Два', href: '/b', latitude: 54.8, longitude: 20.6, summary: '', photo: null },
+      ],
+    }
+    expect(routeDurationLabel(route)).toMatch(/^около \d+ мин$/)
+    expect(shownPoints(points, { ...idle, category: 'food' }).map((item) => item.id)).toEqual(['kofe'])
+    expect(shownPoints(points, { ...idle, category: 'routes' })).toEqual([])
   })
 })
 

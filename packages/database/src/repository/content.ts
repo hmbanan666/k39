@@ -187,6 +187,7 @@ export class Content {
       longitude: places.longitude,
       categorySlug: categories.slug,
       categoryTitle: categories.title,
+      hours: places.hours,
     }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).where(and(
       eq(places.publicationStatus, published),
       eq(places.noindex, false),
@@ -199,6 +200,7 @@ export class Content {
     return useDatabase().select({
       routeSlug: routes.slug,
       routeTitle: routes.title,
+      routeSummary: routes.summary,
       path: routes.path,
       position: routePoints.position,
       placeId: places.id,

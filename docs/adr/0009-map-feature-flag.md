@@ -10,7 +10,7 @@ The forts map component is large client-side SVG. It is not ready to be a primar
 
 ## Decision
 
-`FortsMap` stays in the repo. Nothing in the header, footer or sitemap links to it. `robots.txt` disallows `/map`. Requests to `/map` and `/map/*` answer 301 to `/forty` unless `FEATURE_MAP=true`. With the flag on, `/map/{region}` renders the component and sends `noindex`.
+`FortsMap` stays in the repo at `/map/forty`. Nothing in the header, footer or sitemap links to it. `robots.txt` disallows `/map/`. The visitor map at `/map` is public and is not behind the flag. With the flag off, `/map/forty` answers 404. With the flag on, it renders the booklet and sends `noindex`. There is no redirect from `/map` or from older booklet paths.
 
 ## Consequences
 

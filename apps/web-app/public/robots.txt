@@ -3,7 +3,7 @@ Allow: /
 Disallow: /admin
 Disallow: /api
 Disallow: /mcp
-Disallow: /map
+Disallow: /map/
 Disallow: /sign-in
 Disallow: /preview
 
@@ -12,7 +12,7 @@ Allow: /
 Disallow: /admin
 Disallow: /api
 Disallow: /mcp
-Disallow: /map
+Disallow: /map/
 Disallow: /sign-in
 Disallow: /preview
 Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid&gclid&fbclid
