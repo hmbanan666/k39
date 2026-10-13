@@ -1,3 +1,4 @@
+import { DEFAULT_BASEMAP_FILE, DEFAULT_BASEMAP_SHA256, DEFAULT_BASEMAP_SOURCE_URL } from './server/utils/basemap-defaults'
 import { brandHeadLinks } from './shared/seo'
 
 export default defineNuxtConfig({
@@ -73,8 +74,12 @@ export default defineNuxtConfig({
     '/basemap/sprites/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
   },
   runtimeConfig: {
-    // NUXT_BASEMAP_FILE. The PMTiles archive stays on a volume, not in the image.
-    basemapFile: '/app/basemap/kaliningrad.pmtiles',
+    // NUXT_BASEMAP_FILE. The archive stays on a volume. Boot downloads it when the hash does not match.
+    basemapFile: DEFAULT_BASEMAP_FILE,
+    // NUXT_BASEMAP_SOURCE_URL and BASEMAP_SOURCE_URL. Baked so Dokploy needs no new variable.
+    basemapSourceUrl: DEFAULT_BASEMAP_SOURCE_URL,
+    // NUXT_BASEMAP_SHA256 and BASEMAP_SHA256. The map uses the file only when this matches.
+    basemapSha256: DEFAULT_BASEMAP_SHA256,
     public: {
       featureMap: false,
       consentBanner: false,
@@ -82,7 +87,7 @@ export default defineNuxtConfig({
       googleVerification: '',
       // Kept so an existing deploy env does not fail validation. ADR 0019 does not load Yandex Maps.
       yandexMapsApiKey: '',
-      // Empty keeps the OpenFreeMap fallback. A path or https URL loads the self-hosted archive.
+      // Optional https object-storage override. A path is ignored. The same-origin URL is chosen at runtime.
       pmtilesUrl: '',
     },
   },
