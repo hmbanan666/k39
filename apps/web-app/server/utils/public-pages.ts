@@ -1,4 +1,5 @@
 import { db } from '@k39/database'
+import { collectionPlaceCards } from '../../shared/collection-page'
 import { homeLinks, HUBS } from '../../shared/links'
 import { normalizeRoutePath } from '../../shared/map'
 import { renderMarkdown } from '../../shared/markdown'
@@ -361,10 +362,16 @@ export async function loadCollection(slug: string) {
   const months = isMonth
     ? splitCollections(await db.content.listPublishedCollections()).months.filter((row) => row.slug !== loaded.collection.slug).map((row) => ({ href: `/podborki/${row.slug}`, text: row.title }))
     : []
+  const covers = await db.content.coversFor(loaded.items.map((item) => item.id))
+  const places = collectionPlaceCards(loaded.items).map((card, index) => {
+    const source = loaded.items[index]
+    const cover = source ? covers.get(source.id) : undefined
+    return { ...card, media: cover ? toPublicMedia(cover) : null }
+  })
   return {
     doc,
     html: renderMarkdown(loaded.collection.body),
-    items: loaded.items.map((item) => ({ href: `/${item.slug}`, text: item.title, note: item.note })),
+    places,
     kind: loaded.collection.kind,
     sources: loaded.collection.sources ?? [],
     months,

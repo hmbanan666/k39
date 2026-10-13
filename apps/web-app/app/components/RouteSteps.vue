@@ -132,12 +132,14 @@ h2 a:hover { color: var(--color-amber-soft); }
 .steps { position: relative; z-index: 1; margin: 1.4rem 0 0; padding: 0; list-style: none; }
 .label { display: block; min-width: 0; }
 .steps a {
+  display: block;
   color: #fff;
   font-family: var(--font-display);
   font-size: 0.98rem;
   font-weight: 600;
   line-height: 1.3;
   text-decoration: none;
+  overflow-wrap: break-word;
 }
 .note {
   display: block;
@@ -145,6 +147,7 @@ h2 a:hover { color: var(--color-amber-soft); }
   color: #c9d6db;
   font-size: 0.82rem;
   line-height: 1.35;
+  overflow-wrap: break-word;
 }
 .n {
   display: grid;
@@ -171,24 +174,29 @@ h2 a:hover { color: var(--color-amber-soft); }
 }
 .actions span { color: #c9d6db; font-size: 0.9rem; }
 .track .steps {
-  display: flex;
-  gap: 0.4rem;
-}
-.track .steps::before {
-  content: "";
-  position: absolute;
-  top: 21px;
-  right: 8%;
-  left: 8%;
-  border-top: 2px dashed rgb(246 226 190 / 55%);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  column-gap: 0;
+  row-gap: 1.15rem;
 }
 .track li {
-  flex: 1 1 0;
+  position: relative;
   min-width: 0;
-  padding: 0 0.3rem;
+  padding: 0 0.45rem;
   text-align: center;
 }
+.track li::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 21px;
+  right: 0;
+  left: 0;
+  border-top: 2px dashed rgb(246 226 190 / 55%);
+}
 .track .n {
+  position: relative;
+  z-index: 1;
   width: 44px;
   height: 44px;
   margin: 0 auto 0.7rem;
@@ -211,7 +219,13 @@ h2 a:hover { color: var(--color-amber-soft); }
 }
 .feature .txt { padding: 1.5rem 1.2rem 1.4rem; }
 .feature .steps { display: grid; gap: 0.7rem; margin-top: 1.1rem; }
-.feature li { display: flex; gap: 0.75rem; align-items: center; }
+.feature li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+}
+.feature .label { flex: 1; }
 .feature .n {
   flex: none;
   width: 30px;
@@ -219,8 +233,14 @@ h2 a:hover { color: var(--color-amber-soft); }
   font-size: 0.9rem;
 }
 @media (max-width: 720px) {
-  .track .steps { flex-direction: column; gap: 0.85rem; }
+  .track .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
   .track .steps::before {
+    content: "";
+    position: absolute;
     top: 0.4rem;
     right: auto;
     bottom: 0.4rem;
@@ -228,11 +248,13 @@ h2 a:hover { color: var(--color-amber-soft); }
     border-top: 0;
     border-left: 2px dashed rgb(246 226 190 / 55%);
   }
+  .track li::before { content: none; }
   .track li {
     display: grid;
-    grid-template-columns: 44px 1fr;
+    grid-template-columns: 44px minmax(0, 1fr);
     gap: 0.15rem 0.75rem;
     align-items: center;
+    padding: 0;
     text-align: left;
   }
   .track .n { margin: 0; }

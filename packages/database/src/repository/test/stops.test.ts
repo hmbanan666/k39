@@ -222,7 +222,15 @@ describe('ordered stops and archive', () => {
       ['stop-live', 'Сначала сюда'],
       ['stop-hidden', null],
     ])
-    expect((await Content.publishedCollection('ordered-collection'))?.items.map((item) => item.slug)).toEqual(['stop-live'])
+    expect((await Content.publishedCollection('ordered-collection'))?.items).toMatchObject([{
+      slug: 'stop-live',
+      title: 'Живой форт',
+      summary: '',
+      note: 'Сначала сюда',
+      categorySlug: null,
+      categoryTitle: null,
+      regionTitle: null,
+    }])
 
     await Editor.saveCollection({
       id: collection.id,

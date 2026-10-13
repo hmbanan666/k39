@@ -193,12 +193,13 @@ const overlay = computed(() => routeOverlay({
   font-size: 1.05rem;
   font-weight: 700;
   text-decoration: none;
+  overflow-wrap: break-word;
 }
 .stops-title { margin: 0 0 var(--space-3); font-size: var(--step-1); }
 .cards { display: grid; gap: 0.7rem; margin: 0; padding: 0; list-style: none; }
 .cards li {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
   padding: 0.85rem 0.95rem;
@@ -218,15 +219,24 @@ const overlay = computed(() => routeOverlay({
   font-family: var(--font-display);
   font-weight: 700;
 }
+.body { min-width: 0; }
 .name {
+  display: block;
   color: var(--color-sea);
   font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.2;
   text-decoration: none;
+  overflow-wrap: break-word;
 }
-.note { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
+.note {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
 .leg { margin: 0.35rem 0 0; color: var(--color-pine); font-size: 0.92rem; font-weight: 700; }
 .stop-go { margin-top: 0.45rem; }
 @media (max-width: 720px) {
