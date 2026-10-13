@@ -39,5 +39,11 @@ export const placeFields = {
   ogImage: z.string().nullable().optional(),
   noindex: z.boolean().optional(),
   sources,
+  visitDuration: z.string().max(80).nullable().optional().describe('How long a visit takes, Russian, short: "1–2 часа". Shown in the answer block. Must come from a source or a measured route. Null clears it.'),
+  bestTime: z.string().max(160).nullable().optional().describe('Best time to come, Russian, short: "май–сентябрь, утром". Shown in the answer block. Null clears it.'),
+  faq: z.array(z.object({
+    question: z.string().min(5).max(200),
+    answer: z.string().min(5).max(1200),
+  })).max(8).optional().describe('3 to 6 real visitor questions answered only from sourced facts. Plain text answers. Renders the FAQ block and FAQPage markup. An empty array removes the block. Omit to keep.'),
   factsCheckedAt: z.string().nullable().optional().describe('ISO date (YYYY-MM-DD or a full timestamp) when the facts were last checked. Stored as last_verified_at. Omit to keep the current value. Null clears it. Send it with only id or slug to record a check and leave the article unchanged.'),
 }

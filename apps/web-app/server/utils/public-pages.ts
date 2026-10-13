@@ -6,7 +6,7 @@ import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, toPublicMedia } from '../../shared/media'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
-import { absoluteUrl, collectionDocument, homeDocument, placeDocument, socialImage } from '../../shared/seo'
+import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage } from '../../shared/seo'
 import { eatNearby } from './venues/public'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
@@ -182,6 +182,9 @@ export async function loadPlace(slug: string, page = 1) {
     }),
     page,
     body: loaded.place.body,
+    faq: loaded.place.faq ?? [],
+    updatedAt: loaded.place.updatedAt,
+    checkedAt: loaded.place.lastVerifiedAt,
   })
   const nearCovers = await db.content.coversFor(loaded.nearest.map((item) => item.place_id))
   const groups = [
@@ -217,10 +220,14 @@ export async function loadPlace(slug: string, page = 1) {
         next: nextStep ? { href: `/${nextStep.slug}`, text: nextStep.title } : null,
       }
     : null
+  const structuredFaq = (loaded.place.faq ?? []).filter((item) => item.question.trim() && item.answer.trim())
+  // A body FAQ section stays in the prose; the structured list renders as its own block.
   const body = articleBody(loaded.place.summary, loaded.place.body, loaded.place.howToGet)
   return {
     doc,
     html: renderMarkdown(body),
+    faq: structuredFaq,
+    checkedAt: isoDay(loaded.place.lastVerifiedAt),
     place: loaded.place,
     categoryTitle: loaded.category.title,
     categorySlug: loaded.category.slug,

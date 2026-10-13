@@ -76,6 +76,24 @@
           class="prose"
           v-html="page.html"
         />
+        <section
+          v-if="page.faq.length"
+          class="faq"
+          aria-labelledby="faq-title"
+        >
+          <h2 id="faq-title">
+            Вопросы перед поездкой
+          </h2>
+          <details
+            v-for="(item, index) in page.faq"
+            :key="item.question"
+            class="faq-item"
+            :open="index === 0"
+          >
+            <summary>{{ item.question }}</summary>
+            <p>{{ item.answer }}</p>
+          </details>
+        </section>
       </div>
       <aside class="aside">
         <section
@@ -84,27 +102,16 @@
         >
           <h2>Коротко</h2>
           <div
-            v-if="hours"
+            v-for="row in facts"
+            :key="row.key"
             class="fact"
           >
-            <Icon :name="tablerIcon('hours')" size="22" />
+            <Icon :name="tablerIcon(row.key)" size="22" />
             <div>
               <p class="label">
-                Часы
+                {{ row.label }}
               </p>
-              <p>{{ hours }}</p>
-            </div>
-          </div>
-          <div
-            v-if="price"
-            class="fact"
-          >
-            <Icon :name="tablerIcon('price')" size="22" />
-            <div>
-              <p class="label">
-                Цена
-              </p>
-              <p>{{ price }}</p>
+              <p>{{ row.value }}</p>
             </div>
           </div>
           <div
@@ -142,6 +149,13 @@
               </p>
             </div>
           </div>
+          <p
+            v-if="checkedLabel"
+            class="checked"
+          >
+            <Icon :name="tablerIcon('checked')" size="16" />
+            Проверено {{ checkedLabel }}
+          </p>
         </section>
         <div
           v-if="page.offers.length"
@@ -238,6 +252,12 @@
           </UiLink>
         </li>
       </ul>
+      <p
+        v-if="checkedLabel"
+        class="sources-date"
+      >
+        Факты сверены с источниками {{ checkedLabel }}.
+      </p>
     </details>
   </article>
 </template>
@@ -250,6 +270,7 @@ import { yandexDestinationUrl } from '~~/shared/embed-map'
 import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
+import { guideFacts, russianDay } from '~~/shared/place-guide'
 
 interface PlaceLink {
   href: string
@@ -261,8 +282,12 @@ interface PlaceLink {
 interface PlacePage {
   doc: SeoDocument
   html: string
+  faq: Array<{ question: string, answer: string }>
+  checkedAt: string | null
   place: {
     summary: string
+    visitDuration: string | null
+    bestTime: string | null
     status: string
     hours: string | null
     price: string | null
@@ -324,12 +349,11 @@ const statusHint = ({
 const yandex = page.place.latitude != null && page.place.longitude != null
   ? yandexDestinationUrl(page.place.latitude, page.place.longitude)
   : ''
-const hours = page.place.hours?.trim() || ''
-const price = page.place.price?.trim() || ''
+const facts = guideFacts(page.place)
+const checkedLabel = russianDay(page.checkedAt)
 const address = shortAddress(page.place.howToGet || '')
 const hasFacts = Boolean(
-  hours
-  || price
+  facts.length
   || address
   || (page.place.latitude != null && page.place.longitude != null),
 )
@@ -421,6 +445,35 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   text-transform: uppercase;
 }
 .fact a { font-weight: 600; }
+.checked {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.7rem 0 0.8rem;
+  border-top: 1px dashed var(--color-line);
+  color: var(--color-pine, var(--muted));
+  font: 600 0.8rem/1.2 var(--font-body);
+}
+.checked svg { flex: none; }
+.faq { margin-top: 2.6rem; }
+.faq h2 { margin: 0 0 0.9rem; }
+.faq-item {
+  border-top: 1px solid var(--color-line);
+}
+.faq-item:last-child { border-bottom: 1px solid var(--color-line); }
+.faq-item summary {
+  padding: 0.9rem 0;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.faq-item p {
+  margin: 0 0 1rem;
+  max-width: 65ch;
+  line-height: 1.6;
+}
+.sources-date { margin: 0 0 0.8rem; }
 .offers { display: flex; flex-direction: column; gap: 1rem; }
 .gallery { margin-top: 2.5rem; }
 .gallery-grid {
