@@ -20,6 +20,15 @@ export type ScoreBlock = 'quality' | 'linking' | 'indexing' | 'results'
 
 export type CollectionKind = 'theme' | 'month'
 
+/**
+ * A page module as stored in `collections.modules` (ADR 0023). The web app
+ * validates the shape with zod before writing; this type only names it.
+ */
+export interface StoredPageModule {
+  type: string
+  [field: string]: unknown
+}
+
 export interface SourceLink {
   title: string
   url: string

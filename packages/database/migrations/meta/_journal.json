@@ -127,6 +127,13 @@
       "when": 1791950000000,
       "tag": "0017_collection_media",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791960000000,
+      "tag": "0018_page_modules",
+      "breakpoints": true
     }
   ]
 }

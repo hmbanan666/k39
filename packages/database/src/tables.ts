@@ -1,4 +1,4 @@
-import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, UserRole, VisitStatus } from './types/entities'
+import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
 import type { ScoreChecks } from './types/scoring'
 import type { VenueHours, VenueSocial, VenueStatus } from './venues'
 import { cuid2 } from 'drizzle-cuid2/postgres'
@@ -222,6 +222,8 @@ export const collections = pgTable('collections', {
   kind: varchar('kind').notNull().default('theme').$type<CollectionKind>(),
   month: integer('month'),
   sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
+  // Ordered page modules (ADR 0023). Empty keeps the classic article layout.
+  modules: jsonb('modules').$type<StoredPageModule[]>().notNull().default(sql`'[]'::jsonb`),
 })
 
 export const collectionItems = pgTable('collection_items', {
