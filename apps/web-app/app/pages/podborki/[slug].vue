@@ -5,9 +5,46 @@
     :kicker="page.kind === 'month' ? 'Путеводитель по месяцу' : 'Подборка'"
   >
     <div
+      v-if="page.cover"
+      class="cover"
+    >
+      <PlacePhoto
+        :media="page.cover"
+        priority
+        sizes="(min-width: 900px) 720px, 100vw"
+        @open="openPhoto(page.cover.id)"
+      />
+      <p
+        v-if="page.cover.caption"
+        class="caption"
+      >
+        {{ page.cover.caption }}
+      </p>
+    </div>
+    <div
       class="prose"
       v-html="page.html"
     />
+    <section
+      v-if="rest.length"
+      class="gallery"
+      aria-label="Фотографии"
+    >
+      <figure
+        v-for="photo in rest"
+        :key="photo.id"
+      >
+        <PlacePhoto
+          :media="photo"
+          sizes="(min-width: 900px) 360px, 100vw"
+          @open="openPhoto(photo.id)"
+        />
+        <figcaption>
+          <span v-if="photo.caption">{{ photo.caption }}</span>
+          <MediaCredit :media="photo" />
+        </figcaption>
+      </figure>
+    </section>
     <MapEmbed
       v-if="page.items[0]"
       :label="page.kind === 'month' ? 'Места на карте' : 'Карта подборки'"
@@ -21,6 +58,12 @@
     <LinkList
       title="Другие месяцы"
       :links="page.months"
+    />
+    <PhotoViewer
+      v-if="photos.length"
+      v-model:open="viewerOpen"
+      v-model:index="viewerIndex"
+      :photos="photos"
     />
     <details
       v-if="page.sources.length"
@@ -46,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 
 interface TextLink { href: string, text: string }
@@ -58,11 +102,43 @@ const page = await fetchPublic<{
   kind: string
   sources: { title: string, url: string }[]
   months: TextLink[]
+  cover: PublicMedia | null
+  gallery: PublicMedia[]
 }>(`/api/public/collections/${slug}`)
+const photos = page.gallery
+const rest = page.cover ? photos.filter((item) => item.id !== page.cover?.id) : photos
+const viewerOpen = ref(false)
+const viewerIndex = ref(0)
+function openPhoto(id: string) {
+  const found = photos.findIndex((item) => item.id === id)
+  viewerIndex.value = found >= 0 ? found : 0
+  viewerOpen.value = true
+}
 usePublicHead(page.doc)
 </script>
 
 <style scoped>
+.cover { margin: 0 0 1.6rem; }
+.caption,
+.gallery figcaption {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.gallery {
+  display: grid;
+  gap: 1.2rem;
+  margin: 2rem 0;
+}
+.gallery figure { margin: 0; }
+.gallery figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+}
+@media (min-width: 700px) {
+  .gallery { grid-template-columns: repeat(2, 1fr); }
+}
 .sources {
   margin-top: 2.8rem;
   border-top: 1px solid var(--color-line);
