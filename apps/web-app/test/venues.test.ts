@@ -1,0 +1,104 @@
+import type { ScoreSource } from '../shared/scoring'
+import { describe, expect, it } from 'vitest'
+import { emptyResults, scorePage } from '../shared/scoring'
+import { venueDocument, venueSchemaType } from '../shared/seo'
+
+function venue(patch: Partial<ScoreSource> = {}): ScoreSource {
+  return {
+    kind: 'venue',
+    id: 'venue-1',
+    path: '/zavedeniya/kofeynya-u-forta',
+    title: 'Кофейня у форта номер одиннадцать',
+    summary: 'Описание кофейни у форта для гостей.',
+    body: '',
+    howToGet: null,
+    hours: null,
+    price: null,
+    categorySlug: 'coffee',
+    categoryTitle: null,
+    regionTitle: 'Калининград',
+    latitude: null,
+    longitude: null,
+    sources: [],
+    publicationStatus: 'published',
+    noindex: true,
+    seoTitle: null,
+    seoDescription: 'Кофейня у форта Дёнхофф: часы, средний чек и как дойти от ворот. Карточка проверена редактором.',
+    factsCheckedAt: null,
+    photoCount: 0,
+    inRoute: false,
+    inCollection: false,
+    memberCount: 0,
+    inbound: 1,
+    contentOutbound: 2,
+    orphan: false,
+    passport: {
+      targetQueries: ['кофейня у форта'],
+      audience: 'гости форта',
+      primaryAction: 'claim_offer',
+      goal30d: 10,
+      goal90d: 40,
+      notes: null,
+    },
+    results: emptyResults(),
+    ...patch,
+  }
+}
+
+describe('venue scores', () => {
+  it('checks description, photo, hours, verification, and coordinates', () => {
+    const thin = scorePage(venue(), new Date('2026-10-13T00:00:00.000Z'))
+    expect(thin.checks.quality).toEqual(expect.arrayContaining([
+      'description missing',
+      '0 photos',
+      'no hours',
+      'facts not checked',
+      'no coordinates',
+    ]))
+    const text = 'Кофейня у форта варит эспрессо и кормит обедом после экскурсии. '.repeat(8).slice(0, 450)
+    const ready = scorePage(venue({
+      body: text,
+      summary: text,
+      hours: 'set',
+      photoCount: 1,
+      latitude: 54.65,
+      longitude: 20.56,
+      factsCheckedAt: '2026-10-01T00:00:00.000Z',
+      noindex: false,
+    }), new Date('2026-10-13T00:00:00.000Z'))
+    expect(ready.checks.quality).not.toEqual(expect.arrayContaining([
+      'description missing',
+      '0 photos',
+      'no hours',
+      'facts not checked',
+      'no coordinates',
+    ]))
+    expect(ready.quality).toBeGreaterThan(thin.quality)
+  })
+})
+
+describe('venue json-ld', () => {
+  it('uses Restaurant and hides a page without a description', () => {
+    expect(venueSchemaType('coffee')).toBe('Restaurant')
+    expect(venueSchemaType('market')).toBe('LocalBusiness')
+    const hidden = venueDocument({
+      slug: 'bez-teksta',
+      name: 'Без текста',
+      kind: 'cafe',
+      description: '',
+    })
+    expect(hidden.robots).toContain('noindex')
+    const live = venueDocument({
+      slug: 'kofeynya-u-forta',
+      name: 'Кофейня у форта',
+      kind: 'coffee',
+      description: 'Кофейня у форта варит эспрессо и кормит обедом. '.repeat(8),
+      latitude: 54.65,
+      longitude: 20.56,
+      hours: [{ weekday: 'mon', opens: '09:00', closes: '18:00' }],
+    })
+    expect(live.robots).toBe('index, follow')
+    expect(live.jsonLd.map((node) => node['@type'])).toEqual(['BreadcrumbList', 'Restaurant'])
+    expect(JSON.stringify(live.jsonLd)).toContain('OpeningHoursSpecification')
+  })
+})

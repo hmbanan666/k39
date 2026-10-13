@@ -6,7 +6,7 @@ import { analyticsSalt, dailyVisitorKey, newVisitorKey } from './identity'
 
 const SESSION_MS = 30 * 60 * 1000
 const YEAR = 60 * 60 * 24 * 400
-const TYPES = new Set(['pageview', 'engage', 'outbound', 'photo'])
+const TYPES = new Set(['pageview', 'engage', 'outbound', 'photo', 'impression'])
 
 interface ClientEvent {
   type?: string
@@ -100,7 +100,11 @@ export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'b
       utmMedium: utm.utmMedium,
     })
     const channel = item.ref ? classified.channel : (knownChannel || classified.channel)
-    const subject = item.type === 'pageview' ? await db.analytics.resolvePath(path) : { placeId: null, routeId: null }
+    const subject = item.type === 'pageview' ? await db.analytics.resolvePath(path) : { placeId: null, routeId: null, venueId: null }
+    const shown = item.type === 'impression' && item.target
+      ? await db.analytics.resolvePath(item.target)
+      : null
+    const host = item.type === 'impression' ? await db.analytics.resolvePath(path) : null
     const entry = item.type === 'pageview' && !entryTaken
     if (entry) {
       entryTaken = true
@@ -114,8 +118,9 @@ export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'b
       isBot: bot || isBotUserAgent(ua),
       eventType: item.type || 'pageview',
       path,
-      placeId: subject.placeId,
-      routeId: subject.routeId,
+      placeId: host?.placeId ?? subject.placeId,
+      routeId: host?.routeId ?? subject.routeId,
+      venueId: shown?.venueId ?? subject.venueId,
       referrer: item.ref || null,
       referrerHost: classified.referrerHost || null,
       utmSource: utm.utmSource || null,

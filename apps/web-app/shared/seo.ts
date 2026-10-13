@@ -51,6 +51,7 @@ export const RESERVED_SLUGS = [
   'sitemaps',
   'terms',
   'zamki',
+  'zavedeniya',
 ] as const
 
 const RU: Record<string, string> = {
@@ -226,6 +227,127 @@ const SCHEMA_BY_CATEGORY: Record<string, string> = {
 
 export function placeSchemaType(categorySlug: string) {
   return SCHEMA_BY_CATEGORY[categorySlug] ?? 'TouristAttraction'
+}
+
+const FOOD_SERVICE = new Set(['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'fastfood'])
+
+export function venueSchemaType(kind: string) {
+  return FOOD_SERVICE.has(kind) ? 'Restaurant' : 'LocalBusiness'
+}
+
+const SCHEMA_DAY: Record<string, string> = {
+  mon: 'Monday',
+  tue: 'Tuesday',
+  wed: 'Wednesday',
+  thu: 'Thursday',
+  fri: 'Friday',
+  sat: 'Saturday',
+  sun: 'Sunday',
+}
+
+function searchBlurb(text: string) {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= 160) {
+    return clean
+  }
+  const cut = clean.slice(0, 157).replace(/\s+\S*$/, '').trim()
+  return cut.length >= 110 ? cut : clean.slice(0, 160)
+}
+
+export interface VenueSeoInput {
+  slug: string
+  name: string
+  kind: string
+  description: string
+  regionTitle?: string | null
+  address?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  phone?: string | null
+  website?: string | null
+  priceLevel?: number | null
+  cuisine?: string[]
+  hours?: Array<{ weekday: string, opens: string | null, closes: string | null, closed?: boolean }>
+  seoTitle?: string | null
+  seoDescription?: string | null
+  noindex?: boolean
+  image?: SeoImage | null
+}
+
+export function venueDocument(input: VenueSeoInput): SeoDocument {
+  const path = `/zavedeniya/${input.slug}`
+  const title = pageTitle(input.name, input.seoTitle)
+  const description = metaDescription(searchBlurb(input.description || input.name), input.seoDescription)
+  const crumbs: Crumb[] = [
+    { name: 'Главная', href: '/' },
+    { name: 'Заведения', href: '/zavedeniya' },
+    { name: input.name, href: path },
+  ]
+  const image = input.image ?? DEFAULT_OG_IMAGE
+  const node: Record<string, unknown> = {
+    '@type': venueSchemaType(input.kind),
+    'name': input.name,
+    'description': description,
+    'url': absoluteUrl(path),
+    'image': image.url,
+  }
+  if (input.latitude != null && input.longitude != null) {
+    node.geo = {
+      '@type': 'GeoCoordinates',
+      'latitude': input.latitude,
+      'longitude': input.longitude,
+    }
+  }
+  if (input.address || input.regionTitle) {
+    node.address = {
+      '@type': 'PostalAddress',
+      'streetAddress': input.address || undefined,
+      'addressLocality': input.regionTitle || undefined,
+      'addressRegion': 'Калининградская область',
+      'addressCountry': 'RU',
+    }
+  }
+  if (input.phone) {
+    node.telephone = input.phone
+  }
+  if (input.website) {
+    node.sameAs = [input.website]
+  }
+  if (input.priceLevel) {
+    node.priceRange = '₽'.repeat(Math.min(4, input.priceLevel))
+  }
+  if (input.cuisine?.length) {
+    node.servesCuisine = input.cuisine
+  }
+  const specs = (input.hours ?? []).flatMap((day) => {
+    if (day.closed || !day.opens || !day.closes) {
+      return []
+    }
+    const name = SCHEMA_DAY[day.weekday]
+    if (!name) {
+      return []
+    }
+    return [{
+      '@type': 'OpeningHoursSpecification',
+      'dayOfWeek': `https://schema.org/${name}`,
+      'opens': day.opens,
+      'closes': day.closes === '24:00' ? '23:59' : day.closes,
+    }]
+  })
+  if (specs.length) {
+    node.openingHoursSpecification = specs
+  }
+  const missingDescription = !input.description.trim()
+  return {
+    title,
+    description,
+    canonical: absoluteUrl(path),
+    robots: input.noindex || missingDescription ? 'noindex, follow' : 'index, follow',
+    h1: input.name,
+    crumbs,
+    ogImage: image,
+    jsonLd: [breadcrumbNode(crumbs), node],
+  }
 }
 
 function imageObject(image: SeoImage) {

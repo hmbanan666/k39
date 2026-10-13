@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { applyInitialContent } from '../../seed/apply'
-import { analyticsSearchQueries, categories, collectionItems, collections, contentImports, contentScoreDays, contentScores, media, offerCodes, offers, pagePassports, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes } from '../../tables'
+import { analyticsSearchQueries, categories, collectionItems, collections, contentImports, contentScoreDays, contentScores, media, offerCodes, offers, pagePassports, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, venueListingIntros, venueMedia, venues } from '../../tables'
 import { Analytics } from '../analytics'
 import { Editor } from '../content'
 import { Scoring } from '../scoring'
@@ -24,6 +24,9 @@ async function wipe() {
   await db.delete(quests)
   await db.delete(routes)
   await db.delete(collections)
+  await db.delete(venueMedia)
+  await db.delete(venueListingIntros)
+  await db.delete(venues)
   await db.delete(media)
   await db.delete(places)
   await db.delete(categories)

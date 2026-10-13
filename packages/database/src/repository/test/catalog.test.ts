@@ -6,11 +6,14 @@ import { useDatabase } from '../../database'
 import { applyInitialContent, INITIAL_CONTENT_IMPORT_ID } from '../../seed/apply'
 import { CASTLE_REGIONS } from '../../seed/castle-regions'
 import seed from '../../seed/initial-content.json'
-import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects } from '../../tables'
+import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../../tables'
 import { Content, Editor } from '../content'
 
 async function wipeContent() {
   const db = useDatabase()
+  await db.delete(venueMedia)
+  await db.delete(venueListingIntros)
+  await db.delete(venues)
   await db.delete(questSteps)
   await db.delete(routePoints)
   await db.delete(collectionItems)

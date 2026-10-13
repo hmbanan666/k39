@@ -6,6 +6,7 @@ import { Content, Editor } from './content'
 import { EventLog } from './event-log'
 import { Scoring } from './scoring'
 import { User } from './user'
+import { Venues } from './venues'
 
 class Repository {
   readonly analytics = Analytics
@@ -15,6 +16,7 @@ class Repository {
   readonly eventLog = EventLog
   readonly scoring = Scoring
   readonly user = User
+  readonly venues = Venues
 
   async checkHealth(): Promise<boolean> {
     await useDatabase().execute(sql`select 1`)

@@ -22,7 +22,7 @@ export default defineEventHandler(async () => {
   const rows = await db.content.sitemapRows()
   const categories = await db.content.categories()
   const hubs = indexableHubs(categories.filter((row) => row.noindex).map((row) => row.slug))
-  const newest = [...rows.places, ...rows.routes, ...rows.collections, ...rows.quests]
+  const newest = [...rows.places, ...rows.routes, ...rows.collections, ...rows.quests, ...rows.venues, ...rows.venueListings]
     .map((row) => lastmod(row.lastmod))
     .filter((value): value is string => Boolean(value))
     .sort()
@@ -44,5 +44,7 @@ export default defineEventHandler(async () => {
     ...rows.routes.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
     ...rows.collections.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
     ...rows.quests.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
+    ...rows.venues.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
+    ...rows.venueListings.map((row) => ({ loc: absoluteUrl(row.loc), lastmod: lastmod(row.lastmod) })),
   ]
 })

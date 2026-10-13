@@ -1,10 +1,11 @@
 import type { PageKind, PrimaryAction } from '../types/entities'
-import type { CatalogArticle, CatalogHub, CatalogPassport, CatalogStop, ContentCatalog, PageMetric, PassportWrite, ScorePlace, StoredScore } from '../types/scoring'
+import type { CatalogArticle, CatalogHub, CatalogPassport, CatalogStop, CatalogVenue, ContentCatalog, PageMetric, PassportWrite, ScorePlace, StoredScore } from '../types/scoring'
 import { createId } from '@paralleldrive/cuid2'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, places, quests, questSteps, regions, relatedLinks, routePoints, routes } from '../tables'
+import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, places, quests, questSteps, regions, relatedLinks, routePoints, routes, venues } from '../tables'
+import { hoursAreSet } from '../venues'
 
 const HUB_SLUGS = ['forty', 'zamki', 'plyazhi', 'kurorty', 'muzei', 'eda']
 
@@ -110,6 +111,16 @@ export class Scoring {
       group by place_id
     `)
     const passports = await db.select().from(pagePassports)
+    const venueRows = await db.select({
+      venue: venues,
+      regionSlug: regions.slug,
+      regionTitle: regions.title,
+    }).from(venues).leftJoin(regions, eq(venues.regionId, regions.id)).where(sql`${venues.status} in ('draft', 'published')`)
+    const venuePhotoResult = await db.execute(sql`
+      select venue_id, count(*)::int as photos
+      from venue_media
+      group by venue_id
+    `)
 
     const article = (row: { id: string, slug: string, title: string, summary: string | null, body: string, publicationStatus: string, noindex: boolean, seoTitle: string | null, seoDescription: string | null, updatedAt: string }, routeSlug: string | null = null): CatalogArticle | null => {
       const publicationStatus = statusOf(row.publicationStatus)
@@ -204,9 +215,38 @@ export class Scoring {
         seoDescription: row.seoDescription,
         updatedAt: row.updatedAt,
       })),
+      venues: venueRows.flatMap((row): CatalogVenue[] => {
+        const publicationStatus = row.venue.status === 'published' ? 'published' as const : row.venue.status === 'draft' ? 'draft' as const : null
+        if (!publicationStatus) {
+          return []
+        }
+        const description = row.venue.description.trim()
+        return [{
+          id: row.venue.id,
+          slug: row.venue.slug,
+          name: row.venue.name,
+          kind: row.venue.kind,
+          description,
+          hoursSet: hoursAreSet(row.venue.hours),
+          latitude: row.venue.latitude,
+          longitude: row.venue.longitude,
+          publicationStatus,
+          noindex: row.venue.noindex || description.length === 0,
+          seoTitle: row.venue.seoTitle,
+          seoDescription: row.venue.seoDescription,
+          factsCheckedAt: row.venue.lastVerifiedAt,
+          regionSlug: row.regionSlug,
+          regionTitle: row.regionTitle,
+          updatedAt: row.venue.updatedAt,
+        }]
+      }),
       related: relatedRows,
       photos: rowsOf<{ place_id: string, photos: number }>(photoResult).map((row) => ({
         placeId: row.place_id,
+        count: num(row.photos),
+      })),
+      venuePhotos: rowsOf<{ venue_id: string, photos: number }>(venuePhotoResult).map((row) => ({
+        venueId: row.venue_id,
         count: num(row.photos),
       })),
       passports: passports.map((row): CatalogPassport => ({

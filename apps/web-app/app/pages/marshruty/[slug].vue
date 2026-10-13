@@ -10,6 +10,7 @@
       class="prose"
       v-html="page.html"
     />
+    <VenueNearby :items="page.eatNearby || []" />
   </ArticleShell>
 </template>
 
@@ -23,6 +24,15 @@ const page = await fetchPublic<{
   html: string
   summary: string
   stops: RouteStopView[]
+  eatNearby: Array<{
+    href: string
+    slug: string
+    name: string
+    kindLabel: string
+    distance: string
+    partner: boolean
+    stale: boolean
+  }>
 }>(`/api/public/routes/${slug}`)
 usePublicHead(page.doc)
 </script>

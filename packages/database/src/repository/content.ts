@@ -2,7 +2,8 @@ import type { PlaceDraft } from '../types'
 import type { MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, VisitStatus } from '../types/entities'
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects } from '../tables'
+import { categories, collectionItems, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venues } from '../tables'
+import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
 const published = 'published' as const
 
@@ -233,6 +234,18 @@ export class Content {
     const routeRows = await db.select({ slug: routes.slug, updatedAt: routes.updatedAt }).from(routes).where(and(eq(routes.publicationStatus, published), eq(routes.noindex, false)))
     const collectionRows = await db.select({ slug: collections.slug, updatedAt: collections.updatedAt }).from(collections).where(and(eq(collections.publicationStatus, published), eq(collections.noindex, false)))
     const questRows = await db.select({ slug: quests.slug, updatedAt: quests.updatedAt }).from(quests).where(and(eq(quests.publicationStatus, published), eq(quests.noindex, false)))
+    const venueRows = await db.select({
+      slug: venues.slug,
+      updatedAt: venues.updatedAt,
+      description: venues.description,
+      noindex: venues.noindex,
+    }).from(venues).where(eq(venues.status, 'published'))
+    const introRows = await db.select({
+      body: venueListingIntros.body,
+      updatedAt: venueListingIntros.updatedAt,
+      kind: venueListingIntros.kind,
+      regionSlug: regions.slug,
+    }).from(venueListingIntros).leftJoin(regions, eq(venueListingIntros.regionId, regions.id))
     return {
       places: placeRows.map((row) => ({
         loc: `/${row.slug}`,
@@ -246,6 +259,27 @@ export class Content {
       routes: routeRows.map((row) => ({ loc: `/marshruty/${row.slug}`, lastmod: row.updatedAt })),
       collections: collectionRows.map((row) => ({ loc: `/podborki/${row.slug}`, lastmod: row.updatedAt })),
       quests: questRows.map((row) => ({ loc: `/kvesty/${row.slug}`, lastmod: row.updatedAt })),
+      venues: venueRows
+        .filter((row) => !row.noindex && descriptionLength(row.description) > 0)
+        .map((row) => ({ loc: `/zavedeniya/${row.slug}`, lastmod: row.updatedAt })),
+      venueListings: introRows.flatMap((row) => {
+        if (descriptionLength(row.body) < LISTING_INTRO_MIN) {
+          return []
+        }
+        if (row.kind && !isFoodKind(row.kind)) {
+          return []
+        }
+        const regionSlug = row.regionSlug
+        const kind = row.kind ? kindPath(row.kind) : null
+        if (row.kind && !regionSlug && !kind) {
+          return []
+        }
+        const loc = ['/zavedeniya', regionSlug, kind].filter(Boolean).join('/')
+        if (loc === '/zavedeniya') {
+          return []
+        }
+        return [{ loc, lastmod: row.updatedAt }]
+      }),
     }
   }
 

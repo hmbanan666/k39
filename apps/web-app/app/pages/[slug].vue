@@ -194,6 +194,7 @@
         />
       </div>
     </section>
+    <VenueNearby :items="page.eatNearby || []" />
     <section
       v-if="nearby"
       class="nearby-block"
@@ -297,6 +298,15 @@ interface PlacePage {
     steps: Array<{ href: string, text: string, current: boolean }>
     next: { href: string, text: string } | null
   }
+  eatNearby: Array<{
+    href: string
+    slug: string
+    name: string
+    kindLabel: string
+    distance: string
+    partner: boolean
+    stale: boolean
+  }>
 }
 
 const route = useRoute()

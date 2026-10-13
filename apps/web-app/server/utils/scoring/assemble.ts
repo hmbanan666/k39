@@ -9,6 +9,7 @@ export function catalogPageRefs(catalog: ContentCatalog) {
     ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}` })),
     ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}` })),
     ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}` })),
+    ...catalog.venues.map((row) => ({ pageType: 'venue' as const, entityId: row.id, path: `/zavedeniya/${row.slug}` })),
   ]
 }
 
@@ -84,6 +85,14 @@ export function scoresFromCatalog(
       body: hub.body,
       noindex: hub.noindex,
     })),
+    venues: (catalog.venues ?? []).map((venue) => ({
+      slug: venue.slug,
+      published: venue.publicationStatus === 'published',
+      noindex: venue.noindex,
+      regionSlug: venue.regionSlug,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+    })),
     related: catalog.related,
   }
   const stats = linkStats(linkCatalog)
@@ -94,6 +103,7 @@ export function scoresFromCatalog(
   const inRoute = new Set(catalog.routeStops.filter((stop) => publishedRoutes.has(stop.parentId)).map((stop) => stop.placeSlug))
   const inCollection = new Set(catalog.collectionStops.filter((stop) => publishedCollections.has(stop.parentId)).map((stop) => stop.placeSlug))
   const metricByPath = new Map(metrics.map((row) => [row.path, row]))
+  const venuePhotos = new Map((catalog.venuePhotos ?? []).map((row) => [row.venueId, row.count]))
 
   function photosFor(slugs: string[]) {
     return slugs.reduce((sum, slug) => sum + (photos.get(placeId.get(slug) || '') ?? 0), 0)
@@ -303,6 +313,42 @@ export function scoresFromCatalog(
         inRoute: false,
         inCollection: false,
         memberCount: members.length,
+        inbound: link.inbound,
+        contentOutbound: link.contentOutbound,
+        orphan: link.orphan,
+        passport,
+        results: resultsFor(path, passport),
+      }
+    }),
+    ...catalog.venues.map((venue): ScoreSource => {
+      const path = `/zavedeniya/${venue.slug}`
+      const link = stat(path)
+      const passport = passportOf(catalog, 'venue', venue.id)
+      return {
+        kind: 'venue',
+        id: venue.id,
+        path,
+        title: venue.name,
+        summary: venue.description,
+        body: venue.description,
+        howToGet: null,
+        hours: venue.hoursSet ? 'set' : null,
+        price: null,
+        categorySlug: venue.kind,
+        categoryTitle: null,
+        regionTitle: venue.regionTitle,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
+        sources: [],
+        publicationStatus: venue.publicationStatus,
+        noindex: venue.noindex,
+        seoTitle: venue.seoTitle,
+        seoDescription: venue.seoDescription,
+        factsCheckedAt: venue.factsCheckedAt,
+        photoCount: venuePhotos.get(venue.id) ?? 0,
+        inRoute: false,
+        inCollection: false,
+        memberCount: 0,
         inbound: link.inbound,
         contentOutbound: link.contentOutbound,
         orphan: link.orphan,

@@ -1,8 +1,8 @@
 import { articleBody } from './address'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
-import { absoluteUrl, collectionDocument, faqFromBody, placeDocument, placeSchemaType } from './seo'
+import { absoluteUrl, collectionDocument, faqFromBody, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
 
-export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest'
+export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest' | 'venue'
 export type PrimaryAction = 'build_route' | 'buy_ticket' | 'go_next_place' | 'claim_offer' | 'read'
 export type ScoreBlock = 'quality' | 'linking' | 'indexing' | 'results'
 
@@ -115,12 +115,22 @@ export interface LinkGroup {
   body: string
 }
 
+export interface LinkVenue {
+  slug: string
+  published: boolean
+  noindex: boolean
+  regionSlug: string | null
+  latitude: number | null
+  longitude: number | null
+}
+
 export interface LinkCatalog {
   places: LinkPlace[]
   routes: LinkGroup[]
   collections: LinkGroup[]
   quests: Array<LinkGroup & { routeSlug: string | null }>
   hubs: Array<{ slug: string, title: string, description: string, body: string, noindex: boolean }>
+  venues?: LinkVenue[]
   related: Array<{ fromSlug: string, toSlug: string }>
 }
 
@@ -296,6 +306,28 @@ function contentLinks(path: string, catalog: LinkCatalog) {
   if (path === '/kvesty') {
     links.push(...catalog.quests.filter((item) => item.published).map((item) => `/kvesty/${item.slug}`))
   }
+  const venues = catalog.venues ?? []
+  if (path === '/zavedeniya') {
+    links.push(...venues.filter((item) => item.published && !item.noindex).map((item) => `/zavedeniya/${item.slug}`))
+  }
+  const venue = venues.find((item) => `/zavedeniya/${item.slug}` === path)
+  if (venue) {
+    links.push('/zavedeniya')
+    if (venue.regionSlug) {
+      links.push(`/zavedeniya/${venue.regionSlug}`)
+    }
+    if (venue.latitude != null && venue.longitude != null) {
+      const nearest = catalog.places
+        .filter((item) => item.published && item.latitude != null && item.longitude != null)
+        .map((item) => ({
+          path: `/${item.slug}`,
+          distance: haversineKm(venue.latitude!, venue.longitude!, item.latitude!, item.longitude!),
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 4)
+      links.push(...nearest.map((item) => item.path))
+    }
+  }
   if (path === '/') {
     const featured = catalog.places
       .filter((item) => item.published && item.categorySlug === 'forty')
@@ -321,6 +353,7 @@ export function linkStats(catalog: LinkCatalog) {
     ...catalog.collections.map((item) => ({ path: `/podborki/${item.slug}`, published: item.published, noindex: item.noindex })),
     ...catalog.quests.map((item) => ({ path: `/kvesty/${item.slug}`, published: item.published, noindex: item.noindex })),
     ...catalog.hubs.map((item) => ({ path: `/${item.slug}`, published: true, noindex: item.noindex })),
+    ...(catalog.venues ?? []).map((item) => ({ path: `/zavedeniya/${item.slug}`, published: item.published, noindex: item.noindex })),
   ]
   const sources = [
     '/',
@@ -332,6 +365,8 @@ export function linkStats(catalog: LinkCatalog) {
     ...catalog.routes.filter((item) => item.published).map((item) => `/marshruty/${item.slug}`),
     ...catalog.collections.filter((item) => item.published).map((item) => `/podborki/${item.slug}`),
     ...catalog.quests.filter((item) => item.published).map((item) => `/kvesty/${item.slug}`),
+    '/zavedeniya',
+    ...(catalog.venues ?? []).filter((item) => item.published).map((item) => `/zavedeniya/${item.slug}`),
   ]
   const inbound = new Map<string, Set<string>>()
   for (const source of sources) {
@@ -542,6 +577,9 @@ function passportPoints(passport: PassportFields | null) {
 }
 
 function membershipPoints(page: ScoreSource) {
+  if (page.kind === 'venue') {
+    return { points: 30, checks: [] as string[] }
+  }
   if (page.kind === 'place') {
     if (page.inRoute || page.inCollection) {
       return { points: 30, checks: [] as string[] }
@@ -590,7 +628,56 @@ function linkingPoints(page: ScoreSource) {
   }
 }
 
+function venueQuality(page: ScoreSource, now: Date) {
+  const checks: string[] = []
+  let points = 0
+  const length = page.body.trim().length
+  if (length >= 300 && length <= 600) {
+    points += 25
+  } else if (length === 0) {
+    checks.push('description missing')
+  } else {
+    checks.push(`description ${length} chars, need 300-600`)
+  }
+  if (page.photoCount >= 1) {
+    points += 15
+  } else {
+    checks.push('0 photos')
+  }
+  if (page.hours?.trim()) {
+    points += 15
+  } else {
+    checks.push('no hours')
+  }
+  const fresh = freshPoints(page, now)
+  points += fresh.points
+  checks.push(...fresh.checks)
+  if (page.latitude != null && page.longitude != null) {
+    points += 15
+  } else {
+    checks.push('no coordinates')
+  }
+  const passport = passportPoints(page.passport)
+  points += passport.points
+  checks.push(...passport.checks)
+  return { points: clamp(points), checks, age: fresh.age, length }
+}
+
 function rendered(page: ScoreSource) {
+  if (page.kind === 'venue') {
+    return venueDocument({
+      slug: page.path.split('/').pop() || page.id,
+      name: page.title,
+      kind: page.categorySlug || 'other',
+      description: page.body,
+      regionTitle: page.regionTitle,
+      latitude: page.latitude,
+      longitude: page.longitude,
+      seoTitle: page.seoTitle,
+      seoDescription: page.seoDescription,
+      noindex: page.noindex,
+    })
+  }
   if (page.kind === 'place') {
     const doc = placeDocument({
       slug: page.path.slice(1),
@@ -633,6 +720,9 @@ function rendered(page: ScoreSource) {
 }
 
 function expectedTypes(page: ScoreSource) {
+  if (page.kind === 'venue') {
+    return ['BreadcrumbList', venueSchemaType(page.categorySlug || 'other')]
+  }
   if (page.kind === 'place') {
     return ['BreadcrumbList', placeSchemaType(page.categorySlug || '')]
   }
@@ -780,6 +870,63 @@ function resultsPoints(page: ScoreSource) {
 }
 
 export function scorePage(page: ScoreSource, now = new Date()): PageScore {
+  if (page.kind === 'venue') {
+    const quality = venueQuality(page, now)
+    const linking = linkingPoints(page)
+    const indexing = indexingPoints(page)
+    const results = resultsPoints(page)
+    const checks: ScoreChecks = {
+      quality: quality.checks,
+      linking: linking.checks,
+      indexing: indexing.checks,
+      results: results.checks,
+    }
+    const blocks = { quality: quality.points, linking: linking.points, indexing: indexing.points, results: results.points }
+    return {
+      pageType: page.kind,
+      entityId: page.id,
+      path: page.path,
+      title: page.title,
+      total: clamp((blocks.quality + blocks.linking + blocks.indexing + blocks.results) / 4),
+      quality: blocks.quality,
+      linking: blocks.linking,
+      indexing: blocks.indexing,
+      results: blocks.results,
+      checks,
+      signals: {
+        bodyChars: quality.length,
+        tier: null,
+        faqCount: 0,
+        photoCount: page.photoCount,
+        factsAgeDays: quality.age,
+        inbound: page.inbound,
+        outbound: page.contentOutbound,
+        orphan: page.orphan,
+        httpStatus: indexing.status,
+        inSitemap: indexing.sitemap,
+        jsonLdTypes: indexing.types,
+        titleLength: indexing.title.length,
+        descriptionLength: indexing.description.length,
+        yandexIndexed: indexing.hooks.yandex,
+        googleIndexed: indexing.hooks.google,
+        organic7d: page.results.organic7d,
+        organic30d: page.results.organic30d,
+        organic90d: page.results.organic90d,
+        goal30d: page.passport?.goal30d ?? null,
+        goal90d: page.passport?.goal90d ?? null,
+        queries: page.results.queries,
+        searchImported: page.results.searchImported,
+        scrollMax: page.results.scrollMax,
+        avgEngagedSec: page.results.avgEngagedSec,
+        nextClicks: page.results.nextClicks,
+        pageviews30d: page.results.pageviews30d,
+      },
+      organic30d: page.results.organic30d,
+      organic90d: page.results.organic90d,
+      goal30d: page.passport?.goal30d ?? null,
+      goal90d: page.passport?.goal90d ?? null,
+    }
+  }
   const text = articleText(page)
   const length = lengthPoints(text.length, lengthNorm(page.kind, page.categorySlug))
   const sections = sectionPoints(page, text)
@@ -881,6 +1028,10 @@ export function issueLabel(check: string) {
     [/^few stops$/, () => 'Мало точек маршрута'],
     [/^no items$/, () => 'Нет мест в подборке'],
     [/^few items$/, () => 'Мало мест в подборке'],
+    [/^description missing$/, () => 'Нет описания'],
+    [/^description (\d+) chars, need 300-600$/, (match) => `Описание ${match[1]} знаков, нужно 300-600`],
+    [/^no hours$/, () => 'Нет часов работы'],
+    [/^no coordinates$/, () => 'Нет координат'],
     [/^no steps$/, () => 'Нет шагов квеста'],
     [/^few steps$/, () => 'Мало шагов квеста'],
     [/^empty hub$/, () => 'В разделе нет мест'],
@@ -1062,6 +1213,7 @@ const PAGE_TITLE: Record<PageKind, string> = {
   collection: 'подборка',
   hub: 'раздел',
   quest: 'квест',
+  venue: 'заведение',
 }
 
 export function pageKindLabel(kind: PageKind) {
