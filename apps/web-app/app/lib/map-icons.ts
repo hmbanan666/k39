@@ -1,3 +1,7 @@
+import type { IconifyJSON } from '@iconify/types'
+import { getIconData } from '@iconify/utils'
+import { tablerName } from '~~/shared/icons'
+
 const COLORS: Record<string, string> = {
   forty: '#a3402a',
   zamki: '#2e5743',
@@ -16,220 +20,35 @@ const COLORS: Record<string, string> = {
   eda: '#7a4c0b',
 }
 
-type Draw = (ctx: CanvasRenderingContext2D) => void
-
 const PAPER = '#fffbf3'
-
-function stroke(ctx: CanvasRenderingContext2D) {
-  ctx.strokeStyle = PAPER
-  ctx.fillStyle = PAPER
-  ctx.lineWidth = 1.7
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-}
-
-function fort(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-9, 8)
-  ctx.lineTo(-9, -1)
-  ctx.lineTo(-6, -1)
-  ctx.lineTo(-6, -6)
-  ctx.lineTo(-2, -6)
-  ctx.lineTo(-2, -1)
-  ctx.lineTo(2, -1)
-  ctx.lineTo(2, -6)
-  ctx.lineTo(6, -6)
-  ctx.lineTo(6, -1)
-  ctx.lineTo(9, -1)
-  ctx.lineTo(9, 8)
-  ctx.closePath()
-  ctx.fill()
-}
-
-function castle(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-8, 8)
-  ctx.lineTo(-8, -1)
-  ctx.lineTo(-5, -1)
-  ctx.lineTo(-5, -7)
-  ctx.lineTo(-1, -7)
-  ctx.lineTo(-1, -1)
-  ctx.lineTo(1, -1)
-  ctx.lineTo(1, -7)
-  ctx.lineTo(5, -7)
-  ctx.lineTo(5, -1)
-  ctx.lineTo(8, -1)
-  ctx.lineTo(8, 8)
-  ctx.closePath()
-  ctx.fill()
-  ctx.beginPath()
-  ctx.moveTo(-2, 8)
-  ctx.lineTo(-2, 3)
-  ctx.lineTo(2, 3)
-  ctx.lineTo(2, 8)
-  ctx.stroke()
-}
-
-function beach(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.arc(0, 0, 7, Math.PI, 0)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(0, 0)
-  ctx.lineTo(0, 8)
-  ctx.moveTo(0, 8)
-  ctx.quadraticCurveTo(3.2, 8, 3.2, 5.2)
-  ctx.stroke()
-}
-
-function museum(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-9, -1)
-  ctx.lineTo(0, -8)
-  ctx.lineTo(9, -1)
-  ctx.closePath()
-  ctx.fill()
-  ctx.fillRect(-7, 0, 2.2, 8)
-  ctx.fillRect(-1.1, 0, 2.2, 8)
-  ctx.fillRect(4.8, 0, 2.2, 8)
-  ctx.fillRect(-8, 8, 16, 1.6)
-}
-
-function church(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.fillRect(-1.35, -8, 2.7, 16)
-  ctx.fillRect(-6.2, -2.6, 12.4, 2.7)
-}
-
-function sun(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.arc(0, 0, 4.2, 0, Math.PI * 2)
-  ctx.fill()
-  for (let index = 0; index < 8; index += 1) {
-    const angle = (index / 8) * Math.PI * 2
-    ctx.beginPath()
-    ctx.moveTo(Math.cos(angle) * 6.4, Math.sin(angle) * 6.4)
-    ctx.lineTo(Math.cos(angle) * 9, Math.sin(angle) * 9)
-    ctx.stroke()
-  }
-}
-
-function cup(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-6, -4)
-  ctx.lineTo(-4.4, 4)
-  ctx.quadraticCurveTo(0, 8, 4.4, 4)
-  ctx.lineTo(6, -4)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(7.2, 0, 2.6, -1.15, 1.15)
-  ctx.stroke()
-}
-
-function utensils(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-4.5, -8)
-  ctx.lineTo(-4.5, 8)
-  ctx.moveTo(-6.4, -8)
-  ctx.lineTo(-6.4, -3)
-  ctx.moveTo(-2.6, -8)
-  ctx.lineTo(-2.6, -3)
-  ctx.moveTo(3.2, -8)
-  ctx.lineTo(5.6, -1)
-  ctx.lineTo(3.2, -1)
-  ctx.lineTo(3.2, 8)
-  ctx.stroke()
-}
-
-function loaf(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-8, 6)
-  ctx.quadraticCurveTo(-8, -6, 0, -6)
-  ctx.quadraticCurveTo(8, -6, 8, 6)
-  ctx.closePath()
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(0, -6)
-  ctx.lineTo(0, 6)
-  ctx.stroke()
-}
-
-function glass(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-5, -7)
-  ctx.lineTo(-2.2, 3)
-  ctx.lineTo(2.2, 3)
-  ctx.lineTo(5, -7)
-  ctx.closePath()
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(0, 3)
-  ctx.lineTo(0, 7)
-  ctx.moveTo(-3.4, 8)
-  ctx.lineTo(3.4, 8)
-  ctx.stroke()
-}
-
-function basket(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-8, -1)
-  ctx.lineTo(-6, 8)
-  ctx.lineTo(6, 8)
-  ctx.lineTo(8, -1)
-  ctx.closePath()
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(0, -1, 5, Math.PI, 0)
-  ctx.stroke()
-}
-
-function burger(ctx: CanvasRenderingContext2D) {
-  stroke(ctx)
-  ctx.beginPath()
-  ctx.moveTo(-7, -1)
-  ctx.quadraticCurveTo(-7, -7, 0, -7)
-  ctx.quadraticCurveTo(7, -7, 7, -1)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(-7, 1)
-  ctx.lineTo(7, 1)
-  ctx.moveTo(-7, 4)
-  ctx.quadraticCurveTo(0, 8, 7, 4)
-  ctx.stroke()
-}
-
-const GLYPHS: Record<string, Draw> = {
-  forty: fort,
-  zamki: castle,
-  plyazhi: beach,
-  muzei: museum,
-  tserkvi: church,
-  kurorty: sun,
-  coffee: cup,
-  cafe: cup,
-  restaurant: utensils,
-  bakery: loaf,
-  bar: glass,
-  market: basket,
-  fastfood: burger,
-  other: utensils,
-  eda: utensils,
-}
-
 const SIZE = 48
 const SCALE = 2
 
-function pinCanvas(color: string, glyph: Draw, sponsored: boolean) {
+async function tablerCollection() {
+  const names = [...new Set(Object.keys(COLORS).map((id) => tablerName(id)))]
+  const response = await fetch(`/api/_nuxt_icon/tabler?icons=${names.join(',')}`)
+  if (!response.ok) {
+    throw new Error('Tabler icons did not load')
+  }
+  return await response.json() as IconifyJSON
+}
+
+function tablerSvg(icons: IconifyJSON, name: string, px: number) {
+  const data = getIconData(icons, name)
+  if (!data) {
+    throw new Error(`Missing Tabler icon: ${name}`)
+  }
+  const body = data.body.replaceAll('currentColor', PAPER)
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 ${data.width} ${data.height}">${body}</svg>`
+}
+
+function loadSvg(markup: string) {
+  const image = new Image()
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`
+  return image.decode().then(() => image)
+}
+
+async function pinCanvas(icons: IconifyJSON, color: string, name: string, sponsored: boolean) {
   const canvas = document.createElement('canvas')
   canvas.width = SIZE * SCALE
   canvas.height = SIZE * SCALE
@@ -269,10 +88,9 @@ function pinCanvas(color: string, glyph: Draw, sponsored: boolean) {
     ctx.strokeStyle = PAPER
     ctx.stroke()
   }
-  ctx.save()
-  ctx.translate(cx, cy)
-  glyph(ctx)
-  ctx.restore()
+  const glyph = await loadSvg(tablerSvg(icons, name, 22 * SCALE))
+  const box = 16
+  ctx.drawImage(glyph, cx - box / 2, cy - box / 2, box, box)
   return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
 
@@ -302,12 +120,14 @@ function stopCanvas() {
   return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
 
-export function mapImages() {
+export async function loadMapImages() {
+  const icons = await tablerCollection()
   const images: Record<string, ImageData> = { stop: stopCanvas() }
-  for (const [id, glyph] of Object.entries(GLYPHS)) {
+  await Promise.all(Object.keys(COLORS).map(async (id) => {
     const color = COLORS[id] || '#a3402a'
-    images[id] = pinCanvas(color, glyph, false)
-    images[`s-${id}`] = pinCanvas(color, glyph, true)
-  }
+    const name = tablerName(id)
+    images[id] = await pinCanvas(icons, color, name, false)
+    images[`s-${id}`] = await pinCanvas(icons, color, name, true)
+  }))
   return images
 }

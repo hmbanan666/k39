@@ -23,44 +23,28 @@
         aria-label="Приблизить"
         @click="zoomIn"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><path d="M8 3v10M3 8h10" /></svg>
+        <Icon :name="tablerIcon('zoomIn')" size="16" />
       </button>
       <button
         type="button"
         aria-label="Отдалить"
         @click="zoomOut"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><path d="M3 8h10" /></svg>
+        <Icon :name="tablerIcon('zoomOut')" size="16" />
       </button>
       <button
         type="button"
         aria-label="Я здесь"
         @click="locate"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><circle
-          cx="8"
-          cy="8"
-          r="2.2"
-        /><path d="M8 1.5v2.2M8 12.3v2.2M1.5 8h2.2M12.3 8h2.2" /></svg>
+        <Icon :name="tablerIcon('locate')" size="16" />
       </button>
       <button
         type="button"
         aria-label="Показать всё"
         @click="fit"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><path d="M3 6V3h3M10 3h3v3M13 10v3h-3M6 13H3v-3" /></svg>
+        <Icon :name="tablerIcon('fit')" size="16" />
       </button>
       <button
         v-if="fullscreen"
@@ -68,10 +52,7 @@
         :aria-label="expanded ? 'Выйти из полного экрана' : 'На весь экран'"
         @click="toggleFullscreen"
       >
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        ><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" /></svg>
+        <Icon :name="tablerIcon('fullscreen')" size="16" />
       </button>
     </div>
     <MapCard
@@ -87,6 +68,7 @@
 import type { MapBounds, MapPoint, RouteOverlay } from '~~/shared/map'
 import type { K39MapHandle, MapFramePadding } from '~/lib/mount-k39-map'
 import { cardFor } from '@k39/map'
+import { tablerIcon } from '~~/shared/icons'
 import { visitorLayers } from '~~/shared/map'
 import MapCard from '~/components/map/MapCard.vue'
 import { fetchBasemapUrl } from '~/lib/basemap-url'

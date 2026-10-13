@@ -29,7 +29,7 @@
             aria-label="Назад"
             @click="emit('back')"
           >
-            <PanelIcon name="back" />
+            <Icon :name="tablerIcon('back')" size="18" />
           </button>
           <img
             class="hero"
@@ -89,7 +89,7 @@
             aria-label="Назад"
             @click="emit('back')"
           >
-            <PanelIcon name="back" />
+            <Icon :name="tablerIcon('back')" size="18" />
           </button>
           <img
             class="hero"
@@ -153,7 +153,7 @@
             >
               <label class="search">
                 <span class="sr">Название</span>
-                <PanelIcon name="search" />
+                <Icon :name="tablerIcon('search')" size="18" />
                 <input
                   :value="state.q"
                   type="search"
@@ -172,7 +172,7 @@
                 :aria-pressed="category === item.id"
                 @click="emit('category', item.id)"
               >
-                <MapGlyph :name="item.icon" />
+                <Icon :name="tablerIcon(item.id)" size="16" />
                 {{ item.label }}
               </button>
             </div>
@@ -361,13 +361,14 @@
       :aria-label="collapsed ? 'Открыть панель' : 'Свернуть панель'"
       @click="emit('collapse')"
     >
-      <PanelIcon :name="collapsed ? 'open' : 'close'" />
+      <Icon :name="tablerIcon(collapsed ? 'open' : 'close')" size="18" />
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { BrowseCategory, MapBounds, MapOrigin, MapPoint, MapQueryState, MapRoute, SightId } from '~~/shared/map'
+import { tablerIcon } from '~~/shared/icons'
 import {
   activeCategory,
   boundsCenter,
@@ -389,8 +390,6 @@ import {
   SIGHT_BROWSE,
   stopsLabel,
 } from '~~/shared/map'
-import MapGlyph from '~/components/map/MapGlyph.vue'
-import PanelIcon from '~/components/map/PanelIcon.vue'
 
 const props = defineProps<{
   points: MapPoint[]
@@ -432,17 +431,11 @@ const routeStops = computed(() => (opened.value ? routeOverlay(opened.value)?.st
 
 const categories = computed(() => {
   const totals = browseCounts(props.points, props.routes.length)
-  const icons: Record<BrowseCategory, string> = {
-    sights: 'muzei',
-    food: 'restaurant',
-    beaches: 'plyazhi',
-    routes: 'route',
-  }
   return BROWSE_CATEGORIES.flatMap((item) => {
     if (!totals[item.id]) {
       return []
     }
-    return [{ ...item, icon: icons[item.id] }]
+    return [item]
   })
 })
 

@@ -3,7 +3,7 @@ import type { MapBounds } from '~~/shared/map'
 import { basemapFromUrl, layerCoordinates, lonePoint, MAP_CENTER, MAP_ZOOM, mapStyle } from '@k39/map'
 import maplibregl from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
-import { mapImages } from './map-icons'
+import { loadMapImages } from './map-icons'
 import { applyPicked, eraseMapLayer, interactivePaintIds, paintMapLayer, replaceMapLayerData } from './sync-map-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -57,7 +57,7 @@ export async function mountK39Map(el: HTMLElement, options: {
 }): Promise<K39MapHandle> {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const duration = reduce ? 0 : 450
-  const known = new Set(Object.keys(mapImages()))
+  let known = new Set<string>()
   let padding: MapFramePadding = options.padding || { top: 16, right: 64, bottom: 24, left: 16 }
   let layers = options.layers
   let selected: string | null = null
@@ -100,7 +100,9 @@ export async function mountK39Map(el: HTMLElement, options: {
     throw error
   }
 
-  for (const [id, image] of Object.entries(mapImages())) {
+  const images = await loadMapImages()
+  known = new Set(Object.keys(images))
+  for (const [id, image] of Object.entries(images)) {
     if (!map.hasImage(id)) {
       map.addImage(id, image, { pixelRatio: 2 })
     }
