@@ -2,7 +2,6 @@
   <div
     ref="frame"
     class="frame"
-    :class="{ embed: fullscreen }"
     :style="{ '--map-ui-bottom': controlsBottom }"
   >
     <div
@@ -291,6 +290,7 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   height: 100%;
+  margin: 0;
   overflow: hidden;
   background: #efe6d4;
 }
