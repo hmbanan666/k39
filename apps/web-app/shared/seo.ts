@@ -791,8 +791,8 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     breadcrumbNode(crumbs),
     node,
     placeWebPage(path, title, description, input),
+    // The site-wide schema graph already emits WebSite with this @id; only Organization is added here.
     { ...organizationNode(), '@id': `${SITE_ORIGIN}/#organization` },
-    { ...websiteNode(), '@id': `${SITE_ORIGIN}/#website` },
   ]
   const faq = faqPageNode(input.body, input.faq)
   if (faq) {

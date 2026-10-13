@@ -42,7 +42,7 @@ The place page `@graph` holds:
 - `BreadcrumbList`.
 - The place node (`TouristAttraction`, plus the category type) with `@id` `{url}#place`, `geo`, `address`, `openingHours`, `isAccessibleForFree`, and `citation`.
 - `WebPage` with `@id` `{url}#webpage`, `about` the place, `author` and `publisher` the K39 `Organization`, `dateModified` from `updated_at`, and `lastReviewed` from `last_verified_at`.
-- `Organization` and `WebSite` nodes so the `@id` references resolve inside the page.
+- An `Organization` node so the author and publisher `@id` resolves. `WebSite` (`#website`) comes from the site-wide schema graph, so the page graph does not repeat it.
 - `FAQPage` only when the page has questions. The structured `faq` field wins; a «Частые вопросы» body section is the fallback for older pages.
 
 ## Consequences
