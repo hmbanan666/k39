@@ -100,5 +100,28 @@ describe('venue json-ld', () => {
     expect(live.robots).toBe('index, follow')
     expect(live.jsonLd.map((node) => node['@type'])).toEqual(['BreadcrumbList', 'Restaurant'])
     expect(JSON.stringify(live.jsonLd)).toContain('OpeningHoursSpecification')
+    const unknown = venueDocument({
+      slug: 'bez-chasov',
+      name: 'Без часов',
+      kind: 'cafe',
+      description: 'Кафе без расписания на карточке. '.repeat(12),
+      hours: [
+        { weekday: 'mon', closed: true, opens: null, closes: null },
+        { weekday: 'tue', closed: true, opens: null, closes: null },
+        { weekday: 'wed', closed: true, opens: null, closes: null },
+        { weekday: 'thu', closed: true, opens: null, closes: null },
+        { weekday: 'fri', closed: true, opens: null, closes: null },
+        { weekday: 'sat', closed: true, opens: null, closes: null },
+        { weekday: 'sun', closed: true, opens: null, closes: null },
+      ],
+    })
+    expect(JSON.stringify(unknown.jsonLd)).not.toContain('openingHours')
+    const omitted = venueDocument({
+      slug: 'bez-chasov',
+      name: 'Без часов',
+      kind: 'cafe',
+      description: 'Кафе без расписания на карточке. '.repeat(12),
+    })
+    expect(JSON.stringify(omitted.jsonLd)).not.toContain('openingHours')
   })
 })

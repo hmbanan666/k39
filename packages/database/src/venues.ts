@@ -128,6 +128,8 @@ export interface OsmDraft {
   latitude: number
   longitude: number
   address: string | null
+  town: string | null
+  district: string | null
   phone: string | null
   website: string | null
   hours: VenueHours
@@ -180,13 +182,62 @@ export function assertKind(kind: string) {
   }
 }
 
+export function isBlockedVenueSlug(slug: string, reserved: ReadonlySet<string>) {
+  return reserved.has(slug) || PATH_KIND.has(slug)
+}
+
 export function assertVenueSlug(slug: string, reserved: ReadonlySet<string>) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
     throw new VenueInputError('Адрес: только латиница, цифры и дефисы')
   }
-  if (reserved.has(slug) || PATH_KIND.has(slug)) {
+  if (isBlockedVenueSlug(slug, reserved)) {
     throw new VenueInputError('Этот адрес занят разделом или регионом')
   }
+}
+
+export interface VenueLocality {
+  town?: string | null
+  district?: string | null
+}
+
+const SLUG_CANDIDATE_LIMIT = 30
+
+export function venueSlugCandidates(base: string, locality?: VenueLocality | null, limit = SLUG_CANDIDATE_LIMIT) {
+  const root = transliterateVenueSlug(base)
+  if (!root) {
+    return []
+  }
+  const suffixes = [locality?.town, locality?.district]
+    .map((part) => (part ? transliterateVenueSlug(part) : ''))
+    .filter((suffix, index, all) => suffix.length > 0 && suffix !== root && !root.endsWith(`-${suffix}`) && all.indexOf(suffix) === index)
+  const stems = [root, ...suffixes.map((suffix) => `${root}-${suffix}`)]
+  const candidates: string[] = []
+  const push = (slug: string) => {
+    if (candidates.length >= limit || candidates.includes(slug)) {
+      return
+    }
+    if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      candidates.push(slug)
+    }
+  }
+  for (const stem of stems) {
+    push(stem)
+  }
+  const numbered = stems[stems.length - 1] || root
+  for (let n = 2; candidates.length < limit; n += 1) {
+    push(`${numbered}-${n}`)
+  }
+  return candidates
+}
+
+export function pickVenueSlug(base: string, taken: ReadonlySet<string>, reserved: ReadonlySet<string>, locality?: VenueLocality | null) {
+  for (const candidate of venueSlugCandidates(base, locality)) {
+    if (taken.has(candidate) || isBlockedVenueSlug(candidate, reserved)) {
+      continue
+    }
+    return candidate
+  }
+  return null
 }
 
 export function descriptionLength(value: string) {
@@ -243,7 +294,14 @@ export function hoursAreSet(hours: VenueHours) {
   return Boolean(hours.note?.trim()) || hours.days.some((day) => !day.closed && day.opens && day.closes)
 }
 
+export const HOURS_UNKNOWN = 'Часы уточняйте'
+
 export function formatHoursLines(hours: VenueHours) {
+  const open = hours.days.some((day) => !day.closed && day.opens && day.closes)
+  if (!open) {
+    const note = hours.note?.trim()
+    return [note || HOURS_UNKNOWN]
+  }
   const lines: string[] = []
   let index = 0
   while (index < hours.days.length) {
@@ -439,6 +497,16 @@ export function parseOsmHours(raw: string | undefined): VenueHours {
   return hours
 }
 
+function osmLocality(tags: Record<string, string>, keys: string[]) {
+  for (const key of keys) {
+    const value = tags[key]?.trim()
+    if (value) {
+      return value.slice(0, 80)
+    }
+  }
+  return null
+}
+
 function cuisineTags(raw: string | undefined) {
   return [...new Set((raw || '').split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean))].slice(0, 12)
 }
@@ -483,8 +551,9 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
     return null
   }
   const street = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(', ')
-  const city = tags['addr:city']?.trim()
-  const address = [city, street].filter(Boolean).join(', ') || null
+  const town = osmLocality(tags, ['addr:city', 'addr:town', 'addr:place'])
+  const district = osmLocality(tags, ['addr:suburb', 'addr:district', 'addr:neighbourhood', 'addr:quarter'])
+  const address = [town, street].filter(Boolean).join(', ') || null
   const slug = transliterateVenueSlug(name)
   if (!slug) {
     return null
@@ -498,6 +567,8 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
     latitude,
     longitude,
     address: address ? address.slice(0, 300) : null,
+    town,
+    district,
     phone: (tags.phone || tags['contact:phone'] || '').trim().slice(0, 40) || null,
     website: (tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null,
     hours: parseOsmHours(tags.opening_hours),
@@ -507,11 +578,14 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
 
 const AMENITY = 'cafe|restaurant|bar|fast_food|pub|ice_cream'
 
-export function overpassQuery(input: { latitude: number, longitude: number, radiusMeters: number } | { south: number, west: number, north: number, east: number }) {
+export const OVERPASS_QUERY_TIMEOUT_SECONDS = 90
+
+export function overpassQuery(input: { latitude: number, longitude: number, radiusMeters: number } | { south: number, west: number, north: number, east: number }, timeoutSeconds = OVERPASS_QUERY_TIMEOUT_SECONDS) {
   const clause = 'latitude' in input
     ? `(around:${Math.round(input.radiusMeters)},${input.latitude},${input.longitude})`
     : `(${input.south},${input.west},${input.north},${input.east})`
-  return `[out:json][timeout:25];(node["amenity"~"^(${AMENITY})$"]${clause};way["amenity"~"^(${AMENITY})$"]${clause};node["shop"="bakery"]${clause};way["shop"="bakery"]${clause};);out center tags;`
+  const timeout = Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? Math.round(timeoutSeconds) : OVERPASS_QUERY_TIMEOUT_SECONDS
+  return `[out:json][timeout:${timeout}];(node["amenity"~"^(${AMENITY})$"]${clause};way["amenity"~"^(${AMENITY})$"]${clause};node["shop"="bakery"]${clause};way["shop"="bakery"]${clause};);out center tags;`
 }
 
 export function assertOverpassArea(input: { latitude: number, longitude: number, radiusMeters: number } | { south: number, west: number, north: number, east: number }) {

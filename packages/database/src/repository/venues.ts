@@ -1,5 +1,5 @@
 import type { SourceLink } from '../types/entities'
-import type { OsmDraft, VenueSocial, VenueStatus } from '../venues'
+import type { OsmDraft, VenueLocality, VenueSocial, VenueStatus } from '../venues'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
@@ -9,6 +9,7 @@ import {
   descriptionPublishError,
   emptyHours,
   FOOD_KINDS,
+  isBlockedVenueSlug,
   isFoodKind,
   NEARBY_MAX_DAYS,
   NEARBY_RADIUS_KM,
@@ -16,6 +17,7 @@ import {
   STALE_DAYS,
   transliterateVenueSlug,
   VenueInputError,
+  venueSlugCandidates,
 } from '../venues'
 
 export interface VenueWrite {
@@ -41,6 +43,7 @@ export interface VenueWrite {
   seoTitle?: string | null
   seoDescription?: string | null
   noindex?: boolean
+  locality?: VenueLocality | null
 }
 
 export interface VenueListFilter {
@@ -106,9 +109,88 @@ function assertPoint(latitude: number | null | undefined, longitude: number | nu
   }
 }
 
-function isUniqueViolation(error: unknown) {
-  const row = error as { code?: string, cause?: { code?: string } }
-  return row.code === '23505' || row.cause?.code === '23505'
+function errorChain(error: unknown) {
+  const rows: Array<Record<string, unknown>> = []
+  let current: unknown = error
+  for (let depth = 0; current && typeof current === 'object' && depth < 5; depth += 1) {
+    rows.push(current as Record<string, unknown>)
+    current = (current as { cause?: unknown }).cause
+  }
+  return rows
+}
+
+function uniqueKind(error: unknown): 'slug' | 'osm' | 'unknown' | null {
+  const rows = errorChain(error)
+  if (!rows.some((row) => row.code === '23505')) {
+    return null
+  }
+  const blob = rows.map((row) => {
+    const parts: string[] = []
+    for (const key of ['constraint', 'constraint_name', 'detail']) {
+      if (typeof row[key] === 'string') {
+        parts.push(row[key])
+      }
+    }
+    if (typeof row.message === 'string' && /duplicate key|unique constraint/i.test(row.message)) {
+      parts.push(row.message)
+    }
+    return parts.join(' ')
+  }).join(' ').toLowerCase()
+  if (/venues_osm_id_unique|\(osm_id\)/.test(blob)) {
+    return 'osm'
+  }
+  if (/venues_slug_unique|\(slug\)/.test(blob)) {
+    return 'slug'
+  }
+  return 'unknown'
+}
+
+async function uniqueError(error: unknown, slug: string, osmId: string | null) {
+  const kind = uniqueKind(error)
+  if (!kind) {
+    return null
+  }
+  if (kind === 'osm') {
+    return new VenueInputError('Такой osmId уже есть')
+  }
+  if (kind === 'slug') {
+    return new VenueInputError('Такой адрес уже есть')
+  }
+  const slugTaken = Boolean(await Venues.bySlug(slug))
+  const osmTaken = Boolean(osmId && await Venues.byOsmId(osmId))
+  if (osmTaken && !slugTaken) {
+    return new VenueInputError('Такой osmId уже есть')
+  }
+  if (slugTaken && osmTaken) {
+    return new VenueInputError('Такой адрес уже есть. Такой osmId уже есть')
+  }
+  return new VenueInputError('Такой адрес уже есть')
+}
+
+async function localityFor(input: VenueWrite) {
+  const town = input.locality?.town?.trim() || ''
+  const district = input.locality?.district?.trim() || ''
+  if (town || district) {
+    return { town: town || null, district: district || null }
+  }
+  if (!input.regionId) {
+    return null
+  }
+  const [region] = await useDatabase().select({ slug: regions.slug }).from(regions).where(eq(regions.id, input.regionId)).limit(1)
+  return region ? { town: region.slug } : null
+}
+
+async function allocateSlug(base: string, reserved: ReadonlySet<string>, locality: VenueLocality | null) {
+  for (const candidate of venueSlugCandidates(base, locality)) {
+    if (isBlockedVenueSlug(candidate, reserved)) {
+      continue
+    }
+    if (await Venues.bySlug(candidate)) {
+      continue
+    }
+    return candidate
+  }
+  return null
 }
 
 async function reservedSlugs() {
@@ -183,8 +265,21 @@ export class Venues {
       throw new VenueInputError('Нужен тип заведения')
     }
     assertKind(input.kind)
-    const slug = (input.slug?.trim() || transliterateVenueSlug(name))
-    assertVenueSlug(slug, await reservedSlugs())
+    const reserved = await reservedSlugs()
+    const requested = input.slug?.trim() || ''
+    const explicitSlug = requested.length > 0
+    let slug = explicitSlug ? requested : transliterateVenueSlug(name)
+    if (!slug) {
+      throw new VenueInputError('Адрес: только латиница, цифры и дефисы')
+    }
+    if (!explicitSlug) {
+      const allocated = await allocateSlug(slug, reserved, await localityFor(input))
+      if (!allocated) {
+        throw new VenueInputError('Такой адрес уже есть')
+      }
+      slug = allocated
+    }
+    assertVenueSlug(slug, reserved)
     const status = input.status ?? 'draft'
     const description = input.description ?? ''
     if (status === 'published') {
@@ -230,10 +325,8 @@ export class Venues {
       }
       return created
     } catch (error) {
-      if (isUniqueViolation(error)) {
-        throw new VenueInputError('Такой адрес или osmId уже есть')
-      }
-      throw error
+      const clash = await uniqueError(error, slug, cleanText(input.osmId, 80))
+      throw clash ?? error
     }
   }
 
@@ -312,11 +405,22 @@ export class Venues {
       }
       return saved
     } catch (error) {
-      if (isUniqueViolation(error)) {
-        throw new VenueInputError('Такой адрес или osmId уже есть')
-      }
-      throw error
+      const nextOsm = input.osmId === undefined ? current.osmId : cleanText(input.osmId, 80)
+      const clash = await uniqueError(error, nextSlug, nextOsm)
+      throw clash ?? error
     }
+  }
+
+  static async remove(id: string) {
+    const current = await this.byId(id)
+    if (!current) {
+      return null
+    }
+    if (current.status !== 'draft' && current.status !== 'archived') {
+      throw new VenueInputError('Удалить можно только черновик или архив')
+    }
+    await useDatabase().delete(venues).where(eq(venues.id, current.id))
+    return { id: current.id, slug: current.slug, action: 'deleted' as const }
   }
 
   static async list(filter: VenueListFilter = {}) {
@@ -439,23 +543,8 @@ export class Venues {
         existing.push(prior.id)
         continue
       }
-      let slug = draft.slug
-      let suffix = 2
-      while (await this.bySlug(slug)) {
-        slug = `${draft.slug}-${suffix}`
-        suffix += 1
-        if (suffix > 20) {
-          skipped.push(draft.osmId)
-          slug = ''
-          break
-        }
-      }
-      if (!slug) {
-        continue
-      }
       try {
         const row = await this.create({
-          slug,
           name: draft.name,
           kind: draft.kind,
           cuisineTags: draft.cuisineTags,
@@ -470,6 +559,7 @@ export class Venues {
           osmId: draft.osmId,
           status: 'draft',
           description: '',
+          locality: { town: draft.town, district: draft.district },
         })
         created.push(row.id)
       } catch (error) {

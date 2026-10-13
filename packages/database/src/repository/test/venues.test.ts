@@ -1,12 +1,19 @@
+import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
-import { businesses, offerCodes, offers, venues } from '../../tables'
+import { businesses, offerCodes, offers, slugRedirects, venues } from '../../tables'
 import {
+  emptyHours,
+  formatHoursLines,
   formatVenueDistance,
+  HOURS_UNKNOWN,
   isStale,
   nearbyFresh,
   osmElementToDraft,
+  OVERPASS_QUERY_TIMEOUT_SECONDS,
   overpassQuery,
+  parseOsmHours,
+  pickVenueSlug,
   rankNearby,
   resolveVenuePath,
   VenueInputError,
@@ -81,9 +88,22 @@ describe('venue policy', () => {
     expect(draft?.kind).toBe('coffee')
     expect(draft?.osmId).toBe('node/42')
     expect(draft?.slug).toBe('kofeynya-u-forta')
+    expect(draft?.town).toBeNull()
     expect(draft?.hours.days.find((day) => day.weekday === 'mon')?.opens).toBe('09:00')
     expect(osmElementToDraft({ type: 'node', id: 1, lat: 1, lon: 1, tags: { amenity: 'cafe' } })).toBeNull()
-    expect(overpassQuery({ latitude: 54.7, longitude: 20.5, radiusMeters: 800 })).toContain('around:800,54.7,20.5')
+    const query = overpassQuery({ latitude: 54.7, longitude: 20.5, radiusMeters: 800 })
+    expect(query).toContain('around:800,54.7,20.5')
+    expect(query).toContain(`[timeout:${OVERPASS_QUERY_TIMEOUT_SECONDS}]`)
+    expect(formatHoursLines(emptyHours())).toEqual([HOURS_UNKNOWN])
+    expect(formatHoursLines(parseOsmHours(''))).toEqual(['Часы уточняйте'])
+    expect(formatHoursLines(parseOsmHours('Mo-Fr 09:00-18:00'))).toEqual(['пн-пт 09:00-18:00', 'сб-вс выходной'])
+    expect(formatHoursLines(emptyHours('по записи'))).toEqual(['по записи'])
+    expect(pickVenueSlug('Кафе', new Set(), new Set())).toBe('kafe-2')
+    expect(pickVenueSlug('Кафе', new Set(), new Set(), { town: 'Светлогорск' })).toBe('kafe-svetlogorsk')
+    expect(pickVenueSlug('Кафе Уют', new Set(['kafe-uyut']), new Set(), { town: 'Светлогорск', district: 'Центр' })).toBe('kafe-uyut-svetlogorsk')
+    expect(pickVenueSlug('Кафе Уют', new Set(['kafe-uyut', 'kafe-uyut-svetlogorsk']), new Set(), { town: 'Светлогорск' })).toBe('kafe-uyut-svetlogorsk-2')
+    expect(pickVenueSlug('Кафе Уют', new Set(['kafe-uyut', 'kafe-uyut-svetlogorsk']), new Set(), { town: 'Светлогорск', district: 'Центр' })).toBe('kafe-uyut-tsentr')
+    expect(pickVenueSlug('Светлогорск', new Set(), new Set(['svetlogorsk']))).toBe('svetlogorsk-2')
     expect(resolveVenuePath(['svetlogorsk', 'kofe'], new Set(['svetlogorsk']))).toEqual({
       type: 'listing',
       regionSlug: 'svetlogorsk',
@@ -223,5 +243,106 @@ describe('venue repository', () => {
     }])
     const stats = await Analytics.venueStats(venue.id, new Date('2020-01-01'), new Date('2030-01-01'))
     expect(stats).toEqual([{ venueId: venue.id, impressions: 1, pageviews: 1 }])
+  })
+
+  it('suffixes a clashing slug with the town, then a number, and names the unique field', async () => {
+    const first = await Venues.create({ name: 'Кафе Уют', kind: 'cafe', osmId: 'node/1' })
+    expect(first.slug).toBe('kafe-uyut')
+    const town = await Venues.create({
+      name: 'Кафе Уют',
+      kind: 'cafe',
+      osmId: 'node/2',
+      locality: { town: 'Светлогорск', district: 'Центр' },
+    })
+    expect(town.slug).toBe('kafe-uyut-svetlogorsk')
+    const numbered = await Venues.create({
+      name: 'Кафе Уют',
+      kind: 'cafe',
+      osmId: 'node/3',
+      locality: { town: 'Светлогорск' },
+    })
+    expect(numbered.slug).toBe('kafe-uyut-svetlogorsk-2')
+    const district = await Venues.create({
+      name: 'Кафе Уют',
+      kind: 'cafe',
+      osmId: 'node/4',
+      locality: { town: 'Светлогорск', district: 'Центр' },
+    })
+    expect(district.slug).toBe('kafe-uyut-tsentr')
+    await expect(Venues.create({
+      name: 'Другое кафе',
+      slug: 'kafe-uyut',
+      kind: 'cafe',
+      osmId: 'node/5',
+    })).rejects.toThrow('Такой адрес уже есть')
+    await expect(Venues.create({
+      name: 'Другое кафе',
+      slug: 'drugoe-kafe',
+      kind: 'cafe',
+      osmId: 'node/1',
+    })).rejects.toThrow('Такой osmId уже есть')
+    await expect(Venues.update(numbered.id, { slug: first.slug })).rejects.toThrow('Такой адрес уже есть')
+    await expect(Venues.update(numbered.id, { osmId: 'node/1' })).rejects.toThrow('Такой osmId уже есть')
+    const region = await Venues.regionBySlug('svetlogorsk')
+    expect(region?.slug).toBe('svetlogorsk')
+    const plain = await Venues.create({ name: 'Булочная на дюнах', kind: 'bakery' })
+    const regional = await Venues.create({
+      name: 'Булочная на дюнах',
+      kind: 'bakery',
+      regionId: region?.id,
+    })
+    expect(plain.slug).toBe('bulochnaya-na-dyunah')
+    expect(regional.slug).toBe('bulochnaya-na-dyunah-svetlogorsk')
+    let osmMessage = ''
+    try {
+      await Venues.create({ name: 'Ещё кафе', slug: 'esche-kafe', kind: 'cafe', osmId: 'node/2' })
+    } catch (error) {
+      osmMessage = error instanceof VenueInputError ? error.message : ''
+    }
+    expect(osmMessage).toBe('Такой osmId уже есть')
+  })
+
+  it('imports two OSM cafes with the same name under town slugs', async () => {
+    const svetlogorsk = osmElementToDraft({
+      type: 'node',
+      id: 11,
+      lat: FORT.latitude,
+      lon: FORT.longitude,
+      tags: { 'amenity': 'cafe', 'name': 'Уют', 'addr:city': 'Светлогорск' },
+    })
+    const zelenogradsk = osmElementToDraft({
+      type: 'node',
+      id: 12,
+      lat: FORT.latitude,
+      lon: FORT.longitude,
+      tags: { 'amenity': 'cafe', 'name': 'Уют', 'addr:city': 'Зеленоградск', 'addr:suburb': 'Центр' },
+    })
+    expect(svetlogorsk?.town).toBe('Светлогорск')
+    expect(zelenogradsk?.district).toBe('Центр')
+    const imported = await Venues.importDrafts([svetlogorsk!, zelenogradsk!], null)
+    expect(imported.created).toHaveLength(2)
+    const rows = await Promise.all(imported.created.map((id) => Venues.byId(id)))
+    expect(rows.map((row) => row?.slug).sort()).toEqual(['uyut', 'uyut-zelenogradsk'])
+  })
+
+  it('deletes a draft or an archived venue and keeps a published one', async () => {
+    const draft = await Venues.create({ name: 'Черновик булочной', kind: 'bakery' })
+    expect((await Venues.remove(draft.id))?.action).toBe('deleted')
+    expect(await Venues.byId(draft.id)).toBeNull()
+    const archived = await Venues.create({ name: 'Архивная булочная', kind: 'bakery', status: 'archived' })
+    expect((await Venues.remove(archived.id))?.action).toBe('deleted')
+    expect(await Venues.bySlug(archived.slug)).toBeNull()
+    const [gone] = await useDatabase().select().from(slugRedirects).where(eq(slugRedirects.fromPath, `/zavedeniya/${archived.slug}`))
+    expect(gone?.statusCode).toBe(410)
+    const published = await Venues.create({
+      name: 'Живая булочная у набережной',
+      kind: 'bakery',
+      status: 'published',
+      description: description(),
+    })
+    await expect(Venues.remove(published.id)).rejects.toThrow('Удалить можно только черновик или архив')
+    expect(await Venues.byId(published.id)).toBeTruthy()
+    const closed = await Venues.create({ name: 'Закрытая булочная', kind: 'bakery', status: 'closed' })
+    await expect(Venues.remove(closed.id)).rejects.toThrow('Удалить можно только черновик или архив')
   })
 })

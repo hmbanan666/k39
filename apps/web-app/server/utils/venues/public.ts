@@ -99,6 +99,7 @@ async function loadVenue(slug: string) {
   const photos = gallery.map((item) => toPublicMedia(item.media))
   const cover = photos.find((item, index) => gallery[index]?.isCover) ?? photos[0] ?? null
   const hours = normalizeHours(venue.hours)
+  const openDays = hours.days.filter((day) => !day.closed && day.opens && day.closes)
   const now = new Date()
   const stale = isStale(venue.lastVerifiedAt, now)
   const closed = venue.status === 'closed'
@@ -116,7 +117,7 @@ async function loadVenue(slug: string) {
     website: venue.website,
     priceLevel: venue.priceLevel,
     cuisine: venue.cuisineTags,
-    hours: hours.days,
+    hours: openDays.length ? hours.days : undefined,
     seoTitle: venue.seoTitle,
     seoDescription: venue.seoDescription,
     noindex: venue.noindex || closed || missingDescription,
