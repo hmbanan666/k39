@@ -474,6 +474,21 @@ export const pagePassports = pgTable('page_passports', {
   uniqueIndex('page_passports_path_idx').on(table.path),
 ])
 
+// Target personas of a page (ADR 0024). Codes come from the registry in
+// apps/web-app/shared/personas.ts. One primary persona per page.
+export const pagePersonas = pgTable('page_personas', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  pageType: varchar('page_type').notNull().$type<PageKind>(),
+  entityId: varchar('entity_id').notNull(),
+  personaCode: varchar('persona_code').notNull(),
+  weight: integer('weight').notNull().default(1),
+  primary: boolean('primary').notNull().default(false),
+}, (table) => [
+  uniqueIndex('page_personas_page_persona_idx').on(table.pageType, table.entityId, table.personaCode),
+  uniqueIndex('page_personas_primary_idx').on(table.pageType, table.entityId).where(sql`"primary"`),
+])
+
 export const contentScores = pgTable('content_scores', {
   id: cuid2('id').defaultRandom().primaryKey(),
   computedAt: timestamp('computed_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
