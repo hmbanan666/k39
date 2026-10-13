@@ -59,6 +59,10 @@ export const CATEGORY_TAGS: Record<string, string[]> = {
   eda: ['eda'],
 }
 
+/** Roles a text module can declare, so coverage knows what a page answers. */
+export const TEXT_ROLES = ['events', 'open-closed', 'bad-weather', 'transport', 'pack', 'prices', 'faq'] as const
+export type TextRole = (typeof TEXT_ROLES)[number]
+
 const tag = z.enum(PICKER_TAGS as [string, ...string[]])
 const markdown = z.string().trim().min(1)
 const title = z.string().trim().min(1).max(120)
@@ -74,6 +78,8 @@ export const pageModuleSchema = z.discriminatedUnion('type', [
     type: z.literal('text'),
     title: title.optional(),
     variant: z.enum(['lead', 'plain']).default('plain'),
+    /** What the block answers, for persona coverage (ADR 0025). Not rendered. */
+    role: z.enum(TEXT_ROLES).optional(),
     text: markdown,
   }),
   z.object({

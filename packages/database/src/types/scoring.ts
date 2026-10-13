@@ -1,4 +1,4 @@
-import type { PageKind, PrimaryAction } from './entities'
+import type { PageKind, PrimaryAction, StoredPageModule } from './entities'
 
 export interface ScoreChecks {
   quality: string[]
@@ -24,6 +24,7 @@ export interface ScorePlace {
   seoDescription: string | null
   factsCheckedAt: string | null
   sources: Array<{ title: string, url: string }>
+  faqCount: number
   categorySlug: string | null
   categoryTitle: string | null
   regionId: string | null
@@ -43,6 +44,9 @@ export interface CatalogArticle {
   seoDescription: string | null
   updatedAt: string
   routeSlug: string | null
+  /** Page modules (collections only, ADR 0023); empty elsewhere. */
+  modules: StoredPageModule[]
+  sourcesCount: number
 }
 
 export interface CatalogStop {
