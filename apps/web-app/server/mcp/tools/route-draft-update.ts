@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { updateRouteDraft } from '../../utils/mcp/routes'
-import { orderedStops } from '../../utils/mcp/schemas'
+import { orderedStops, routePath } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'route_draft_update',
@@ -15,6 +15,7 @@ export default defineMcpTool({
     seoTitle: z.string().nullable().optional(),
     seoDescription: z.string().nullable().optional(),
     points: orderedStops.describe('Replacement ordered stops. Omit to keep the current stops.'),
+    path: routePath,
   },
   handler: async (input) => updateRouteDraft(input),
 })

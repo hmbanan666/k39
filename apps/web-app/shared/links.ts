@@ -24,6 +24,7 @@ export function indexableHubs(noindexSlugs: readonly string[]) {
 
 export const SECTION_LINKS: TextLink[] = [
   { href: '/marshruty', text: 'Маршруты' },
+  { href: '/karta', text: 'Карта' },
   { href: '/podborki', text: 'Подборки' },
   { href: '/kvesty', text: 'Квесты' },
   { href: '/zavedeniya', text: 'Заведения' },

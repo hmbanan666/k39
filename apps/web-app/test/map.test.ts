@@ -1,80 +1,150 @@
+import type { MapPoint, MapRoute } from '../shared/map'
 import { describe, expect, it } from 'vitest'
 import {
-  clusterPoints,
-  MAP_STYLE_URL,
-  mapDistanceLabel,
+  blurb,
+  facetCounts,
+  foodIdsIn,
+  isChurchPlace,
+
+  mapQueryRecord,
+  normalizeRoutePath,
   parseMapQuery,
-  pinButtonHtml,
-  pinClassName,
-  pinOffer,
-  resolvedFrameHeight,
-  WALKING_RADIUS_KM,
-  yandexDestinationUrl,
+  partnerVisible,
+  pointVisible,
+  routeOverlay,
+  sortMapPoints,
+  toggleId,
 } from '../shared/map'
+import { k39MapStyle } from '../shared/map-style'
 
-describe('k39 map', () => {
-  it('opens Yandex with the point as the destination', () => {
-    expect(yandexDestinationUrl(54.656847, 20.567554)).toBe('https://yandex.ru/maps/?rtext=~54.65685,20.56755&rtt=auto')
-    expect(yandexDestinationUrl(Number.NaN, 20)).toBe('')
+function point(partial: Partial<MapPoint> & Pick<MapPoint, 'id' | 'title' | 'group' | 'category'>): MapPoint {
+  return {
+    slug: partial.id,
+    href: `/${partial.id}`,
+    latitude: 54.7,
+    longitude: 20.5,
+    marker: partial.category,
+    church: false,
+    kindLabel: partial.category,
+    summary: '',
+    photo: null,
+    partner: false,
+    stale: false,
+    ...partial,
+  }
+}
+
+const fort = point({ id: 'fort', title: 'Форт № 1', group: 'sight', category: 'forty', marker: 'forty' })
+const cathedral = point({
+  id: 'sobor',
+  title: 'Кафедральный собор',
+  group: 'sight',
+  category: 'muzei',
+  marker: 'tserkvi',
+  church: true,
+  kindLabel: 'Церкви',
+})
+const coffee = point({
+  id: 'kofe',
+  title: 'Кофе у ворот',
+  group: 'food',
+  category: 'coffee',
+  marker: 'coffee',
+  kindLabel: 'Кофейни',
+  partner: true,
+})
+
+describe('map filters', () => {
+  const points = [fort, cathedral, coffee]
+
+  it('treats an empty query as every sight and every food kind, with routes off', () => {
+    const state = parseMapQuery({})
+    expect(state).toEqual({ sights: null, food: null, route: null, q: '' })
+    expect(mapQueryRecord(state)).toEqual({})
+    expect(points.filter((item) => pointVisible(item, state)).map((item) => item.id)).toEqual(['fort', 'sobor', 'kofe'])
+    expect(routeOverlay(null)).toBeNull()
   })
 
-  it('gives the frame a real height when Leaflet would measure zero', () => {
-    expect(resolvedFrameHeight(0, 320)).toBe(320)
-    expect(resolvedFrameHeight(40, 420)).toBe(420)
-    expect(resolvedFrameHeight(460, 320)).toBe(460)
+  it('keeps churches on the museum chip and on their own chip', () => {
+    expect(isChurchPlace('kafedralnyi-sobor', 'Кафедральный собор')).toBe(true)
+    expect(isChurchPlace('fort-1-shtayn', 'Форт № 1 Штайн')).toBe(false)
+    const counts = facetCounts(points)
+    expect(counts.sights.forty).toBe(1)
+    expect(counts.sights.muzei).toBe(1)
+    expect(counts.sights.tserkvi).toBe(1)
+    expect(counts.food.coffee).toBe(1)
+    expect(pointVisible(cathedral, { sights: ['muzei'], food: null, route: null, q: '' })).toBe(true)
+    expect(pointVisible(cathedral, { sights: ['tserkvi'], food: null, route: null, q: '' })).toBe(true)
+    expect(pointVisible(cathedral, { sights: ['forty'], food: null, route: null, q: '' })).toBe(false)
+    expect(pointVisible(fort, { sights: [], food: null, route: null, q: '' })).toBe(false)
   })
 
-  it('clusters neighbours and leaves a distant pin alone', () => {
-    const close = clusterPoints([
-      { id: 'a', latitude: 54.71, longitude: 20.5 },
-      { id: 'b', latitude: 54.71, longitude: 20.5 },
-    ], 14)
-    expect(close).toHaveLength(1)
-    expect(close[0]?.points).toHaveLength(2)
-    const apart = clusterPoints([
-      { id: 'a', latitude: 54.71, longitude: 20.5 },
-      { id: 'b', latitude: 55.2, longitude: 22.1 },
-    ], 16)
-    expect(apart).toHaveLength(2)
-    expect(clusterPoints([], 10)).toEqual([])
+  it('round-trips sight, food, route, and search query keys', () => {
+    const state = parseMapQuery({ s: 'forty,zamki', f: 'kofe,pekarnya', r: 'pyat-fortov', q: '  форт  ' })
+    expect(state.sights).toEqual(['forty', 'zamki'])
+    expect(state.food).toEqual(['coffee', 'bakery'])
+    expect(state.route).toBe('pyat-fortov')
+    expect(state.q).toBe('форт')
+    expect(mapQueryRecord(state)).toEqual({ s: 'forty,zamki', f: 'kofe,pekarnya', r: 'pyat-fortov', q: 'форт' })
+    expect(parseMapQuery({ s: 'none', f: 'none' })).toMatchObject({ sights: [], food: [] })
+    expect(mapQueryRecord({ sights: [], food: [], route: null, q: '' })).toEqual({ s: 'none', f: 'none' })
+    expect(pointVisible(coffee, { ...state, sights: null, food: state.food, q: '' })).toBe(true)
+    expect(pointVisible(fort, { sights: null, food: null, route: null, q: 'кофе' })).toBe(false)
+    expect(pointVisible(coffee, { sights: null, food: ['restaurant'], route: null, q: '' })).toBe(false)
   })
 
-  it('hides the partner label unless the flag and an offer are both set', () => {
-    const offer = { partner: true, offer: 'Обед со скидкой' }
-    expect(pinOffer(offer, false)).toEqual({ partner: false, offer: null })
-    expect(pinOffer({ partner: true, offer: '  ' }, true)).toEqual({ partner: false, offer: null })
-    expect(pinOffer(offer, true)).toEqual({ partner: true, offer: 'Обед со скидкой' })
+  it('drops one chip from the full set and sorts a partner first', () => {
+    const next = toggleId(null, 'forty', ['forty', 'zamki'])
+    expect(next).toEqual(['zamki'])
+    expect(toggleId(['zamki'], 'forty', ['forty', 'zamki'])).toBeNull()
+    expect(foodIdsIn(points)).not.toContain('eda')
+    expect(sortMapPoints([fort, coffee]).map((item) => item.id)).toEqual(['kofe', 'fort'])
+    expect(partnerVisible(false, true)).toBe(false)
+    expect(partnerVisible(true, true)).toBe(true)
+    expect(blurb('слово '.repeat(40), 20).endsWith('...')).toBe(true)
   })
+})
 
-  it('builds a pin button and keeps the walking distance off the focus point', () => {
-    const html = pinButtonHtml({
-      title: 'Форт <11>',
-      label: '1',
-      layer: 'route',
-      kind: 'fort',
-      partner: false,
-      focus: true,
-    })
-    expect(html).toContain('aria-label="Форт &lt;11&gt;"')
-    expect(html).toContain('>1<')
-    expect(pinClassName({ layer: 'venue', kind: 'coffee', partner: true, focus: false })).toContain('k39-pin-partner')
-    expect(mapDistanceLabel(0)).toBe('')
-    expect(mapDistanceLabel(0.4)).toContain('м')
-    expect(WALKING_RADIUS_KM).toBe(1.2)
+describe('route geometry', () => {
+  const route: MapRoute = {
+    slug: 'pyat-fortov',
+    title: 'Пять фортов',
+    href: '/marshruty/pyat-fortov',
+    path: null,
+    stops: [
+      { position: 1, title: 'Один', href: '/a', latitude: 54.7, longitude: 20.5, summary: '', photo: null },
+      { position: 2, title: 'Два', href: '/b', latitude: 54.8, longitude: 20.6, summary: '', photo: null },
+    ],
+  }
+
+  it('uses a dashed connector until a real line is stored', () => {
+    const dashed = routeOverlay(route)
+    expect(dashed?.dashed).toBe(true)
+    expect(dashed?.line).toEqual([[20.5, 54.7], [20.6, 54.8]])
+    expect(dashed?.stops.map((stop) => stop.position)).toEqual([1, 2])
+    const solid = routeOverlay({ ...route, path: [[20.5, 54.7], [20.55, 54.75], [20.6, 54.8]] })
+    expect(solid?.dashed).toBe(false)
+    expect(solid?.line).toHaveLength(3)
+    expect(routeOverlay({ ...route, path: [[200, 54]] })?.dashed).toBe(true)
+    expect(normalizeRoutePath([[20, 54]])).toBeNull()
+    const first = route.stops[0]
+    expect(routeOverlay({ ...route, stops: first ? [first] : [] })?.line).toBeNull()
   })
+})
 
-  it('parses a nearby query and a catalog, and credits the tile sources', () => {
-    expect(parseMapQuery({ lat: '54.7', lng: '20.5', route: '' })).toMatchObject({
-      scope: 'nearby',
-      latitude: 54.7,
-      longitude: 20.5,
-      radiusKm: 1.2,
-    })
-    expect(parseMapQuery({ scope: 'catalog', lat: '54.7', lng: '20.5' }).scope).toBe('catalog')
-    expect(parseMapQuery({ route: 'vostochnye-zamki' })).toMatchObject({ scope: 'nearby', route: 'vostochnye-zamki' })
-    expect(parseMapQuery({ route: '../etc' }).route).toBe('')
-    expect(parseMapQuery({ radius: '40' }).radiusKm).toBe(8)
-    expect(parseMapQuery({ lat: '54.7', lng: '20.5', radius: '' }).radiusKm).toBe(1.2)
-    expect(MAP_STYLE_URL).toBe('https://tiles.openfreemap.org/styles/positron')
+describe('basemap style', () => {
+  it('stays on the paper palette, names towns in Russian, and credits the tiles', () => {
+    const style = k39MapStyle()
+    const layers = style.layers as Array<Record<string, unknown>>
+    const background = layers.find((layer) => layer.id === 'background') as { paint: { 'background-color': string } }
+    const water = layers.find((layer) => layer.id === 'water') as { paint: { 'fill-color': string } }
+    expect(background.paint['background-color']).toBe('#efe6d4')
+    expect(water.paint['fill-color']).toBe('#c5d4d8')
+    expect(layers.some((layer) => layer['source-layer'] === 'poi')).toBe(false)
+    expect(JSON.stringify(style.sources)).toContain('openstreetmap.org/copyright')
+    expect(JSON.stringify(style.sources)).toContain('openfreemap.org')
+    const town = layers.find((layer) => layer.id === 'label-town') as { layout: { 'text-field': unknown } }
+    expect(JSON.stringify(town.layout['text-field'])).toContain('name:ru')
+    expect(style.glyphs).toContain('tiles.openfreemap.org/fonts')
   })
 })

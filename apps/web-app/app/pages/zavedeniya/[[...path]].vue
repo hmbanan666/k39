@@ -209,7 +209,9 @@ interface VenuePage {
   doc: SeoDocument
   venue: {
     name: string
+    kind: string
     kindLabel: string
+    partner: boolean
     address: string | null
     phone: string | null
     website: string | null

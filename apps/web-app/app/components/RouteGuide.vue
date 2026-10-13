@@ -36,12 +36,19 @@
       </UiButton>
     </div>
     <div class="split">
-      <K39Map
-        class="route-map"
-        label="Карта маршрута"
-        :route-slug="routeSlug"
-      >
-        <ol>
+      <div class="frame">
+        <K39Map
+          :points="[]"
+          :overlay="overlay"
+          fullscreen
+          aria-label="Карта маршрута"
+          fit-key="route"
+          @ready="ready = true"
+        />
+        <ol
+          class="fallback"
+          :hidden="ready"
+        >
           <li
             v-for="(stop, index) in stops"
             :key="`${stop.href}-fallback-${index}`"
@@ -49,7 +56,7 @@
             <a :href="stop.href">{{ index + 1 }}. {{ stop.text }}</a>
           </li>
         </ol>
-      </K39Map>
+      </div>
       <div class="stop-col">
         <h2 class="stops-title">
           Остановки
@@ -94,14 +101,41 @@
 </template>
 
 <script setup lang="ts">
+import type { MapRoute } from '~~/shared/map'
 import type { RouteStopView, RouteTravelMode } from '~~/shared/route-nav'
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
+import { routeOverlay } from '~~/shared/map'
 import { locatedStops, ROUTE_TRAVEL_MODES, routeLinks } from '~~/shared/route-nav'
+import K39Map from '~/components/map/K39Map.vue'
 
-const props = defineProps<{ stops: RouteStopView[], routeSlug: string }>()
+const props = defineProps<{
+  stops: RouteStopView[]
+  path?: [number, number][] | null
+}>()
 const mode = ref<RouteTravelMode>('auto')
+const ready = ref(false)
 const points = computed(() => locatedStops(props.stops))
 const links = computed(() => routeLinks(points.value, mode.value))
+const overlay = computed(() => routeOverlay({
+  slug: 'page',
+  title: '',
+  href: '',
+  path: props.path || null,
+  stops: props.stops.flatMap((stop, index) => {
+    if (stop.latitude == null || stop.longitude == null) {
+      return []
+    }
+    return [{
+      position: index + 1,
+      title: stop.text,
+      href: stop.href,
+      latitude: stop.latitude,
+      longitude: stop.longitude,
+      summary: stop.note || '',
+      photo: null,
+    }]
+  }),
+} satisfies MapRoute))
 </script>
 
 <style scoped>
@@ -130,8 +164,36 @@ const links = computed(() => routeLinks(points.value, mode.value))
   color: var(--color-paper);
 }
 .split { display: grid; gap: 1rem; align-items: start; }
-.route-map { margin: 0; }
-.stop-go { margin-top: 0.45rem; }
+.frame {
+  position: relative;
+  z-index: 0;
+  height: 300px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--color-line);
+  border-radius: 18px;
+  background: #efe6d4;
+  box-shadow: var(--shadow-card);
+}
+.fallback {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  height: 100%;
+  margin: 0;
+  padding: 1rem 1.15rem;
+  overflow: auto;
+  list-style: none;
+  background: var(--color-paper);
+}
+.fallback li { margin: 0.4rem 0; }
+.fallback a {
+  color: var(--color-sea);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-decoration: none;
+}
 .stops-title { margin: 0 0 var(--space-3); font-size: var(--step-1); }
 .cards { display: grid; gap: 0.7rem; margin: 0; padding: 0; list-style: none; }
 .cards li {
@@ -166,11 +228,13 @@ const links = computed(() => routeLinks(points.value, mode.value))
 }
 .note { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
 .leg { margin: 0.35rem 0 0; color: var(--color-pine); font-size: 0.92rem; font-weight: 700; }
+.stop-go { margin-top: 0.45rem; }
 @media (max-width: 720px) {
   .go { flex: 1 1 100%; }
   .modes { flex: 1 1 100%; }
 }
 @media (min-width: 900px) {
   .split { grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.75fr); }
+  .frame { height: 460px; }
 }
 </style>

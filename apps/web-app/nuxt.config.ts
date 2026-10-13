@@ -76,7 +76,7 @@ export default defineNuxtConfig({
       consentBanner: false,
       yandexVerification: '',
       googleVerification: '',
-      // Directions are plain Yandex URLs. The K39 map does not load the JS API.
+      // Kept so an existing deploy env does not fail validation. ADR 0019 does not load Yandex Maps.
       yandexMapsApiKey: '',
     },
   },

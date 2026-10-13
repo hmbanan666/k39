@@ -145,6 +145,8 @@ export const routes = pgTable('routes', {
   noindex: boolean('noindex').notNull().default(false),
   updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
   regionId: cuid2('region_id').references(() => regions.id, { onUpdate: 'cascade' }),
+  // Optional real route geometry: [longitude, latitude] pairs. Null keeps the map on a dashed connector.
+  path: jsonb('path').$type<[number, number][] | null>(),
 })
 
 export const routePoints = pgTable('route_points', {

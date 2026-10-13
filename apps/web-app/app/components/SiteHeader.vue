@@ -38,6 +38,10 @@
         :class="{ active: path === link.href }"
       >{{ link.text }}</a>
       <a
+        href="/karta"
+        :class="{ active: path === '/karta' }"
+      >Карта</a>
+      <a
         v-if="!loggedIn"
         href="/sign-in"
         :class="{ active: path === '/sign-in' }"

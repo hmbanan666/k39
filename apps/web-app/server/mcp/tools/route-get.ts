@@ -26,6 +26,7 @@ export default defineMcpTool({
       seoTitle: route.seoTitle,
       seoDescription: route.seoDescription,
       points: orderedStopView(await db.editor.routePoints(route.id)),
+      path: route.path ?? null,
     }
   },
 })

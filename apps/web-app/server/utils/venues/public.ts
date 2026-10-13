@@ -123,6 +123,7 @@ async function loadVenue(slug: string) {
     noindex: venue.noindex || closed || missingDescription,
     image: cover ? socialImage(cover, cover.alt || venue.name) : null,
   })
+  const sponsored = await db.venues.sponsoredIds([venue.id])
   const places = venue.latitude != null && venue.longitude != null
     ? await db.content.nearest(venue.latitude, venue.longitude, '', 4)
     : []
@@ -134,6 +135,7 @@ async function loadVenue(slug: string) {
       name: venue.name,
       kind: venue.kind,
       kindLabel: kindLabel(venue.kind),
+      partner: sponsoredVenuesEnabled() && sponsored.has(venue.id),
       address: venue.address,
       phone: venue.phone,
       website: venue.website,

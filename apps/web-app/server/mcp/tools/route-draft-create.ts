@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { createRouteDraft } from '../../utils/mcp/routes'
-import { orderedStops } from '../../utils/mcp/schemas'
+import { orderedStops, routePath } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'route_draft_create',
@@ -14,6 +14,7 @@ export default defineMcpTool({
     seoTitle: z.string().nullable().optional(),
     seoDescription: z.string().nullable().optional(),
     points: orderedStops.describe('Ordered stops. Omit to leave stops empty on create. An empty array stores no stops.'),
+    path: routePath,
   },
   handler: async (input) => createRouteDraft(input),
 })

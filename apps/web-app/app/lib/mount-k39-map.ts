@@ -1,267 +1,449 @@
-import type { GeoJSONSource, Map as MapLibreMap, Marker } from 'maplibre-gl'
-import type { MapPoint } from '~~/shared/map'
-import { clusterPoints, MAP_MAX_ZOOM, MAP_STYLE_URL, pinButtonHtml, resolvedFrameHeight } from '~~/shared/map'
+import type { MapPoint, RouteOverlay } from '~~/shared/map'
+import maplibregl from 'maplibre-gl'
+import { K39_CENTER, K39_ZOOM } from '~~/shared/map'
+import { k39MapStyle } from '~~/shared/map-style'
+import { mapImages } from './map-icons'
+import 'maplibre-gl/dist/maplibre-gl.css'
 
-export interface DrawPoint extends MapPoint {
-  focus: boolean
+interface FeatureCollection {
+  type: 'FeatureCollection'
+  features: Array<{
+    type: 'Feature'
+    id?: string
+    geometry: { type: 'Point', coordinates: [number, number] } | { type: 'LineString', coordinates: [number, number][] }
+    properties: Record<string, string | number>
+  }>
 }
 
-export interface MountedK39Map {
+export interface K39MapHandle {
+  setPoints: (points: MapPoint[]) => void
+  setOverlay: (overlay: RouteOverlay | null) => void
+  setSelected: (id: string | null) => void
+  reveal: (id: string) => void
+  fit: () => void
+  zoomIn: () => void
+  zoomOut: () => void
+  locate: () => Promise<'ok' | 'denied' | 'unavailable'>
+  resize: () => void
   destroy: () => void
-  setPoints: (points: DrawPoint[], lines: Array<Array<[number, number]>>) => void
-  enableDragging: () => void
-  coarseLock: boolean
 }
 
-const BRICK = '#A3402A'
-const OBLAST_BOUNDS: [[number, number], [number, number]] = [[18.6, 53.8], [23.6, 55.9]]
+const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] }
 
-function ensureHeight(el: HTMLElement, fallback: number) {
-  const frame = el.parentElement
-  const measured = Math.max(el.clientHeight, frame?.clientHeight || 0)
-  const height = resolvedFrameHeight(measured, fallback)
-  el.style.width = '100%'
-  el.style.height = `${height}px`
-  if (frame && measured < 160) {
-    frame.style.height = `${height}px`
-    frame.style.minHeight = `${height}px`
+function pointsData(points: MapPoint[]): FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: points.map((point) => ({
+      type: 'Feature',
+      id: point.id,
+      geometry: { type: 'Point', coordinates: [point.longitude, point.latitude] },
+      properties: {
+        id: point.id,
+        marker: point.marker,
+        partner: point.partner ? 1 : 0,
+        title: point.title,
+      },
+    })),
   }
 }
 
-function elementFromHtml(html: string) {
-  const wrap = document.createElement('div')
-  wrap.innerHTML = html
-  const node = wrap.firstElementChild
-  if (!(node instanceof HTMLElement)) {
-    throw new TypeError('Pin markup is empty')
+function stopsData(overlay: RouteOverlay | null): FeatureCollection {
+  if (!overlay) {
+    return EMPTY
   }
-  return node
+  return {
+    type: 'FeatureCollection',
+    features: overlay.stops.map((stop) => ({
+      type: 'Feature',
+      id: stop.id,
+      geometry: { type: 'Point', coordinates: [stop.longitude, stop.latitude] },
+      properties: { id: stop.id, n: stop.position, title: stop.title },
+    })),
+  }
 }
 
-export async function mountK39Map(
-  el: HTMLElement,
-  options: {
-    fallbackHeight: number
-    onSelect: (id: string) => void
-    onImpression: (href: string) => void
-  },
-): Promise<MountedK39Map> {
-  const maplibregl = await import('maplibre-gl')
-  await import('maplibre-gl/dist/maplibre-gl.css')
-  ensureHeight(el, options.fallbackHeight)
+function lineData(overlay: RouteOverlay | null): FeatureCollection {
+  if (!overlay?.line || overlay.line.length < 2) {
+    return EMPTY
+  }
+  return {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: overlay.line },
+      properties: { dashed: overlay.dashed ? 1 : 0 },
+    }],
+  }
+}
+
+function geoSource(map: maplibregl.Map, id: string) {
+  const source = map.getSource(id)
+  if (!source || source.type !== 'geojson') {
+    return null
+  }
+  return source as maplibregl.GeoJSONSource
+}
+
+export async function mountK39Map(el: HTMLElement, options: {
+  points: MapPoint[]
+  overlay: RouteOverlay | null
+  cooperative: boolean
+  onSelect: (id: string) => void
+  onEmpty: () => void
+}): Promise<K39MapHandle> {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const coarse = window.matchMedia('(pointer: coarse)').matches
-  const map: MapLibreMap = new maplibregl.Map({
+  const duration = reduce ? 0 : 450
+  let points = options.points
+  let overlay = options.overlay
+  let selected: string | null = null
+  let hovered: { source: string, id: string } | null = null
+
+  const map = new maplibregl.Map({
     container: el,
-    style: MAP_STYLE_URL,
-    center: [20.5, 54.71],
-    zoom: 8,
-    minZoom: 5,
-    maxZoom: MAP_MAX_ZOOM,
-    maxBounds: OBLAST_BOUNDS,
-    attributionControl: { compact: false },
-    fadeDuration: reduce ? 0 : 300,
+    style: k39MapStyle() as maplibregl.StyleSpecification,
+    center: K39_CENTER,
+    zoom: K39_ZOOM,
+    attributionControl: { compact: true },
+    cooperativeGestures: options.cooperative,
     dragRotate: false,
     pitchWithRotate: false,
+    touchPitch: false,
+    maxZoom: 17,
+    fadeDuration: reduce ? 0 : 160,
+    locale: {
+      'CooperativeGesturesHandler.WindowsHelpText': 'Чтобы менять масштаб, зажмите Ctrl и прокрутите',
+      'CooperativeGesturesHandler.MacHelpText': 'Чтобы менять масштаб, зажмите ⌘ и прокрутите',
+      'CooperativeGesturesHandler.MobileHelpText': 'Двигайте карту двумя пальцами',
+    },
   })
-  map.scrollZoom.disable()
-  map.touchZoomRotate.disableRotation()
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-right')
-  if (coarse) {
-    map.dragPan.disable()
-    map.getCanvas().style.touchAction = 'pan-y'
+
+  await new Promise<void>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error('Map style did not load')), 12000)
+    map.once('load', () => {
+      window.clearTimeout(timer)
+      resolve()
+    })
+  })
+
+  for (const [id, image] of Object.entries(mapImages())) {
+    if (!map.hasImage(id)) {
+      map.addImage(id, image, { pixelRatio: 2 })
+    }
   }
 
-  const seen = new Set<string>()
-  const markers: Marker[] = []
-  let currentPoints: DrawPoint[] = []
-  let currentLines: Array<Array<[number, number]>> = []
-  let fitted = false
-  let suspend = 0
-  let styleReady = false
+  map.addSource('places', {
+    type: 'geojson',
+    data: pointsData(points),
+    cluster: true,
+    clusterRadius: 48,
+    clusterMaxZoom: 13,
+  })
+  map.addSource('route-line', { type: 'geojson', data: lineData(overlay) })
+  map.addSource('stops', { type: 'geojson', data: stopsData(overlay) })
 
-  function patchAttribution() {
-    el.querySelectorAll('.maplibregl-ctrl-attrib a').forEach((node) => {
-      if (!(node instanceof HTMLAnchorElement)) {
-        return
+  map.addLayer({
+    id: 'clusters',
+    type: 'circle',
+    source: 'places',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': '#fffbf3',
+      'circle-stroke-color': '#a3402a',
+      'circle-stroke-width': 2,
+      'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 30, 24],
+    },
+  })
+  map.addLayer({
+    id: 'cluster-count',
+    type: 'symbol',
+    source: 'places',
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': ['get', 'point_count_abbreviated'],
+      'text-font': ['Noto Sans Bold'],
+      'text-size': 13,
+    },
+    paint: { 'text-color': '#2b2420' },
+  })
+  map.addLayer({
+    id: 'route-line',
+    type: 'line',
+    source: 'route-line',
+    filter: ['==', ['get', 'dashed'], 0],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#a3402a',
+      'line-width': 3,
+      'line-opacity': 0.9,
+    },
+  })
+  map.addLayer({
+    id: 'route-dashed',
+    type: 'line',
+    source: 'route-line',
+    filter: ['==', ['get', 'dashed'], 1],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#a3402a',
+      'line-width': 2.5,
+      'line-opacity': 0.75,
+      'line-dasharray': [1.2, 1.15],
+    },
+  })
+  map.addLayer({
+    id: 'pin-halo',
+    type: 'circle',
+    source: 'places',
+    filter: ['!', ['has', 'point_count']],
+    paint: {
+      'circle-radius': [
+        'case',
+        ['boolean', ['feature-state', 'selected'], false],
+        20,
+        ['boolean', ['feature-state', 'hover'], false],
+        16,
+        0,
+      ],
+      'circle-color': '#a3402a',
+      'circle-opacity': 0.22,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#fffbf3',
+      'circle-translate': [0, -16],
+    },
+  })
+  map.addLayer({
+    id: 'pins',
+    type: 'symbol',
+    source: 'places',
+    filter: ['!', ['has', 'point_count']],
+    layout: {
+      'icon-image': ['get', 'marker'],
+      'icon-anchor': 'bottom',
+      'icon-allow-overlap': true,
+      'icon-size': 1,
+    },
+  })
+  map.addLayer({
+    id: 'partner-dot',
+    type: 'circle',
+    source: 'places',
+    filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'partner'], 1]],
+    paint: {
+      'circle-color': '#d68a22',
+      'circle-stroke-color': '#fffbf3',
+      'circle-stroke-width': 1.5,
+      'circle-radius': 4.5,
+      'circle-translate': [11, -30],
+    },
+  })
+  map.addLayer({
+    id: 'stop-halo',
+    type: 'circle',
+    source: 'stops',
+    paint: {
+      'circle-radius': [
+        'case',
+        ['boolean', ['feature-state', 'selected'], false],
+        18,
+        ['boolean', ['feature-state', 'hover'], false],
+        15,
+        0,
+      ],
+      'circle-color': '#a3402a',
+      'circle-opacity': 0.2,
+    },
+  })
+  map.addLayer({
+    id: 'stops',
+    type: 'symbol',
+    source: 'stops',
+    layout: {
+      'icon-image': 'stop',
+      'icon-anchor': 'center',
+      'icon-allow-overlap': true,
+      'text-field': ['to-string', ['get', 'n']],
+      'text-font': ['Noto Sans Bold'],
+      'text-size': 12,
+      'text-allow-overlap': true,
+      'icon-size': 1,
+    },
+    paint: { 'text-color': '#fffbf3' },
+  })
+
+  function applySelected(id: string | null) {
+    if (selected) {
+      for (const source of ['places', 'stops']) {
+        map.setFeatureState({ source, id: selected }, { selected: false })
       }
-      node.target = '_blank'
-      node.rel = 'noopener nofollow'
-    })
-  }
-
-  function remember(point: DrawPoint) {
-    if (seen.has(point.href)) {
+    }
+    selected = id
+    if (!id) {
       return
     }
-    seen.add(point.href)
-    options.onImpression(point.href)
+    const source = id.startsWith('stop:') ? 'stops' : 'places'
+    map.setFeatureState({ source, id }, { selected: true })
   }
 
-  function clearMarkers() {
-    for (const marker of markers) {
-      marker.remove()
+  function hover(source: string, id: string | null) {
+    if (hovered) {
+      map.setFeatureState({ source: hovered.source, id: hovered.id }, { hover: false })
+      hovered = null
     }
-    markers.length = 0
-  }
-
-  function addPin(point: DrawPoint) {
-    const button = elementFromHtml(pinButtonHtml(point))
-    button.addEventListener('click', (event) => {
-      event.preventDefault()
-      event.stopPropagation()
-      options.onSelect(point.id)
-    })
-    const marker = new maplibregl.Marker({ element: button, anchor: 'center' })
-      .setLngLat([point.longitude, point.latitude])
-      .addTo(map)
-    markers.push(marker)
-    remember(point)
-  }
-
-  function syncLines() {
-    const data = {
-      type: 'FeatureCollection' as const,
-      features: currentLines.filter((line) => line.length > 1).map((line) => ({
-        type: 'Feature' as const,
-        properties: {},
-        geometry: {
-          type: 'LineString' as const,
-          coordinates: line.map(([latitude, longitude]) => [longitude, latitude]),
-        },
-      })),
-    }
-    const existing = map.getSource('k39-routes') as GeoJSONSource | undefined
-    if (existing) {
-      existing.setData(data)
+    if (!id) {
+      map.getCanvas().style.cursor = ''
       return
     }
-    map.addSource('k39-routes', { type: 'geojson', data })
-    map.addLayer({
-      id: 'k39-routes',
-      type: 'line',
-      source: 'k39-routes',
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': BRICK, 'line-width': 4, 'line-opacity': 0.92 },
-    })
+    hovered = { source, id }
+    map.setFeatureState({ source, id }, { hover: true })
+    map.getCanvas().style.cursor = 'pointer'
   }
 
-  function draw() {
-    if (!styleReady) {
+  function featureId(event: maplibregl.MapLayerMouseEvent) {
+    const feature = event.features?.[0]
+    const id = feature?.properties?.id
+    return id == null ? null : String(id)
+  }
+
+  map.on('click', 'clusters', (event) => {
+    const feature = event.features?.[0]
+    const clusterId = feature?.properties?.cluster_id
+    const geometry = feature?.geometry
+    if (clusterId == null || geometry?.type !== 'Point') {
       return
     }
-    clearMarkers()
-    syncLines()
-    const focus = currentPoints.filter((point) => point.focus)
-    const rest = currentPoints.filter((point) => !point.focus)
-    const zoom = map.getZoom()
-    for (const point of focus) {
-      addPin(point)
+    const source = geoSource(map, 'places')
+    const center = geometry.coordinates as [number, number]
+    void source?.getClusterExpansionZoom(Number(clusterId)).then((zoom) => {
+      map.easeTo({ center, zoom, duration })
+    }).catch(() => {})
+  })
+  map.on('click', 'pins', (event) => {
+    const id = featureId(event)
+    if (id) {
+      options.onSelect(id)
     }
-    for (const cluster of clusterPoints(rest, zoom)) {
-      const only = cluster.points[0]
-      if (cluster.points.length === 1 && only) {
-        addPin(only)
-        continue
-      }
-      const button = elementFromHtml(`<button type="button" class="k39-cluster" aria-label="Группа из ${cluster.points.length}">${cluster.points.length}</button>`)
-      button.addEventListener('click', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        const bounds = new maplibregl.LngLatBounds()
-        for (const point of cluster.points) {
-          bounds.extend([point.longitude, point.latitude])
-        }
-        suspend += 1
-        map.fitBounds(bounds, {
-          padding: 42,
-          maxZoom: Math.min(zoom + 2, 17),
-          animate: !reduce,
-          duration: reduce ? 0 : 400,
-        })
-        map.once('idle', () => {
-          suspend = Math.max(0, suspend - 1)
-          draw()
-        })
-      })
-      const marker = new maplibregl.Marker({ element: button, anchor: 'center' })
-        .setLngLat([cluster.longitude, cluster.latitude])
-        .addTo(map)
-      markers.push(marker)
+  })
+  map.on('click', 'stops', (event) => {
+    const id = featureId(event)
+    if (id) {
+      options.onSelect(id)
     }
-    patchAttribution()
+  })
+  map.on('click', (event) => {
+    const layers = ['pins', 'stops', 'clusters'].filter((id) => map.getLayer(id))
+    const hits = layers.length ? map.queryRenderedFeatures(event.point, { layers }) : []
+    if (!hits.length) {
+      options.onEmpty()
+    }
+  })
+  map.on('mousemove', 'pins', (event) => hover('places', featureId(event)))
+  map.on('mouseleave', 'pins', () => hover('places', null))
+  map.on('mousemove', 'stops', (event) => hover('stops', featureId(event)))
+  map.on('mouseleave', 'stops', () => hover('stops', null))
+  map.on('mousemove', 'clusters', () => {
+    map.getCanvas().style.cursor = 'pointer'
+  })
+  map.on('mouseleave', 'clusters', () => {
+    map.getCanvas().style.cursor = ''
+  })
+
+  function boundsOf() {
+    const bounds = new maplibregl.LngLatBounds()
+    const coords = [
+      ...points.map((point) => [point.longitude, point.latitude] as [number, number]),
+      ...(overlay?.line || []),
+      ...(overlay?.stops.map((stop) => [stop.longitude, stop.latitude] as [number, number]) || []),
+    ]
+    for (const coord of coords) {
+      bounds.extend(coord)
+    }
+    return bounds.isEmpty() ? null : bounds
   }
 
   function fit() {
-    const coords: Array<[number, number]> = [
-      ...currentPoints.map((point) => [point.longitude, point.latitude] as [number, number]),
-      ...currentLines.flat().map(([latitude, longitude]) => [longitude, latitude] as [number, number]),
-    ]
-    suspend += 1
-    if (coords.length === 1 && coords[0]) {
-      map.jumpTo({ center: coords[0], zoom: 15 })
-    } else if (coords.length > 1) {
-      const bounds = new maplibregl.LngLatBounds()
-      for (const coord of coords) {
-        bounds.extend(coord)
+    if (points.length === 1 && !overlay?.stops.length) {
+      const point = points[0]
+      if (point) {
+        map.easeTo({ center: [point.longitude, point.latitude], zoom: 15, duration })
       }
-      map.fitBounds(bounds, { padding: 42, maxZoom: 15, animate: false, duration: 0 })
-    } else {
-      map.jumpTo({ center: [20.5, 54.71], zoom: 8 })
-    }
-    suspend = Math.max(0, suspend - 1)
-  }
-
-  function apply() {
-    if (!styleReady) {
       return
     }
-    const hasGeometry = currentPoints.length > 0 || currentLines.some((line) => line.length > 0)
-    if (!fitted && hasGeometry) {
-      fit()
-      fitted = true
-    }
-    draw()
-  }
-
-  map.on('load', () => {
-    styleReady = true
-    patchAttribution()
-    apply()
-    map.resize()
-  })
-  map.on('zoomend', () => {
-    if (suspend > 0) {
+    const bounds = boundsOf()
+    if (!bounds) {
+      map.easeTo({ center: K39_CENTER, zoom: K39_ZOOM, duration })
       return
     }
-    draw()
-  })
+    map.fitBounds(bounds, { padding: 56, maxZoom: 15, duration })
+  }
 
-  const frame = el.parentElement
-  const observer = new ResizeObserver(() => {
-    const next = Math.max(el.parentElement?.clientHeight || 0, el.clientHeight)
-    if (next >= 160) {
-      el.style.height = `${next}px`
+  function findCoord(id: string): [number, number] | null {
+    const point = points.find((item) => item.id === id)
+    if (point) {
+      return [point.longitude, point.latitude]
     }
-    map.resize()
-  })
-  observer.observe(frame || el)
+    const stop = overlay?.stops.find((item) => item.id === id)
+    return stop ? [stop.longitude, stop.latitude] : null
+  }
+
+  const details = map.getContainer().querySelector('details.maplibregl-ctrl-attrib')
+  if (details instanceof HTMLDetailsElement) {
+    details.open = false
+  }
+
   requestAnimationFrame(() => map.resize())
 
   return {
-    coarseLock: coarse,
-    enableDragging: () => {
-      map.dragPan.enable()
-      map.getCanvas().style.touchAction = 'auto'
+    setPoints(next) {
+      points = next
+      geoSource(map, 'places')?.setData(pointsData(points))
+      if (selected) {
+        applySelected(selected)
+      }
     },
-    setPoints: (points, nextLines) => {
-      currentPoints = points
-      currentLines = nextLines
-      apply()
+    setOverlay(next) {
+      overlay = next
+      geoSource(map, 'route-line')?.setData(lineData(overlay))
+      geoSource(map, 'stops')?.setData(stopsData(overlay))
+      if (selected) {
+        applySelected(selected)
+      }
     },
-    destroy: () => {
-      observer.disconnect()
-      clearMarkers()
+    setSelected(id) {
+      applySelected(id)
+    },
+    reveal(id) {
+      const coord = findCoord(id)
+      if (!coord) {
+        return
+      }
+      map.easeTo({ center: coord, zoom: Math.max(map.getZoom(), 13), duration })
+    },
+    fit,
+    zoomIn() {
+      map.zoomIn({ duration })
+    },
+    zoomOut() {
+      map.zoomOut({ duration })
+    },
+    locate() {
+      if (!navigator.geolocation) {
+        return Promise.resolve('unavailable')
+      }
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition((position) => {
+          map.easeTo({
+            center: [position.coords.longitude, position.coords.latitude],
+            zoom: Math.max(map.getZoom(), 14),
+            duration,
+          })
+          resolve('ok')
+        }, () => resolve('denied'), { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 })
+      })
+    },
+    resize() {
+      map.resize()
+    },
+    destroy() {
       map.remove()
     },
   }

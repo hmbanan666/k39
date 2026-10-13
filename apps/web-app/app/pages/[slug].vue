@@ -271,7 +271,7 @@ import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
 import { illustrationFor } from '~~/shared/illustrations'
-import { yandexDestinationUrl } from '~~/shared/map'
+import { yandexDestinationUrl } from '~~/shared/embed-map'
 import { lcpPreload } from '~~/shared/media'
 
 interface PlaceLink {
