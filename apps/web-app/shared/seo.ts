@@ -29,6 +29,7 @@ export const RESERVED_SLUGS = [
   'eda',
   'forty',
   'health',
+  'karta',
   'kvesty',
   'kurorty',
   'legal',

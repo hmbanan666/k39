@@ -5,7 +5,10 @@
     kicker="Маршрут"
     :lede="page.summary"
   >
-    <RouteGuide :stops="page.stops" />
+    <RouteGuide
+      :stops="page.stops"
+      :route-slug="slug"
+    />
     <div
       class="prose"
       v-html="page.html"

@@ -36,21 +36,12 @@
       </UiButton>
     </div>
     <div class="split">
-      <div
-        ref="frame"
-        class="frame"
-        :class="{ locked: needsUnlock }"
+      <K39Map
+        class="route-map"
+        label="Карта маршрута"
+        :route-slug="routeSlug"
       >
-        <div
-          ref="canvas"
-          class="canvas"
-          role="region"
-          aria-label="Карта маршрута"
-        />
-        <ol
-          class="fallback"
-          :hidden="ready"
-        >
+        <ol>
           <li
             v-for="(stop, index) in stops"
             :key="`${stop.href}-fallback-${index}`"
@@ -58,15 +49,7 @@
             <a :href="stop.href">{{ index + 1 }}. {{ stop.text }}</a>
           </li>
         </ol>
-        <button
-          v-if="needsUnlock"
-          type="button"
-          class="unlock"
-          @click="unlock"
-        >
-          Коснитесь, чтобы двигать карту
-        </button>
-      </div>
+      </K39Map>
       <div class="stop-col">
         <h2 class="stops-title">
           Остановки
@@ -94,6 +77,14 @@
               >
                 {{ stop.distanceLabel }}
               </p>
+              <DirectionsLink
+                v-if="stop.latitude != null && stop.longitude != null"
+                class="stop-go"
+                variant="line"
+                :latitude="stop.latitude"
+                :longitude="stop.longitude"
+                :entity="stop.href"
+              />
             </div>
           </li>
         </ol>
@@ -104,83 +95,13 @@
 
 <script setup lang="ts">
 import type { RouteStopView, RouteTravelMode } from '~~/shared/route-nav'
-import type { MountedRouteMap } from '~/lib/mount-route-map'
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { locatedStops, ROUTE_TRAVEL_MODES, routeLinks } from '~~/shared/route-nav'
 
-const props = defineProps<{ stops: RouteStopView[] }>()
+const props = defineProps<{ stops: RouteStopView[], routeSlug: string }>()
 const mode = ref<RouteTravelMode>('auto')
-const ready = ref(false)
-const needsUnlock = ref(false)
-const frame = ref<HTMLElement | null>(null)
-const canvas = ref<HTMLElement | null>(null)
-const apiKey = useRuntimeConfig().public.yandexMapsApiKey
 const points = computed(() => locatedStops(props.stops))
 const links = computed(() => routeLinks(points.value, mode.value))
-
-let mounted: MountedRouteMap | null = null
-let observer: IntersectionObserver | undefined
-let opened = false
-
-function unlock() {
-  mounted?.enableDragging()
-  needsUnlock.value = false
-}
-
-async function openMap() {
-  if (opened) {
-    return
-  }
-  const el = canvas.value
-  if (!el || !points.value.length) {
-    return
-  }
-  opened = true
-  try {
-    const { mountRouteMap } = await import('~/lib/mount-route-map')
-    mounted = await mountRouteMap(el, points.value, apiKey)
-    ready.value = true
-    needsUnlock.value = mounted.coarseLock
-  } catch {
-    ready.value = false
-  }
-}
-
-onMounted(() => {
-  const host = frame.value
-  if (!host || !points.value.length) {
-    return
-  }
-  const arm = () => {
-    observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) {
-        return
-      }
-      observer?.disconnect()
-      void openMap()
-    }, { rootMargin: '120px 0px' })
-    observer.observe(host)
-  }
-  const idle = window.requestIdleCallback
-  const start = () => {
-    if (idle) {
-      idle(() => arm(), { timeout: 1500 })
-    } else {
-      arm()
-    }
-  }
-  if (document.readyState === 'complete') {
-    start()
-  } else {
-    window.addEventListener('load', start, { once: true })
-  }
-})
-
-onUnmounted(() => {
-  observer?.disconnect()
-  mounted?.destroy()
-  mounted = null
-})
 </script>
 
 <style scoped>
@@ -209,51 +130,8 @@ onUnmounted(() => {
   color: var(--color-paper);
 }
 .split { display: grid; gap: 1rem; align-items: start; }
-.frame {
-  position: relative;
-  z-index: 0;
-  height: 300px;
-  overflow: hidden;
-  isolation: isolate;
-  border: 1px solid var(--color-line);
-  border-radius: 18px;
-  background: var(--color-sea-light);
-  box-shadow: var(--shadow-card);
-}
-.canvas { position: absolute; inset: 0; z-index: 0; }
-.fallback {
-  position: relative;
-  z-index: 1;
-  height: 100%;
-  margin: 0;
-  padding: 1rem 1.15rem;
-  overflow: auto;
-  list-style: none;
-  background: var(--color-paper);
-}
-.fallback li { margin: 0.4rem 0; }
-.fallback a {
-  color: var(--color-sea);
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-.unlock {
-  position: absolute;
-  z-index: 2;
-  right: 0.8rem;
-  bottom: 0.8rem;
-  left: 0.8rem;
-  min-height: 2.6rem;
-  padding: 0.4rem 0.8rem;
-  border: 1px solid var(--color-ink);
-  border-radius: 12px;
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font: 700 0.9rem/1.2 var(--font-body);
-  cursor: pointer;
-}
+.route-map { margin: 0; }
+.stop-go { margin-top: 0.45rem; }
 .stops-title { margin: 0 0 var(--space-3); font-size: var(--step-1); }
 .cards { display: grid; gap: 0.7rem; margin: 0; padding: 0; list-style: none; }
 .cards li {
@@ -288,40 +166,11 @@ onUnmounted(() => {
 }
 .note { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
 .leg { margin: 0.35rem 0 0; color: var(--color-pine); font-size: 0.92rem; font-weight: 700; }
-:deep(.leaflet-container) {
-  width: 100%;
-  height: 100%;
-  background: var(--color-sea-light);
-  font-family: var(--font-body);
-}
-:deep(.leaflet-div-icon.route-pin-wrap) { background: transparent; border: none; }
-:deep(.route-pin) {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 2px solid var(--color-paper);
-  border-radius: 50%;
-  background: var(--color-brick);
-  color: var(--color-paper);
-  box-shadow: 0 1px 4px rgb(43 36 32 / 35%);
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-:deep(.yandex-pin) { transform: translate(-50%, -50%); }
-:deep(.leaflet-control-attribution) {
-  background: rgb(245 238 225 / 92%);
-  color: var(--color-ink);
-  font-size: 11px;
-}
-:deep(.leaflet-control-attribution a) { color: var(--color-sea); }
 @media (max-width: 720px) {
   .go { flex: 1 1 100%; }
   .modes { flex: 1 1 100%; }
 }
 @media (min-width: 900px) {
   .split { grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.75fr); }
-  .frame { height: 460px; }
 }
 </style>

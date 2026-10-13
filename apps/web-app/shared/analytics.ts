@@ -206,6 +206,22 @@ export function utmFromPath(path: string) {
   }
 }
 
+export const COLLECT_TYPES = ['pageview', 'engage', 'outbound', 'photo', 'impression', 'directions', 'pin_impression', 'pin_click'] as const
+
+export interface HitEntity {
+  placeId: string | null
+  routeId: string | null
+  venueId: string | null
+}
+
+export function mergeHitEntities(page: HitEntity, entity: HitEntity | null, shown: HitEntity | null): HitEntity {
+  return {
+    placeId: entity?.placeId ?? shown?.placeId ?? page.placeId,
+    routeId: page.routeId ?? entity?.routeId ?? shown?.routeId ?? null,
+    venueId: entity?.venueId ?? shown?.venueId ?? page.venueId,
+  }
+}
+
 export function trendPercent(current: number, previous: number) {
   if (!previous) {
     return null

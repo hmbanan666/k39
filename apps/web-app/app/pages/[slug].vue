@@ -54,14 +54,12 @@
           </UiTooltip>
         </p>
         <p class="actions">
-          <UiButton
-            v-if="yandex"
-            :href="yandex"
-            data-track="outbound"
-            data-track-name="route"
-          >
-            Как добраться
-          </UiButton>
+          <DirectionsLink
+            v-if="page.place.latitude != null && page.place.longitude != null"
+            :latitude="page.place.latitude"
+            :longitude="page.place.longitude"
+            :entity="`/${slug}`"
+          />
           <UiButton
             v-if="page.routeBand"
             :href="page.routeBand.href"
@@ -159,6 +157,9 @@
                 <UiLink
                   v-if="yandex"
                   :href="yandex"
+                  data-track="directions"
+                  data-track-name="directions"
+                  :data-track-entity="`/${slug}`"
                 >
                   Яндекс Карты
                 </UiLink>
@@ -179,6 +180,14 @@
         </div>
       </aside>
     </div>
+    <K39Map
+      v-if="page.place.latitude != null && page.place.longitude != null"
+      class="place-map"
+      label="Карта места"
+      :latitude="page.place.latitude"
+      :longitude="page.place.longitude"
+      :entity="`/${slug}`"
+    />
     <section
       v-if="morePhotos.length"
       class="gallery"
@@ -262,6 +271,7 @@ import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
 import { illustrationFor } from '~~/shared/illustrations'
+import { yandexDestinationUrl } from '~~/shared/map'
 
 interface PlaceLink {
   href: string
@@ -333,8 +343,8 @@ const statusHint = ({
   closed: 'По источникам место закрыто для визита.',
   unknown: 'Статус визита в источниках не указан.',
 } as Record<string, string>)[page.place.status] || 'Статус визита.'
-const yandex = page.place.latitude != null
-  ? `https://yandex.ru/maps/?rtext=~${page.place.latitude}%2C${page.place.longitude}&rtt=mt`
+const yandex = page.place.latitude != null && page.place.longitude != null
+  ? yandexDestinationUrl(page.place.latitude, page.place.longitude)
   : ''
 const hours = page.place.hours?.trim() || ''
 const price = page.place.price?.trim() || ''
@@ -352,6 +362,7 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 </script>
 
 <style scoped>
+.place-map { margin: 1.2rem 0 0; }
 .hero {
   display: grid;
   gap: 1.6rem;

@@ -113,11 +113,23 @@
         </dd>
       </template>
     </dl>
-    <VenueMap
+    <p
       v-if="page.venue.latitude != null && page.venue.longitude != null"
-      :title="page.venue.name"
+      class="directions"
+    >
+      <DirectionsLink
+        :latitude="page.venue.latitude"
+        :longitude="page.venue.longitude"
+        :entity="`/zavedeniya/${page.venue.slug}`"
+      />
+    </p>
+    <K39Map
+      v-if="page.venue.latitude != null && page.venue.longitude != null"
+      class="venue-map"
+      label="Карта заведения"
       :latitude="page.venue.latitude"
       :longitude="page.venue.longitude"
+      :entity="`/zavedeniya/${page.venue.slug}`"
     />
     <div
       v-if="page.venue.description"
@@ -204,6 +216,7 @@ interface VenuePage {
     hours: string[]
     description: string
     html: string
+    slug: string
     latitude: number | null
     longitude: number | null
     stale: boolean
@@ -247,6 +260,8 @@ function openPhoto(id: string) {
 .facts dd { margin: 0; }
 .facts p { margin: 0; }
 .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
+.directions { margin: 0.4rem 0 0.9rem; }
+.venue-map { margin: 0 0 1.2rem; }
 .stale, .stale-note { color: var(--color-warn); }
 .stale-note { margin: 0 0 1rem; }
 .sources { margin-top: 2rem; }

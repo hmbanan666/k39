@@ -27,6 +27,7 @@ export const SECTION_LINKS: TextLink[] = [
   { href: '/podborki', text: 'Подборки' },
   { href: '/kvesty', text: 'Квесты' },
   { href: '/zavedeniya', text: 'Заведения' },
+  { href: '/karta', text: 'Карта' },
 ]
 
 export const LEGAL_LINKS: TextLink[] = [
