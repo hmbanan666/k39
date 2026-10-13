@@ -46,15 +46,32 @@
       </figure>
     </section>
     <MapEmbed
-      v-if="page.items[0]"
+      v-if="page.places[0]"
       :label="page.kind === 'month' ? 'Места на карте' : 'Карта подборки'"
-      :focus-href="page.items[0].href"
-      :hrefs="page.items.map((item) => item.href)"
+      :focus-href="page.places[0].href"
+      :hrefs="page.places.map((place) => place.href)"
     />
-    <RouteSteps
-      :title="page.kind === 'month' ? 'Места из путеводителя' : 'Места подборки'"
-      :steps="page.items"
-    />
+    <section
+      v-if="page.places.length"
+      class="places"
+    >
+      <h2>{{ page.kind === 'month' ? 'Места из путеводителя' : 'Места подборки' }}</h2>
+      <div class="card-grid cols-3">
+        <PlaceCard
+          v-for="place in page.places"
+          :key="place.href"
+          :href="place.href"
+          :title="place.title"
+          :summary="place.summary"
+          :hub="place.hub"
+          :town="place.town"
+          :kind="place.kind"
+          :media="place.media"
+          :summary-lines="1"
+          meta-place="stack"
+        />
+      </div>
+    </section>
     <LinkList
       title="Другие месяцы"
       :links="page.months"
@@ -98,7 +115,15 @@ const slug = String(useRoute().params.slug || '')
 const page = await fetchPublic<{
   doc: SeoDocument
   html: string
-  items: TextLink[]
+  places: Array<{
+    href: string
+    title: string
+    summary: string
+    hub: string
+    town: string
+    kind: string
+    media: PublicMedia | null
+  }>
   kind: string
   sources: { title: string, url: string }[]
   months: TextLink[]
@@ -136,6 +161,7 @@ usePublicHead(page.doc)
   flex-wrap: wrap;
   gap: 0.2rem 0.6rem;
 }
+.places h2 { margin-bottom: 1rem; }
 @media (min-width: 700px) {
   .gallery { grid-template-columns: repeat(2, 1fr); }
 }

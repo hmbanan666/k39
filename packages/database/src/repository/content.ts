@@ -234,7 +234,17 @@ export class Content {
     if (!collection) {
       return null
     }
-    const items = await db.select({ slug: places.slug, title: places.title, note: collectionItems.note, position: collectionItems.position }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id)).where(and(eq(collectionItems.collectionId, collection.id), eq(places.publicationStatus, published))).orderBy(asc(collectionItems.position))
+    const items = await db.select({
+      id: places.id,
+      slug: places.slug,
+      title: places.title,
+      summary: places.summary,
+      note: collectionItems.note,
+      position: collectionItems.position,
+      categorySlug: categories.slug,
+      categoryTitle: categories.title,
+      regionTitle: regions.title,
+    }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id)).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(and(eq(collectionItems.collectionId, collection.id), eq(places.publicationStatus, published))).orderBy(asc(collectionItems.position))
     return { collection, items }
   }
 
