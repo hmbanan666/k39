@@ -15,12 +15,16 @@
       :html="page.html"
       :sections-before="sectionsBefore"
       :sections-after="sectionsAfter"
-    />
-    <VenueNearby
-      :id="PAGE_SECTIONS.eatNearby.id"
-      :items="page.eatNearby || []"
-      :title="PAGE_SECTIONS.eatNearby.title"
-    />
+    >
+      <!-- In the article column, so the sticky contents rail reaches it. -->
+      <template #after>
+        <VenueNearby
+          :id="PAGE_SECTIONS.eatNearby.id"
+          :items="page.eatNearby || []"
+          :title="PAGE_SECTIONS.eatNearby.title"
+        />
+      </template>
+    </ReaderLayout>
   </ArticleShell>
 </template>
 

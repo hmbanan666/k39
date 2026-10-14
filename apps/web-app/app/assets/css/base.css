@@ -77,16 +77,10 @@ img {
 .prose h2 { margin: 2.2rem 0 0.8rem; font-size: clamp(1.7rem, 1.3rem + 0.8vw, 2rem); }
 .prose h2:first-child,
 .prose > .reader-html:first-child > h2:first-child { margin-top: 0; }
-.prose > .reader-html ~ .reader-html > p:first-of-type::first-letter {
-  float: none;
-  margin: 0;
-  color: inherit;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: inherit;
-}
-.prose p:first-of-type::first-letter {
+/* The drop cap opens the page's main article only: the first paragraph of the
+   body, or of a lead text module. Sections, FAQ answers and cards read plain. */
+.prose > .reader-html:first-child > p:first-of-type::first-letter,
+.module-text.lead > .prose > p:first-of-type::first-letter {
   float: left;
   margin: 0.08em 0.12em 0 0;
   color: var(--color-brick);
@@ -356,7 +350,8 @@ img {
 @media (max-width: 600px) {
   body { font-size: 16px; }
   .prose { font-size: 16.5px; }
-  .prose p:first-of-type::first-letter { font-size: 3rem; }
+  .prose > .reader-html:first-child > p:first-of-type::first-letter,
+  .module-text.lead > .prose > p:first-of-type::first-letter { font-size: 3rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -362,7 +362,6 @@ const SECTIONS = PAGE_SECTIONS
 const sectionsAfter = presentSections([
   [SECTIONS.directions, Boolean(hasCoords || page.directionsHtml)],
   [SECTIONS.faq, page.faq.length > 0],
-  [SECTIONS.sources, page.sources.length > 0],
   [SECTIONS.nearby, Boolean(nearby || page.eatNearby?.length)],
 ])
 const heroSizes = '(min-width: 1000px) 720px, 100vw'
