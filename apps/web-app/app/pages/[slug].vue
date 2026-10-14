@@ -1,17 +1,16 @@
 <template>
   <article class="page page-wide place">
     <UiBreadcrumbs :crumbs="page.doc.crumbs" />
+    <!-- The category is named once in the breadcrumb and once in the kicker. -->
     <header class="hero">
       <Postcard
         class="hero-card"
         :src="heroSrc"
         :alt="heroAlt"
         :caption="page.doc.h1"
-        :meta="page.categoryTitle"
         tilt="-1.2deg"
         ratio="16 / 10"
         :stamp-src="illustrationFor(page.categorySlug, slug)"
-        :stamp-label="page.categoryTitle"
         stamp-place="out"
         postmark
         priority
@@ -41,12 +40,6 @@
           {{ page.place.summary }}
         </p>
         <p class="tags">
-          <UiBadge
-            :href="`/${page.categorySlug}`"
-            tone="brick"
-          >
-            {{ page.categoryTitle }}
-          </UiBadge>
           <UiTooltip :text="statusHint">
             <UiBadge tone="pine">
               {{ statusLabel }}
