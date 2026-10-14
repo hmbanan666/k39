@@ -284,6 +284,10 @@ export function availabilityText(value: Availability, at: Date) {
   }
   if (value.closesAt) {
     const left = value.minutesLeft ?? 0
+    // Only an always-open schedule runs past a day without closing.
+    if (left > 24 * 60) {
+      return 'Открыто круглосуточно'
+    }
     const rest = left >= 60 ? `ещё ${Math.floor(left / 60)} ч${left % 60 ? ` ${left % 60} мин` : ''}` : `ещё ${left} мин`
     return `Открыто до ${clockOf(value.closesAt)} · ${rest}`
   }

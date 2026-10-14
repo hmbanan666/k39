@@ -47,3 +47,13 @@ describe('schedule', () => {
     expect(describeSchedule(market).length).toBeGreaterThan(0)
   })
 })
+
+describe('always open', () => {
+  it('says круглосуточно', () => {
+    const park = { rules: scheduleRulesSchema.parse({ mode: 'always' }), sourceUrl: null, verifiedAt: '2026-10-14' }
+    const now = at('2026-10-14T03:00')
+    const value = statusFromRules(park, now)
+    expect(value.status).toBe('open')
+    expect(availabilityText(value, now)).toBe('Открыто круглосуточно')
+  })
+})
