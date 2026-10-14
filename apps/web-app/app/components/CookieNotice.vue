@@ -7,7 +7,7 @@
     aria-label="Уведомление о cookie"
   >
     <Sticker
-      slug="with-coffee-and-croissant"
+      slug="with-blank-sign"
       :width="44"
       decorative
       aria-hidden="true"
