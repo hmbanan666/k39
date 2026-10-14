@@ -1,6 +1,8 @@
 import type { PublicMedia } from './media'
+import type { ScheduleRecord } from './schedule'
 import { licenseHref, licenseLabel, openGraphFile } from './media'
 import { openingHoursSchema, parsePlaceHours } from './opening-hours'
+import { scheduleMarkup } from './schedule'
 
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
@@ -682,6 +684,8 @@ export interface PlaceSeoInput {
   latitude: number | null
   longitude: number | null
   hours: string | null
+  // Structured schedule (ADR 0028), preferred over parsing `hours`.
+  schedule?: ScheduleRecord | null
   price?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
@@ -770,7 +774,8 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   if (hours) {
     node.openingHours = hours
   }
-  const parsedHours = openingHoursSchema(parsePlaceHours(input.hours), input.now ?? new Date())
+  const now = input.now ?? new Date()
+  const parsedHours = scheduleMarkup(input.schedule ?? null, now) ?? openingHoursSchema(parsePlaceHours(input.hours), now)
   if (parsedHours) {
     node.openingHoursSpecification = parsedHours.regular
     if (parsedHours.special.length) {

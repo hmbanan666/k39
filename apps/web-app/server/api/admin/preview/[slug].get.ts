@@ -2,6 +2,7 @@ import { db } from '@k39/database'
 import { renderMarkdown } from '../../../../shared/markdown'
 import { placeDocument } from '../../../../shared/seo'
 import { requireEditor } from '../../../utils/access'
+import { loadSchedule } from '../../../utils/schedule'
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
@@ -22,6 +23,7 @@ export default defineEventHandler(async (event) => {
     latitude: place.latitude,
     longitude: place.longitude,
     hours: place.hours,
+    schedule: await loadSchedule('place', place.id),
     seoTitle: place.seoTitle,
     seoDescription: place.seoDescription,
     noindex: true,
