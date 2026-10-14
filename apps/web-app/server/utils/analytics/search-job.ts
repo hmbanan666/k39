@@ -206,6 +206,8 @@ async function pullYandex(from: string, to: string) {
   return { engine: 'yandex', skipped: false, rows: rows.length }
 }
 
+const SEARCH_DONE = 'search-done'
+
 export async function runAnalyticsMaintenance(now = new Date()) {
   const today = dayStamp(now)
   await db.analytics.purgeRaw(now)
@@ -213,17 +215,23 @@ export async function runAnalyticsMaintenance(now = new Date()) {
   if (await db.analytics.claimRun(yesterday, 'rollup')) {
     await db.analytics.rollupDay(yesterday)
   }
-  if (!(await db.analytics.claimRun(today, 'search'))) {
+  // Marked done only after every engine succeeds, so a failed import retries on the next hourly tick.
+  if (await db.analytics.hasRun(today, SEARCH_DONE)) {
     return { skipped: true }
   }
   const from = dayStamp(new Date(now.getTime() - 3 * 86_400_000))
   const results = []
+  let failed = false
   for (const pull of [pullYandex, pullGoogle]) {
     try {
       results.push(await pull(from, yesterday))
     } catch (error) {
+      failed = true
       results.push({ error: error instanceof Error ? error.message : 'search import failed' })
     }
   }
-  return { skipped: false, results }
+  if (!failed) {
+    await db.analytics.claimRun(today, SEARCH_DONE)
+  }
+  return { skipped: false, failed, results }
 }

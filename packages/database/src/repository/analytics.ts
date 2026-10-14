@@ -354,6 +354,11 @@ export class Analytics {
     return inserted.length > 0
   }
 
+  static async hasRun(day: string, kind: string) {
+    const rows = await useDatabase().select({ day: analyticsRuns.day }).from(analyticsRuns).where(sql`${analyticsRuns.day} = ${day} and ${analyticsRuns.kind} = ${kind}`).limit(1)
+    return rows.length > 0
+  }
+
   static async hasSearchRows(engine: string) {
     const rows = await useDatabase().select({ day: analyticsSearchQueries.day }).from(analyticsSearchQueries).where(sql`${analyticsSearchQueries.engine} = ${engine}`).limit(1)
     return rows.length > 0

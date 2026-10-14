@@ -20,7 +20,7 @@ Do this after the site answers on `https://k39.online`. Nothing here is configur
 
 ## Query import
 
-The site pulls queries into Postgres once a day. If the variables below are empty, that engine is skipped and the rest of the site keeps running. Steps for creating the tokens are in ADR 0013.
+The site pulls queries into Postgres once a day. The job checks every hour and marks the day done only after every configured engine succeeds, so a failed import retries on the next hour. If the variables below are empty, that engine is skipped and the rest of the site keeps running. Steps for creating the tokens are in ADR 0013.
 
 Yandex Webmaster:
 
