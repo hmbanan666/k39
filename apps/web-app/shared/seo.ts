@@ -1,5 +1,6 @@
 import type { PublicMedia } from './media'
 import { licenseHref, licenseLabel, openGraphFile } from './media'
+import { openingHoursSchema, parsePlaceHours } from './opening-hours'
 
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
@@ -670,6 +671,8 @@ function imageObject(image: SeoImage) {
 }
 
 export interface PlaceSeoInput {
+  /** Clock for upcoming closed days in the markup; defaults to now. */
+  now?: Date
   slug: string
   title: string
   summary: string
@@ -766,6 +769,13 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   const hours = schemaOpeningHours(input.hours)
   if (hours) {
     node.openingHours = hours
+  }
+  const parsedHours = openingHoursSchema(parsePlaceHours(input.hours), input.now ?? new Date())
+  if (parsedHours) {
+    node.openingHoursSpecification = parsedHours.regular
+    if (parsedHours.special.length) {
+      node.specialOpeningHoursSpecification = parsedHours.special
+    }
   }
   const free = accessibleForFree(input.price)
   if (free != null) {

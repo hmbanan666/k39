@@ -33,6 +33,7 @@ export const TABLER_ICONS = {
   fit: 'focus-2',
   fullscreen: 'arrows-maximize',
   hours: 'clock',
+  closed: 'calendar-x',
   price: 'ticket',
   address: 'map-pin',
   coordinates: 'compass',
