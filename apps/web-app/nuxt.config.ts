@@ -54,6 +54,9 @@ export default defineNuxtConfig({
     '/sitemap-urls': { headers: { 'x-robots-tag': 'noindex' } },
     '/legal/privacy-policy': { redirect: { to: '/privacy', statusCode: 301 } },
     '/cookies': { redirect: { to: '/privacy#cookies', statusCode: 301 } },
+    // Legacy URLs from the old site that still get search impressions.
+    '/lastochka': { redirect: { to: '/eda', statusCode: 301 } },
+    '/lastochka/**': { redirect: { to: '/eda', statusCode: 301 } },
     '/media/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     // Brand URLs stay stable, so they are not immutable. A week lets a deploy replace them.
