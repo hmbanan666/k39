@@ -144,9 +144,14 @@ button:hover { background: var(--color-brick-dark); }
   .notice {
     right: max(12px, env(safe-area-inset-right));
     width: auto;
+    flex-wrap: nowrap;
     max-width: none;
   }
   .notice-sticker { width: 2.25rem; }
+  p {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .notice { animation: none; }
