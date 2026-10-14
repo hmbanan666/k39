@@ -68,3 +68,13 @@ describe('analytics classification', () => {
     )).toEqual({ placeId: 'stop-place', routeId: 'route-1', venueId: null })
   })
 })
+
+describe('search console property', () => {
+  it('falls back from a URL prefix to the domain property it can read', async () => {
+    const { pickGoogleSite } = await import('../server/utils/analytics/search-job')
+    const sites = [{ siteUrl: 'sc-domain:k39.online', permissionLevel: 'siteFullUser' }]
+    expect(pickGoogleSite('https://k39.online/', sites)).toBe('sc-domain:k39.online')
+    expect(pickGoogleSite('sc-domain:k39.online', sites)).toBe('sc-domain:k39.online')
+    expect(pickGoogleSite('https://k39.online/', [])).toBe('https://k39.online/')
+  })
+})

@@ -34,7 +34,7 @@ Google Search Console, one of these:
 - Service account: create a JSON key, put the file contents in `GSC_SERVICE_ACCOUNT_JSON`, and add the client email as a user on the property `https://k39.online/`. Scope used by the job: `https://www.googleapis.com/auth/webmasters.readonly`.
 - OAuth: set `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, and `GSC_REFRESH_TOKEN` for a user who can read that property.
 
-Also set `GSC_SITE_URL=https://k39.online/`.
+Also set `GSC_SITE_URL`. For a domain property use `sc-domain:k39.online`; a URL-prefix value such as `https://k39.online/` also works, because the job falls back to the readable property on the same host. On the first run with no Google rows the job backfills 90 days.
 
 `ANALYTICS_SALT` is a long random string. The daily cookieless visitor hash uses it. Without it the server falls back to `NUXT_SESSION_PASSWORD`.
 

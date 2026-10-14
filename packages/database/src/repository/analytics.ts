@@ -354,6 +354,11 @@ export class Analytics {
     return inserted.length > 0
   }
 
+  static async hasSearchRows(engine: string) {
+    const rows = await useDatabase().select({ day: analyticsSearchQueries.day }).from(analyticsSearchQueries).where(sql`${analyticsSearchQueries.engine} = ${engine}`).limit(1)
+    return rows.length > 0
+  }
+
   static async replaceSearchRows(rows: Array<{ day: string, engine: string, page: string, query: string, impressions: number, clicks: number, position: number | null }>) {
     if (!rows.length) {
       return
