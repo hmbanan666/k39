@@ -147,6 +147,7 @@ button:hover { background: var(--color-brick-dark); }
     max-width: none;
   }
   .notice-sticker { width: 2.25rem; }
+  p { flex-basis: 10rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .notice { animation: none; }
