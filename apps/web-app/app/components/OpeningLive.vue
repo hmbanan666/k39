@@ -32,7 +32,7 @@ function update() {
   const value = statusFromRules(props.schedule, now)
   status.value = value.status === 'unknown'
     ? null
-    : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen), text: availabilityText(value, now) }
+    : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen) || value.status === 'appointment', text: [availabilityText(value, now), value.status === 'appointment' ? props.schedule?.rules.note : ''].filter(Boolean).join(': ') }
   unverified.value = value.status === 'unknown' && Boolean(props.hasHours)
 }
 
