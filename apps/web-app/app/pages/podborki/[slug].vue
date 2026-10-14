@@ -21,18 +21,27 @@
         {{ page.cover.caption }}
       </p>
     </div>
-    <PageModuleList
+    <ReaderLayout
       v-if="page.modules.length"
-      :modules="page.modules"
-      :places="page.places"
-      :months="page.monthNav"
-    />
+      :sections-before="moduleSections"
+      :sections-after="sectionsAfter"
+    >
+      <template #body>
+        <PageModuleList
+          :modules="page.modules"
+          :places="page.places"
+          :months="page.monthNav"
+        />
+      </template>
+    </ReaderLayout>
     <ReaderLayout
       v-else
       :html="page.html"
+      :sections-after="sectionsAfter"
     />
     <section
       v-if="rest.length"
+      :id="PAGE_SECTIONS.gallery.id"
       class="gallery"
       aria-label="Фотографии"
     >
@@ -59,9 +68,10 @@
     />
     <section
       v-if="!page.modules.length && page.places.length"
+      :id="PAGE_SECTIONS.places.id"
       class="places"
     >
-      <h2>{{ page.kind === 'month' ? 'Места из путеводителя' : 'Места подборки' }}</h2>
+      <h2>{{ placesTitle }}</h2>
       <div class="card-grid cols-3">
         <PlaceCard
           v-for="place in page.places"
@@ -91,9 +101,10 @@
     />
     <details
       v-if="page.sources.length"
+      :id="PAGE_SECTIONS.sources.id"
       class="sources"
     >
-      <summary>Источники</summary>
+      <summary>{{ PAGE_SECTIONS.sources.title }}</summary>
       <ul>
         <li
           v-for="source in page.sources"
@@ -115,7 +126,9 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 import type { PublicPageModule, PublicPlaceCard } from '~~/shared/page-modules'
+import type { PageSection } from '~~/shared/page-sections'
 import type { SeoDocument } from '~~/shared/seo'
+import { moduleAnchors, PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 
 interface TextLink { href: string, text: string }
 
@@ -142,6 +155,14 @@ function openPhoto(id: string) {
   viewerOpen.value = true
 }
 usePublicHead(page.doc)
+const placesTitle = page.kind === 'month' ? 'Места из путеводителя' : 'Места подборки'
+const moduleSections = moduleAnchors(page.modules, (module) => module.type !== 'places' || page.places.length > 0)
+  .filter((item): item is PageSection => Boolean(item))
+const sectionsAfter = presentSections([
+  [PAGE_SECTIONS.gallery, rest.length > 0],
+  [PAGE_SECTIONS.places, !page.modules.length && page.places.length > 0],
+  [PAGE_SECTIONS.sources, page.sources.length > 0],
+], { [PAGE_SECTIONS.places.id]: placesTitle })
 </script>
 
 <style scoped>

@@ -33,6 +33,11 @@ export function headingPlain(value: string) {
     .trim()
 }
 
+/** Old heading anchors kept working after a section was renamed. */
+export const HEADING_ALIASES: Record<string, string> = {
+  praktika: 'polezno-znat',
+}
+
 /** Latin slug for a heading. Cyrillic is transliterated; a leading digit is prefixed. */
 export function headingId(text: string, used: Map<string, number>, prefix = '') {
   const raw = transliterateSlug(headingPlain(text)) || 'section'
@@ -73,9 +78,9 @@ export function readerOutline(html: string): ReaderHeading[] {
   return items
 }
 
-export function showReaderToc(html: string) {
+export function showReaderToc(html: string, blocks = 0) {
   const h2 = readerOutline(html).filter((item) => item.level === 2).length
-  return h2 >= READER_TOC_MIN_H2
+  return h2 + blocks >= READER_TOC_MIN_H2
 }
 
 export function readerTree(html: string): ReaderTocItem[] {

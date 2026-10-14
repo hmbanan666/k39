@@ -59,7 +59,7 @@
       </div>
       <div class="stop-col">
         <h2 class="stops-title">
-          Остановки
+          {{ PAGE_SECTIONS.stops.title }}
         </h2>
         <ol class="cards">
           <li
@@ -105,6 +105,7 @@ import type { MapRoute } from '~~/shared/map'
 import type { RouteStopView, RouteTravelMode } from '~~/shared/route-nav'
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { routeOverlay } from '~~/shared/map'
+import { PAGE_SECTIONS } from '~~/shared/page-sections'
 import { locatedStops, ROUTE_TRAVEL_MODES, routeLinks } from '~~/shared/route-nav'
 
 const props = defineProps<{
