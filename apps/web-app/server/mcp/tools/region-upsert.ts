@@ -12,6 +12,7 @@ export default defineMcpTool({
   inputSchema: {
     slug: z.string().describe('Stable latin slug, such as zelenogradsk'),
     name: z.string().describe('Official name, stored as the region title'),
+    shortTitle: z.string().nullable().optional().describe('Town name for eyebrows and filters, e.g. Зеленоградск. Null clears it; omit to keep it'),
     description: z.string().nullable().optional(),
     coordinates: point.nullable().optional(),
     center: point.nullable().optional().describe('Alias of coordinates'),

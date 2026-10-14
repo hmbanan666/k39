@@ -12,6 +12,7 @@ export interface RegionRow {
   id: string
   slug: string
   title: string
+  shortTitle?: string | null
   description: string | null
   latitude: number | null
   longitude: number | null
@@ -54,6 +55,7 @@ export function regionView(row: RegionRow) {
     slug: row.slug,
     name: row.title,
     title: row.title,
+    shortTitle: row.shortTitle ?? null,
     description: row.description,
     center,
     coordinates: center,
@@ -68,6 +70,7 @@ export async function listRegions() {
 export async function upsertRegion(input: {
   slug: string
   name: string
+  shortTitle?: string | null
   description?: string | null
   coordinates?: RegionCenter | null
   center?: RegionCenter | null
@@ -84,6 +87,7 @@ export async function upsertRegion(input: {
   const row = await db.editor.upsertRegion({
     slug: input.slug,
     title: name,
+    shortTitle: input.shortTitle,
     description: input.description,
     latitude: center?.latitude,
     longitude: center?.longitude,

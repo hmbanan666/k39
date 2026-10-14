@@ -25,6 +25,7 @@ import {
 } from '@k39/database'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
+import { regionLabel } from '../../../shared/region'
 import { collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
 import { loadSchedule } from '../schedule'
 
@@ -135,7 +136,7 @@ async function loadVenue(slug: string) {
     name: venue.name,
     kind: venue.kind,
     description: venue.description,
-    regionTitle: region?.title ?? null,
+    regionTitle: region ? regionLabel(region) : null,
     address: venue.address,
     latitude: venue.latitude,
     longitude: venue.longitude,
@@ -191,7 +192,7 @@ async function loadVenue(slug: string) {
       dishes: venue.signatureDishes ?? [],
       summary: venueSummary(venue.seoDescription, venue.description),
       checkedAt: venue.lastVerifiedAt,
-      regionTitle: region?.title ?? null,
+      regionTitle: region ? regionLabel(region) : null,
       schedule: await loadSchedule('venue', venue.id),
     },
     photos,
@@ -212,7 +213,7 @@ async function loadVenue(slug: string) {
 async function loadListing(
   regionSlug: string | null,
   kind: string | null,
-  regionRows: Array<{ id: string, slug: string, title: string }>,
+  regionRows: Array<{ id: string, slug: string, title: string, shortTitle?: string | null }>,
 ) {
   const region = regionSlug ? regionRows.find((row) => row.slug === regionSlug) ?? null : null
   if (regionSlug && !region) {
@@ -227,7 +228,7 @@ async function loadListing(
     foodOnly: !kind,
   })
   const shown = kind ? rows : rows.filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
-  const heading = listingHeading(region?.title ?? null, kind)
+  const heading = listingHeading(region ? regionLabel(region) : null, kind)
   const summary = plainIntro(intro?.body) || LISTING_SUMMARY
   const doc = collectionDocument({
     path: listingPath(regionSlug, kind),
@@ -250,7 +251,7 @@ async function loadListing(
     regionSlug,
     kind,
     filters: {
-      regions: regionRows.map((row) => ({ slug: row.slug, title: row.title, href: listingPath(row.slug, kind) })),
+      regions: regionRows.map((row) => ({ slug: row.slug, title: regionLabel(row), href: listingPath(row.slug, kind) })),
       kinds: FOOD_KINDS.map((item) => ({
         kind: item,
         label: KIND_HEADING[item],
