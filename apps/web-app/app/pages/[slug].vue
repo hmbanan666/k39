@@ -152,6 +152,74 @@
             />
           </div>
         </template>
+        <template #after>
+          <section
+            v-if="hasCoords || page.directionsHtml"
+            :id="SECTIONS.directions.id"
+            class="directions"
+          >
+            <h2>{{ SECTIONS.directions.title }}</h2>
+            <div
+              v-if="page.directionsHtml"
+              class="directions-text"
+              v-html="page.directionsHtml"
+            />
+            <MapEmbed
+              v-if="hasCoords"
+              class="place-map"
+              label="Карта места"
+              :focus-href="`/${slug}`"
+              :latitude="page.place.latitude!"
+              :longitude="page.place.longitude!"
+            />
+          </section>
+          <section
+            v-if="page.faq.length"
+            :id="SECTIONS.faq.id"
+            class="faq"
+            aria-labelledby="faq-title"
+          >
+            <h2 id="faq-title">
+              {{ SECTIONS.faq.title }}
+            </h2>
+            <details
+              v-for="(item, index) in page.faq"
+              :key="item.question"
+              class="faq-item"
+              :open="index === 0"
+            >
+              <summary>{{ item.question }}</summary>
+              <p>{{ item.answer }}</p>
+            </details>
+          </section>
+          <details
+            v-if="page.sources.length"
+            :id="SECTIONS.sources.id"
+            class="sources"
+          >
+            <summary>{{ SECTIONS.sources.title }}</summary>
+            <ul>
+              <li
+                v-for="source in page.sources"
+                :key="source.url"
+              >
+                <UiLink
+                  :href="source.url"
+                  data-track="outbound"
+                  data-track-name="source"
+                >
+                  {{ source.title }}
+                </UiLink>
+              </li>
+            </ul>
+            <p
+              v-if="checkedLabel"
+              class="sources-date"
+            >
+              Факты сверены с источниками {{ checkedLabel }}.
+            </p>
+          </details>
+        </template>
       </ReaderLayout>
     </div>
     <section
@@ -181,78 +249,12 @@
         level="h3"
       />
     </section>
-    <section
-      v-if="hasCoords || page.directionsHtml"
-      :id="SECTIONS.directions.id"
-      class="directions"
-    >
-      <h2>{{ SECTIONS.directions.title }}</h2>
-      <div
-        v-if="page.directionsHtml"
-        class="directions-text"
-        v-html="page.directionsHtml"
-      />
-      <MapEmbed
-        v-if="hasCoords"
-        class="place-map"
-        label="Карта места"
-        :focus-href="`/${slug}`"
-        :latitude="page.place.latitude!"
-        :longitude="page.place.longitude!"
-      />
-    </section>
-    <section
-      v-if="page.faq.length"
-      :id="SECTIONS.faq.id"
-      class="faq"
-      aria-labelledby="faq-title"
-    >
-      <h2 id="faq-title">
-        {{ SECTIONS.faq.title }}
-      </h2>
-      <details
-        v-for="(item, index) in page.faq"
-        :key="item.question"
-        class="faq-item"
-        :open="index === 0"
-      >
-        <summary>{{ item.question }}</summary>
-        <p>{{ item.answer }}</p>
-      </details>
-    </section>
     <PhotoViewer
       v-if="photos.length"
       v-model:open="viewerOpen"
       v-model:index="viewerIndex"
       :photos="photos"
     />
-    <details
-      v-if="page.sources.length"
-      :id="SECTIONS.sources.id"
-      class="sources"
-    >
-      <summary>{{ SECTIONS.sources.title }}</summary>
-      <ul>
-        <li
-          v-for="source in page.sources"
-          :key="source.url"
-        >
-          <UiLink
-            :href="source.url"
-            data-track="outbound"
-            data-track-name="source"
-          >
-            {{ source.title }}
-          </UiLink>
-        </li>
-      </ul>
-      <p
-        v-if="checkedLabel"
-        class="sources-date"
-      >
-        Факты сверены с источниками {{ checkedLabel }}.
-      </p>
-    </details>
   </article>
 </template>
 
@@ -355,11 +357,13 @@ const hasFacts = Boolean(
 const hasCoords = page.place.latitude != null && page.place.longitude != null
 const nearby = page.groups.find((group) => group.title === 'Рядом')
 const SECTIONS = PAGE_SECTIONS
+// Text-width blocks stay in the article column beside the rail; only the
+// wide «Рядом» grid runs full width after it.
 const sectionsAfter = presentSections([
-  [SECTIONS.nearby, Boolean(nearby || page.eatNearby?.length)],
   [SECTIONS.directions, Boolean(hasCoords || page.directionsHtml)],
   [SECTIONS.faq, page.faq.length > 0],
   [SECTIONS.sources, page.sources.length > 0],
+  [SECTIONS.nearby, Boolean(nearby || page.eatNearby?.length)],
 ])
 const heroSizes = '(min-width: 1000px) 720px, 100vw'
 const heroPreload = page.cover ? lcpPreload(page.cover, heroSizes) : null

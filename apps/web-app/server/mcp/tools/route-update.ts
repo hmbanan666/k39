@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { updateRouteDraft } from '../../utils/mcp/routes'
-import { orderedStops, routePath } from '../../utils/mcp/schemas'
+import { bodySections, orderedStops, routePath } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'route_update',
@@ -11,6 +11,7 @@ export default defineMcpTool({
     title: z.string().optional(),
     summary: z.string().optional(),
     body: z.string().optional(),
+    sections: bodySections,
     publicationStatus: z.enum(['draft', 'review', 'published']).optional(),
     seoTitle: z.string().nullable().optional(),
     seoDescription: z.string().nullable().optional(),

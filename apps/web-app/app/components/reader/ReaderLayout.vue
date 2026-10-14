@@ -24,6 +24,7 @@
         class="reader-html"
         v-html="parts.after"
       />
+      <slot name="after" />
     </div>
     <aside
       v-if="hasLead || showRail"

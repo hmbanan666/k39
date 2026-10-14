@@ -4,9 +4,9 @@ Tone: plain, specific, calm. No slogans, no "лучший", no invented atmosphe
 
 Structure:
 - summary: one or two sentences, what the place is and why a visitor stops.
-- body: markdown. First paragraph states what it is and when it was built or opened, only if a source says so. Then a heading "## Как добраться" with the practical route. Optional heading "## Что посмотреть" only for things named in sources.
+- sections (ADR 0027): the article as typed sections in page order. An untitled text section is the intro: what it is and when it was built or opened, only if a source says so. Free text sections carry their own title (История, Что посмотреть only for things named in sources). Standard sections have no title in content: {kind: "useful"} renders as «Полезно знать» (visiting rules, hours notes, tips), {kind: "directions"} as «Как добраться» (the practical route). place_get and route_get return sections; edit one section and send the full list back. body is the composed markdown archive; a body sent instead is split on its ## headings.
 - hours, price: copy from sources or leave empty. Never guess a timetable or a ticket price.
-- howToGet: the short address only, such as "Неман, ул. Победы, 47". The route itself belongs under the body heading "## Как добраться", not in this field.
+- howToGet: the short address only, such as "Неман, ул. Победы, 47". The route itself belongs in the directions section, not in this field.
 - status: open, ruins, closed, or unknown. unknown if the source does not say.
 
 Facts: if a source does not state it, do not write it. Coordinates, names, and dates come from the source list. Put each source in sources as { title, url }. factsCheckedAt is an ISO date (YYYY-MM-DD or a full timestamp) for the last fact check. place_update and place_draft_update store it as last_verified_at. Send it alone with id or slug to record a check without editing the article. Null clears it. Omit it to keep the stored date. Routes, collections, and hubs have no such field.
