@@ -7,7 +7,7 @@ export default defineNitroPlugin(() => {
     })
   }
   const start = setTimeout(run, 30_000)
-  const timer = setInterval(run, 24 * 60 * 60 * 1000)
+  const timer = setInterval(run, 60 * 60 * 1000)
   start.unref?.()
   timer.unref?.()
 })
