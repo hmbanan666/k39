@@ -136,3 +136,20 @@ describe('verifiedDate', () => {
     expect(verifiedDate(null)).toBeNull()
   })
 })
+
+describe('eat-nearby card helpers', () => {
+  it('estimates walking minutes with a street detour', async () => {
+    const { formatWalk, walkMinutes } = await import('@k39/database')
+    expect(walkMinutes(0.31)).toBe(5)
+    expect(formatWalk(0.31)).toBe('~5 мин пешком')
+    expect(formatWalk(0.01)).toBe('~1 мин пешком')
+    expect(formatWalk(3)).toBe('')
+  })
+
+  it('labels known cuisines in Russian and drops unknown tokens', async () => {
+    const { cuisineLabels } = await import('@k39/database')
+    expect(cuisineLabels(['pizza', 'italian', 'european'])).toEqual(['пицца', 'итальянская'])
+    expect(cuisineLabels(['coffee_shop', 'coffee', 'buschenschank'])).toEqual(['кофе'])
+    expect(cuisineLabels([])).toEqual([])
+  })
+})
