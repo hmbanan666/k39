@@ -39,12 +39,13 @@
         <p class="lede">
           {{ page.place.summary }}
         </p>
-        <p class="tags">
-          <UiTooltip :text="statusHint">
-            <UiBadge tone="pine">
-              {{ statusLabel }}
-            </UiBadge>
-          </UiTooltip>
+        <!-- No static «открыт» pill: it contradicted the live hours. A closed place
+             says so here unless the verified schedule in «Коротко» already does. -->
+        <p
+          v-if="closedNote"
+          class="closed-note"
+        >
+          {{ closedNote }}
         </p>
         <p class="actions">
           <DirectionsLink
@@ -106,29 +107,20 @@
                 <p>{{ address }}</p>
               </div>
             </div>
-            <div
-              v-if="page.place.latitude != null && page.place.longitude != null"
-              class="fact"
+            <!-- Coordinates stay in schema.org markup only. -->
+            <p
+              v-if="yandexPoint"
+              class="map-link"
             >
-              <Icon :name="tablerIcon('coordinates')" size="22" />
-              <div>
-                <p class="label">
-                  Координаты
-                </p>
-                <p>
-                  {{ page.place.latitude.toFixed(5) }}, {{ page.place.longitude.toFixed(5) }}
-                  <UiLink
-                    v-if="yandex"
-                    :href="yandex"
-                    data-track="directions"
-                    data-track-name="directions"
-                    :data-track-entity="`/${slug}`"
-                  >
-                    Яндекс Карты
-                  </UiLink>
-                </p>
-              </div>
-            </div>
+              <UiLink
+                :href="yandexPoint"
+                data-track="outbound"
+                data-track-name="yandex-maps"
+                :data-track-entity="`/${slug}`"
+              >
+                Открыть в Яндекс Картах
+              </UiLink>
+            </p>
             <p
               v-if="checkedLabel"
               class="checked"
@@ -256,12 +248,13 @@ import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
-import { yandexDestinationUrl } from '~~/shared/embed-map'
+import { yandexPointUrl } from '~~/shared/embed-map'
 import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 import { guideFacts, russianDay } from '~~/shared/place-guide'
+import { isVerified } from '~~/shared/schedule'
 
 interface PlaceLink {
   href: string
@@ -332,15 +325,12 @@ function openPhoto(id: string) {
   viewerIndex.value = found >= 0 ? found : 0
   viewerOpen.value = true
 }
-const statusLabel = ({ open: 'открыт', ruins: 'руины', closed: 'закрыт', unknown: 'статус неизвестен' } as Record<string, string>)[page.place.status] || page.place.status
-const statusHint = ({
-  open: 'По источникам сюда пускают посетителей.',
-  ruins: 'Сохранились руины. Уточните, можно ли подойти.',
-  closed: 'По источникам место закрыто для визита.',
-  unknown: 'Статус визита в источниках не указан.',
-} as Record<string, string>)[page.place.status] || 'Статус визита.'
-const yandex = page.place.latitude != null && page.place.longitude != null
-  ? yandexDestinationUrl(page.place.latitude, page.place.longitude)
+// Closed with no verified «closed» schedule: the hero is the only place that says it.
+const closedByStatus = page.place.status === 'closed'
+  && !(isVerified(page.place.schedule) && page.place.schedule?.rules.mode === 'closed')
+const closedNote = closedByStatus ? 'Закрыто для посещения' : ''
+const yandexPoint = page.place.latitude != null && page.place.longitude != null
+  ? yandexPointUrl(page.place.latitude, page.place.longitude)
   : ''
 const facts = guideFacts(page.place)
 const checkedLabel = russianDay(page.checkedAt)
@@ -403,9 +393,13 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   font-size: 1.12rem;
   line-height: 1.55;
 }
-.tags,
-.actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
-.tags { margin: 1rem 0 1.1rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 1.1rem; }
+.closed-note {
+  margin: 1rem 0 0;
+  color: var(--color-brick-dark);
+  font-weight: 700;
+}
+.map-link { margin: 0.2rem 0 0.6rem; font-size: 0.95rem; }
 .place-body { margin-top: 2.4rem; }
 .offers { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.2rem; }
 .facts {
