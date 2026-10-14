@@ -16,6 +16,7 @@ export interface PlaceDraftInput {
   publicationStatus?: string
   summary?: string
   body?: string
+  sections?: unknown[]
   hours?: string | null
   price?: string | null
   howToGet?: string | null
@@ -102,6 +103,7 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     title: input.title.trim(),
     summary: input.summary || '',
     body: input.body || '',
+    ...(input.sections ? { sections: input.sections as never } : {}),
     status: (VISIT.has(input.status || '') ? input.status : 'unknown') as VisitStatus,
     hours: input.hours || null,
     price: input.price || null,
@@ -148,6 +150,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     title: input.title ?? current.title,
     summary: input.summary ?? current.summary,
     body: input.body ?? current.body,
+    ...(input.sections ? { sections: input.sections as never } : {}),
     status: (input.status && VISIT.has(input.status) ? input.status : current.status) as VisitStatus,
     hours: input.hours === undefined ? current.hours : input.hours,
     price: input.price === undefined ? current.price : input.price,

@@ -20,6 +20,12 @@ export const routePath = z.array(z.tuple([
   z.number().gte(-90).lte(90),
 ])).min(2).max(5000).nullable().optional().describe('Real walked or driven line as [longitude, latitude] pairs. Omit to keep the current line. Null clears it. The map draws this line only when the route is selected.')
 
+export const bodySections = z.array(z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('text'), title: z.string().trim().min(1).max(120).optional(), text: z.string() }),
+  z.object({ kind: z.literal('useful'), text: z.string() }),
+  z.object({ kind: z.literal('directions'), text: z.string() }),
+])).max(30).optional().describe('Typed body sections (ADR 0027), in page order. kind text carries its own title (История, Что посмотреть, ...); an untitled text section is the intro. kind useful renders as «Полезно знать» and directions as «Как добраться»: never put those headings in text. Replaces the body when sent; the markdown body is then composed from the sections. Omit to keep.')
+
 export const placeFields = {
   slug: z.string().optional().describe('URL slug, latin'),
   title: z.string().optional().describe('Visible Russian title'),
@@ -28,7 +34,8 @@ export const placeFields = {
   status: visit.describe('Visit status'),
   publicationStatus: publication.describe('draft, review, or published. Same values as the admin form'),
   summary: z.string().optional(),
-  body: z.string().optional().describe('Markdown body'),
+  body: z.string().optional().describe('Markdown body. Split into sections on its ## headings when saved; prefer sections for edits'),
+  sections: bodySections,
   hours: z.string().nullable().optional(),
   price: z.string().nullable().optional(),
   howToGet: z.string().nullable().optional(),

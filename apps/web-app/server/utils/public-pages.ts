@@ -1,4 +1,4 @@
-import { db } from '@k39/database'
+import { bodyOf, db } from '@k39/database'
 import { collectionPlaceCards } from '../../shared/collection-page'
 import { homeLinks, HUBS } from '../../shared/links'
 import { normalizeRoutePath } from '../../shared/map'
@@ -183,7 +183,7 @@ export async function loadPlace(slug: string, page = 1) {
       }
     }),
     page,
-    body: loaded.place.body,
+    body: bodyOf(loaded.place),
     faq: loaded.place.faq ?? [],
     updatedAt: loaded.place.updatedAt,
     checkedAt: loaded.place.lastVerifiedAt,
@@ -225,7 +225,7 @@ export async function loadPlace(slug: string, page = 1) {
   const structuredFaq = (loaded.place.faq ?? []).filter((item) => item.question.trim() && item.answer.trim())
   // The template renders «Как добраться» as its own block. A body section with that heading
   // moves into the block, so the page never shows it twice.
-  const split = splitDirections(stripRepeatedLead(loaded.place.summary, loaded.place.body))
+  const split = splitDirections(stripRepeatedLead(loaded.place.summary, bodyOf(loaded.place)))
   const body = split.article
   const directionsSource = split.directions || loaded.place.howToGet?.trim() || ''
   return {
@@ -293,11 +293,11 @@ export async function loadRoute(slug: string) {
     noindex: loaded.route.noindex,
     ogImage: storedImage(loaded.route.ogImage, loaded.route.title),
     kind: 'TouristTrip',
-    body: loaded.route.body,
+    body: bodyOf(loaded.route),
   })
   return {
     doc,
-    html: renderMarkdown(loaded.route.body),
+    html: renderMarkdown(bodyOf(loaded.route)),
     summary: loaded.route.summary || '',
     path: normalizeRoutePath(loaded.route.path),
     stops,

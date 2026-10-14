@@ -22,6 +22,7 @@ export default defineMcpTool({
       title: route.title,
       summary: route.summary,
       body: route.body,
+      sections: route.sections ?? [],
       publicationStatus: route.publicationStatus,
       seoTitle: route.seoTitle,
       seoDescription: route.seoDescription,

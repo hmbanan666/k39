@@ -13,6 +13,7 @@ export interface RouteWriteInput {
   title?: string
   summary?: string
   body?: string
+  sections?: unknown[]
   publicationStatus?: string
   seoTitle?: string | null
   seoDescription?: string | null
@@ -35,6 +36,7 @@ export async function createRouteDraft(input: {
   title: string
   summary?: string
   body?: string
+  sections?: unknown[]
   publicationStatus?: string
   seoTitle?: string | null
   seoDescription?: string | null
@@ -51,6 +53,7 @@ export async function createRouteDraft(input: {
       title: input.title,
       summary: input.summary,
       body: input.body,
+      sections: input.sections,
       publicationStatus: normalizePublication(input.publicationStatus),
       seoTitle: input.seoTitle,
       seoDescription: input.seoDescription,
@@ -90,6 +93,7 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       title: input.title || current.title,
       summary: input.summary ?? current.summary,
       body: input.body ?? current.body,
+      sections: input.sections,
       publicationStatus: normalizePublication(input.publicationStatus, current.publicationStatus),
       seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
       seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,

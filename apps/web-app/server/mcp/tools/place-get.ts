@@ -29,6 +29,7 @@ export default defineMcpTool({
       title: place.title,
       summary: place.summary,
       body: place.body,
+      sections: place.sections ?? [],
       status: place.status,
       publicationStatus: place.publicationStatus,
       hours: place.hours,

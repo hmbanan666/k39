@@ -1,3 +1,4 @@
+export * from './body-sections'
 export * from './database'
 export { repository as db } from './repository'
 export type { VenueListFilter, VenueWrite } from './repository/venues'

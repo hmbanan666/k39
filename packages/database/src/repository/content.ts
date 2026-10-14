@@ -1,11 +1,29 @@
+import type { BodySection } from '../body-sections'
 import type { PlaceDraft } from '../types'
 import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, StoredPageModule, VisitStatus } from '../types/entities'
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { composeBody, readSections, splitBody } from '../body-sections'
 import { useDatabase } from '../database'
 import { categories, collectionItems, collectionMedia, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
 const published = 'published' as const
+
+/**
+ * Keeps body and sections in step (ADR 0027): given sections, the body is
+ * composed from them; given only a body, it is split into sections.
+ */
+function syncedBody(data: { body?: string, sections?: unknown }): { body?: string, sections?: BodySection[] } {
+  if (data.sections !== undefined) {
+    const sections = readSections(data.sections)
+    return { sections, body: composeBody(sections) }
+  }
+  if (data.body !== undefined) {
+    const sections = splitBody(data.body)
+    return { sections, body: composeBody(sections) }
+  }
+  return {}
+}
 
 export class Content {
   static async redirects() {
@@ -438,7 +456,8 @@ export class Editor {
     return row
   }
 
-  static async savePlace(data: PlaceDraft & { slug: string }, userId?: string | null) {
+  static async savePlace(input: PlaceDraft & { slug: string }, userId?: string | null) {
+    const data = { ...input, ...syncedBody(input) }
     const db = useDatabase()
     const existing = data.id ? await this.placeById(data.id) : await this.placeBySlug(data.slug)
     if (existing) {
@@ -521,7 +540,8 @@ export class Editor {
     return useDatabase().select().from(regions).orderBy(asc(regions.title))
   }
 
-  static async saveRoute(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null) {
+  static async saveRoute(input: { id?: string, slug: string, title: string, summary?: string | null, body?: string, sections?: unknown, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null) {
+    const data = { ...input, ...syncedBody(input) }
     const resolvedPoints = data.points ? await resolveStops(data.points) : null
     const db = useDatabase()
     const [existing] = data.id
@@ -535,6 +555,7 @@ export class Editor {
       title: data.title,
       summary: data.summary ?? existing?.summary ?? null,
       body: data.body ?? existing?.body ?? '',
+      ...(data.sections !== undefined ? { sections: data.sections as BodySection[] } : {}),
       publicationStatus: data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
       seoTitle: data.seoTitle ?? existing?.seoTitle ?? null,
       seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,

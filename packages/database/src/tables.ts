@@ -1,3 +1,4 @@
+import type { BodySection } from './body-sections'
 import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
 import type { ScoreChecks } from './types/scoring'
 import type { VenueHours, VenueSocial, VenueStatus } from './venues'
@@ -80,6 +81,8 @@ export const places = pgTable('places', {
   howToGet: text('how_to_get'),
   summary: text('summary').notNull().default(''),
   body: text('body').notNull().default(''),
+  // Typed body sections (ADR 0027); `body` is composed from them on save.
+  sections: jsonb('sections').$type<BodySection[]>().notNull().default(sql`'[]'::jsonb`),
   sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
   // Guide answer block (ADR 0020). Free text in Russian, each backed by a source.
   visitDuration: varchar('visit_duration'),
@@ -153,6 +156,7 @@ export const routes = pgTable('routes', {
   title: varchar('title').notNull(),
   summary: text('summary'),
   body: text('body').notNull().default(''),
+  sections: jsonb('sections').$type<BodySection[]>().notNull().default(sql`'[]'::jsonb`),
   seoTitle: varchar('seo_title'),
   seoDescription: varchar('seo_description'),
   ogImage: varchar('og_image'),
