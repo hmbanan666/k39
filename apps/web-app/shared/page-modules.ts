@@ -60,7 +60,7 @@ export const CATEGORY_TAGS: Record<string, string[]> = {
 }
 
 /** Roles a text module can declare, so coverage knows what a page answers. */
-export const TEXT_ROLES = ['events', 'open-closed', 'bad-weather', 'transport', 'pack', 'prices', 'faq'] as const
+export const TEXT_ROLES = ['events', 'open-closed', 'bad-weather', 'transport', 'pack', 'prices', 'faq', 'short-facts', 'route-steps', 'eat-nearby'] as const
 export type TextRole = (typeof TEXT_ROLES)[number]
 
 const tag = z.enum(PICKER_TAGS as [string, ...string[]])
