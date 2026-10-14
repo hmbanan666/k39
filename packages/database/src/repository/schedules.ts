@@ -25,6 +25,7 @@ export interface AvailabilityEntity {
   longitude: number | null
   verifiedAt: string | null
   needsCheck: boolean
+  mode: string
   currentEnd: string | null
   nextStart: string | null
 }
@@ -84,6 +85,7 @@ export class Schedules {
       select e.entity_type, e.entity_id, e.slug, e.title, e.latitude, e.longitude,
         s.verified_at::text as verified_at,
         coalesce((s.rules->>'needsCheck')::boolean, false) as needs_check,
+        coalesce(s.rules->>'mode', 'hours') as mode,
         (select i.ends_at from schedule_intervals i
           where i.entity_type = e.entity_type and i.entity_id = e.entity_id
             and i.starts_at <= ${at}::timestamptz and i.ends_at > ${at}::timestamptz
@@ -106,6 +108,7 @@ export class Schedules {
       longitude: row.longitude == null ? null : Number(row.longitude),
       verifiedAt: row.verified_at ? String(row.verified_at) : null,
       needsCheck: Boolean(row.needs_check),
+      mode: String(row.mode),
       currentEnd: row.current_end ? new Date(String(row.current_end)).toISOString() : null,
       nextStart: row.next_start ? new Date(String(row.next_start)).toISOString() : null,
     }))

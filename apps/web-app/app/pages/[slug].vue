@@ -84,7 +84,10 @@
             class="facts"
           >
             <h2>Коротко</h2>
-            <OpeningLive :schedule="page.place.schedule" />
+            <OpeningLive
+              :schedule="page.place.schedule"
+              :has-hours="Boolean(page.place.hours)"
+            />
             <div
               v-for="row in facts"
               :key="row.key"

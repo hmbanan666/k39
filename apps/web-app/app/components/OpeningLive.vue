@@ -2,10 +2,16 @@
   <p
     v-if="status"
     class="live"
-    :class="{ open: status.open }"
+    :class="{ open: status.open, muted: status.muted }"
     role="status"
   >
     <span class="dot" aria-hidden="true" />{{ status.text }}
+  </p>
+  <p
+    v-else-if="unverified"
+    class="live muted"
+  >
+    Часы не проверены, уточняйте
   </p>
 </template>
 
@@ -15,8 +21,10 @@ import { availabilityText, statusFromRules } from '~~/shared/schedule'
 
 // Computed in the browser only, after hydration: cached HTML shows the
 // schedule, never a stale «открыто сейчас».
-const props = defineProps<{ schedule: ScheduleRecord | null }>()
-const status = ref<{ open: boolean, text: string } | null>(null)
+const props = defineProps<{ schedule: ScheduleRecord | null, hasHours?: boolean }>()
+// Rendered only after hydration too, so cached HTML never carries it.
+const unverified = ref(false)
+const status = ref<{ open: boolean, muted: boolean, text: string } | null>(null)
 let timer: ReturnType<typeof setInterval> | undefined
 
 function update() {
@@ -24,7 +32,8 @@ function update() {
   const value = statusFromRules(props.schedule, now)
   status.value = value.status === 'unknown'
     ? null
-    : { open: value.status === 'open' || value.status === 'closing_soon', text: availabilityText(value, now) }
+    : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen), text: availabilityText(value, now) }
+  unverified.value = value.status === 'unknown' && Boolean(props.hasHours)
 }
 
 onMounted(() => {
@@ -45,6 +54,7 @@ onBeforeUnmount(() => clearInterval(timer))
   font-weight: 600;
 }
 .live.open { color: var(--color-success); }
+.live.muted { color: var(--color-muted); font-weight: 400; font-size: 0.9rem; }
 .dot {
   width: 0.55rem;
   height: 0.55rem;

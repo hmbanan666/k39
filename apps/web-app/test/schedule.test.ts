@@ -47,3 +47,28 @@ describe('schedule', () => {
     expect(describeSchedule(market).length).toBeGreaterThan(0)
   })
 })
+
+describe('long and 24/7 intervals', () => {
+  const now = at('2026-10-14T03:00')
+  it('24/7 rules have no closing time', () => {
+    const park = { rules: scheduleRulesSchema.parse({ mode: 'always' }), sourceUrl: null, verifiedAt: '2026-10-14' }
+    const value = statusFromRules(park, now)
+    expect(value).toMatchObject({ status: 'open', closesAt: null, alwaysOpen: true })
+    expect(availabilityText(value, now)).toBe('Доступно круглосуточно')
+  })
+
+  it('a window-boundary end is never a closing time', () => {
+    const value = availabilityFromWindow({ currentEnd: '2026-10-28T22:00:00.000Z', nextStart: null, verified: true }, now)
+    expect(value.closesAt).toBeNull()
+    expect(availabilityText(value, now)).toBe('Доступно круглосуточно')
+  })
+
+  it('names the date instead of a day-plus countdown', () => {
+    const value = availabilityFromWindow({ currentEnd: '2026-10-16T16:00:00.000Z', nextStart: null, verified: true }, now)
+    expect(availabilityText(value, now)).toBe('Открыто до 16.10 18:00')
+  })
+
+  it('keeps the countdown under a day', () => {
+    expect(availabilityText(statusFromRules(record, at('2026-10-14T17:00')), at('2026-10-14T17:00'))).toBe('Открыто до 19:00 · ещё 2 ч')
+  })
+})
