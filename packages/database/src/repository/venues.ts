@@ -516,7 +516,7 @@ export class Venues {
     const cutoff = new Date(now.getTime() - NEARBY_MAX_DAYS * 86_400_000).toISOString()
     const result = await useDatabase().execute(sql`
       select v.id, v.slug, v.name, v.kind, v.address, v.price_level, v.avg_check,
-        v.last_verified_at, v.latitude, v.longitude, v.description, v.cuisine_tags,
+        v.last_verified_at, v.latitude, v.longitude, v.description, v.cuisine_tags, v.region_id,
         d.distance_km
       from venues v
       cross join lateral (
@@ -549,6 +549,7 @@ export class Venues {
       longitude: number
       description: string
       cuisine_tags: string[] | null
+      region_id: string | null
       distance_km: number
     }>(result)
     const ids = found.map((row) => row.id)
@@ -566,6 +567,7 @@ export class Venues {
       longitude: row.longitude,
       description: row.description,
       cuisineTags: row.cuisine_tags ?? [],
+      regionId: row.region_id,
       distanceKm: Number(row.distance_km),
       sponsored: sponsored.has(row.id),
     }))

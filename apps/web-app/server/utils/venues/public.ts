@@ -23,6 +23,7 @@ import {
   resolveVenuePath,
   STALE_NOTE,
 } from '@k39/database'
+import { EAT_NOW_PATH, eatNowPath, haversineKm, inTown } from '../../../shared/eat-now'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { regionLabel } from '../../../shared/region'
@@ -47,6 +48,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
   const covers = await db.venues.coversFor(ranked.map((row) => row.id))
   // Rules only: the browser computes «открыто сейчас» from them (ADR 0028).
   const schedules = await Promise.all(ranked.map((row) => loadSchedule('venue', row.id)))
+  const regionSlugs = new Map((ranked.length ? await db.editor.listRegions() : []).map((row) => [row.id, row.slug]))
   const now = new Date()
   return ranked.map((row, index) => {
     const cover = covers.get(row.id)
@@ -68,6 +70,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
       avgCheck: formatAvgCheck(row.avgCheck),
       media: cover ? toPublicMedia(cover) : null,
       schedule: schedules[index] ?? null,
+      regionSlug: row.regionId ? regionSlugs.get(row.regionId) ?? null : null,
     }
   })
 }
@@ -286,4 +289,105 @@ function listingHeading(regionTitle: string | null, kind: string | null) {
     return `Заведения: ${regionTitle}`
   }
   return 'Заведения'
+}
+
+/** Towns with published food venues, for «Где поесть сейчас». */
+async function eatNowTowns() {
+  const [regionRows, rows] = await Promise.all([
+    db.editor.listRegions(),
+    db.venues.list({ status: 'published', foodOnly: true }),
+  ])
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    if (row.regionId) {
+      counts.set(row.regionId, (counts.get(row.regionId) ?? 0) + 1)
+    }
+  }
+  return regionRows
+    .filter((row) => counts.has(row.id))
+    .map((row) => ({ ...row, label: regionLabel(row), count: counts.get(row.id) ?? 0, href: eatNowPath(row.slug) }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ru'))
+}
+
+export async function loadEatNow(regionSlug: string | null) {
+  const towns = await eatNowTowns()
+  const townLinks = towns.map((town) => ({ slug: town.slug, title: town.label, href: town.href, count: town.count }))
+  if (!regionSlug) {
+    const doc = collectionDocument({
+      path: EAT_NOW_PATH,
+      h1: 'Где поесть сейчас',
+      summary: 'Кафе, рестораны и пекарни Калининградской области с проверенными часами: что открыто прямо сейчас и что откроется позже, по городам.',
+      crumbName: 'список',
+      parent: { name: 'Еда', href: '/eda' },
+      items: townLinks.map((town) => ({ name: `Где поесть сейчас ${inTown(town.slug, town.title)}`, url: town.href })),
+      seoTitle: 'Где поесть сейчас: открытые кафе и рестораны по городам',
+      seoDescription: 'Что открыто прямо сейчас в Калининграде, Светлогорске, Зеленоградске и других городах области: кафе и рестораны с проверенными часами работы.',
+      kind: 'CollectionPage',
+    })
+    return { type: 'index' as const, doc, towns: townLinks }
+  }
+  const town = towns.find((row) => row.slug === regionSlug)
+  if (!town) {
+    return null
+  }
+  const rows = (await db.venues.list({ regionId: town.id, status: 'published', foodOnly: true }))
+    .filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
+  const located = rows.filter((row) => row.latitude != null && row.longitude != null)
+  const centre = town.latitude != null && town.longitude != null
+    ? { latitude: town.latitude, longitude: town.longitude }
+    : located.length
+      ? {
+          latitude: located.reduce((sum, row) => sum + row.latitude!, 0) / located.length,
+          longitude: located.reduce((sum, row) => sum + row.longitude!, 0) / located.length,
+        }
+      : null
+  const [covers, schedules] = await Promise.all([
+    db.venues.coversFor(rows.map((row) => row.id)),
+    Promise.all(rows.map((row) => loadSchedule('venue', row.id))),
+  ])
+  const now = new Date()
+  const items = rows.map((row, index) => {
+    const distanceKm = centre && row.latitude != null && row.longitude != null
+      ? haversineKm(centre, { latitude: row.latitude, longitude: row.longitude })
+      : null
+    const cover = covers.get(row.id)
+    return {
+      href: `/zavedeniya/${row.slug}`,
+      slug: row.slug,
+      name: row.name,
+      kindLabel: kindLabel(row.kind),
+      cuisine: cuisineLabels(row.cuisineTags),
+      price: priceMarks(row.priceLevel),
+      check: row.avgCheck != null ? `~${new Intl.NumberFormat('ru-RU').format(row.avgCheck)} ₽` : '',
+      address: row.address,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      distanceKm,
+      distance: distanceKm != null ? formatVenueDistance(distanceKm) : '',
+      stale: isStale(row.lastVerifiedAt, now),
+      media: cover ? toPublicMedia(cover) : null,
+      schedule: schedules[index] ?? null,
+    }
+  }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+  const where = inTown(town.slug, town.label)
+  const h1 = `Где поесть сейчас ${where}`
+  const doc = collectionDocument({
+    path: eatNowPath(town.slug),
+    h1,
+    summary: `${items.length} кафе, ресторанов и пекарен ${where}: что открыто прямо сейчас, что откроется позже, сколько идти от центра и средний чек.`,
+    crumbName: 'список',
+    parent: { name: 'Где поесть сейчас', href: EAT_NOW_PATH },
+    items: items.map((item) => ({ name: item.name, url: item.href, latitude: item.latitude, longitude: item.longitude })),
+    seoTitle: `Где поесть сейчас ${where}: открытые кафе и рестораны`,
+    seoDescription: `Кафе и рестораны ${where}, открытые прямо сейчас: часы работы проверены, расстояние от центра, кухня и средний чек. ${items.length} заведений.`,
+    kind: 'CollectionPage',
+  })
+  return {
+    type: 'town' as const,
+    doc,
+    town: { slug: town.slug, title: town.label, where },
+    centre,
+    towns: townLinks,
+    items,
+  }
 }

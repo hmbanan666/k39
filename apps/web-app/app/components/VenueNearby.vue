@@ -2,8 +2,12 @@
   <section
     v-if="items.length"
     class="eat"
+    :class="{ 'eat-grid': layout === 'grid', 'eat-bare': !title }"
   >
-    <component :is="level">
+    <component
+      :is="level"
+      v-if="title"
+    >
       {{ title }}
     </component>
     <ul>
@@ -59,6 +63,12 @@
         </a>
       </li>
     </ul>
+    <p
+      v-if="moreHref"
+      class="more"
+    >
+      <a :href="moreHref">{{ moreText }}</a>
+    </p>
   </section>
 </template>
 
@@ -87,7 +97,11 @@ const props = withDefaults(defineProps<{
   items: EatItem[]
   title?: string
   level?: 'h2' | 'h3'
-}>(), { title: 'Где поесть рядом', level: 'h2' })
+  /** Mobile: «row» scrolls sideways (a few nearby cards), «grid» stacks a long list. */
+  layout?: 'row' | 'grid'
+  moreHref?: string
+  moreText?: string
+}>(), { title: 'Где поесть рядом', level: 'h2', layout: 'row', moreHref: '', moreText: '' })
 
 function meta(item: EatItem) {
   return [(item.cuisine ?? []).join(', '), item.price, item.check].filter(Boolean).join(' · ')
@@ -107,6 +121,8 @@ onMounted(() => {
 
 <style scoped>
 .eat { margin-top: 3rem; }
+.eat-bare { margin-top: 0; }
+.more { margin: 1rem 0 0; font-weight: 600; }
 h2, h3 { margin-bottom: 1rem; }
 ul {
   display: grid;
@@ -172,7 +188,7 @@ li:nth-child(even) .card { transform: rotate(0.4deg); }
 }
 .stale { color: var(--color-warn); font-size: var(--step--1); }
 @media (max-width: 640px) {
-  ul {
+  .eat:not(.eat-grid) ul {
     grid-template-columns: none;
     grid-auto-columns: 72%;
     grid-auto-flow: column;
@@ -180,7 +196,7 @@ li:nth-child(even) .card { transform: rotate(0.4deg); }
     padding: 4px 2px 12px;
     scroll-snap-type: x mandatory;
   }
-  li { scroll-snap-align: start; }
+  .eat:not(.eat-grid) li { scroll-snap-align: start; }
 }
 @media (prefers-reduced-motion: reduce) {
   .card, .card:hover { transform: none; }

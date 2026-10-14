@@ -1,8 +1,10 @@
 import { db, isDatabaseReady } from '@k39/database'
 import { CONSENT_PATH } from '../../shared/consent'
+import { EAT_NOW_PATH } from '../../shared/eat-now'
 import { indexableHubs, LEGAL_LINKS } from '../../shared/links'
 import { absoluteUrl } from '../../shared/seo'
 import { latestSitemapLastmod, sitemapLastmod } from '../utils/sitemap-fields'
+import { loadEatNow } from '../utils/venues/public'
 
 function imageEntries(images: Array<{ loc: string, title?: string | null }>) {
   const listed = images.flatMap((image) => {
@@ -48,8 +50,11 @@ export default defineEventHandler(async () => {
     { href: '/kvesty', lastmods: rows.quests.map((row) => row.lastmod) },
     { href: '/zavedeniya', lastmods: rows.venues.map((row) => row.lastmod) },
   ]
+  const eatNow = await loadEatNow(null)
+  const venueLastmod = latestSitemapLastmod(rows.venues.map((row) => row.lastmod))
   return [
     entry('/', contentLastmod),
+    ...(eatNow && eatNow.towns.length ? [entry(EAT_NOW_PATH, venueLastmod), ...eatNow.towns.map((town) => entry(town.href, venueLastmod))] : []),
     ...LEGAL_LINKS.map((link) => entry(link.href)),
     entry(CONSENT_PATH),
     ...indexableHubs(hidden).map((link) => entry(link.href, updated.get(link.href.slice(1)))),
