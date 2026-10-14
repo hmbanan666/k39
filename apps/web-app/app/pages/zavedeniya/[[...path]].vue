@@ -303,7 +303,7 @@ function openPhoto(id: string) {
   cursor: pointer;
 }
 .open-now[aria-pressed='true'] { background: var(--color-sea); color: var(--color-paper, #fff); }
-.open-note { margin: 0 0 1rem; color: var(--color-ink-soft, inherit); font-size: 0.95rem; }
+.open-note { margin: 0 0 1rem; color: var(--color-muted); font-size: 0.95rem; }
 .list, .places { margin: 0; padding: 0; list-style: none; }
 .list li, .places li {
   display: flex;
