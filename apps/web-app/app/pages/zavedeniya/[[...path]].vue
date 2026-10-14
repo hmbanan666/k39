@@ -37,6 +37,12 @@
       class="prose"
       v-html="page.html"
     />
+    <p
+      v-if="openNow"
+      class="open-note"
+    >
+      Учитываются только проверенные часы работы.
+    </p>
     <ul class="list">
       <li
         v-for="item in shownItems"
@@ -47,10 +53,6 @@
         <span v-if="item.address">{{ item.address }}</span>
         <span v-if="item.avgCheck">{{ item.avgCheck }}</span>
         <span
-          v-if="openNow && openState(item.href) === 'estimate'"
-          class="stale"
-        >Часы по OpenStreetMap, не проверены</span>
-        <span
           v-if="item.stale"
           class="stale"
         >Давно не проверяли</span>
@@ -60,7 +62,7 @@
       v-if="!shownItems.length"
       class="empty"
     >
-      {{ openNow ? 'Сейчас в этом списке нет открытых заведений с известными часами.' : 'В этом списке пока нет опубликованных заведений.' }}
+      {{ openNow ? 'Сейчас нет открытых заведений с проверенными часами.' : 'В этом списке пока нет опубликованных заведений.' }}
     </p>
   </ArticleShell>
   <ArticleShell
@@ -249,9 +251,9 @@ const route = useRoute()
 const page = await fetchPublic<ListingPage | VenuePage>('/api/public/zavedeniya', { path: route.path })
 // «Открыто сейчас» runs in the browser only, after hydration (ADR 0028).
 const openNow = ref(false)
-const openSlugs = ref(new Map<string, 'verified' | 'estimate'>())
+const openSlugs = ref(new Set<string>())
 const slugOf = (href: string) => href.split('/').filter(Boolean).pop() || ''
-const openState = (href: string) => openSlugs.value.get(slugOf(href)) ?? null
+const openState = (href: string) => openSlugs.value.has(slugOf(href))
 const shownItems = computed(() => {
   if (page.type !== 'listing') {
     return []
@@ -264,17 +266,9 @@ async function toggleOpen() {
   if (!openNow.value) {
     return
   }
-  const result = await $fetch<{ items: Array<{ slug: string, status: string, estimate: string | null }> }>('/api/public/availability', { query: { type: 'venue' } }).catch(() => ({ items: [] }))
-  const open = new Set(['open', 'closing_soon'])
-  const map = new Map<string, 'verified' | 'estimate'>()
-  for (const item of result.items) {
-    if (open.has(item.status)) {
-      map.set(item.slug, 'verified')
-    } else if (item.estimate && open.has(item.estimate)) {
-      map.set(item.slug, 'estimate')
-    }
-  }
-  openSlugs.value = map
+  // Same rule as the map: only verified schedules report «open».
+  const result = await $fetch<{ items: Array<{ slug: string }> }>('/api/public/availability', { query: { type: 'venue', status: 'open,closing_soon' } }).catch(() => ({ items: [] }))
+  openSlugs.value = new Set(result.items.map((item) => item.slug))
 }
 
 const heroSizes = '(min-width: 900px) 360px, 100vw'
@@ -309,6 +303,7 @@ function openPhoto(id: string) {
   cursor: pointer;
 }
 .open-now[aria-pressed='true'] { background: var(--color-sea); color: var(--color-paper, #fff); }
+.open-note { margin: 0 0 1rem; color: var(--color-ink-soft, inherit); font-size: 0.95rem; }
 .list, .places { margin: 0; padding: 0; list-style: none; }
 .list li, .places li {
   display: flex;
