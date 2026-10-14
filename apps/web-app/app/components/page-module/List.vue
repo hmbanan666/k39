@@ -16,10 +16,13 @@
         v-else-if="module.type === 'picker'"
         :questions="module.questions"
         :state="picker.state.value"
+        :source="picker.source.value"
+        :persona="picker.persona.value"
         :fitting="fitting"
         :total="total"
         @toggle="picker.toggle"
         @reset="picker.reset"
+        @persona="picker.choosePersona"
       />
       <PageModuleCards
         v-else-if="module.type === 'ideas' || module.type === 'plans'"
