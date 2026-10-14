@@ -98,3 +98,20 @@ describe('temporarily closed', () => {
     expect(closureText({ reason: 'other', viewableOutside: true })).toBe('Временно закрыто · снаружи можно посмотреть')
   })
 })
+
+describe('slots', () => {
+  const fringilla = { rules: scheduleRulesSchema.parse({ mode: 'slots', seasons: [{ from: '03-28', to: '10-31', week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '18:00' }] }], slots: { times: ['15:00', '16:00', '17:00'], minutes: 50 } }), sourceUrl: null, verifiedAt: '2026-10-14' }
+  it('shows the next start, never open-until', () => {
+    const noon = at('2026-10-14T12:00')
+    expect(availabilityText(statusFromRules(fringilla, noon), noon)).toBe('Ближайшая экскурсия в 15:00')
+    const during = at('2026-10-14T15:10')
+    expect(availabilityText(statusFromRules(fringilla, during), during)).toBe('Ближайшая экскурсия в 16:00')
+    const evening = at('2026-10-14T19:00')
+    expect(availabilityText(statusFromRules(fringilla, evening), evening)).toBe('Ближайшая экскурсия завтра в 15:00')
+  })
+  it('has no next start after the season', () => {
+    const late = at('2026-11-02T12:00')
+    expect(availabilityText(statusFromRules(fringilla, late), late)).toBe('Ближайших сеансов нет')
+    expect(describeSchedule(fringilla.rules)).toContain('Экскурсия: начало в 15:00, 16:00, 17:00')
+  })
+})
