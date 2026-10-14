@@ -606,6 +606,53 @@ export function assertOverpassArea(input: { latitude: number, longitude: number,
   }
 }
 
+// Straight-line distance times a street detour factor, at an unhurried 4.5 km/h.
+// No routing engine: this is an estimate and the UI says «~».
+export const WALK_DETOUR = 1.3
+export const WALK_KMH = 4.5
+export const WALK_MAX_MINUTES = 30
+
+export function walkMinutes(km: number) {
+  if (!Number.isFinite(km) || km < 0) {
+    return null
+  }
+  return Math.max(1, Math.round((km * WALK_DETOUR / WALK_KMH) * 60))
+}
+
+/** «~6 мин пешком», or '' when it is too far to call a walk. */
+export function formatWalk(km: number) {
+  const minutes = walkMinutes(km)
+  return minutes != null && minutes <= WALK_MAX_MINUTES ? `~${minutes} мин пешком` : ''
+}
+
+const CUISINE_LABEL: Record<string, string> = {
+  american: 'американская', arab: 'арабская', armenian: 'армянская', asian: 'азиатская',
+  baltic: 'балтийская', barbecue: 'барбекю', bavarian: 'баварская', breakfast: 'завтраки',
+  burger: 'бургеры', cake: 'десерты', caucasian: 'кавказская', chicken: 'курица',
+  chinese: 'китайская', coffee: 'кофе', coffee_shop: 'кофе', crepe: 'блины', czech: 'чешская',
+  european: 'европейская', fish: 'рыба', fish_and_chips: 'фиш-энд-чипс', french: 'французская',
+  georgian: 'грузинская', german: 'немецкая', greek: 'греческая', grill: 'гриль',
+  home: 'домашняя', ice_cream: 'мороженое', international: 'интернациональная',
+  italian: 'итальянская', italian_pizza: 'пицца', japanese: 'японская', kebab: 'шаурма',
+  korean: 'корейская', lithuanian: 'литовская', local: 'местная', mediterranean: 'средиземноморская',
+  mexican: 'мексиканская', pasta: 'паста', pie: 'пироги', pies: 'пироги', pizza: 'пицца',
+  prussian: 'прусская', pub: 'паб', regional: 'местная', russian: 'русская', seafood: 'морепродукты',
+  steak: 'стейки', steak_house: 'стейки', sushi: 'суши', tea: 'чай', turkish: 'турецкая',
+  ukrainian: 'украинская', uzbek: 'узбекская',
+}
+
+/** Russian cuisine labels in stored order, unknown tokens dropped, duplicates merged. */
+export function cuisineLabels(tags: string[] | null | undefined, limit = 2) {
+  const labels: string[] = []
+  for (const tag of tags ?? []) {
+    const label = CUISINE_LABEL[tag.trim().toLowerCase()]
+    if (label && !labels.includes(label)) {
+      labels.push(label)
+    }
+  }
+  return labels.slice(0, limit)
+}
+
 export function priceMarks(level: number | null) {
   if (level == null || level < 1) {
     return ''
