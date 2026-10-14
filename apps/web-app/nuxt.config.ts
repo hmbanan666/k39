@@ -57,6 +57,9 @@ export default defineNuxtConfig({
     // Legacy URLs from the old site that still get search impressions.
     '/lastochka': { redirect: { to: '/eda', statusCode: 301 } },
     '/lastochka/**': { redirect: { to: '/eda', statusCode: 301 } },
+    // Old cafe pages.
+    '/pages': { redirect: { to: '/eda', statusCode: 301 } },
+    '/pages/**': { redirect: { to: '/eda', statusCode: 301 } },
     '/media/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     // Brand URLs stay stable, so they are not immutable. A week lets a deploy replace them.

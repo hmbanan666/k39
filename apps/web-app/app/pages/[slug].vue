@@ -54,13 +54,6 @@
             :longitude="page.place.longitude"
             :entity="`/${slug}`"
           />
-          <UiButton
-            v-if="page.routeBand"
-            :href="page.routeBand.href"
-            variant="line"
-          >
-            В маршрут
-          </UiButton>
         </p>
       </div>
     </header>
@@ -108,19 +101,14 @@
               </div>
             </div>
             <!-- Coordinates stay in schema.org markup only. -->
-            <p
-              v-if="yandexPoint"
-              class="map-link"
-            >
-              <UiLink
-                :href="yandexPoint"
-                data-track="outbound"
-                data-track-name="yandex-maps"
-                :data-track-entity="`/${slug}`"
-              >
-                Открыть в Яндекс Картах
-              </UiLink>
-            </p>
+            <MapOpenDialog
+              v-if="hasCoords"
+              :latitude="page.place.latitude!"
+              :longitude="page.place.longitude!"
+              :name="page.doc.h1"
+              :address="address"
+              :entity="`/${slug}`"
+            />
             <p
               v-if="checkedLabel"
               class="checked"
@@ -167,6 +155,23 @@
             :items="page.eatNearby || []"
             :title="SECTIONS.eatNearby.title"
           />
+          <section
+            v-if="routes.length"
+            :id="SECTIONS.placeRoutes.id"
+            class="routes"
+          >
+            <h2>{{ SECTIONS.placeRoutes.title }}</h2>
+            <ul>
+              <li
+                v-for="link in routes"
+                :key="link.href"
+              >
+                <UiLink :href="link.href">
+                  {{ link.text }}
+                </UiLink>
+              </li>
+            </ul>
+          </section>
           <section
             v-if="page.faq.length"
             :id="SECTIONS.faq.id"
@@ -248,7 +253,6 @@ import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
-import { yandexPointUrl } from '~~/shared/embed-map'
 import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
@@ -290,13 +294,7 @@ interface PlacePage {
   groups: Array<{ title: string, links: PlaceLink[] }>
   sources: Array<{ title: string, url: string }>
   offers: Array<{ title: string, terms: string }>
-  routeBand: null | {
-    href: string
-    title: string
-    summary: string
-    steps: Array<{ href: string, text: string, current: boolean }>
-    next: { href: string, text: string } | null
-  }
+
   eatNearby: Array<{
     href: string
     slug: string
@@ -330,9 +328,6 @@ function openPhoto(id: string) {
 // the place is closed.
 const closedByStatus = page.place.status === 'closed' && !isVerified(page.place.schedule)
 const closedNote = closedByStatus ? 'Закрыто для посещения' : ''
-const yandexPoint = page.place.latitude != null && page.place.longitude != null
-  ? yandexPointUrl(page.place.latitude, page.place.longitude)
-  : ''
 const facts = guideFacts(page.place)
 const checkedLabel = russianDay(page.checkedAt)
 const address = shortAddress(page.place.howToGet || '')
@@ -343,12 +338,15 @@ const hasFacts = Boolean(
 )
 const hasCoords = page.place.latitude != null && page.place.longitude != null
 const nearby = page.groups.find((group) => group.title === 'Рядом')
+// Every published route through this place.
+const routes = page.groups.find((group) => group.title === 'Маршруты')?.links ?? []
 const SECTIONS = PAGE_SECTIONS
 // Text-width blocks (food nearby, directions, FAQ) stay in the article column
 // beside the rail; only the wide «Рядом» grid runs full width after it.
 const sectionsAfter = presentSections([
   [SECTIONS.directions, Boolean(hasCoords || page.directionsHtml)],
   [SECTIONS.eatNearby, (page.eatNearby?.length ?? 0) > 0],
+  [SECTIONS.placeRoutes, routes.length > 0],
   [SECTIONS.faq, page.faq.length > 0],
   [SECTIONS.nearby, Boolean(nearby)],
 ])
@@ -364,6 +362,10 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 <style scoped>
 .place-map { margin: 1rem 0 0; }
 .directions { margin-top: 3rem; }
+.routes { margin-top: 3rem; }
+.routes h2 { margin-bottom: 0.8rem; }
+.routes ul { margin: 0; padding: 0; list-style: none; }
+.routes li { padding: 0.6rem 0; border-top: 1px solid var(--color-line); }
 .directions h2 { margin-bottom: 0.8rem; }
 .directions-text { max-width: 65ch; line-height: 1.6; }
 .directions-text :deep(p) { margin: 0 0 0.6rem; }
@@ -400,7 +402,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   color: var(--color-brick-dark);
   font-weight: 700;
 }
-.map-link { margin: 0.2rem 0 0.6rem; font-size: 0.95rem; }
 .place-body { margin-top: 2.4rem; }
 .offers { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.2rem; }
 .facts {
