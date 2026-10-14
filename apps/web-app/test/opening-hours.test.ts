@@ -37,4 +37,10 @@ describe('opening hours', () => {
     expect(nextClosureFact(MARKET, NOW)).toEqual({ label: 'Ближайший санитарный день', value: 'понедельник, 26 октября' })
     expect(guideFacts({ hours: MARKET }, NOW).map((row) => row.key)).toEqual(['hours', 'closed'])
   })
+
+  it('ignores a last-entry note', () => {
+    expect(parsePlaceHours('Ежедневно 10:00–19:00, касса до 18:00')?.closes).toBe('19:00')
+    expect(parsePlaceHours('Ежедневно 10:00–19:00, касса до 18:00, последний понедельник месяца санитарный день')?.monthlyClosure?.weekday).toBe(1)
+    expect(parsePlaceHours('Ежедневно 10:00–19:00, обед 13:00–14:00')).toBeNull()
+  })
 })
