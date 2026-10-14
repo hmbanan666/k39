@@ -71,7 +71,10 @@
       </div>
     </header>
     <div class="place-body">
-      <ReaderLayout :html="page.html">
+      <ReaderLayout
+        :html="page.html"
+        :sections-after="sectionsAfter"
+      >
         <template
           v-if="hasFacts || page.offers.length"
           #lead
@@ -153,9 +156,10 @@
     </div>
     <section
       v-if="nearby || page.eatNearby?.length"
+      :id="SECTIONS.nearby.id"
       class="nearby-block"
     >
-      <h2>Рядом</h2>
+      <h2>{{ SECTIONS.nearby.title }}</h2>
       <div
         v-if="nearby"
         class="nearby"
@@ -179,9 +183,10 @@
     </section>
     <section
       v-if="hasCoords || page.directionsHtml"
+      :id="SECTIONS.directions.id"
       class="directions"
     >
-      <h2>Как добраться</h2>
+      <h2>{{ SECTIONS.directions.title }}</h2>
       <div
         v-if="page.directionsHtml"
         class="directions-text"
@@ -198,11 +203,12 @@
     </section>
     <section
       v-if="page.faq.length"
+      :id="SECTIONS.faq.id"
       class="faq"
       aria-labelledby="faq-title"
     >
       <h2 id="faq-title">
-        Вопросы перед поездкой
+        {{ SECTIONS.faq.title }}
       </h2>
       <details
         v-for="(item, index) in page.faq"
@@ -222,9 +228,10 @@
     />
     <details
       v-if="page.sources.length"
+      :id="SECTIONS.sources.id"
       class="sources"
     >
-      <summary>Источники</summary>
+      <summary>{{ SECTIONS.sources.title }}</summary>
       <ul>
         <li
           v-for="source in page.sources"
@@ -257,6 +264,7 @@ import { yandexDestinationUrl } from '~~/shared/embed-map'
 import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
+import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 import { guideFacts, russianDay } from '~~/shared/place-guide'
 
 interface PlaceLink {
@@ -346,6 +354,13 @@ const hasFacts = Boolean(
 )
 const hasCoords = page.place.latitude != null && page.place.longitude != null
 const nearby = page.groups.find((group) => group.title === 'Рядом')
+const SECTIONS = PAGE_SECTIONS
+const sectionsAfter = presentSections([
+  [SECTIONS.nearby, Boolean(nearby || page.eatNearby?.length)],
+  [SECTIONS.directions, Boolean(hasCoords || page.directionsHtml)],
+  [SECTIONS.faq, page.faq.length > 0],
+  [SECTIONS.sources, page.sources.length > 0],
+])
 const heroSizes = '(min-width: 1000px) 720px, 100vw'
 const heroPreload = page.cover ? lcpPreload(page.cover, heroSizes) : null
 if (heroPreload) {

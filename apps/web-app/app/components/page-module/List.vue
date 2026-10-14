@@ -6,10 +6,12 @@
     >
       <PageModuleText
         v-if="module.type === 'text'"
+        :id="anchors[index]?.id"
         :module="module"
       />
       <PageModuleMonthStats
         v-else-if="module.type === 'month-stats'"
+        :id="anchors[index]?.id"
         :module="module"
       />
       <PageModulePicker
@@ -26,11 +28,13 @@
       />
       <PageModuleCards
         v-else-if="module.type === 'ideas' || module.type === 'plans'"
+        :id="anchors[index]?.id"
         :module="module"
         :state="picker.state.value"
       />
       <PageModulePlaces
         v-else-if="module.type === 'places' && places.length"
+        :id="anchors[index]?.id"
         :title="module.title"
         :places="places"
         :state="picker.state.value"
@@ -48,6 +52,7 @@
 import type { PublicMedia } from '~~/shared/media'
 import type { PickerQuestion, PublicPageModule, PublicPlaceCard } from '~~/shared/page-modules'
 import { fitsPicker, pickerActive, pickerFit } from '~~/shared/page-modules'
+import { moduleAnchors } from '~~/shared/page-sections'
 
 // Renders a module page (ADR 0023). Every module is server-rendered in its
 // stored order; the picker only reorders and marks cards.
@@ -62,6 +67,7 @@ const questions = computed<PickerQuestion[]>(() => {
   return module?.type === 'picker' ? module.questions : []
 })
 const picker = usePagePicker(questions.value)
+const anchors = computed(() => moduleAnchors(props.modules, (module) => module.type !== 'places' || props.places.length > 0))
 
 const taggedCards = computed(() => [
   ...props.modules.flatMap((module) => module.type === 'ideas' || module.type === 'plans' ? module.items.map((item) => item.tags) : []),

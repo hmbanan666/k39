@@ -6,18 +6,28 @@
     :lede="page.summary"
   >
     <RouteGuide
+      :id="PAGE_SECTIONS.stops.id"
       :stops="page.stops"
       :path="page.path"
       :focus-href="`/marshruty/${slug}`"
     />
-    <ReaderLayout :html="page.html" />
-    <VenueNearby :items="page.eatNearby || []" />
+    <ReaderLayout
+      :html="page.html"
+      :sections-before="sectionsBefore"
+      :sections-after="sectionsAfter"
+    />
+    <VenueNearby
+      :id="PAGE_SECTIONS.eatNearby.id"
+      :items="page.eatNearby || []"
+      :title="PAGE_SECTIONS.eatNearby.title"
+    />
   </ArticleShell>
 </template>
 
 <script setup lang="ts">
 import type { RouteStopView } from '~~/shared/route-nav'
 import type { SeoDocument } from '~~/shared/seo'
+import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 
 const slug = String(useRoute().params.slug || '')
 const page = await fetchPublic<{
@@ -37,4 +47,6 @@ const page = await fetchPublic<{
   }>
 }>(`/api/public/routes/${slug}`)
 usePublicHead(page.doc)
+const sectionsBefore = presentSections([[PAGE_SECTIONS.stops, page.stops.length > 0]])
+const sectionsAfter = presentSections([[PAGE_SECTIONS.eatNearby, (page.eatNearby?.length ?? 0) > 0]])
 </script>

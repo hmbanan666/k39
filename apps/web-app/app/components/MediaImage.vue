@@ -75,12 +75,22 @@ function srcset(format: 'avif' | 'webp') {
 </script>
 
 <style scoped>
-.frame { margin: 0; }
+.frame {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+/* <picture> is inline by default and shrinks to the image's intrinsic size,
+   which left an empty strip inside wider frames. */
+picture {
+  display: block;
+  width: 100%;
+}
 img {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 3 / 2;
+  aspect-ratio: var(--ratio, 3 / 2);
   object-fit: cover;
   border-radius: 2px;
 }
