@@ -2,7 +2,7 @@
   <p
     v-if="status"
     class="live"
-    :class="{ open: status.open }"
+    :class="{ open: status.open, muted: status.muted }"
     role="status"
   >
     <span class="dot" aria-hidden="true" />{{ status.text }}
@@ -24,7 +24,7 @@ import { availabilityText, statusFromRules } from '~~/shared/schedule'
 const props = defineProps<{ schedule: ScheduleRecord | null, hasHours?: boolean }>()
 // Rendered only after hydration too, so cached HTML never carries it.
 const unverified = ref(false)
-const status = ref<{ open: boolean, text: string } | null>(null)
+const status = ref<{ open: boolean, muted: boolean, text: string } | null>(null)
 let timer: ReturnType<typeof setInterval> | undefined
 
 function update() {
@@ -32,7 +32,7 @@ function update() {
   const value = statusFromRules(props.schedule, now)
   status.value = value.status === 'unknown'
     ? null
-    : { open: value.status === 'open' || value.status === 'closing_soon', text: availabilityText(value, now) }
+    : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen), text: availabilityText(value, now) }
   unverified.value = value.status === 'unknown' && Boolean(props.hasHours)
 }
 

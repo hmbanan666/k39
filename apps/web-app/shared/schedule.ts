@@ -248,9 +248,13 @@ export interface Availability {
   opensAt: string | null
   minutesLeft: number | null
   minutesToOpen: number | null
+  /** 24/7: no closing time exists, so closesAt stays null. */
+  alwaysOpen?: boolean
 }
 
 export const SOON_MINUTES = 60
+
+const ALWAYS_OPEN: Availability = { status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, alwaysOpen: true }
 
 /** Status at `at` from sorted intervals. `verified` false always gives unknown. */
 export function availabilityAt(intervals: OpenInterval[], at: Date, verified: boolean): Availability {
@@ -260,6 +264,11 @@ export function availabilityAt(intervals: OpenInterval[], at: Date, verified: bo
   }
   const now = at.getTime()
   const current = intervals.find((item) => item.start.getTime() <= now && now < item.end.getTime())
+  // An interval that runs past a week only ends at the materialised window
+  // boundary: there is no real closing time to show.
+  if (current && current.end.getTime() - now > 7 * 24 * 60 * 60_000) {
+    return ALWAYS_OPEN
+  }
   if (current) {
     const minutesLeft = Math.round((current.end.getTime() - now) / 60_000)
     return { status: minutesLeft <= SOON_MINUTES ? 'closing_soon' : 'open', closesAt: current.end.toISOString(), opensAt: null, minutesLeft, minutesToOpen: null }
@@ -282,11 +291,15 @@ export function availabilityText(value: Availability, at: Date) {
   if (value.status === 'unknown') {
     return ''
   }
+  if (value.alwaysOpen) {
+    return 'Доступно круглосуточно'
+  }
   if (value.closesAt) {
     const left = value.minutesLeft ?? 0
-    // Only an always-open schedule runs past a day without closing.
-    if (left > 24 * 60) {
-      return 'Открыто круглосуточно'
+    // Never show a day-plus countdown: name the closing date instead.
+    if (left >= 24 * 60) {
+      const parts = zoneParts(new Date(value.closesAt))
+      return `Открыто до ${parts.day}.${parts.month} ${parts.hour}:${parts.minute}`
     }
     const rest = left >= 60 ? `ещё ${Math.floor(left / 60)} ч${left % 60 ? ` ${left % 60} мин` : ''}` : `ещё ${left} мин`
     return `Открыто до ${clockOf(value.closesAt)} · ${rest}`
@@ -304,6 +317,9 @@ export function availabilityText(value: Availability, at: Date) {
 export function statusFromRules(record: { rules: ScheduleRules | null, verifiedAt: string | null } | null, at: Date): Availability {
   if (!record?.rules || !isVerified(record)) {
     return availabilityAt([], at, false)
+  }
+  if (record.rules.mode === 'always') {
+    return ALWAYS_OPEN
   }
   const today = localNow(at).date
   return availabilityAt(expandIntervals(record.rules, addDays(today, -1), 16), at, true)
@@ -495,7 +511,10 @@ export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, clos
 }
 
 /** Status from the materialised window: the interval open at `at`, if any, and the next start. */
-export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean }, at: Date): Availability {
+export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean, alwaysOpen?: boolean }, at: Date): Availability {
+  if (input.verified && input.alwaysOpen) {
+    return ALWAYS_OPEN
+  }
   const intervals: OpenInterval[] = []
   if (input.currentEnd) {
     intervals.push({ start: new Date(at.getTime() - 1), end: new Date(input.currentEnd), lastEntry: null })
