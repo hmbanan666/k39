@@ -466,11 +466,12 @@ function openPhoto(id: string) {
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  height: 100%;
+  aspect-ratio: 16 / 10;
   padding-top: 1rem;
   background: linear-gradient(160deg, var(--color-sea-light), var(--color-amber-soft));
 }
-.sticker-art :deep(img) { width: min(220px, 52%); }
+.sticker-art :deep(.sticker) { width: min(240px, 46%); }
+.sticker-art :deep(img) { width: 100%; }
 .kicker {
   margin: 0 0 0.45rem;
   color: var(--color-brick);
