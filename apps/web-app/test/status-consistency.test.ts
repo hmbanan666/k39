@@ -9,6 +9,10 @@ describe('status consistency', () => {
   it('accepts military closures and ignores neighbours', () => {
     expect(statusContradictions({ text: 'Военный объект, посещение невозможно. Рядом [форт № 5а](/fort-5a), туда пускают по записи.', mode: 'closed' })).toEqual([])
   })
+  it('reads outside-only wording as closed', () => {
+    expect(statusContradictions({ text: 'Не открыт для посещения; осмотр только снаружи', mode: 'closed' })).toEqual([])
+    expect(statusContradictions({ text: 'Внутрь ворот не пускают, музея пока нет.', mode: 'hours' })).toHaveLength(1)
+  })
   it('ignores a weekly day off', () => {
     expect(statusContradictions({ text: 'По понедельникам закрыто.', mode: 'hours' })).toEqual([])
   })
