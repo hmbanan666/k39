@@ -169,6 +169,13 @@
       "when": 1792010000000,
       "tag": "0023_venue_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792020000000,
+      "tag": "0024_region_short_title",
+      "breakpoints": true
     }
   ]
 }

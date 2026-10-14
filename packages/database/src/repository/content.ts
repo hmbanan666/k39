@@ -760,6 +760,7 @@ export class Editor {
   static async upsertRegion(data: {
     slug: string
     title: string
+    shortTitle?: string | null
     description?: string | null
     latitude?: number | null
     longitude?: number | null
@@ -771,6 +772,7 @@ export class Editor {
       const [created] = await db.insert(regions).values({
         slug: data.slug,
         title,
+        shortTitle: data.shortTitle?.trim() || null,
         description: data.description ?? null,
         latitude: data.latitude ?? null,
         longitude: data.longitude ?? null,
@@ -782,6 +784,7 @@ export class Editor {
     }
     const [updated] = await db.update(regions).set({
       title: title || existing.title,
+      shortTitle: data.shortTitle === undefined ? existing.shortTitle : data.shortTitle?.trim() || null,
       description: data.description === undefined ? existing.description : data.description,
       latitude: data.latitude === undefined ? existing.latitude : data.latitude,
       longitude: data.longitude === undefined ? existing.longitude : data.longitude,

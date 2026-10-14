@@ -32,7 +32,7 @@
       <div class="hero-copy">
         <p class="kicker">
           {{ page.categoryTitle }}<template v-if="page.region">
-            · {{ page.region.title }}
+            · {{ regionLabel(page.region) }}
           </template>
         </p>
         <h1>{{ page.doc.h1 }}</h1>
@@ -258,6 +258,7 @@ import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 import { guideFacts, russianDay } from '~~/shared/place-guide'
+import { regionLabel } from '~~/shared/region'
 import { isVerified } from '~~/shared/schedule'
 
 interface PlaceLink {
@@ -287,7 +288,7 @@ interface PlacePage {
   }
   categoryTitle: string
   categorySlug: string
-  region: { title: string } | null
+  region: { title: string, shortTitle?: string | null } | null
   images: Array<{ src: string, url: string, alt: string, width: number | null, height: number | null }>
   gallery: PublicMedia[]
   cover: PublicMedia | null
