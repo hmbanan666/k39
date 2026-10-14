@@ -27,11 +27,43 @@
         </button>
       </div>
     </div>
+    <div
+      class="question"
+      role="group"
+      aria-labelledby="picker-persona"
+    >
+      <span
+        id="picker-persona"
+        class="label"
+      >Кто вы в поездке?</span>
+      <div class="chips">
+        <button
+          v-for="item in PERSONAS"
+          :key="item.code"
+          type="button"
+          class="chip"
+          :aria-pressed="persona === item.code"
+          @click="emit('persona', persona === item.code ? null : item.code)"
+        >
+          {{ item.label }}
+        </button>
+      </div>
+    </div>
     <p
       class="status"
       aria-live="polite"
     >
-      <template v-if="active">
+      <template v-if="active && source === 'persona' && persona">
+        Подходит вам: {{ fitting }} из {{ total }}. Подняли выше, потому что вы выбрали «{{ visitorPersonaLabel(persona) }}».
+        <button
+          type="button"
+          class="reset"
+          @click="emit('reset')"
+        >
+          Сбросить
+        </button>
+      </template>
+      <template v-else-if="active">
         Подходит под ваш выбор: {{ fitting }} из {{ total }}. Они выше, остальное ниже.
         <button
           type="button"
@@ -41,20 +73,34 @@
           Сбросить
         </button>
       </template>
+      <template v-else-if="persona">
+        Вы выбрали «{{ visitorPersonaLabel(persona) }}». Отметьте, что интересно, и подходящее поднимется выше.
+      </template>
       <template v-else>
         Выберите, что вам ближе, и подходящие идеи и места поднимутся выше.
       </template>
     </p>
+    <details class="why">
+      <summary>Почему я это вижу</summary>
+      <p>
+        Страница одна для всех, мы ничего не скрываем. Ваш выбор только меняет порядок карточек.
+        Ответы хранятся в адресе страницы, а «Кто вы в поездке?» только в этом браузере, на сервер не передаётся.
+      </p>
+    </details>
   </section>
 </template>
 
 <script setup lang="ts">
 import type { PickerQuestion, PickerState } from '~~/shared/page-modules'
+import type { VisitorPersona } from '~~/shared/visitor-persona'
 import { PICKER_QUESTIONS, pickerActive } from '~~/shared/page-modules'
+import { VISITOR_PERSONAS, visitorPersonaLabel } from '~~/shared/visitor-persona'
 
 const props = defineProps<{
   questions: PickerQuestion[]
   state: PickerState
+  source: 'answers' | 'persona' | null
+  persona: VisitorPersona | null
   fitting: number
   total: number
 }>()
@@ -62,9 +108,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   toggle: [question: PickerQuestion, value: string]
   reset: []
+  persona: [code: VisitorPersona | null]
 }>()
 
 const QUESTIONS = PICKER_QUESTIONS
+const PERSONAS = VISITOR_PERSONAS
 const active = computed(() => pickerActive(props.state))
 
 function selected(key: PickerQuestion, value: string) {
@@ -132,6 +180,15 @@ function selected(key: PickerQuestion, value: string) {
   text-decoration: underline;
   cursor: pointer;
 }
+.why {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.why summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.why p { margin: 0.4rem 0 0; }
 @media (min-width: 900px) {
   .question {
     grid-template-columns: 11rem 1fr;
