@@ -11,18 +11,26 @@
         v-for="item in items"
         :key="item.href"
       >
-        <a
-          :href="item.href"
-          data-track="outbound"
-          data-track-name="venue"
-        >
-          <span
-            v-if="item.partner"
-            class="partner"
-          >Партнёр</span>
-          <span class="name">{{ item.name }}</span>
-          <span class="kind">{{ item.kindLabel }}</span>
-        </a>
+        <div class="main">
+          <a
+            :href="item.href"
+            data-track="outbound"
+            data-track-name="venue"
+          >
+            <span
+              v-if="item.partner"
+              class="partner"
+            >Партнёр</span>
+            <span class="name">{{ item.name }}</span>
+            <span class="kind">{{ item.kindLabel }}</span>
+          </a>
+          <!-- Client-only: only verified hours report open or closed (ADR 0028). -->
+          <OpeningLive
+            :schedule="item.schedule ?? null"
+            show-unknown
+            compact
+          />
+        </div>
         <span class="meta">
           <span>{{ item.distance }}</span>
           <span
@@ -37,6 +45,7 @@
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
+import type { ScheduleRecord } from '~~/shared/schedule'
 
 const props = withDefaults(defineProps<{
   items: Array<{
@@ -48,6 +57,7 @@ const props = withDefaults(defineProps<{
     partner: boolean
     stale: boolean
     media?: PublicMedia | null
+    schedule?: ScheduleRecord | null
   }>
   title?: string
   level?: 'h2' | 'h3'
@@ -77,6 +87,7 @@ li {
   padding: 0.7rem 0;
   border-top: 1px solid var(--color-line);
 }
+.main { min-width: 0; }
 a { color: inherit; text-decoration: none; }
 .name { font-weight: 700; }
 .kind { margin-left: 0.5rem; color: var(--muted); font-size: var(--step--1); }

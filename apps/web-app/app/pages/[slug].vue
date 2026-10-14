@@ -177,6 +177,11 @@
               :longitude="page.place.longitude!"
             />
           </section>
+          <VenueNearby
+            :id="SECTIONS.eatNearby.id"
+            :items="page.eatNearby || []"
+            :title="SECTIONS.eatNearby.title"
+          />
           <section
             v-if="page.faq.length"
             :id="SECTIONS.faq.id"
@@ -227,15 +232,12 @@
       </ReaderLayout>
     </div>
     <section
-      v-if="nearby || page.eatNearby?.length"
+      v-if="nearby"
       :id="SECTIONS.nearby.id"
       class="nearby-block"
     >
       <h2>{{ SECTIONS.nearby.title }}</h2>
-      <div
-        v-if="nearby"
-        class="nearby"
-      >
+      <div class="nearby">
         <PlaceCard
           v-for="link in nearby.links"
           :key="link.href"
@@ -246,12 +248,6 @@
           :media="link.media"
         />
       </div>
-      <VenueNearby
-        class="nearby-eat"
-        :items="page.eatNearby || []"
-        title="Где поесть"
-        level="h3"
-      />
     </section>
     <PhotoViewer
       v-if="photos.length"
@@ -323,6 +319,7 @@ interface PlacePage {
     distance: string
     partner: boolean
     stale: boolean
+    schedule: ScheduleRecord | null
   }>
 }
 
@@ -363,12 +360,13 @@ const hasFacts = Boolean(
 const hasCoords = page.place.latitude != null && page.place.longitude != null
 const nearby = page.groups.find((group) => group.title === 'Рядом')
 const SECTIONS = PAGE_SECTIONS
-// Text-width blocks stay in the article column beside the rail; only the
-// wide «Рядом» grid runs full width after it.
+// Text-width blocks (food nearby, directions, FAQ) stay in the article column
+// beside the rail; only the wide «Рядом» grid runs full width after it.
 const sectionsAfter = presentSections([
   [SECTIONS.directions, Boolean(hasCoords || page.directionsHtml)],
+  [SECTIONS.eatNearby, (page.eatNearby?.length ?? 0) > 0],
   [SECTIONS.faq, page.faq.length > 0],
-  [SECTIONS.nearby, Boolean(nearby || page.eatNearby?.length)],
+  [SECTIONS.nearby, Boolean(nearby)],
 ])
 const heroSizes = '(min-width: 1000px) 720px, 100vw'
 const heroPreload = page.cover ? lcpPreload(page.cover, heroSizes) : null
@@ -385,7 +383,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 .directions h2 { margin-bottom: 0.8rem; }
 .directions-text { max-width: 65ch; line-height: 1.6; }
 .directions-text :deep(p) { margin: 0 0 0.6rem; }
-.nearby-eat { margin-top: 1.6rem; }
 .hero {
   display: grid;
   gap: 1.6rem;
