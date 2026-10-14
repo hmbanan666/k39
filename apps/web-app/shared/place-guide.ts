@@ -1,6 +1,6 @@
 import type { ScheduleRecord, ScheduleRules } from './schedule'
 import { nextClosureFact } from './opening-hours'
-import { describeSchedule, isVerified, nextClosedFact } from './schedule'
+import { isVerified, nextClosedFact, scheduleDetails } from './schedule'
 
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
 
@@ -40,7 +40,7 @@ export function guideFacts(place: {
   // A checked structured schedule wins over the free-text hours.
   const record = place.schedule ?? null
   const usable = record && isVerified(record) ? record.rules : null
-  const hoursText = usable ? describeSchedule(usable).join('. ') : place.hours?.trim() || ''
+  const hoursText = usable ? scheduleDetails(usable).join('. ') : place.hours?.trim() || ''
   const rows: GuideFact[] = [
     { key: 'duration', label: 'Сколько времени', value: place.visitDuration?.trim() || '' },
     { key: 'season', label: 'Когда ехать', value: place.bestTime?.trim() || '' },

@@ -25,7 +25,7 @@ const daySchema = z.object({
 })
 
 export const scheduleRulesSchema = z.object({
-  mode: z.enum(['hours', 'always', 'appointment', 'closed', 'events']).default('hours'),
+  mode: z.enum(['hours', 'always', 'appointment', 'closed', 'events', 'slots']).default('hours'),
   seasons: z.array(z.object({
     from: monthDay.optional(),
     to: monthDay.optional(),
@@ -47,6 +47,12 @@ export const scheduleRulesSchema = z.object({
   })).max(60).default([]),
   occurrences: z.array(z.object({ start: localDateTime, end: localDateTime })).max(200).default([]),
   note: z.string().trim().max(200).optional(),
+  /** Mode slots only: visits start at fixed times within the open hours (guided tours). */
+  slots: z.object({
+    times: z.array(clock).min(1).max(24),
+    minutes: z.number().int().min(5).max(480).default(60),
+    label: z.string().trim().min(1).max(30).default('Экскурсия'),
+  }).optional(),
   /** Mode closed only: why, until when, and whether the outside can be seen. */
   closure: z.object({
     reason: z.enum(['restoration', 'repair', 'season', 'military', 'private', 'other']).default('other'),
@@ -175,7 +181,7 @@ export function hoursOn(rules: ScheduleRules, date: string): DayHours | null {
   if (rules.mode === 'always') {
     return { opens: '00:00', closes: '00:00', breaks: [] }
   }
-  if (rules.mode !== 'hours') {
+  if (rules.mode !== 'hours' && rules.mode !== 'slots') {
     return null
   }
   const exception = rules.exceptions.find((item) => item.date === date)
@@ -225,6 +231,16 @@ export function expandIntervals(rules: ScheduleRules, from: string, days: number
     if (!hours) {
       continue
     }
+    if (rules.mode === 'slots' && rules.slots) {
+      // Each start time inside the day's hours is one slot interval.
+      for (const time of [...rules.slots.times].sort()) {
+        if (toMinutes(time) >= toMinutes(hours.opens) && toMinutes(time) < toMinutes(hours.closes)) {
+          const start = zonedTime(date, time)
+          out.push({ start, end: new Date(start.getTime() + rules.slots.minutes * 60_000), lastEntry: null })
+        }
+      }
+      continue
+    }
     const overnight = toMinutes(hours.closes) <= toMinutes(hours.opens)
     const endDate = overnight ? addDays(date, 1) : date
     let start = zonedTime(date, hours.opens)
@@ -258,6 +274,8 @@ export interface Availability {
   alwaysOpen?: boolean
   /** Temporarily closed (mode closed): reason, until-date, outside viewable. */
   closure?: ScheduleRules['closure']
+  /** Slots mode: the label of the next start («Экскурсия»); opensAt is that start. */
+  slot?: string
 }
 
 export const SOON_MINUTES = 60
@@ -268,6 +286,12 @@ const CLOSURE_REASON = { restoration: ' на реставрацию', repair: ' 
 
 function temporarilyClosed(closure: ScheduleRules['closure']): Availability {
   return { status: 'closed', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, closure }
+}
+
+/** Slots: never «открыто до», only the next start. */
+function nextSlot(label: string, start: string | null, at: Date): Availability {
+  const minutesToOpen = start ? Math.round((new Date(start).getTime() - at.getTime()) / 60_000) : null
+  return { status: minutesToOpen != null && minutesToOpen <= SOON_MINUTES ? 'opening_soon' : 'closed', closesAt: null, opensAt: start, minutesLeft: null, minutesToOpen, slot: label }
 }
 
 /** «Закрыто на реставрацию до 01.05.2027 · снаружи можно посмотреть». */
@@ -321,6 +345,15 @@ export function availabilityText(value: Availability, at: Date) {
   if (value.closure) {
     return closureText(value.closure)
   }
+  if (value.slot) {
+    if (!value.opensAt) {
+      return 'Ближайших сеансов нет'
+    }
+    const today = localNow(at).date
+    const day = localNow(new Date(value.opensAt)).date
+    const when = day === today ? '' : day === addDays(today, 1) ? 'завтра ' : `${ACC[weekday(day)]} `
+    return `Ближайш${value.slot.endsWith('а') || value.slot.endsWith('я') ? 'ая' : 'ий'} ${value.slot.toLowerCase()} ${when}в ${clockOf(value.opensAt)}`
+  }
   if (value.status === 'appointment') {
     return 'По записи'
   }
@@ -359,6 +392,10 @@ export function statusFromRules(record: { rules: ScheduleRules | null, verifiedA
     return temporarilyClosed(record.rules.closure)
   }
   const today = localNow(at).date
+  if (record.rules.mode === 'slots' && record.rules.slots) {
+    const next = expandIntervals(record.rules, today, 16).find((item) => item.start.getTime() > at.getTime())
+    return nextSlot(record.rules.slots.label, next?.start.toISOString() ?? null, at)
+  }
   return availabilityAt(expandIntervals(record.rules, addDays(today, -1), 16), at, true)
 }
 
@@ -413,7 +450,7 @@ export function describeSchedule(rules: ScheduleRules | null): string[] {
     lines.push('По предварительной договорённости')
   } else if (rules.mode === 'closed') {
     lines.push(rules.closure ? closureText(rules.closure) : 'Закрыто')
-  } else if (rules.mode === 'hours') {
+  } else if (rules.mode === 'hours' || rules.mode === 'slots') {
     for (const season of rules.seasons) {
       const open = new Set(season.week.flatMap((entry) => entry.days))
       const off = WEEK_ORDER.filter((day) => !open.has(day))
@@ -432,11 +469,33 @@ export function describeSchedule(rules: ScheduleRules | null): string[] {
     if (rules.holidays === 'sunday') {
       lines.push('В праздники как в воскресенье')
     }
+    if (rules.mode === 'slots' && rules.slots) {
+      lines.push(`${rules.slots.label}: начало в ${[...rules.slots.times].sort().join(', ')}`)
+    }
   }
   if (rules.note) {
     lines.push(rules.note)
   }
   return lines
+}
+
+/**
+ * The «Часы» row next to the live status line: the schedule for regular
+ * hours, otherwise only what the status does not already say. Never repeats
+ * «Закрыто…», «По записи» or «Круглосуточно»; empty means hide the row.
+ */
+export function scheduleDetails(rules: ScheduleRules | null): string[] {
+  if (!rules) {
+    return []
+  }
+  if (rules.mode === 'hours' || rules.mode === 'slots' || rules.mode === 'events') {
+    return describeSchedule(rules)
+  }
+  // Appointment: the status line already carries the note on how to book.
+  if (rules.mode === 'appointment') {
+    return []
+  }
+  return rules.note ? [rules.note] : []
 }
 
 /** Closed days from closures and exceptions, from today, as YYYY-MM-DD. */
@@ -548,12 +607,15 @@ export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, clos
 }
 
 /** Status from the materialised window: the interval open at `at`, if any, and the next start. */
-export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean, closed?: boolean, closure?: ScheduleRules['closure'] }, at: Date): Availability {
+export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean, closed?: boolean, closure?: ScheduleRules['closure'], slot?: string }, at: Date): Availability {
   if (input.verified && input.appointment) {
     return BY_APPOINTMENT
   }
   if (input.verified && input.closed) {
     return temporarilyClosed(input.closure)
+  }
+  if (input.verified && input.slot) {
+    return nextSlot(input.slot, input.nextStart, at)
   }
   if (input.verified && input.alwaysOpen) {
     return ALWAYS_OPEN

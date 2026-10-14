@@ -27,6 +27,7 @@ export interface AvailabilityEntity {
   needsCheck: boolean
   mode: string
   closure: unknown
+  slotLabel: string | null
   currentEnd: string | null
   nextStart: string | null
 }
@@ -88,6 +89,7 @@ export class Schedules {
         coalesce((s.rules->>'needsCheck')::boolean, false) as needs_check,
         coalesce(s.rules->>'mode', 'hours') as mode,
         s.rules->'closure' as closure,
+        coalesce(s.rules->'slots'->>'label', 'Экскурсия') as slot_label,
         (select i.ends_at from schedule_intervals i
           where i.entity_type = e.entity_type and i.entity_id = e.entity_id
             and i.starts_at <= ${at}::timestamptz and i.ends_at > ${at}::timestamptz
@@ -112,6 +114,7 @@ export class Schedules {
       needsCheck: Boolean(row.needs_check),
       mode: String(row.mode),
       closure: row.closure ?? null,
+      slotLabel: row.slot_label ? String(row.slot_label) : null,
       currentEnd: row.current_end ? new Date(String(row.current_end)).toISOString() : null,
       nextStart: row.next_start ? new Date(String(row.next_start)).toISOString() : null,
     }))
