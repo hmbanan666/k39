@@ -49,7 +49,7 @@ export const scheduleRulesSchema = z.object({
   note: z.string().trim().max(200).optional(),
   /** Mode closed only: why, until when, and whether the outside can be seen. */
   closure: z.object({
-    reason: z.enum(['restoration', 'repair', 'season', 'other']).default('other'),
+    reason: z.enum(['restoration', 'repair', 'season', 'military', 'private', 'other']).default('other'),
     until: isoDate.optional(),
     viewableOutside: z.boolean().default(false),
   }).optional(),
@@ -264,17 +264,17 @@ export const SOON_MINUTES = 60
 
 const BY_APPOINTMENT: Availability = { status: 'appointment', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null }
 
-const CLOSURE_REASON = { restoration: 'на реставрацию', repair: 'на ремонт', season: 'до начала сезона', other: '' } as const
+const CLOSURE_REASON = { restoration: ' на реставрацию', repair: ' на ремонт', season: ' до начала сезона', military: ': военный объект', private: ': частная территория', other: '' } as const
 
 function temporarilyClosed(closure: ScheduleRules['closure']): Availability {
-  return { status: 'closed', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, closure: closure ?? { reason: 'other', viewableOutside: false } }
+  return { status: 'closed', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, closure }
 }
 
 /** «Закрыто на реставрацию до 01.05.2027 · снаружи можно посмотреть». */
 export function closureText(closure: NonNullable<ScheduleRules['closure']>) {
   const until = closure.until ? ` до ${closure.until.slice(8, 10)}.${closure.until.slice(5, 7)}.${closure.until.slice(0, 4)}` : ''
   const reason = CLOSURE_REASON[closure.reason]
-  const head = reason || until ? `Закрыто ${[reason, until.trim()].filter(Boolean).join(' ')}` : 'Временно закрыто'
+  const head = `${reason || until ? 'Закрыто' : 'Временно закрыто'}${reason}${until}`
   return closure.viewableOutside ? `${head} · снаружи можно посмотреть` : head
 }
 

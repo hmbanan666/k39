@@ -6,6 +6,9 @@ describe('status consistency', () => {
     expect(statusContradictions({ text: 'Бастион закрыт на реставрацию.', mode: 'hours' })).toHaveLength(1)
     expect(statusContradictions({ text: 'Бастион закрыт на реставрацию.', mode: 'closed' })).toEqual([])
   })
+  it('accepts military closures and ignores neighbours', () => {
+    expect(statusContradictions({ text: 'Военный объект, посещение невозможно. Рядом [форт № 5а](/fort-5a), туда пускают по записи.', mode: 'closed' })).toEqual([])
+  })
   it('ignores a weekly day off', () => {
     expect(statusContradictions({ text: 'По понедельникам закрыто.', mode: 'hours' })).toEqual([])
   })

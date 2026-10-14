@@ -2,7 +2,7 @@
 // says «закрыт на реставрацию» cannot show hours, and «по записи» needs the
 // appointment mode. Used by content scores to flag pages for review.
 
-const CLOSED = /(?:закрыт\p{L}*|не работает)\s+(?:на|для|в связи с)\s+(?:реставрац|ремонт|реконструкц|консервац|посещени)|временно\s+(?:закрыт|не работает|не принимает)|(?:сейчас|пока)\s+(?:закрыт|не работает)|на реставрации|на реконструкции/iu
+const CLOSED = /(?:закрыт\p{L}*|не работает)\s+(?:на|для|в связи с)\s+(?:реставрац|ремонт|реконструкц|консервац|посещени)|временно\s+(?:закрыт|не работает|не принимает)|(?:сейчас|пока)\s+(?:закрыт|не работает)|на реставрации|на реконструкции|посещение невозможно|внутрь не пускают|^закрыт/imu
 const APPOINTMENT = /по\s+(?:предварительн\p{L}*\s+)?(?:записи|договор[её]нност|заявк)/iu
 
 export interface StatusCheckInput {
@@ -13,8 +13,10 @@ export interface StatusCheckInput {
 
 /** Short English check strings, empty when text and status agree. */
 export function statusContradictions(input: StatusCheckInput): string[] {
-  const closedText = CLOSED.test(input.text)
-  const appointmentText = APPOINTMENT.test(input.text)
+  // Sentences that link elsewhere usually describe the neighbours.
+  const own = input.text.split(/(?<=[.!?])\s+|\n+/).filter((sentence) => !sentence.includes('](/')).join('\n')
+  const closedText = CLOSED.test(own)
+  const appointmentText = APPOINTMENT.test(own)
   const checks: string[] = []
   if (closedText && input.mode !== 'closed') {
     checks.push(`text says closed, schedule mode is ${input.mode ?? 'missing'}`)
