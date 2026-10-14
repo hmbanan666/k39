@@ -2,7 +2,11 @@ import { runAnalyticsMaintenance } from '../utils/analytics/search-job'
 
 export default defineNitroPlugin(() => {
   const run = () => {
-    runAnalyticsMaintenance().catch((error: unknown) => {
+    runAnalyticsMaintenance().then((result) => {
+      if (!result.skipped) {
+        console.warn('analytics search import', JSON.stringify(result))
+      }
+    }).catch((error: unknown) => {
       console.error('analytics maintenance', error)
     })
   }
