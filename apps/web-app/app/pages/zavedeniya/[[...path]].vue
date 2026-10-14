@@ -23,6 +23,14 @@
         :href="kind.href"
         :aria-current="kind.kind === page.kind ? 'page' : undefined"
       >{{ kind.label }}</a>
+      <button
+        type="button"
+        class="open-now"
+        :aria-pressed="openNow"
+        @click="toggleOpen"
+      >
+        Открыто сейчас
+      </button>
     </nav>
     <div
       v-if="page.html"
@@ -31,7 +39,7 @@
     />
     <ul class="list">
       <li
-        v-for="item in page.items"
+        v-for="item in shownItems"
         :key="item.href"
       >
         <a :href="item.href">{{ item.name }}</a>
@@ -39,16 +47,20 @@
         <span v-if="item.address">{{ item.address }}</span>
         <span v-if="item.avgCheck">{{ item.avgCheck }}</span>
         <span
+          v-if="openNow && openState(item.href) === 'estimate'"
+          class="stale"
+        >Часы по OpenStreetMap, не проверены</span>
+        <span
           v-if="item.stale"
           class="stale"
         >Давно не проверяли</span>
       </li>
     </ul>
     <p
-      v-if="!page.items.length"
+      v-if="!shownItems.length"
       class="empty"
     >
-      В этом списке пока нет опубликованных заведений.
+      {{ openNow ? 'Сейчас в этом списке нет открытых заведений с известными часами.' : 'В этом списке пока нет опубликованных заведений.' }}
     </p>
   </ArticleShell>
   <ArticleShell
@@ -235,6 +247,36 @@ interface VenuePage {
 
 const route = useRoute()
 const page = await fetchPublic<ListingPage | VenuePage>('/api/public/zavedeniya', { path: route.path })
+// «Открыто сейчас» runs in the browser only, after hydration (ADR 0028).
+const openNow = ref(false)
+const openSlugs = ref(new Map<string, 'verified' | 'estimate'>())
+const slugOf = (href: string) => href.split('/').filter(Boolean).pop() || ''
+const openState = (href: string) => openSlugs.value.get(slugOf(href)) ?? null
+const shownItems = computed(() => {
+  if (page.type !== 'listing') {
+    return []
+  }
+  return openNow.value ? page.items.filter((item) => openState(item.href)) : page.items
+})
+
+async function toggleOpen() {
+  openNow.value = !openNow.value
+  if (!openNow.value) {
+    return
+  }
+  const result = await $fetch<{ items: Array<{ slug: string, status: string, estimate: string | null }> }>('/api/public/availability', { query: { type: 'venue' } }).catch(() => ({ items: [] }))
+  const open = new Set(['open', 'closing_soon'])
+  const map = new Map<string, 'verified' | 'estimate'>()
+  for (const item of result.items) {
+    if (open.has(item.status)) {
+      map.set(item.slug, 'verified')
+    } else if (item.estimate && open.has(item.estimate)) {
+      map.set(item.slug, 'estimate')
+    }
+  }
+  openSlugs.value = map
+}
+
 const heroSizes = '(min-width: 900px) 360px, 100vw'
 const hero = page.type === 'venue' ? page.photos[0] : null
 const heroPreload = hero ? lcpPreload(hero, heroSizes) : null
@@ -257,6 +299,16 @@ function openPhoto(id: string) {
 <style scoped>
 .filters { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; margin: 0 0 1.5rem; }
 .filters a { color: var(--color-sea); }
+.open-now {
+  padding: 0.1rem 0.7rem;
+  border: 1px solid var(--color-sea);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-sea);
+  font: inherit;
+  cursor: pointer;
+}
+.open-now[aria-pressed='true'] { background: var(--color-sea); color: var(--color-paper, #fff); }
 .list, .places { margin: 0; padding: 0; list-style: none; }
 .list li, .places li {
   display: flex;

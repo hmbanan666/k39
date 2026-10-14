@@ -20,7 +20,10 @@ export default defineEventHandler(async (event) => {
   const wanted = query.status ? new Set(query.status.split(',')) : null
   const rows = await db.schedules.availability(at.toISOString(), { types, bbox })
   const items = rows.map((row) => {
-    const value = availabilityFromWindow({ currentEnd: row.currentEnd, nextStart: row.nextStart, verified: Boolean(row.verifiedAt) && !row.needsCheck }, at)
+    const verified = Boolean(row.verifiedAt) && !row.needsCheck
+    const value = availabilityFromWindow({ currentEnd: row.currentEnd, nextStart: row.nextStart, verified }, at)
+    // Unchecked hours (OSM imports) give an estimate, labelled as such, never a status.
+    const estimate = verified ? null : availabilityFromWindow({ currentEnd: row.currentEnd, nextStart: row.nextStart, verified: true }, at).status
     return {
       type: row.entityType,
       slug: row.slug,
@@ -28,6 +31,8 @@ export default defineEventHandler(async (event) => {
       latitude: row.latitude,
       longitude: row.longitude,
       ...value,
+      verified,
+      estimate,
       text: availabilityText(value, at),
     }
   }).filter((item) => !wanted || wanted.has(item.status))
