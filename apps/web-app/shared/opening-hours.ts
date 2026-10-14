@@ -63,6 +63,8 @@ function mainSchedule(text: string): Pick<ParsedHours, 'days' | 'opens' | 'close
   return { days, opens, closes }
 }
 
+const LAST_ENTRY = /^(?:касса|кассы|вход|вход и кассы)\s+до\s+\d{1,2}:\d{2}$/
+
 function closureNote(text: string, days: number[]) {
   const monthly = /^(последний|последняя|первый|первая)\s+(\S+)\s+(?:каждого\s+)?месяца\s*(?:-\s*)?(санитарный день|выходной|закрыто)$/.exec(text)
   if (monthly) {
@@ -88,12 +90,14 @@ export function parsePlaceHours(raw: string | null | undefined): ParsedHours | n
   }
   const [head, ...rest] = text.split(/\s*[,;]\s*/)
   const main = mainSchedule(head!)
-  if (!main || rest.length > 1) {
+  // Ticket-desk notes ("касса до 18:00") do not change the opening hours.
+  const notes = rest.filter((note) => !LAST_ENTRY.test(note))
+  if (!main || notes.length > 1) {
     return null
   }
   let monthlyClosure: ParsedHours['monthlyClosure'] = null
-  if (rest.length) {
-    const note = closureNote(rest[0]!, main.days)
+  if (notes.length) {
+    const note = closureNote(notes[0]!, main.days)
     if (note === undefined) {
       return null
     }
