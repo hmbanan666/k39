@@ -80,5 +80,8 @@ audited and rematerialise intervals.
 - Unknown or unverified schedules are `unknown`, never `closed`.
 - Old `places.hours` text stays as a note; recognised strings were migrated
   into rules, the rest are listed as needing verification.
-- `venues.hours` (OSM) migrate as rules without `verified_at`, so they read
-  as text but report `unknown` until checked.
+- `venues.hours` migrate as rules. `verified_at` is the venue's
+  `last_verified_at` (Kaliningrad date) when an editor checked it, else empty,
+  so OSM-only hours read as text but report `unknown` until checked.
+  Migration 0022 backfilled this for venues migrated before the fix, and
+  venue writes that set hours or `lastVerifiedAt` keep the schedule in step.

@@ -1,8 +1,10 @@
 import type { VenueWrite } from '@k39/database'
 import { db, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
+import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
 import { auditMcp } from '../mcp/audit'
 import { parseFactsCheckedAt } from '../mcp/facts'
+import { loadSchedule, saveSchedule } from '../schedule'
 
 export function venueError(error: unknown): never {
   if (error instanceof VenueInputError) {
@@ -62,6 +64,7 @@ export async function createVenue(input: Parameters<typeof venueWriteFromInput>[
       ...venueWriteFromInput(input),
       regionId: regionId === undefined ? input.regionId : regionId,
     }, userId)
+    await syncVenueSchedule(row, input)
     await auditMcp('venue_create', 'venue', row.id)
     return row
   } catch (error) {
@@ -88,9 +91,36 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
     if (!saved) {
       throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
     }
+    await syncVenueSchedule(saved, input)
     await auditMcp('venue_update', 'venue', saved.id)
     return saved
   } catch (error) {
     venueError(error)
   }
+}
+
+/**
+ * Keep the venue schedule (ADR 0028) in step with venue writes. New hours
+ * replace the rules; an editor check date marks them verified. A write that
+ * touches neither leaves the schedule alone, so schedule_set edits survive.
+ */
+export async function syncVenueSchedule(
+  venue: { id: string, hours: unknown, lastVerifiedAt: Date | string | null },
+  input: { hours?: unknown, lastVerifiedAt?: string | null },
+) {
+  if (input.hours === undefined && input.lastVerifiedAt === undefined) {
+    return
+  }
+  const current = await loadSchedule('venue', venue.id)
+  const rules = input.hours === undefined && current
+    ? current.rules
+    : rulesFromVenueHours(venue.hours as Parameters<typeof rulesFromVenueHours>[0])
+  if (!rules) {
+    return
+  }
+  await saveSchedule('venue', venue.id, {
+    rules,
+    sourceUrl: current?.sourceUrl ?? null,
+    verifiedAt: rules.needsCheck ? null : verifiedDate(venue.lastVerifiedAt),
+  })
 }

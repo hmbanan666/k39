@@ -629,3 +629,11 @@ export function availabilityFromWindow(input: { currentEnd: string | null, nextS
   }
   return availabilityAt(intervals, at, input.verified)
 }
+
+/** Kaliningrad calendar date of an editor check, as schedules.verified_at stores it. */
+export function verifiedDate(value: Date | string | null | undefined) {
+  if (!value) {
+    return null
+  }
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kaliningrad' }).format(new Date(value))
+}
