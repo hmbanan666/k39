@@ -240,7 +240,7 @@ export function expandIntervals(rules: ScheduleRules, from: string, days: number
 
 // --- status ------------------------------------------------------------------
 
-export type AvailabilityStatus = 'open' | 'closing_soon' | 'opening_soon' | 'closed' | 'unknown'
+export type AvailabilityStatus = 'open' | 'closing_soon' | 'opening_soon' | 'closed' | 'appointment' | 'unknown'
 
 export interface Availability {
   status: AvailabilityStatus
@@ -253,6 +253,8 @@ export interface Availability {
 }
 
 export const SOON_MINUTES = 60
+
+const BY_APPOINTMENT: Availability = { status: 'appointment', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null }
 
 const ALWAYS_OPEN: Availability = { status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, alwaysOpen: true }
 
@@ -294,6 +296,9 @@ export function availabilityText(value: Availability, at: Date) {
   if (value.alwaysOpen) {
     return 'Доступно круглосуточно'
   }
+  if (value.status === 'appointment') {
+    return 'По записи'
+  }
   if (value.closesAt) {
     const left = value.minutesLeft ?? 0
     // Never show a day-plus countdown: name the closing date instead.
@@ -320,6 +325,10 @@ export function statusFromRules(record: { rules: ScheduleRules | null, verifiedA
   }
   if (record.rules.mode === 'always') {
     return ALWAYS_OPEN
+  }
+  // By appointment is neither open nor closed: never «Закрыто».
+  if (record.rules.mode === 'appointment') {
+    return BY_APPOINTMENT
   }
   const today = localNow(at).date
   return availabilityAt(expandIntervals(record.rules, addDays(today, -1), 16), at, true)
@@ -511,7 +520,10 @@ export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, clos
 }
 
 /** Status from the materialised window: the interval open at `at`, if any, and the next start. */
-export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean, alwaysOpen?: boolean }, at: Date): Availability {
+export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean }, at: Date): Availability {
+  if (input.verified && input.appointment) {
+    return BY_APPOINTMENT
+  }
   if (input.verified && input.alwaysOpen) {
     return ALWAYS_OPEN
   }

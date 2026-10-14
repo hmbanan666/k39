@@ -72,3 +72,14 @@ describe('long and 24/7 intervals', () => {
     expect(availabilityText(statusFromRules(record, at('2026-10-14T17:00')), at('2026-10-14T17:00'))).toBe('Открыто до 19:00 · ещё 2 ч')
   })
 })
+
+describe('by appointment', () => {
+  it('reads «По записи», never closed', () => {
+    const fort = { rules: scheduleRulesSchema.parse({ mode: 'appointment', note: 'запись по телефону' }), sourceUrl: null, verifiedAt: '2026-10-14' }
+    const now = at('2026-10-14T23:00')
+    const value = statusFromRules(fort, now)
+    expect(value.status).toBe('appointment')
+    expect(availabilityText(value, now)).toBe('По записи')
+    expect(availabilityFromWindow({ currentEnd: null, nextStart: null, verified: true, appointment: true }, now).status).toBe('appointment')
+  })
+})
