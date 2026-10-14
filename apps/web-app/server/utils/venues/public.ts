@@ -71,6 +71,23 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
   })
 }
 
+/** One or two sentences for the hero: the SEO description, else the start of the description. */
+export function venueSummary(seo: string | null, description: string, max = 180) {
+  const source = (seo?.trim() || description.replace(/[#*_>`[\]]/g, '').trim())
+  if (source.length <= max) {
+    return source
+  }
+  const sentences = source.match(/[^.!?]+[.!?]+/g) ?? []
+  let text = ''
+  for (const sentence of sentences) {
+    if ((text + sentence).trim().length > max) {
+      break
+    }
+    text += sentence
+  }
+  return text.trim() || `${source.slice(0, max - 1).replace(/\s+\S*$/, '')}…`
+}
+
 async function regionSet() {
   const rows = await db.editor.listRegions()
   return {
@@ -136,6 +153,7 @@ async function loadVenue(slug: string) {
   const places = venue.latitude != null && venue.longitude != null
     ? await db.content.nearest(venue.latitude, venue.longitude, '', 4)
     : []
+  const placeCovers = await db.content.coversFor(places.map((place) => place.place_id))
   return {
     type: 'venue' as const,
     doc,
@@ -148,14 +166,12 @@ async function loadVenue(slug: string) {
       address: venue.address,
       phone: venue.phone,
       website: venue.website,
-      socials: venue.socials,
       price: priceMarks(venue.priceLevel),
       avgCheck: formatAvgCheck(venue.avgCheck),
       hours: formatHoursLines(hours),
       hoursSet: hoursAreSet(hours),
       description: venue.description,
       html: renderMarkdown(venue.description),
-      cuisine: venue.cuisineTags,
       latitude: venue.latitude,
       longitude: venue.longitude,
       stale,
@@ -163,13 +179,33 @@ async function loadVenue(slug: string) {
       closed,
       closedNote: closed ? CLOSED_NOTE : '',
       sources: venue.sources ?? [],
+      cuisine: cuisineLabels(venue.cuisineTags, 4),
+      socials: venue.socials ?? [],
+      bookingUrl: venue.bookingUrl,
+      orderUrl: venue.orderUrl,
+      deliveryUrl: venue.deliveryUrl,
+      menuUrl: venue.menuUrl,
+      reservation: venue.reservation,
+      takeaway: venue.takeaway,
+      delivery: venue.delivery,
+      dishes: venue.signatureDishes ?? [],
+      summary: venueSummary(venue.seoDescription, venue.description),
+      checkedAt: venue.lastVerifiedAt,
+      regionTitle: region?.title ?? null,
+      schedule: await loadSchedule('venue', venue.id),
     },
     photos,
-    places: places.map((place) => ({
-      href: `/${place.slug}`,
-      text: place.title,
-      distanceKm: Number(place.distance_km),
-    })),
+    cover,
+    places: places.map((place) => {
+      const media = placeCovers.get(place.place_id)
+      return {
+        href: `/${place.slug}`,
+        text: place.title,
+        distanceKm: Number(place.distance_km),
+        kind: place.category_slug,
+        media: media ? toPublicMedia(media) : null,
+      }
+    }),
   }
 }
 
