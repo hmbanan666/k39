@@ -40,6 +40,13 @@ export const TABLER_ICONS = {
   duration: 'hourglass',
   season: 'calendar-event',
   checked: 'circle-check',
+  phone: 'phone',
+  cuisine: 'chef-hat',
+  website: 'world',
+  booking: 'calendar-check',
+  menu: 'book-2',
+  service: 'paper-bag',
+  social: 'message-circle',
 } as const
 
 export type IconKey = keyof typeof TABLER_ICONS
