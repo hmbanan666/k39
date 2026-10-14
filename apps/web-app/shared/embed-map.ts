@@ -76,6 +76,21 @@ export function yandexPointUrl(latitude: number, longitude: number) {
   return `https://yandex.ru/maps/?pt=${point}&z=16&l=map`
 }
 
+/** Pin links for «Открыть на карте». Each opens the service on a marker at the point. */
+export function mapPinLinks(latitude: number, longitude: number) {
+  const yandex = yandexPointUrl(latitude, longitude)
+  if (!yandex) {
+    return []
+  }
+  const lat = latitude.toFixed(5)
+  const lon = longitude.toFixed(5)
+  return [
+    { id: 'yandex', label: 'Яндекс Карты', href: yandex },
+    { id: '2gis', label: '2ГИС', href: `https://2gis.ru/geo/${lon},${lat}?m=${lon},${lat}/16` },
+    { id: 'google', label: 'Google Maps', href: `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` },
+  ]
+}
+
 export function mapDistanceLabel(km: number | null) {
   if (km == null || !Number.isFinite(km) || km < 0.05) {
     return ''

@@ -15,6 +15,7 @@ export const PAGE_SECTIONS = {
   nearby: { id: 'ryadom', title: 'Рядом' },
   directions: { id: 'kak-dobratsya', title: 'Как добраться' },
   eatNearby: { id: 'gde-poest', title: 'Где поесть рядом' },
+  placeRoutes: { id: 'marshruty', title: 'Маршруты с этим местом' },
   faq: { id: 'voprosy', title: 'Вопросы перед поездкой' },
   places: { id: 'mesta', title: 'Места' },
   map: { id: 'karta', title: 'На карте' },
