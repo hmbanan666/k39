@@ -85,3 +85,13 @@ Category art lives in `apps/web-app/public/illustrations/` and is the approved m
 ## Partner offers
 
 The visible label is the words `партнёр K39`, not only a color. The title and terms are the offer itself. Do not call it free, official, or the best. If there is no active offer, render nothing. The reader slot uses the same component and stays empty while `FEATURE_SPONSORED_VENUES` is off (ADR 0022).
+
+## Error pages
+
+`app/error.vue` renders every error inside the default layout, so the header and footer stay.
+
+- 404 uses the `shocked` sticker, says the address is outdated or mistyped, and offers the home page and the map. Nuxt sends the real 404 status.
+- Any other status uses `sad-with-broken-cable` and a reload button instead of the map.
+- Both set `robots: noindex, follow`.
+- Below the card come real links from `/api/public/error-links`: hubs, four fort places, three routes, three theme collections. If that request fails, the card still renders without them.
+- The site has no public search yet. When it gets one, add the search box to this page.

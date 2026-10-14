@@ -434,3 +434,18 @@ export async function loadQuest(slug: string) {
     }),
   }
 }
+
+/** Links for the 404/500 page: real places, routes and collections so a lost visitor has somewhere to go. */
+export async function loadErrorLinks() {
+  const cats = await db.content.categories()
+  const forty = cats.find((item) => item.slug === 'forty')
+  const places = forty ? (await db.content.publishedPlacesByCategory(forty.id)).slice(0, 4) : []
+  const routes = (await db.content.listPublishedRoutes()).slice(0, 3)
+  const { themes } = splitCollections(await db.content.listPublishedCollections())
+  return {
+    hubs: HUBS,
+    places: places.map((place) => ({ href: `/${place.slug}`, text: place.title })),
+    routes: routes.map((row) => ({ href: `/marshruty/${row.slug}`, text: row.title })),
+    collections: themes.slice(0, 3).map((row) => ({ href: `/podborki/${row.slug}`, text: row.title })),
+  }
+}
