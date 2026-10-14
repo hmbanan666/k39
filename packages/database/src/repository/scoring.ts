@@ -4,7 +4,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, pagePersonas, places, quests, questSteps, regions, relatedLinks, routePoints, routes, venues } from '../tables'
+import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, pagePersonas, places, quests, questSteps, regions, relatedLinks, routePoints, routes, schedules, venues } from '../tables'
 import { hoursAreSet } from '../venues'
 
 const HUB_SLUGS = ['forty', 'zamki', 'plyazhi', 'kurorty', 'muzei', 'eda']
@@ -64,7 +64,8 @@ export class Scoring {
       regionId: places.regionId,
       regionTitle: regions.title,
       updatedAt: places.updatedAt,
-    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(ne(places.publicationStatus, 'archived'))
+      scheduleMode: sql<string | null>`${schedules.rules}->>'mode'`,
+    }).from(places).leftJoin(schedules, and(eq(schedules.entityType, 'place'), eq(schedules.entityId, places.id))).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(ne(places.publicationStatus, 'archived'))
 
     const routeRows = await db.select().from(routes).where(ne(routes.publicationStatus, 'archived'))
     const collectionRows = await db.select().from(collections).where(ne(collections.publicationStatus, 'archived'))
@@ -191,6 +192,7 @@ export class Scoring {
           regionId: row.regionId,
           regionTitle: row.regionTitle,
           updatedAt: row.updatedAt,
+          scheduleMode: row.scheduleMode ?? null,
         }]
       }),
       routes: routeRows.flatMap((row) => {

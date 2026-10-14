@@ -157,6 +157,7 @@ export function scoresFromCatalog(
         seoTitle: place.seoTitle,
         seoDescription: place.seoDescription,
         factsCheckedAt: place.factsCheckedAt,
+        scheduleMode: place.scheduleMode ?? null,
         photoCount: photos.get(place.id) ?? 0,
         inRoute: inRoute.has(place.slug),
         inCollection: inCollection.has(place.slug),

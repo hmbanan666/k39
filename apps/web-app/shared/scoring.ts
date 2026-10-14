@@ -1,6 +1,7 @@
 import { articleBody } from './address'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
 import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
+import { statusContradictions } from './status-consistency'
 
 export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest' | 'venue'
 export type PrimaryAction = 'build_route' | 'buy_ticket' | 'go_next_place' | 'claim_offer' | 'read'
@@ -62,6 +63,8 @@ export interface ScoreSource {
   seoTitle: string | null
   seoDescription: string | null
   factsCheckedAt: string | null
+  /** Places only: schedule rules mode, null without a schedule. */
+  scheduleMode?: string | null
   // Collection stops only. city is the place region id. access is the item note plus the place address.
   stops?: Array<{ city: string | null, access: string | null }>
   photoCount: number
@@ -534,6 +537,15 @@ function freshPoints(page: ScoreSource, now: Date) {
   return { points: 0, checks: [`facts checked ${age} days ago`], age }
 }
 
+/** Places only: page text and schedule must agree (closed, по записи). */
+function statusPoints(page: ScoreSource, text: string) {
+  if (page.kind !== 'place' || page.scheduleMode === undefined) {
+    return { points: 0, checks: [] as string[] }
+  }
+  const checks = statusContradictions({ text: [text, page.hours ?? '', page.howToGet ?? ''].join('\n'), mode: page.scheduleMode })
+  return { points: checks.length ? -15 : 0, checks: checks.map((check) => `status contradiction: ${check}`) }
+}
+
 function passportPoints(passport: PassportFields | null) {
   const empty = !passport
     || (
@@ -933,12 +945,13 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
   const photos = photoPoints(page)
   const fresh = freshPoints(page, now)
   const passport = passportPoints(page.passport)
-  const quality = clamp(length.points + sections.points + photos.points + fresh.points + passport.points)
+  const status = statusPoints(page, text)
+  const quality = clamp(length.points + sections.points + photos.points + fresh.points + passport.points + status.points)
   const linking = linkingPoints(page)
   const indexing = indexingPoints(page)
   const results = resultsPoints(page)
   const checks: ScoreChecks = {
-    quality: [...length.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks],
+    quality: [...length.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks, ...status.checks],
     linking: linking.checks,
     indexing: indexing.checks,
     results: results.checks,
