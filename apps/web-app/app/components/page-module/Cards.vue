@@ -72,12 +72,6 @@ h3 {
   font-size: 0.78rem;
   font-weight: 700;
 }
-.card .prose :deep(p:first-of-type::first-letter) {
-  float: none;
-  margin: 0;
-  color: inherit;
-  font: inherit;
-}
 .card .prose :deep(p) { margin: 0.3rem 0 0; }
 @media (min-width: 900px) {
   .ideas .cards { grid-template-columns: 1fr 1fr; }

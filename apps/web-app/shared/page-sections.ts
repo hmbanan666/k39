@@ -18,6 +18,7 @@ export const PAGE_SECTIONS = {
   faq: { id: 'voprosy', title: 'Вопросы перед поездкой' },
   places: { id: 'mesta', title: 'Места' },
   gallery: { id: 'foto', title: 'Фотографии' },
+  // Not listed in the contents: the block stays, but it is not a reading stop.
   sources: { id: 'istochniki', title: 'Источники' },
 } as const satisfies Record<string, PageSection>
 

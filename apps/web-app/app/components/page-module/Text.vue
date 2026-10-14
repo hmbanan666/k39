@@ -27,11 +27,4 @@ h2 {
 }
 .prose { max-width: 70ch; }
 .lead .prose { font-size: 1.08rem; }
-/* Only the lead opens with a drop cap; later sections read as plain text. */
-.plain .prose :deep(p:first-of-type::first-letter) {
-  float: none;
-  margin: 0;
-  color: inherit;
-  font: inherit;
-}
 </style>

@@ -161,7 +161,6 @@ const moduleSections = moduleAnchors(page.modules, (module) => module.type !== '
 const sectionsAfter = presentSections([
   [PAGE_SECTIONS.gallery, rest.length > 0],
   [PAGE_SECTIONS.places, !page.modules.length && page.places.length > 0],
-  [PAGE_SECTIONS.sources, page.sources.length > 0],
 ], { [PAGE_SECTIONS.places.id]: placesTitle })
 </script>
 
