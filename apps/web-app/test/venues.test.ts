@@ -127,3 +127,12 @@ describe('venue json-ld', () => {
     expect(JSON.stringify(omitted.jsonLd)).not.toContain('openingHours')
   })
 })
+
+describe('verifiedDate', () => {
+  it('keeps the Kaliningrad calendar date of an editor check', async () => {
+    const { verifiedDate } = await import('../shared/schedule')
+    expect(verifiedDate('2026-10-13T00:00:00Z')).toBe('2026-10-13')
+    expect(verifiedDate('2026-10-12T22:30:00Z')).toBe('2026-10-13')
+    expect(verifiedDate(null)).toBeNull()
+  })
+})

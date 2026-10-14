@@ -1,12 +1,12 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
-import { rulesFromText, rulesFromVenueHours, scheduleRulesSchema } from '../../../shared/schedule'
+import { rulesFromText, rulesFromVenueHours, scheduleRulesSchema, verifiedDate } from '../../../shared/schedule'
 import { auditMcp } from '../../utils/mcp/audit'
 import { saveSchedule } from '../../utils/schedule'
 
 export default defineMcpTool({
   name: 'schedules_migrate',
-  description: 'One-off: turn place hours text and imported venue hours into schedules. Recognised place text keeps the place facts-check date; text it cannot read is stored with needsCheck and the text as note. Venue hours from OSM stay unverified. Existing schedules are never overwritten. dryRun (default true) only reports.',
+  description: 'One-off: turn place hours text and imported venue hours into schedules. Recognised place text keeps the place facts-check date; text it cannot read is stored with needsCheck and the text as note. Venue hours keep the venue facts-check date; OSM-only venues stay unverified. Existing schedules are never overwritten. dryRun (default true) only reports.',
   inputSchema: {
     dryRun: z.boolean().default(true),
   },
@@ -40,7 +40,7 @@ export default defineMcpTool({
       }
       report.venues += 1
       if (!dryRun) {
-        await saveSchedule('venue', venue.id, { rules, sourceUrl: null, verifiedAt: null })
+        await saveSchedule('venue', venue.id, { rules, sourceUrl: null, verifiedAt: verifiedDate(venue.verifiedAt) })
       }
     }
     if (!dryRun) {
