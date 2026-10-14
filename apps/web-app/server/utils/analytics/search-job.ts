@@ -65,43 +65,100 @@ async function googleAccessToken() {
   return json.access_token || ''
 }
 
-async function pullGoogle(from: string, to: string) {
-  const site = process.env.GSC_SITE_URL
-  const token = await googleAccessToken()
-  if (!site || !token) {
-    return { engine: 'google', skipped: true, rows: 0 }
+const GOOGLE_PAGE = 5000
+const GOOGLE_MAX_ROWS = 50_000
+const BACKFILL_DAYS = 90
+
+/**
+ * Picks the Search Console property to query. A domain property
+ * (`sc-domain:k39.online`) and a URL-prefix property (`https://k39.online/`)
+ * are different sites to the API, so a configured URL that the account
+ * cannot read falls back to the property on the same host it can read.
+ */
+export function pickGoogleSite(configured: string, sites: Array<{ siteUrl?: string, permissionLevel?: string }>) {
+  const readable = sites
+    .filter((site) => site.siteUrl && site.permissionLevel && site.permissionLevel !== 'siteUnverifiedUser')
+    .map((site) => site.siteUrl as string)
+  if (readable.includes(configured)) {
+    return configured
   }
-  const response = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
-    method: 'POST',
-    headers: { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      startDate: from,
-      endDate: to,
-      dimensions: ['date', 'query', 'page'],
-      rowLimit: 1000,
-    }),
+  let host = configured.replace(/^sc-domain:/, '')
+  try {
+    host = new URL(configured).hostname
+  } catch {}
+  host = host.replace(/^www\./, '').replace(/\/$/, '')
+  return readable.find((site) => site === `sc-domain:${host}`)
+    ?? readable.find((site) => {
+      try {
+        return new URL(site).hostname.replace(/^www\./, '') === host
+      } catch {
+        return false
+      }
+    })
+    ?? configured
+}
+
+async function resolveGoogleSite(token: string, configured: string) {
+  const response = await fetch('https://www.googleapis.com/webmasters/v3/sites', {
+    headers: { authorization: `Bearer ${token}` },
   })
   if (!response.ok) {
-    throw new Error(`Search Console ${response.status}`)
+    return configured
   }
-  const json = await response.json() as { rows?: Array<{ keys?: string[], clicks?: number, impressions?: number, position?: number }> }
-  const rows = (json.rows ?? []).flatMap((row) => {
-    const [day, query, page] = row.keys ?? []
-    if (!day || !query) {
-      return []
+  const json = await response.json() as { siteEntry?: Array<{ siteUrl?: string, permissionLevel?: string }> }
+  return pickGoogleSite(configured, json.siteEntry ?? [])
+}
+
+async function pullGoogle(from: string, to: string) {
+  const configured = process.env.GSC_SITE_URL
+  const token = await googleAccessToken()
+  if (!configured || !token) {
+    return { engine: 'google', skipped: true, rows: 0 }
+  }
+  const site = await resolveGoogleSite(token, configured)
+  const start = (await db.analytics.hasSearchRows('google'))
+    ? from
+    : dayStamp(new Date(new Date(`${to}T00:00:00Z`).getTime() - BACKFILL_DAYS * 86_400_000))
+  let total = 0
+  for (let startRow = 0; startRow < GOOGLE_MAX_ROWS; startRow += GOOGLE_PAGE) {
+    const response = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
+      method: 'POST',
+      headers: { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        startDate: start,
+        endDate: to,
+        dimensions: ['date', 'query', 'page'],
+        rowLimit: GOOGLE_PAGE,
+        startRow,
+      }),
+    })
+    if (!response.ok) {
+      throw new Error(`Search Console ${response.status}`)
     }
-    return [{
-      day,
-      engine: 'google',
-      page: page || '',
-      query,
-      impressions: Math.round(row.impressions || 0),
-      clicks: Math.round(row.clicks || 0),
-      position: row.position ?? null,
-    }]
-  })
-  await db.analytics.replaceSearchRows(rows)
-  return { engine: 'google', skipped: false, rows: rows.length }
+    const json = await response.json() as { rows?: Array<{ keys?: string[], clicks?: number, impressions?: number, position?: number }> }
+    const page = json.rows ?? []
+    const rows = page.flatMap((row) => {
+      const [day, query, url] = row.keys ?? []
+      if (!day || !query) {
+        return []
+      }
+      return [{
+        day,
+        engine: 'google',
+        page: url || '',
+        query,
+        impressions: Math.round(row.impressions || 0),
+        clicks: Math.round(row.clicks || 0),
+        position: row.position ?? null,
+      }]
+    })
+    await db.analytics.replaceSearchRows(rows)
+    total += rows.length
+    if (page.length < GOOGLE_PAGE) {
+      break
+    }
+  }
+  return { engine: 'google', skipped: false, site, from: start, rows: total }
 }
 
 async function pullYandex(from: string, to: string) {
