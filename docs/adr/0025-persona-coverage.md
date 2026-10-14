@@ -11,7 +11,7 @@ ADR 0024 gives each page target personas, and each persona in the registry names
 ## Decision
 
 1. `apps/web-app/shared/persona-coverage.ts` derives the blocks a page provides from stored data only: body text, sources, place FAQ, hours or price (short facts), how to get there (transport), stops (places), route and quest steps, and every page module (ADR 0023).
-2. A text module may declare an optional `role` (`events`, `open-closed`, `bad-weather`, `transport`, `pack`, `prices`, `faq`). The role is not rendered; it only names what the block answers. Headings are not parsed.
+2. A text module may declare an optional `role` (`events`, `open-closed`, `bad-weather`, `transport`, `pack`, `prices`, `faq`, `short-facts`, `route-steps`, `eat-nearby`). The role is not rendered; it only names what the block answers. Headings are not parsed.
 3. Coverage of a persona is the share of its registry blocks the page has, 0..100, plus the list of missing ones. A targeted persona below 50 is a gap.
 4. `/api/admin/persona-coverage` returns a page × persona table for pages with targets. `/admin/content-scores` shows it under the score table: targeted cells highlighted, primary in bold, gaps in red, and a list of tasks such as «добавить как добраться».
 
