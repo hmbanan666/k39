@@ -8,7 +8,7 @@
   >
     <Sticker
       slug="with-blank-sign"
-      :width="44"
+      :width="52"
       decorative
       aria-hidden="true"
       class="notice-sticker"
@@ -99,7 +99,8 @@ function dismiss() {
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-ink);
-  box-shadow: var(--shadow-pop);
+  /* The bar floats 12 px above the screen edge, so the shadow must fit in that gap or it gets cut off. */
+  box-shadow: 0 2px 10px rgb(43 36 32 / 12%);
   font-family: var(--font-body);
   font-size: var(--step--1);
   line-height: 1.35;
@@ -107,7 +108,7 @@ function dismiss() {
 }
 .notice-sticker {
   flex: none;
-  width: 2.75rem;
+  width: 3.25rem;
 }
 p {
   flex: 1 1 12rem;
@@ -147,7 +148,7 @@ button:hover { background: var(--color-brick-dark); }
     flex-wrap: nowrap;
     max-width: none;
   }
-  .notice-sticker { width: 2.25rem; }
+  .notice-sticker { width: 2.75rem; }
   p {
     flex: 1 1 0;
     min-width: 0;
