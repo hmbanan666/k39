@@ -65,6 +65,12 @@
         </div>
       </div>
     </aside>
+    <ReaderSectionBar
+      v-if="showToc"
+      :items="tree"
+      :active-id="activeId"
+      :visible="barVisible"
+    />
   </div>
 </template>
 
@@ -97,6 +103,7 @@ const parts = computed(() => props.partner ? splitAfterFirstSection(props.html) 
 const activeId = ref('')
 const progress = ref(0)
 const bodyRef = ref<HTMLElement | null>(null)
+const barVisible = ref(false)
 
 // A heading becomes current once it passes just below the sticky header.
 function activationLine() {
@@ -118,6 +125,12 @@ function syncActive() {
   const box = root.getBoundingClientRect()
   const span = box.height - window.innerHeight + activationLine()
   progress.value = span > 0 ? Math.min(1, Math.max(0, (activationLine() - box.top) / span)) : 1
+  // The bar takes over once the rail (or the mobile contents) has scrolled away.
+  const line = activationLine()
+  const rail = root.parentElement?.querySelector<HTMLElement>('.reader-rail')
+  const railShown = rail && rail.offsetParent !== null
+  const anchor = railShown ? rail.getBoundingClientRect().bottom : root.parentElement?.querySelector<HTMLElement>('.reader-disclosure')?.getBoundingClientRect().bottom
+  barVisible.value = anchor !== undefined && anchor < line - 16 && root.parentElement!.getBoundingClientRect().top < line
   const headings = tocTargets()
   activeId.value = activeHeadingId(
     headings.map((heading) => ({ id: heading.id, top: heading.getBoundingClientRect().top })),
@@ -264,8 +277,6 @@ onBeforeUnmount(() => {
     top: calc(var(--site-header-offset) + 1rem);
     max-height: calc(100dvh - var(--site-header-offset) - 2rem);
     overflow: auto;
-    padding-bottom: 0.5rem;
-    background-color: var(--bg);
   }
   .reader.with-rail .partner-inline { display: none; }
   .reader.with-rail .rail-toc {
