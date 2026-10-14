@@ -64,6 +64,18 @@ export function yandexDestinationUrl(latitude: number, longitude: number) {
   return `https://yandex.ru/maps/?rtext=~${latitude.toFixed(5)},${longitude.toFixed(5)}&rtt=auto`
 }
 
+/** Opens Yandex Maps on the point itself (a pin), not on a route to it. */
+export function yandexPointUrl(latitude: number, longitude: number) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return ''
+  }
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return ''
+  }
+  const point = `${longitude.toFixed(5)},${latitude.toFixed(5)}`
+  return `https://yandex.ru/maps/?pt=${point}&z=16&l=map`
+}
+
 export function mapDistanceLabel(km: number | null) {
   if (km == null || !Number.isFinite(km) || km < 0.05) {
     return ''
