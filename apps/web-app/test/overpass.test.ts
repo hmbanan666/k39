@@ -98,3 +98,24 @@ describe('overpass client', () => {
     expect(bad).toEqual([OVERPASS_DEFAULT_URL])
   })
 })
+
+describe('oSM action tags', () => {
+  it('maps reservation, takeaway, delivery, menu and contact:* tags', async () => {
+    const { osmReservation, osmSocials, osmYesNo } = await import('@k39/database')
+    expect(osmReservation('recommended')).toBe('recommended')
+    expect(osmReservation('maybe')).toBeNull()
+    expect(osmYesNo('only')).toBe(true)
+    expect(osmYesNo('no')).toBe(false)
+    expect(osmYesNo(undefined)).toBeNull()
+    expect(osmSocials({
+      'contact:vk': 'https://vk.com/moreca',
+      'contact:telegram': '@moreca',
+      'contact:whatsapp': '+7 900 000-00-00',
+      'contact:instagram': 'not a handle!',
+    })).toEqual([
+      { network: 'vk', url: 'https://vk.com/moreca' },
+      { network: 'telegram', url: 'https://t.me/moreca' },
+      { network: 'whatsapp', url: 'https://wa.me/79000000000' },
+    ])
+  })
+})

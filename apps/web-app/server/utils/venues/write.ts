@@ -1,4 +1,4 @@
-import type { VenueWrite } from '@k39/database'
+import type { VenueDish, VenueReservation, VenueWrite } from '@k39/database'
 import { db, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
@@ -42,6 +42,14 @@ export function venueWriteFromInput(input: {
   phone?: string | null
   website?: string | null
   socials?: Array<{ network: string, url: string }>
+  bookingUrl?: string | null
+  orderUrl?: string | null
+  deliveryUrl?: string | null
+  menuUrl?: string | null
+  reservation?: VenueReservation | null
+  takeaway?: boolean | null
+  delivery?: boolean | null
+  signatureDishes?: VenueDish[]
   description?: string
   sources?: Array<{ title: string, url: string }>
   status?: 'draft' | 'published' | 'closed' | 'archived'

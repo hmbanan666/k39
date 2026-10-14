@@ -1,7 +1,7 @@
 import type { BodySection } from './body-sections'
 import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
 import type { ScoreChecks } from './types/scoring'
-import type { VenueHours, VenueSocial, VenueStatus } from './venues'
+import type { VenueDish, VenueHours, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from './venues'
 import { cuid2 } from 'drizzle-cuid2/postgres'
 import { sql } from 'drizzle-orm'
 import { bigint, boolean, check, date, doublePrecision, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core'
@@ -299,6 +299,14 @@ export const venues = pgTable('venues', {
   phone: varchar('phone'),
   website: varchar('website'),
   socials: jsonb('socials').$type<VenueSocial[]>().notNull().default(sql`'[]'::jsonb`),
+  bookingUrl: varchar('booking_url'),
+  orderUrl: varchar('order_url'),
+  deliveryUrl: varchar('delivery_url'),
+  menuUrl: varchar('menu_url'),
+  reservation: varchar('reservation').$type<VenueReservation | null>(),
+  takeaway: boolean('takeaway'),
+  delivery: boolean('delivery'),
+  signatureDishes: jsonb('signature_dishes').$type<VenueDish[]>().notNull().default(sql`'[]'::jsonb`),
   description: text('description').notNull().default(''),
   sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
   status: varchar('status').notNull().default('draft').$type<VenueStatus>(),
@@ -315,6 +323,7 @@ export const venues = pgTable('venues', {
   check('venues_price_level_check', sql`${table.priceLevel} is null or ${table.priceLevel} between 1 and 4`),
   check('venues_avg_check_check', sql`${table.avgCheck} is null or ${table.avgCheck} >= 0`),
   check('venues_status_check', sql`${table.status} in ('draft', 'published', 'closed', 'archived')`),
+  check('venues_reservation_check', sql`${table.reservation} is null or ${table.reservation} in ('yes', 'no', 'required', 'recommended')`),
 ])
 
 export const venueMedia = pgTable('venue_media', {
@@ -323,8 +332,10 @@ export const venueMedia = pgTable('venue_media', {
   mediaId: cuid2('media_id').notNull().references(() => media.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   sortOrder: integer('sort_order').notNull().default(0),
   isCover: boolean('is_cover').notNull().default(false),
+  origin: varchar('origin').$type<VenuePhotoOrigin | null>(),
 }, (table) => [
   uniqueIndex('venue_media_venue_media').on(table.venueId, table.mediaId),
+  check('venue_media_origin_check', sql`${table.origin} is null or ${table.origin} in ('own', 'venue', 'commons')`),
   index('venue_media_venue_idx').on(table.venueId),
 ])
 
