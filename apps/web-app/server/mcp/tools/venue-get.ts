@@ -5,7 +5,7 @@ import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
   name: 'venue_get',
-  description: 'Load one venue by id or slug, including photos, hours, sources, and whether the facts are stale.',
+  description: 'Load one venue by id or slug, including photos (author, license, source, origin), hours, action links, signature dishes, sources, and whether the facts are stale.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -37,6 +37,14 @@ export default defineMcpTool({
       phone: venue.phone,
       website: venue.website,
       socials: venue.socials,
+      bookingUrl: venue.bookingUrl,
+      orderUrl: venue.orderUrl,
+      deliveryUrl: venue.deliveryUrl,
+      menuUrl: venue.menuUrl,
+      reservation: venue.reservation,
+      takeaway: venue.takeaway,
+      delivery: venue.delivery,
+      signatureDishes: venue.signatureDishes,
       description: venue.description,
       sources: venue.sources,
       status: venue.status,
@@ -50,6 +58,7 @@ export default defineMcpTool({
         ...toPublicMedia(item.media),
         isCover: item.isCover,
         sortOrder: item.sortOrder,
+        origin: item.origin,
       })),
     }
   },

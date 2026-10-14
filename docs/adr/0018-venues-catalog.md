@@ -84,3 +84,18 @@ The content token (ADR 0012) can call `venue_create`, `venue_update`, `venue_get
 ## Consequences
 
 Editors and agents publish venues only after a check. OSM is a draft source, not the live site. The sponsored label cannot appear until the flag is on and an offer is active, so the catalog can ship before any cafe pays. Adding shops later is a new `kind` and, when they should be advertised, a block that names them. It is not a new table.
+
+## Addendum: action links, dishes and photo origin (migration 0023)
+
+- `booking_url`, `order_url`, `delivery_url`, `menu_url`: official pages only.
+  The menu is linked, never copied.
+- `reservation` (`yes`, `no`, `required`, `recommended`), `takeaway`,
+  `delivery`: facts as in the OSM tags of the same name. Null means unknown.
+- `signature_dishes`: up to five `{ name, note, priceRub }`, written by us
+  from a visit or from what the venue sent.
+- `venue_media.origin`: `own`, `venue` (sent with permission) or `commons`.
+  Author, license and source stay on `media`. `media_attach_to_venue` refuses
+  a photo without an author.
+- OSM import maps `reservation`, `takeaway`, `delivery`, `website:menu` and
+  `contact:*` (vk, telegram, instagram, facebook, whatsapp, youtube, ok).
+- The public page shows a field only when it is set. No ratings.

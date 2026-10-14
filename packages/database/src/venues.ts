@@ -99,6 +99,23 @@ export interface VenueHours {
   note: string | null
 }
 
+export const VENUE_RESERVATIONS = ['yes', 'no', 'required', 'recommended'] as const
+
+export type VenueReservation = (typeof VENUE_RESERVATIONS)[number]
+
+/** Who supplied a venue photo. Never a copy from another site. */
+export const VENUE_PHOTO_ORIGINS = ['own', 'venue', 'commons'] as const
+
+export type VenuePhotoOrigin = (typeof VENUE_PHOTO_ORIGINS)[number]
+
+export interface VenueDish {
+  name: string
+  note?: string | null
+  priceRub?: number | null
+}
+
+export const SIGNATURE_DISHES_MAX = 5
+
 export interface VenueSocial {
   network: string
   url: string
@@ -132,6 +149,11 @@ export interface OsmDraft {
   district: string | null
   phone: string | null
   website: string | null
+  socials: VenueSocial[]
+  menuUrl: string | null
+  reservation: VenueReservation | null
+  takeaway: boolean | null
+  delivery: boolean | null
   hours: VenueHours
   sources: SourceLink[]
 }
@@ -571,6 +593,11 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
     district,
     phone: (tags.phone || tags['contact:phone'] || '').trim().slice(0, 40) || null,
     website: (tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null,
+    socials: osmSocials(tags),
+    menuUrl: osmUrl(tags['website:menu'] || tags['contact:menu'] || tags.menu),
+    reservation: osmReservation(tags.reservation),
+    takeaway: osmYesNo(tags.takeaway),
+    delivery: osmYesNo(tags.delivery),
     hours: parseOsmHours(tags.opening_hours),
     sources: [{ title: 'OpenStreetMap', url: `https://www.openstreetmap.org/${element.type}/${element.id}` }],
   }
@@ -672,3 +699,62 @@ export const STALE_NOTE = 'Сведения не проверялись боль
 export const STALE_CARD_NOTE = 'Давно не проверяли'
 
 export const CLOSED_NOTE = 'Заведение закрыто.'
+
+const OSM_SOCIAL: Record<string, string> = {
+  'contact:vk': 'vk',
+  'contact:telegram': 'telegram',
+  'contact:instagram': 'instagram',
+  'contact:facebook': 'facebook',
+  'contact:whatsapp': 'whatsapp',
+  'contact:youtube': 'youtube',
+  'contact:ok': 'ok',
+}
+
+const SOCIAL_BASE: Record<string, string> = {
+  vk: 'https://vk.com/',
+  telegram: 'https://t.me/',
+  instagram: 'https://instagram.com/',
+  facebook: 'https://facebook.com/',
+  youtube: 'https://youtube.com/',
+  ok: 'https://ok.ru/',
+}
+
+function osmUrl(raw: string | undefined) {
+  const value = (raw ?? '').split(';')[0]?.trim() ?? ''
+  return /^https?:\/\//i.test(value) ? value.slice(0, 300) : null
+}
+
+/** contact:* tags as links. A bare handle becomes the network URL; WhatsApp numbers become wa.me. */
+export function osmSocials(tags: Record<string, string>) {
+  const rows: VenueSocial[] = []
+  for (const [key, network] of Object.entries(OSM_SOCIAL)) {
+    const raw = tags[key]?.split(';')[0]?.trim()
+    if (!raw) {
+      continue
+    }
+    let url = osmUrl(raw)
+    if (!url && network === 'whatsapp') {
+      const digits = raw.replace(/\D/g, '')
+      url = digits.length >= 10 ? `https://wa.me/${digits}` : null
+    } else if (!url && SOCIAL_BASE[network] && /^@?[\w.]{2,64}$/.test(raw)) {
+      url = `${SOCIAL_BASE[network]}${raw.replace(/^@/, '')}`
+    }
+    if (url) {
+      rows.push({ network, url })
+    }
+  }
+  return rows
+}
+
+export function osmYesNo(raw: string | undefined) {
+  const value = raw?.trim().toLowerCase()
+  if (value === 'yes' || value === 'only') {
+    return true
+  }
+  return value === 'no' ? false : null
+}
+
+export function osmReservation(raw: string | undefined): VenueReservation | null {
+  const value = raw?.trim().toLowerCase()
+  return (VENUE_RESERVATIONS as readonly string[]).includes(value ?? '') ? value as VenueReservation : null
+}

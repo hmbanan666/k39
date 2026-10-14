@@ -1,5 +1,5 @@
 import type { SourceLink } from '../types/entities'
-import type { OsmDraft, VenueLocality, VenueSocial, VenueStatus } from '../venues'
+import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
@@ -14,6 +14,7 @@ import {
   NEARBY_MAX_DAYS,
   NEARBY_RADIUS_KM,
   normalizeHours,
+  SIGNATURE_DISHES_MAX,
   STALE_DAYS,
   transliterateVenueSlug,
   VenueInputError,
@@ -35,6 +36,14 @@ export interface VenueWrite {
   phone?: string | null
   website?: string | null
   socials?: VenueSocial[]
+  bookingUrl?: string | null
+  orderUrl?: string | null
+  deliveryUrl?: string | null
+  menuUrl?: string | null
+  reservation?: VenueReservation | null
+  takeaway?: boolean | null
+  delivery?: boolean | null
+  signatureDishes?: VenueDish[]
   description?: string
   sources?: SourceLink[]
   status?: VenueStatus
@@ -79,6 +88,28 @@ function cleanSocials(rows: VenueSocial[] | undefined) {
     .map((row) => ({ network: row.network.trim().toLowerCase().slice(0, 24), url: row.url.trim().slice(0, 300) }))
     .filter((row) => row.network && /^https?:\/\//.test(row.url))
     .slice(0, 8)
+}
+
+function cleanUrl(value: string | null | undefined) {
+  const text = cleanText(value, 500)
+  if (text && !/^https?:\/\//i.test(text)) {
+    throw new VenueInputError('Ссылка должна начинаться с http:// или https://')
+  }
+  return text
+}
+
+function cleanDishes(rows: VenueDish[] | undefined) {
+  if (!rows) {
+    return undefined
+  }
+  return rows
+    .map((row) => ({
+      name: row.name.trim().slice(0, 80),
+      note: row.note?.trim().slice(0, 160) || null,
+      priceRub: row.priceRub != null && Number.isFinite(row.priceRub) && row.priceRub >= 0 ? Math.round(row.priceRub) : null,
+    }))
+    .filter((row) => row.name)
+    .slice(0, SIGNATURE_DISHES_MAX)
 }
 
 function cleanSources(rows: SourceLink[] | undefined) {
@@ -307,6 +338,14 @@ export class Venues {
         phone: cleanText(input.phone, 40),
         website: cleanText(input.website, 300),
         socials: cleanSocials(input.socials) ?? [],
+        bookingUrl: cleanUrl(input.bookingUrl),
+        orderUrl: cleanUrl(input.orderUrl),
+        deliveryUrl: cleanUrl(input.deliveryUrl),
+        menuUrl: cleanUrl(input.menuUrl),
+        reservation: input.reservation ?? null,
+        takeaway: input.takeaway ?? null,
+        delivery: input.delivery ?? null,
+        signatureDishes: cleanDishes(input.signatureDishes) ?? [],
         description,
         sources: cleanSources(input.sources) ?? [],
         status,
@@ -382,6 +421,14 @@ export class Venues {
         phone: input.phone === undefined ? current.phone : cleanText(input.phone, 40),
         website: input.website === undefined ? current.website : cleanText(input.website, 300),
         socials: cleanSocials(input.socials) ?? current.socials,
+        bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : cleanUrl(input.bookingUrl),
+        orderUrl: input.orderUrl === undefined ? current.orderUrl : cleanUrl(input.orderUrl),
+        deliveryUrl: input.deliveryUrl === undefined ? current.deliveryUrl : cleanUrl(input.deliveryUrl),
+        menuUrl: input.menuUrl === undefined ? current.menuUrl : cleanUrl(input.menuUrl),
+        reservation: input.reservation === undefined ? current.reservation : input.reservation,
+        takeaway: input.takeaway === undefined ? current.takeaway : input.takeaway,
+        delivery: input.delivery === undefined ? current.delivery : input.delivery,
+        signatureDishes: cleanDishes(input.signatureDishes) ?? current.signatureDishes,
         description: nextDescription,
         sources: cleanSources(input.sources) ?? current.sources,
         status: nextStatus,
@@ -556,6 +603,11 @@ export class Venues {
           longitude: draft.longitude,
           phone: draft.phone,
           website: draft.website,
+          socials: draft.socials,
+          menuUrl: draft.menuUrl,
+          reservation: draft.reservation,
+          takeaway: draft.takeaway,
+          delivery: draft.delivery,
           hours: draft.hours,
           sources: draft.sources,
           osmId: draft.osmId,
@@ -585,6 +637,7 @@ export class Venues {
       linkId: venueMedia.id,
       sortOrder: venueMedia.sortOrder,
       isCover: venueMedia.isCover,
+      origin: venueMedia.origin,
       media,
     }).from(venueMedia).innerJoin(media, eq(venueMedia.mediaId, media.id)).where(eq(venueMedia.venueId, venueId)).orderBy(asc(venueMedia.sortOrder))
   }
@@ -619,7 +672,7 @@ export class Venues {
     return result
   }
 
-  static async attachMedia(venueId: string, mediaId: string, options?: { isCover?: boolean }) {
+  static async attachMedia(venueId: string, mediaId: string, options?: { isCover?: boolean, origin?: VenuePhotoOrigin | null, sortOrder?: number }) {
     const db = useDatabase()
     const existing = await db.select().from(venueMedia).where(eq(venueMedia.venueId, venueId))
     const found = existing.find((row) => row.mediaId === mediaId)
@@ -630,15 +683,17 @@ export class Venues {
     if (found) {
       const [updated] = await db.update(venueMedia).set({
         isCover: cover || found.isCover,
-        sortOrder: found.sortOrder,
+        sortOrder: options?.sortOrder ?? found.sortOrder,
+        origin: options?.origin === undefined ? found.origin : options.origin,
       }).where(eq(venueMedia.id, found.id)).returning()
       return updated ?? found
     }
     const [created] = await db.insert(venueMedia).values({
       venueId,
       mediaId,
-      sortOrder: existing.length,
+      sortOrder: options?.sortOrder ?? existing.length,
       isCover: cover,
+      origin: options?.origin ?? null,
     }).returning()
     return created
   }
