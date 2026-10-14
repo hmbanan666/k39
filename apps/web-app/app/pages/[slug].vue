@@ -40,7 +40,7 @@
           {{ page.place.summary }}
         </p>
         <!-- No static «открыт» pill: it contradicted the live hours. A closed place
-             says so here unless the verified schedule in «Коротко» already does. -->
+             says so here only when there is no verified schedule in «Коротко». -->
         <p
           v-if="closedNote"
           class="closed-note"
@@ -325,9 +325,10 @@ function openPhoto(id: string) {
   viewerIndex.value = found >= 0 ? found : 0
   viewerOpen.value = true
 }
-// Closed with no verified «closed» schedule: the hero is the only place that says it.
-const closedByStatus = page.place.status === 'closed'
-  && !(isVerified(page.place.schedule) && page.place.schedule?.rules.mode === 'closed')
+// A verified schedule already gives the live answer in «Коротко» (closed with
+// a reason, by appointment, 24/7 outside). Only without one does the hero say
+// the place is closed.
+const closedByStatus = page.place.status === 'closed' && !isVerified(page.place.schedule)
 const closedNote = closedByStatus ? 'Закрыто для посещения' : ''
 const yandexPoint = page.place.latitude != null && page.place.longitude != null
   ? yandexPointUrl(page.place.latitude, page.place.longitude)
