@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PostcardHero
+    <PageHeader
       :h1="`Ошибка ${error?.statusCode || ''}`"
       kicker="K39"
       :lede="error?.statusMessage || error?.message || 'Страница не открылась'"
