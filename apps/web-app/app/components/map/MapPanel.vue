@@ -176,6 +176,16 @@
                 {{ item.label }}
               </button>
             </div>
+            <div class="subs">
+              <button
+                type="button"
+                class="sub"
+                :aria-pressed="openNow"
+                @click="emit('toggleOpen')"
+              >
+                Открыто сейчас
+              </button>
+            </div>
             <div
               v-if="category === 'sights' && sightChips.length"
               class="subs"
@@ -401,6 +411,7 @@ const props = defineProps<{
   collapsed: boolean
   mobile: boolean
   snap: 'peek' | 'half' | 'full'
+  openNow?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -408,6 +419,7 @@ const emit = defineEmits<{
   category: [id: BrowseCategory]
   toggleSight: [id: SightId]
   toggleFood: [id: string]
+  toggleOpen: []
   selectPoint: [id: string]
   selectRoute: [slug: string]
   back: []

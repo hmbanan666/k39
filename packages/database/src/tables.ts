@@ -537,3 +537,28 @@ export const analyticsRuns = pgTable('analytics_runs', {
 }, (table) => [
   primaryKey({ columns: [table.day, table.kind] }),
 ])
+
+// Schedules for any entity (ADR 0028). Rules are validated by the web app.
+export const schedules = pgTable('schedules', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  entityType: varchar('entity_type').notNull(),
+  entityId: varchar('entity_id').notNull(),
+  rules: jsonb('rules').$type<Record<string, unknown>>().notNull(),
+  sourceUrl: varchar('source_url'),
+  verifiedAt: date('verified_at', { mode: 'string' }),
+  updatedAt: updatedAt(),
+}, (table) => [
+  uniqueIndex('schedules_entity').on(table.entityType, table.entityId),
+])
+
+// Concrete open intervals for a rolling window, rebuilt on write and daily.
+export const scheduleIntervals = pgTable('schedule_intervals', {
+  entityType: varchar('entity_type').notNull(),
+  entityId: varchar('entity_id').notNull(),
+  startsAt: timestamp('starts_at', { precision: 0, withTimezone: true, mode: 'string' }).notNull(),
+  endsAt: timestamp('ends_at', { precision: 0, withTimezone: true, mode: 'string' }).notNull(),
+  lastEntryAt: timestamp('last_entry_at', { precision: 0, withTimezone: true, mode: 'string' }),
+}, (table) => [
+  index('schedule_intervals_entity').on(table.entityType, table.entityId),
+  index('schedule_intervals_time').on(table.startsAt, table.endsAt),
+])

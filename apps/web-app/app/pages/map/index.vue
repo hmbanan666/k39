@@ -17,8 +17,9 @@
       @located="onLocated"
     />
     <MapPanel
-      :points="page.points"
+      :points="panelPoints"
       :routes="page.routes"
+      :open-now="openNow"
       :state="state"
       :selected-id="selectedId"
       :bounds="bounds"
@@ -30,6 +31,7 @@
       @category="chooseCategory"
       @toggle-sight="toggleSight"
       @toggle-food="toggleFood"
+      @toggle-open="toggleOpen"
       @select-point="choosePoint"
       @select-route="chooseRoute"
       @back="back"
@@ -88,7 +90,27 @@ const snap = ref<'peek' | 'half' | 'full'>('peek')
 const panelWidth = ref(424)
 const sheetHeight = ref(180)
 
-const visible = computed(() => shownPoints(page.points, state.value))
+// «Открыто сейчас» is computed in the browser from /api/public/availability,
+// never in the cached HTML. Only verified schedules count.
+const openNow = ref(false)
+const openKeys = ref<Set<string> | null>(null)
+const isOpen = (point: MapPoint) => openKeys.value?.has(`${point.group === 'food' ? 'venue' : 'place'}:${point.slug}`) ?? false
+const panelPoints = computed(() => (openNow.value ? page.points.filter(isOpen) : page.points))
+const visible = computed(() => {
+  if (!openNow.value) {
+    return shownPoints(page.points, state.value)
+  }
+  const plain = !state.value.q.trim() && !activeCategory(state.value)
+  return plain ? panelPoints.value : shownPoints(page.points, state.value).filter(isOpen)
+})
+
+async function toggleOpen() {
+  openNow.value = !openNow.value
+  if (openNow.value) {
+    const result = await $fetch<{ items: Array<{ type: string, slug: string }> }>('/api/public/availability', { query: { status: 'open,closing_soon' } }).catch(() => ({ items: [] }))
+    openKeys.value = new Set(result.items.map((item) => `${item.type}:${item.slug}`))
+  }
+}
 const selectedRoute = computed(() => page.routes.find((item) => item.slug === state.value.route) || null)
 const overlay = computed(() => routeOverlay(selectedRoute.value))
 const fitKey = computed(() => `${activeCategory(state.value) || ''}|${state.value.route || ''}`)

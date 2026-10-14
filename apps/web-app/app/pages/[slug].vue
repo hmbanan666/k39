@@ -84,6 +84,7 @@
             class="facts"
           >
             <h2>Коротко</h2>
+            <OpeningLive :schedule="page.place.schedule" />
             <div
               v-for="row in facts"
               :key="row.key"
@@ -260,6 +261,7 @@
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
+import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
 import { yandexDestinationUrl } from '~~/shared/embed-map'
@@ -292,6 +294,7 @@ interface PlacePage {
     howToGet: string | null
     latitude: number | null
     longitude: number | null
+    schedule: ScheduleRecord | null
   }
   categoryTitle: string
   categorySlug: string

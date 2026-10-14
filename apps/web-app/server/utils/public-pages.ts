@@ -9,6 +9,7 @@ import { categoryTags, toPublicModules } from '../../shared/page-modules'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
+import { loadSchedule } from './schedule'
 import { eatNearby } from './venues/public'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
@@ -131,6 +132,7 @@ export async function loadPlace(slug: string, page = 1) {
   if (!loaded?.category) {
     return null
   }
+  const schedule = await loadSchedule('place', loaded.place.id)
   const gallery = loaded.gallery.map((item) => ({ ...toPublicMedia(item.media), isCover: item.isCover }))
   const cover = gallery.find((item) => item.isCover) ?? gallery[0] ?? null
   const images = gallery.map((item) => {
@@ -164,6 +166,7 @@ export async function loadPlace(slug: string, page = 1) {
     latitude: loaded.place.latitude,
     longitude: loaded.place.longitude,
     hours: loaded.place.hours,
+    schedule,
     price: loaded.place.price,
     seoTitle: loaded.place.seoTitle,
     seoDescription: loaded.place.seoDescription,
@@ -234,7 +237,7 @@ export async function loadPlace(slug: string, page = 1) {
     directionsHtml: directionsSource ? renderMarkdown(directionsSource, { headingPrefix: 'directions-' }) : '',
     faq: structuredFaq,
     checkedAt: isoDay(loaded.place.lastVerifiedAt),
-    place: loaded.place,
+    place: { ...loaded.place, schedule },
     categoryTitle: loaded.category.title,
     categorySlug: loaded.category.slug,
     category: loaded.category,
