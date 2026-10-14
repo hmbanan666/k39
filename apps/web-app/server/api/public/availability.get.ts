@@ -1,6 +1,6 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
-import { availabilityFromWindow, availabilityText } from '../../../shared/schedule'
+import { availabilityFromWindow, availabilityText, scheduleRulesSchema } from '../../../shared/schedule'
 
 // One availability query for the map and lists (ADR 0028). Never cached:
 // the answer depends on the minute.
@@ -10,6 +10,11 @@ const querySchema = z.object({
   type: z.string().optional(),
   status: z.string().optional(),
 })
+
+function readClosure(value: unknown) {
+  const parsed = scheduleRulesSchema.shape.closure.safeParse(value ?? undefined)
+  return parsed.success ? parsed.data : undefined
+}
 
 export default defineEventHandler(async (event) => {
   setHeader(event, 'cache-control', 'no-store')
@@ -21,7 +26,7 @@ export default defineEventHandler(async (event) => {
   const rows = await db.schedules.availability(at.toISOString(), { types, bbox })
   const items = rows.map((row) => {
     const verified = Boolean(row.verifiedAt) && !row.needsCheck
-    const value = availabilityFromWindow({ currentEnd: row.currentEnd, nextStart: row.nextStart, verified, alwaysOpen: row.mode === 'always', appointment: row.mode === 'appointment' }, at)
+    const value = availabilityFromWindow({ currentEnd: row.currentEnd, nextStart: row.nextStart, verified, alwaysOpen: row.mode === 'always', appointment: row.mode === 'appointment', closed: row.mode === 'closed', closure: readClosure(row.closure) }, at)
     return {
       type: row.entityType,
       slug: row.slug,

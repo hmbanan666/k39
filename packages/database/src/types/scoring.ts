@@ -8,6 +8,8 @@ export interface ScoreChecks {
 }
 
 export interface ScorePlace {
+  /** Schedule rules mode, null when the place has no schedule. */
+  scheduleMode?: string | null
   id: string
   slug: string
   title: string

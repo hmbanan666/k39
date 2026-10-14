@@ -83,3 +83,18 @@ describe('by appointment', () => {
     expect(availabilityFromWindow({ currentEnd: null, nextStart: null, verified: true, appointment: true }, now).status).toBe('appointment')
   })
 })
+
+describe('temporarily closed', () => {
+  it('names the reason and the outside view, never hours', async () => {
+    const { closureText } = await import('../shared/schedule')
+    const bastion = { rules: scheduleRulesSchema.parse({ mode: 'closed', closure: { reason: 'restoration', viewableOutside: true } }), sourceUrl: null, verifiedAt: '2026-10-14' }
+    const now = at('2026-10-14T12:00')
+    const value = statusFromRules(bastion, now)
+    expect(value.status).toBe('closed')
+    expect(availabilityText(value, now)).toBe('Закрыто на реставрацию · снаружи можно посмотреть')
+    expect(closureText({ reason: 'repair', until: '2027-05-01', viewableOutside: false })).toBe('Закрыто на ремонт до 01.05.2027')
+    expect(availabilityText(availabilityFromWindow({ currentEnd: null, nextStart: null, verified: true, closed: true }, now), now)).toBe('Закрыто')
+    expect(closureText({ reason: 'military', viewableOutside: false })).toBe('Закрыто: военный объект')
+    expect(closureText({ reason: 'other', viewableOutside: true })).toBe('Временно закрыто · снаружи можно посмотреть')
+  })
+})

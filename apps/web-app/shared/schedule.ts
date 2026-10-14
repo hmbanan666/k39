@@ -47,6 +47,12 @@ export const scheduleRulesSchema = z.object({
   })).max(60).default([]),
   occurrences: z.array(z.object({ start: localDateTime, end: localDateTime })).max(200).default([]),
   note: z.string().trim().max(200).optional(),
+  /** Mode closed only: why, until when, and whether the outside can be seen. */
+  closure: z.object({
+    reason: z.enum(['restoration', 'repair', 'season', 'military', 'private', 'other']).default('other'),
+    until: isoDate.optional(),
+    viewableOutside: z.boolean().default(false),
+  }).optional(),
   /** Set when the rules still need checking against an official source. */
   needsCheck: z.boolean().default(false),
 })
@@ -250,11 +256,27 @@ export interface Availability {
   minutesToOpen: number | null
   /** 24/7: no closing time exists, so closesAt stays null. */
   alwaysOpen?: boolean
+  /** Temporarily closed (mode closed): reason, until-date, outside viewable. */
+  closure?: ScheduleRules['closure']
 }
 
 export const SOON_MINUTES = 60
 
 const BY_APPOINTMENT: Availability = { status: 'appointment', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null }
+
+const CLOSURE_REASON = { restoration: ' на реставрацию', repair: ' на ремонт', season: ' до начала сезона', military: ': военный объект', private: ': частная территория', other: '' } as const
+
+function temporarilyClosed(closure: ScheduleRules['closure']): Availability {
+  return { status: 'closed', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, closure }
+}
+
+/** «Закрыто на реставрацию до 01.05.2027 · снаружи можно посмотреть». */
+export function closureText(closure: NonNullable<ScheduleRules['closure']>) {
+  const until = closure.until ? ` до ${closure.until.slice(8, 10)}.${closure.until.slice(5, 7)}.${closure.until.slice(0, 4)}` : ''
+  const reason = CLOSURE_REASON[closure.reason]
+  const head = `${reason || until ? 'Закрыто' : 'Временно закрыто'}${reason}${until}`
+  return closure.viewableOutside ? `${head} · снаружи можно посмотреть` : head
+}
 
 const ALWAYS_OPEN: Availability = { status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, alwaysOpen: true }
 
@@ -296,6 +318,9 @@ export function availabilityText(value: Availability, at: Date) {
   if (value.alwaysOpen) {
     return 'Доступно круглосуточно'
   }
+  if (value.closure) {
+    return closureText(value.closure)
+  }
   if (value.status === 'appointment') {
     return 'По записи'
   }
@@ -329,6 +354,9 @@ export function statusFromRules(record: { rules: ScheduleRules | null, verifiedA
   // By appointment is neither open nor closed: never «Закрыто».
   if (record.rules.mode === 'appointment') {
     return BY_APPOINTMENT
+  }
+  if (record.rules.mode === 'closed') {
+    return temporarilyClosed(record.rules.closure)
   }
   const today = localNow(at).date
   return availabilityAt(expandIntervals(record.rules, addDays(today, -1), 16), at, true)
@@ -384,7 +412,7 @@ export function describeSchedule(rules: ScheduleRules | null): string[] {
   } else if (rules.mode === 'appointment') {
     lines.push('По предварительной договорённости')
   } else if (rules.mode === 'closed') {
-    lines.push('Закрыто')
+    lines.push(rules.closure ? closureText(rules.closure) : 'Закрыто')
   } else if (rules.mode === 'hours') {
     for (const season of rules.seasons) {
       const open = new Set(season.week.flatMap((entry) => entry.days))
@@ -520,9 +548,12 @@ export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, clos
 }
 
 /** Status from the materialised window: the interval open at `at`, if any, and the next start. */
-export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean }, at: Date): Availability {
+export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean, closed?: boolean, closure?: ScheduleRules['closure'] }, at: Date): Availability {
   if (input.verified && input.appointment) {
     return BY_APPOINTMENT
+  }
+  if (input.verified && input.closed) {
+    return temporarilyClosed(input.closure)
   }
   if (input.verified && input.alwaysOpen) {
     return ALWAYS_OPEN
