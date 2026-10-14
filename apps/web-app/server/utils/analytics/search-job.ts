@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { createSign } from 'node:crypto'
 import process from 'node:process'
 import { db } from '@k39/database'
+import { parseServiceAccountKey } from './gsc-key'
 
 function dayStamp(date: Date) {
   return date.toISOString().slice(0, 10)
@@ -14,7 +15,7 @@ function b64url(value: string | Buffer) {
 async function googleAccessToken() {
   const raw = process.env.GSC_SERVICE_ACCOUNT_JSON
   if (raw) {
-    const key = JSON.parse(raw) as { client_email: string, private_key: string }
+    const key = parseServiceAccountKey(raw)
     const now = Math.floor(Date.now() / 1000)
     const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
     const claim = b64url(JSON.stringify({
