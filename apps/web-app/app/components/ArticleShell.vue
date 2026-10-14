@@ -1,6 +1,6 @@
 <template>
   <article class="page">
-    <PostcardHero
+    <PageHeader
       v-if="h1"
       :h1="h1"
       :crumbs="crumbs"

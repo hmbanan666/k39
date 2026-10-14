@@ -17,6 +17,8 @@ export const PAGE_SECTIONS = {
   eatNearby: { id: 'gde-poest', title: 'Где поесть рядом' },
   faq: { id: 'voprosy', title: 'Вопросы перед поездкой' },
   places: { id: 'mesta', title: 'Места' },
+  map: { id: 'karta', title: 'На карте' },
+  routes: { id: 'marshruty', title: 'Маршруты' },
   gallery: { id: 'foto', title: 'Фотографии' },
   // Not listed in the contents: the block stays, but it is not a reading stop.
   sources: { id: 'istochniki', title: 'Источники' },
