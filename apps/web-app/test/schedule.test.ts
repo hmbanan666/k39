@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { availabilityFromWindow, availabilityText, describeSchedule, expandIntervals, rulesFromText, rulesFromVenueHours, scheduleMarkup, scheduleRulesSchema, statusFromRules } from '../shared/schedule'
+import { availabilityFromWindow, availabilityText, describeSchedule, expandIntervals, rulesFromText, rulesFromVenueHours, scheduleDetails, scheduleMarkup, scheduleRulesSchema, statusFromRules } from '../shared/schedule'
 
 const market = scheduleRulesSchema.parse({
   seasons: [{ week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '08:00', closes: '19:00' }] }],
@@ -113,5 +113,15 @@ describe('slots', () => {
     const late = at('2026-11-02T12:00')
     expect(availabilityText(statusFromRules(fringilla, late), late)).toBe('Ближайших сеансов нет')
     expect(describeSchedule(fringilla.rules)).toContain('Экскурсия: начало в 15:00, 16:00, 17:00')
+  })
+})
+
+describe('details row never repeats the status', () => {
+  it('keeps only the extra note', () => {
+    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'closed', note: 'Открытие планируется в 2028 году', closure: { reason: 'restoration', viewableOutside: true } }))).toEqual(['Открытие планируется в 2028 году'])
+    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'closed' }))).toEqual([])
+    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'appointment', note: 'запись по телефону' }))).toEqual([])
+    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'always' }))).toEqual([])
+    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'hours', seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '18:00' }] }] })).join(' ')).toContain('10:00')
   })
 })

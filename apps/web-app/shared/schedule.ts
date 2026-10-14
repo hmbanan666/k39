@@ -479,6 +479,25 @@ export function describeSchedule(rules: ScheduleRules | null): string[] {
   return lines
 }
 
+/**
+ * The «Часы» row next to the live status line: the schedule for regular
+ * hours, otherwise only what the status does not already say. Never repeats
+ * «Закрыто…», «По записи» or «Круглосуточно»; empty means hide the row.
+ */
+export function scheduleDetails(rules: ScheduleRules | null): string[] {
+  if (!rules) {
+    return []
+  }
+  if (rules.mode === 'hours' || rules.mode === 'slots' || rules.mode === 'events') {
+    return describeSchedule(rules)
+  }
+  // Appointment: the status line already carries the note on how to book.
+  if (rules.mode === 'appointment') {
+    return []
+  }
+  return rules.note ? [rules.note] : []
+}
+
 /** Closed days from closures and exceptions, from today, as YYYY-MM-DD. */
 export function upcomingClosedDays(rules: ScheduleRules | null, at: Date, count = 3, horizon = 120) {
   if (!rules || rules.mode !== 'hours') {

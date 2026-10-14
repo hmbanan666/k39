@@ -5,7 +5,11 @@
     :class="{ open: status.open, muted: status.muted }"
     role="status"
   >
-    <span class="dot" aria-hidden="true" />{{ status.text }}
+    <span class="dot" aria-hidden="true" />
+    <span class="text">
+      {{ status.text }}
+      <span v-if="status.sub" class="sub">{{ status.sub }}</span>
+    </span>
   </p>
   <p
     v-else-if="unverified"
@@ -24,15 +28,19 @@ import { availabilityText, statusFromRules } from '~~/shared/schedule'
 const props = defineProps<{ schedule: ScheduleRecord | null, hasHours?: boolean }>()
 // Rendered only after hydration too, so cached HTML never carries it.
 const unverified = ref(false)
-const status = ref<{ open: boolean, muted: boolean, text: string } | null>(null)
+const status = ref<{ open: boolean, muted: boolean, text: string, sub?: string } | null>(null)
 let timer: ReturnType<typeof setInterval> | undefined
 
 function update() {
   const now = new Date()
   const value = statusFromRules(props.schedule, now)
+  // A closure's secondary part («снаружи можно посмотреть») goes on its own muted line.
+  const [main, ...rest] = availabilityText(value, now).split(' · ')
   status.value = value.status === 'unknown'
     ? null
-    : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen) || value.status === 'appointment' || Boolean(value.slot), text: [availabilityText(value, now), value.status === 'appointment' ? props.schedule?.rules.note : ''].filter(Boolean).join(': ') }
+    : value.closure
+      ? { open: false, muted: false, text: main ?? '', sub: rest.join(' · ') || undefined }
+      : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen) || value.status === 'appointment' || Boolean(value.slot), text: [availabilityText(value, now), value.status === 'appointment' ? props.schedule?.rules.note : ''].filter(Boolean).join(': ') }
   unverified.value = value.status === 'unknown' && Boolean(props.hasHours)
 }
 
@@ -47,7 +55,8 @@ onBeforeUnmount(() => clearInterval(timer))
 .live {
   display: flex;
   gap: 0.45rem;
-  align-items: center;
+  align-items: flex-start;
+  line-height: 1.4;
   margin: 0.2rem 0 0.4rem;
   color: var(--color-brick-dark);
   font-size: 0.95rem;
@@ -58,7 +67,16 @@ onBeforeUnmount(() => clearInterval(timer))
 .dot {
   width: 0.55rem;
   height: 0.55rem;
+  flex-shrink: 0;
+  /* Centre of the first text line. */
+  margin-top: calc(0.7em - 0.275rem);
   border-radius: 50%;
   background: currentColor;
+}
+.sub {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 400;
 }
 </style>
