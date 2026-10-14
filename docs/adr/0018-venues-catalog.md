@@ -61,6 +61,8 @@ Nameless elements are skipped. `ice_cream` is stored as `other` with a cuisine t
 
 Nearby blocks take up to five published food venues inside 5 km. A place uses its own coordinates. A route uses the minimum distance to any stop that has coordinates. Order is distance. The public distance is `400 м` or `1,2 км`.
 
+On a place page «Где поесть рядом» is its own block in the article column, after «Как добраться», with a contents entry (`PAGE_SECTIONS.eatNearby`). The full-width «Рядом» grid holds places only. Each row carries the venue's schedule rules (ADR 0028), and the browser computes «открыто сейчас» from them after hydration. Only a verified schedule reports open or closed; anything else reads «Часы неизвестны». Server HTML has the same list for bots and people, without a live status. A place with no venue in range has no block and no contents entry.
+
 One sponsored slot sits in front of that order when `FEATURE_SPONSORED_VENUES=true`. The slot is the nearest candidate that has an `offers` row with `venue_id` set and `status = active`. The card says «Партнёр». The flag defaults off, so the block is distance only and shows no partner label. Later auction work can replace which active offer wins the slot. It should not add a second ranking path.
 
 ### Impressions

@@ -24,6 +24,7 @@ import {
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
+import { loadSchedule } from '../schedule'
 
 export function sponsoredVenuesEnabled() {
   return process.env.FEATURE_SPONSORED_VENUES === 'true'
@@ -41,8 +42,10 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
   const found = await db.venues.nearby(points)
   const ranked = rankNearby(found, { sponsoredSlot: sponsoredVenuesEnabled(), limit: NEARBY_LIMIT })
   const covers = await db.venues.coversFor(ranked.map((row) => row.id))
+  // Rules only: the browser computes «открыто сейчас» from them (ADR 0028).
+  const schedules = await Promise.all(ranked.map((row) => loadSchedule('venue', row.id)))
   const now = new Date()
-  return ranked.map((row) => {
+  return ranked.map((row, index) => {
     const cover = covers.get(row.id)
     return {
       href: `/zavedeniya/${row.slug}`,
@@ -58,6 +61,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
       price: priceMarks(row.priceLevel),
       avgCheck: formatAvgCheck(row.avgCheck),
       media: cover ? toPublicMedia(cover) : null,
+      schedule: schedules[index] ?? null,
     }
   })
 }

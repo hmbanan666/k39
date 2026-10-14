@@ -2,7 +2,7 @@
   <p
     v-if="status"
     class="live"
-    :class="{ open: status.open, muted: status.muted }"
+    :class="{ open: status.open, muted: status.muted, compact }"
     role="status"
   >
     <span class="dot" aria-hidden="true" />
@@ -14,8 +14,16 @@
   <p
     v-else-if="unverified"
     class="live muted"
+    :class="{ compact }"
   >
     Часы не проверены, уточняйте
+  </p>
+  <p
+    v-else-if="unknown && showUnknown"
+    class="live muted"
+    :class="{ compact }"
+  >
+    Часы неизвестны
   </p>
 </template>
 
@@ -25,9 +33,17 @@ import { availabilityText, statusFromRules } from '~~/shared/schedule'
 
 // Computed in the browser only, after hydration: cached HTML shows the
 // schedule, never a stale «открыто сейчас».
-const props = defineProps<{ schedule: ScheduleRecord | null, hasHours?: boolean }>()
+const props = defineProps<{
+  schedule: ScheduleRecord | null
+  hasHours?: boolean
+  /** Say «Часы неизвестны» instead of rendering nothing when there is no verified schedule. */
+  showUnknown?: boolean
+  /** Smaller type for list rows. */
+  compact?: boolean
+}>()
 // Rendered only after hydration too, so cached HTML never carries it.
 const unverified = ref(false)
+const unknown = ref(false)
 const status = ref<{ open: boolean, muted: boolean, text: string, sub?: string } | null>(null)
 let timer: ReturnType<typeof setInterval> | undefined
 
@@ -42,6 +58,7 @@ function update() {
       ? { open: false, muted: false, text: main ?? '', sub: rest.join(' · ') || undefined }
       : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen) || value.status === 'appointment' || Boolean(value.slot), text: [availabilityText(value, now), value.status === 'appointment' ? props.schedule?.rules.note : ''].filter(Boolean).join(': ') }
   unverified.value = value.status === 'unknown' && Boolean(props.hasHours)
+  unknown.value = value.status === 'unknown'
 }
 
 onMounted(() => {
@@ -64,6 +81,7 @@ onBeforeUnmount(() => clearInterval(timer))
 }
 .live.open { color: var(--color-success); }
 .live.muted { color: var(--color-muted); font-weight: 400; font-size: 0.9rem; }
+.live.compact { margin: 0.15rem 0 0; font-size: var(--step--1); }
 .dot {
   width: 0.55rem;
   height: 0.55rem;

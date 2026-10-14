@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import type { RouteStopView } from '~~/shared/route-nav'
+import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 
@@ -48,6 +49,7 @@ const page = await fetchPublic<{
     distance: string
     partner: boolean
     stale: boolean
+    schedule: ScheduleRecord | null
   }>
 }>(`/api/public/routes/${slug}`)
 usePublicHead(page.doc)
