@@ -6,6 +6,13 @@
     role="region"
     aria-label="Уведомление о cookie"
   >
+    <Sticker
+      slug="with-coffee-and-croissant"
+      :width="44"
+      decorative
+      aria-hidden="true"
+      class="notice-sticker"
+    />
     <p>
       Мы используем cookie, чтобы сайт работал корректно.
       <NuxtLink to="/privacy">
@@ -98,8 +105,12 @@ function dismiss() {
   line-height: 1.35;
   animation: notice-in var(--duration) var(--ease);
 }
+.notice-sticker {
+  flex: none;
+  width: 2.75rem;
+}
 p {
-  flex: 1 1 14rem;
+  flex: 1 1 12rem;
   margin: 0;
 }
 a {
@@ -135,6 +146,7 @@ button:hover { background: var(--color-brick-dark); }
     width: auto;
     max-width: none;
   }
+  .notice-sticker { width: 2.25rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .notice { animation: none; }
