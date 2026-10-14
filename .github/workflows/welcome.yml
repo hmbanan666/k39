@@ -7,7 +7,8 @@ on:
     types: [opened]
 
 jobs:
-  run:
+  # Greets first-time contributors when a PR opens; not a CI check.
+  welcome:
     runs-on: ubuntu-latest
     steps:
       - name: Welcome
