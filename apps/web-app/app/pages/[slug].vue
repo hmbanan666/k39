@@ -154,6 +154,8 @@
             :id="SECTIONS.eatNearby.id"
             :items="page.eatNearby || []"
             :title="SECTIONS.eatNearby.title"
+            :more-href="eatNowHref"
+            more-text="Где поесть сейчас: все открытые заведения рядом →"
           />
           <section
             v-if="routes.length"
@@ -253,6 +255,7 @@ import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
+import { eatNowPath } from '~~/shared/eat-now'
 import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
@@ -305,6 +308,7 @@ interface PlacePage {
     partner: boolean
     stale: boolean
     schedule: ScheduleRecord | null
+    regionSlug?: string | null
   }>
 }
 
@@ -342,6 +346,8 @@ const nearby = page.groups.find((group) => group.title === 'Рядом')
 // Every published route through this place.
 const routes = page.groups.find((group) => group.title === 'Маршруты')?.links ?? []
 const SECTIONS = PAGE_SECTIONS
+const eatNowSlug = page.eatNearby?.find((item) => item.regionSlug)?.regionSlug
+const eatNowHref = eatNowSlug ? eatNowPath(eatNowSlug) : ''
 // Text-width blocks (food nearby, directions, FAQ) stay in the article column
 // beside the rail; only the wide «Рядом» grid runs full width after it.
 const sectionsAfter = presentSections([

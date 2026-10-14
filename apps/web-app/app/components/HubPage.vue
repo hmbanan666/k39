@@ -51,6 +51,20 @@
               </p>
             </div>
           </div>
+          <div
+            v-if="slug === 'eda'"
+            class="fact"
+          >
+            <Icon :name="tablerIcon('hours')" size="22" />
+            <div>
+              <p class="label">
+                Сейчас
+              </p>
+              <p>
+                <a :href="EAT_NOW_PATH">Где поесть сейчас: что открыто по городам</a>
+              </p>
+            </div>
+          </div>
         </section>
       </template>
     </ReaderLayout>
@@ -100,6 +114,7 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
+import { EAT_NOW_PATH } from '~~/shared/eat-now'
 import { tablerIcon } from '~~/shared/icons'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 
