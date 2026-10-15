@@ -7,7 +7,7 @@ import { saveSchedule } from '../../utils/schedule'
 
 export default defineMcpTool({
   name: 'schedule_set',
-  description: 'Write the schedule of a place or venue (ADR 0028) and rebuild its 30-day intervals. Take hours only from an official source and pass its URL; verifiedAt is the day you checked it. Without verifiedAt, or with rules.needsCheck, the site shows the text but never «открыто/закрыто» or markup. Pass remove=true to delete the schedule (hours become unknown). Writes an mcp_audits row.',
+  description: 'Write the schedule of a place or venue (ADR 0028) and rebuild its 30-day intervals. Place hours come only from an official source. For a venue that really exists and operates, hours may also come from Yandex Maps, 2GIS, or OSM when the official site does not state them. Pass that URL as sourceUrl and record the same { title, url } in sources. Do not copy map text, reviews, ratings, or prices. verifiedAt is the day you checked it. Without verifiedAt, or with rules.needsCheck, the site shows the text but never «открыто/закрыто» or markup. Pass remove=true to delete the schedule (hours become unknown). Writes an mcp_audits row.',
   inputSchema: {
     entityType: z.enum(['place', 'venue']).default('place'),
     id: z.string().optional(),

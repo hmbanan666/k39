@@ -40,7 +40,7 @@ Match the standard dish, not a house special that only shares a word. Put the me
 
 Editorial rows are `sourceKind: official` and need `sourceUrl` of the venue's own menu: a page on its site or a PDF on that site. No social posts. `sourceTitle` is a short label such as «Меню на сайте заведения». `checkedAt` is the day you read that page (`YYYY-MM-DD`). The repository rejects an official row with no URL.
 
-Do not use Yandex, 2GIS, aggregators, or delivery apps (`k39-sources-and-facts`). Do not invent a price from neighbouring venues.
+Prices stay the official menu only. Do not take a price or an average check from Yandex Maps, 2GIS, aggregators, or delivery apps (`k39-sources-and-facts`). Those maps may supply hours, phone, address, operating status, and coordinates for a venue that exists and operates. They never supply a price. Do not invent a price from neighbouring venues.
 
 The public grid prints one source line under the cards (`sharedPriceSource` in `shared/price-compare.ts`, rendered in `VenueModules.vue`): one link, the URL used by the most prices, then the latest date among the prices that use that URL, then «Цены могли измениться». A tie goes to the newer URL. Do not write that sentence into the description. Details: `docs/venue-modules.md`.
 
