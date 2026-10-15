@@ -6,7 +6,7 @@ import { license } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'media_upload_from_url',
-  description: 'Download an https image from a public host, run the photo pipeline, and store it. Alt, author, license, and sourceUrl are required.',
+  description: 'Download an https image from a public host, run the photo pipeline, and store it. Alt, author, license, and sourceUrl are required. License is own or a Commons license. permission is the cabinet owner upload only.',
   inputSchema: {
     url: z.string().describe('https URL of a JPEG, PNG, or WebP'),
     alt: z.string(),
@@ -19,6 +19,9 @@ export default defineMcpTool({
     isCover: z.boolean().optional(),
   },
   handler: async (input) => {
+    if (input.license === 'permission') {
+      throw createError({ statusCode: 400, statusMessage: 'Лицензия permission только для загрузки владельца в кабинете' })
+    }
     const file = await fetchPublicImage(input.url)
     const saved = await ingestImage({
       bytes: file.bytes,

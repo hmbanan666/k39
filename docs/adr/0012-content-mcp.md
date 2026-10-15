@@ -36,7 +36,7 @@ Quest writes use `Editor.saveQuest`. Hub updates use `Editor.saveCategory`. Regi
 
 Each successful write inserts an `mcp_audits` row with actor `mcp`, the tool name, and the entity. The content HTTP API uses the same actor.
 
-The `content_guide` resource (`k39://content-guide`) and the matching prompt state the Russian writing rules: no invented facts, cite sources, and publish only with those sources and a licensed photo.
+The `content_guide` resource (`k39://content-guide`) and the matching prompt state the Russian writing rules: no invented facts, cite sources, and publish only with those sources and a licensed photo. The banned phrases are `WRITING_STOP_LIST`, `WRITING_STOP_PATTERNS`, and `WRITING_BANNED_SITES` in `apps/web-app/shared/writing.ts`. `content_guide` prints `writingGuideSection()` from that module. `.cursor/skills/k39-writing/SKILL.md` repeats each phrase, and `apps/web-app/test/writing.test.ts` fails if they diverge.
 
 Sample client:
 

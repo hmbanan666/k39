@@ -61,6 +61,7 @@ edit does not have to move the prices module to the top.
 Then «Как внутри», «Как добраться» (with `how-to-get` text), «Рядом
 посмотреть» and «Источники» sit under the two columns and use the full
 frame, so the map and the nearby cards are not stuck in the article measure.
+«Источники» is a collapsed `<details>` whose summary is the heading.
 When the how-to-get text already contains the street address, the page does
 not print that address again above it. A menu link with no dishes does not
 open an empty «Что заказать» section: the menu stays on the «Коротко» button.

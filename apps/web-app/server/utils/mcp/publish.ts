@@ -1,7 +1,9 @@
 import { db } from '@k39/database'
+import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from './audit'
 import { normalizePublication } from './draft'
 import { updatePlaceDraft } from './places'
+import { writingGate } from './writing-guard'
 
 export async function setPublication(input: {
   entity: 'place' | 'route' | 'collection' | 'quest'
@@ -19,6 +21,13 @@ export async function setPublication(input: {
     if (!current) {
       throw createError({ statusCode: 404, statusMessage: 'Маршрут не найден' })
     }
+    const writingWarnings = writingGate(writingCopy([
+      current.title,
+      current.summary,
+      current.body,
+      current.seoTitle,
+      current.seoDescription,
+    ]), publicationStatus === 'published')
     const row = await db.editor.saveRoute({
       id: current.id,
       slug: current.slug,
@@ -32,7 +41,7 @@ export async function setPublication(input: {
       noindex: current.noindex,
     })
     await auditMcp('content_set_publication', 'route', current.id)
-    return { id: row?.id, slug: row?.slug, publicationStatus: row?.publicationStatus }
+    return { id: row?.id, slug: row?.slug, publicationStatus: row?.publicationStatus, writingWarnings }
   }
   if (input.entity === 'collection') {
     const rows = await db.editor.listCollections()
@@ -40,6 +49,15 @@ export async function setPublication(input: {
     if (!current) {
       throw createError({ statusCode: 404, statusMessage: 'Подборка не найдена' })
     }
+    const writingWarnings = writingGate(writingCopy([
+      current.title,
+      current.summary,
+      current.body,
+      current.seoTitle,
+      current.seoDescription,
+      current.modules,
+      current.sources,
+    ]), publicationStatus === 'published')
     const row = await db.editor.saveCollection({
       id: current.id,
       slug: current.slug,
@@ -53,7 +71,7 @@ export async function setPublication(input: {
       noindex: current.noindex,
     })
     await auditMcp('content_set_publication', 'collection', current.id)
-    return { id: row?.id, slug: row?.slug, publicationStatus: row?.publicationStatus }
+    return { id: row?.id, slug: row?.slug, publicationStatus: row?.publicationStatus, writingWarnings }
   }
   const current = input.id
     ? await db.editor.questById(input.id)
@@ -63,6 +81,13 @@ export async function setPublication(input: {
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Квест не найден' })
   }
+  const writingWarnings = writingGate(writingCopy([
+    current.title,
+    current.summary,
+    current.body,
+    current.seoTitle,
+    current.seoDescription,
+  ]), publicationStatus === 'published')
   const row = await db.editor.saveQuest({
     id: current.id,
     slug: current.slug,
@@ -77,5 +102,5 @@ export async function setPublication(input: {
     routeId: current.routeId,
   })
   await auditMcp('content_set_publication', 'quest', current.id)
-  return { id: row.id, slug: row.slug, publicationStatus: row.publicationStatus }
+  return { id: row.id, slug: row.slug, publicationStatus: row.publicationStatus, writingWarnings }
 }

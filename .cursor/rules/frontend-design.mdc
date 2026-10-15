@@ -1,9 +1,7 @@
 ---
-description: use for any UI change; read .cursor/skills/frontend-design/SKILL.md first
+description: use for any UI change; read .cursor/skills/k39-ui/SKILL.md first
 globs: apps/web-app/**/*.vue,apps/web-app/**/*.css,**/*.css,apps/web-app/**/components/**
 alwaysApply: false
 ---
 
-Read `.cursor/skills/frontend-design/SKILL.md` before changing UI.
-
-K39 precedence (also in AGENTS.md, UI): the existing design system wins over the skill's generic advice. Keep the current tokens, typography, and colors (ADR 0010, `docs/design-system.md`). Moose and food stickers go through `<Sticker>`. Block components own their styling. Keep server rendering for bots and people. Prefer simplicity. Use the skill for craft, polish, and anti-generic taste. Do not restyle the brand.
+Read `.cursor/skills/k39-ui/SKILL.md` before changing UI.

@@ -3,8 +3,10 @@ import type { VenueModule } from '../../../shared/venue-modules'
 import { db, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
+import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from '../mcp/audit'
 import { parseFactsCheckedAt } from '../mcp/facts'
+import { writingGate } from '../mcp/writing-guard'
 import { loadSchedule, saveSchedule } from '../schedule'
 import { normalizeDishModules } from './dishes'
 import { recomputePriceBandsAfterStatus } from './price-band'
@@ -74,13 +76,24 @@ export async function createVenue(input: Parameters<typeof venueWriteFromInput>[
   try {
     const regionId = await regionIdForSlug(input.regionSlug)
     const modules = input.modules ? await normalizeDishModules(null, input.modules as VenueModule[], 'editorial') : undefined
+    const writingWarnings = writingGate(writingCopy([
+      input.name,
+      input.description,
+      input.address,
+      input.phone,
+      input.seoTitle,
+      input.seoDescription,
+      input.signatureDishes,
+      modules,
+      input.sources,
+    ]), input.status === 'published', true)
     const row = await db.venues.create({
       ...venueWriteFromInput({ ...input, modules }),
       regionId: regionId === undefined ? input.regionId : regionId,
     }, userId)
     await syncVenueSchedule(row, input)
     await auditMcp('venue_create', 'venue', row.id)
-    return row
+    return { ...row, writingWarnings }
   } catch (error) {
     venueError(error)
   }
@@ -98,6 +111,18 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
   try {
     const regionId = await regionIdForSlug(input.regionSlug)
     const modules = input.modules ? await normalizeDishModules(current.id, input.modules as VenueModule[], 'editorial') : undefined
+    const status = input.status ?? current.status
+    const writingWarnings = writingGate(writingCopy([
+      input.name ?? current.name,
+      input.description === undefined ? current.description : input.description,
+      input.address === undefined ? current.address : input.address,
+      input.phone === undefined ? current.phone : input.phone,
+      input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+      input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+      input.signatureDishes === undefined ? current.signatureDishes : input.signatureDishes,
+      modules === undefined ? current.modules : modules,
+      input.sources === undefined ? current.sources : input.sources,
+    ]), status === 'published', true)
     const saved = await db.venues.update(current.id, {
       ...venueWriteFromInput({ ...input, modules }),
       regionId: regionId === undefined ? undefined : regionId,
@@ -112,7 +137,7 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
       { regionId: saved.regionId, status: saved.status },
     )
     await auditMcp('venue_update', 'venue', saved.id)
-    return saved
+    return { ...saved, writingWarnings }
   } catch (error) {
     venueError(error)
   }
