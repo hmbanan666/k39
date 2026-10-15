@@ -389,6 +389,8 @@ export const venueListingIntros = pgTable('venue_listing_intros', {
   body: text('body').notNull().default(''),
   seoTitle: varchar('seo_title'),
   seoDescription: varchar('seo_description'),
+  // Optional listing modules (docs/venue-modules.md). Empty keeps the card grid.
+  modules: jsonb('modules').$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
 })
 
 export const businesses = pgTable('businesses', {

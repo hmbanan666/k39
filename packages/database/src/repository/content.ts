@@ -540,6 +540,22 @@ export class Editor {
     return useDatabase().select().from(regions).orderBy(asc(regions.title))
   }
 
+  /** Published place whose slug is the town (the town hub), for a short cover. */
+  static async publishedPlacesForSlugs(slugs: string[]) {
+    const unique = [...new Set(slugs.filter(Boolean))]
+    if (!unique.length) {
+      return []
+    }
+    return useDatabase().select({
+      id: places.id,
+      slug: places.slug,
+      categorySlug: categories.slug,
+    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).where(and(
+      inArray(places.slug, unique),
+      eq(places.publicationStatus, published),
+    ))
+  }
+
   static async saveRoute(input: { id?: string, slug: string, title: string, summary?: string | null, body?: string, sections?: unknown, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null) {
     const data = { ...input, ...syncedBody(input) }
     const resolvedPoints = data.points ? await resolveStops(data.points) : null

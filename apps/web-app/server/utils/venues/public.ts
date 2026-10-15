@@ -24,9 +24,12 @@ import {
   STALE_NOTE,
 } from '@k39/database'
 import { EAT_NOW_PATH, eatNowPath, haversineKm, inTown } from '../../../shared/eat-now'
+import { illustrationFor } from '../../../shared/illustrations'
+import { attachSituationCards, toPublicListingModules } from '../../../shared/listing-modules'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { regionLabel } from '../../../shared/region'
+import { readRules } from '../../../shared/schedule'
 import { collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
 import { toPublicVenueModules } from '../../../shared/venue-modules'
 import { loadSchedule } from '../schedule'
@@ -289,13 +292,33 @@ async function loadListing(
   }
   const intro = await db.venues.listingIntro(region?.id ?? null, kind)
   const indexable = descriptionLength(intro?.body || '') >= LISTING_INTRO_MIN
-  const rows = await db.venues.list({
-    regionId: region?.id,
+  // One pass for the page and for the town counts. A kind narrows both.
+  const catalog = await db.venues.list({
     kind: kind ?? undefined,
     status: 'published',
     foodOnly: !kind,
   })
-  const shown = kind ? rows : rows.filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
+  const food = kind ? catalog : catalog.filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
+  const counts = new Map<string, number>()
+  for (const row of food) {
+    if (row.regionId) {
+      counts.set(row.regionId, (counts.get(row.regionId) ?? 0) + 1)
+    }
+  }
+  const shown = region ? food.filter((row) => row.regionId === region.id) : food
+  const townRows = regionRows
+    .filter((row) => (counts.get(row.id) ?? 0) > 0 || row.slug === regionSlug)
+    .map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      title: regionLabel(row),
+      href: listingPath(row.slug, kind),
+      count: counts.get(row.id) ?? 0,
+    }))
+    .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'ru'))
+  const hubs = await db.editor.publishedPlacesForSlugs(townRows.map((town) => town.slug))
+  const hubCovers = await db.content.coversFor(hubs.map((hub) => hub.id))
+  const hubBySlug = new Map(hubs.map((hub) => [hub.slug, hub]))
   const heading = listingHeading(region ? regionLabel(region) : null, kind)
   const summary = plainIntro(intro?.body) || LISTING_SUMMARY
   const doc = collectionDocument({
@@ -311,30 +334,96 @@ async function loadListing(
     kind: 'CollectionPage',
   })
   const now = new Date()
+  const draftModules = toPublicListingModules(intro?.modules ?? [], renderMarkdown)
+  const situationSlugs = draftModules.flatMap((block) => block.type === 'situation' ? block.items.map((item) => item.placeSlug) : [])
+  const extraSlugs = [...new Set(situationSlugs.filter((slug) => !shown.some((row) => row.slug === slug)))]
+  const extras = (await Promise.all(extraSlugs.map((slug) => db.venues.bySlug(slug)))).flatMap((row) => {
+    return row && row.status === 'published' ? [row] : []
+  })
+  const cardRows = [...shown, ...extras]
+  const ids = cardRows.map((row) => row.id)
+  const [covers, scheduleRows] = await Promise.all([
+    db.venues.coversFor(ids),
+    db.schedules.forEntities('venue', ids),
+  ])
+  const scheduleById = new Map(scheduleRows.flatMap((row) => {
+    const rules = readRules(row.rules)
+    return rules ? [[row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }] as const] : []
+  }))
+  const cards = new Map(cardRows.map((row) => {
+    const cover = covers.get(row.id)
+    return [row.slug, {
+      href: `/zavedeniya/${row.slug}`,
+      slug: row.slug,
+      name: row.name,
+      kindLabel: kindLabel(row.kind),
+      media: cover ? toPublicMedia(cover) : null,
+      schedule: scheduleById.get(row.id) ?? null,
+      stale: isStale(row.lastVerifiedAt, now),
+      meta: [row.address, cuisineLabels(row.cuisineTags).join(', '), priceMarks(row.priceLevel), formatAvgCheck(row.avgCheck)].filter(Boolean).join(' · '),
+    }] as const
+  }))
+  const modules = attachSituationCards(draftModules, cards)
+  const faq = modules.find((block) => block.type === 'faq')
+  if (faq?.type === 'faq' && !doc.robots.includes('noindex')) {
+    doc.jsonLd.push({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      'mainEntity': faq.items.map((item) => ({
+        '@type': 'Question',
+        'name': item.question,
+        'acceptedAnswer': { '@type': 'Answer', 'text': item.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() },
+      })),
+    })
+  }
   return {
     type: 'listing' as const,
     doc,
     html: intro?.body?.trim() ? renderMarkdown(intro.body) : '',
+    modules,
     heading,
     regionSlug,
     kind,
     filters: {
-      regions: regionRows.map((row) => ({ slug: row.slug, title: regionLabel(row), href: listingPath(row.slug, kind) })),
+      allTownsHref: listingPath(null, kind),
+      allKindsHref: listingPath(regionSlug, null),
+      towns: townRows.map((town) => {
+        const hub = hubBySlug.get(town.slug)
+        const cover = hub ? hubCovers.get(hub.id) : undefined
+        return {
+          slug: town.slug,
+          title: town.title,
+          href: town.href,
+          count: town.count,
+          media: cover ? toPublicMedia(cover) : null,
+          image: illustrationFor(hub?.categorySlug || 'kurorty', town.slug),
+        }
+      }),
       kinds: FOOD_KINDS.map((item) => ({
         kind: item,
         label: KIND_HEADING[item],
         href: listingPath(regionSlug, item),
       })),
     },
-    items: shown.map((row) => ({
-      href: `/zavedeniya/${row.slug}`,
-      name: row.name,
-      kindLabel: kindLabel(row.kind),
-      address: row.address,
-      price: priceMarks(row.priceLevel),
-      avgCheck: formatAvgCheck(row.avgCheck),
-      stale: isStale(row.lastVerifiedAt, now),
-    })),
+    items: shown.map((row) => {
+      const card = cards.get(row.slug)
+      return {
+        href: `/zavedeniya/${row.slug}`,
+        slug: row.slug,
+        name: row.name,
+        kindLabel: kindLabel(row.kind),
+        address: row.address,
+        cuisine: cuisineLabels(row.cuisineTags),
+        price: priceMarks(row.priceLevel),
+        avgCheck: formatAvgCheck(row.avgCheck),
+        stale: isStale(row.lastVerifiedAt, now),
+        latitude: row.latitude,
+        longitude: row.longitude,
+        media: card?.media ?? null,
+        // Rules only. The card computes «открыто» in the browser (ADR 0028).
+        schedule: card?.schedule ?? null,
+      }
+    }),
   }
 }
 

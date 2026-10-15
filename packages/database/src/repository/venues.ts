@@ -762,6 +762,31 @@ export class Venues {
     return created
   }
 
+  /** Replaces modules on a listing. Creates the row with an empty intro when none exists. */
+  static async setListingModules(input: { regionId: string | null, kind: string | null, modules: unknown[] }) {
+    if (input.kind && !isFoodKind(input.kind)) {
+      assertKind(input.kind)
+    }
+    const current = await this.listingIntro(input.regionId, input.kind)
+    if (current) {
+      const [updated] = await useDatabase().update(venueListingIntros).set({
+        modules: input.modules,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(venueListingIntros.id, current.id)).returning()
+      return updated ?? current
+    }
+    const [created] = await useDatabase().insert(venueListingIntros).values({
+      regionId: input.regionId,
+      kind: input.kind,
+      body: '',
+      modules: input.modules,
+    }).returning()
+    if (!created) {
+      throw new VenueInputError('Не удалось сохранить модули')
+    }
+    return created
+  }
+
   static async listIntros() {
     return useDatabase().select().from(venueListingIntros)
   }
