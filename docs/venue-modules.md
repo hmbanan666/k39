@@ -22,7 +22,7 @@ Rules:
 | `text` | «О месте» or own title | `{ title?, variant: lead\|plain, text }` | Same shape as ADR 0023 `text`. |
 | `dishes` | «Что заказать» | `{ title?, items: [{ name, priceRub?, note? }], note? }` | Up to 8. Falls back to `signatureDishes`. Price only when seen on the official menu. |
 | `audience` | «Кому подойдёт» | `{ title?, items: [{ who, text }] }` | 2 to 5 short cards. |
-| `practical` | «Практично» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
+| `practical` | «Полезно знать» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
 | `best-time` | «Когда лучше прийти» | `{ title?, text }` | Only with real data (hours, queues seen, season). |
 | `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map. |
 | `prices` | «Ориентиры цен» | `{ title? }` | Rows come from `venue_prices` (see below), not from the module. Hidden without fresh verified prices. |
