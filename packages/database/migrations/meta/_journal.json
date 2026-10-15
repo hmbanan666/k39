@@ -176,6 +176,13 @@
       "when": 1792020000000,
       "tag": "0024_region_short_title",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792030000000,
+      "tag": "0025_site_search",
+      "breakpoints": true
     }
   ]
 }
