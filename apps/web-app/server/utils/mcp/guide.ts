@@ -1,6 +1,8 @@
+import { writingGuideSection } from '../../../shared/writing'
+
 export const CONTENT_GUIDE = `K39 place pages are Russian. Write for a visitor who will go there, not for a brochure.
 
-Tone: plain, specific, calm. No slogans, no "лучший", no invented atmosphere. Do not use an em dash in body copy.
+${writingGuideSection()}
 
 Structure:
 - summary: one or two sentences, what the place is and why a visitor stops.
@@ -16,7 +18,7 @@ Place guide template (ADR 0020): the answer block at the top shows summary, visi
 
 SEO: seoTitle stays under 70 characters, seoDescription under 170. The visible H1 is the place title. Do not keyword-stuff.
 
-Publishing: you may set publicationStatus to published, or call content_set_publication. Publish only when the facts are in sources and every photo has alt, author, license, and sourceUrl. Unpublish by setting draft. noindex hides a live page from the sitemap, the same checkbox as in /admin. Do not invent a fact in order to publish.
+Publishing: you may set publicationStatus to published, or call content_set_publication. Publish only when the facts are in sources, every photo has alt, author, license, and sourceUrl, and the reviewer pass in .cursor/skills/k39-publish-review/SKILL.md has passed. The author does not publish in the same pass that wrote the page. Unpublish by setting draft. noindex hides a live page from the sitemap, the same checkbox as in /admin. Do not invent a fact in order to publish.
 
 Photos: alt is required and describes the picture. author, license, and sourceUrl are required for an upload. Do not attach a photo whose license is not own, cc-by, cc-by-sa, cc0, pd, or permission.
 

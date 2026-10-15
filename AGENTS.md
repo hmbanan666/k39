@@ -65,9 +65,23 @@ Site search (ADR 0030) is Postgres full-text (`russian`) plus `pg_trgm` over the
 
 ## UI
 
-For any UI change, read `.cursor/skills/frontend-design/SKILL.md` first. That file is Anthropic's frontend-design skill, copied verbatim from https://github.com/anthropics/skills (`skills/frontend-design`), with its Apache-2.0 `LICENSE.txt` in the same folder. `.cursor/rules/frontend-design.mdc` attaches the same instruction to `apps/web-app/**/*.vue`, CSS, and components.
+For any UI change, read `.cursor/skills/k39-ui/SKILL.md` first. It points at `.cursor/skills/frontend-design/SKILL.md`. That file is Anthropic's frontend-design skill, copied verbatim from https://github.com/anthropics/skills (`skills/frontend-design`), with its Apache-2.0 `LICENSE.txt` in the same folder. `.cursor/rules/frontend-design.mdc` attaches the same instruction to `apps/web-app/**/*.vue`, CSS, and components.
 
 K39 precedence: the existing design system wins over the skill's generic advice. Keep the current tokens, typography, and colors (ADR 0010, `docs/design-system.md`). Moose and food stickers go through `<Sticker>` (`docs/stickers.md`, `docs/food-stickers.md`). Block components own their styling. Keep server rendering for bots and people. Prefer simplicity. Use the skill for craft, polish, and anti-generic taste. Do not restyle the brand.
+
+## Skills
+
+Read the skill before the matching task. Files are `.cursor/skills/<name>/SKILL.md`. The writing stop-list has one source, `apps/web-app/shared/writing.ts`. `content_guide` prints it. Do not add a banned phrase only in a skill.
+
+| Skill | When to use |
+| --- | --- |
+| `k39-writing` | Russian copy for a place, venue, route, collection, quest, or hub. |
+| `k39-sources-and-facts` | A source, a photo, an hour, a price, or any other fact. |
+| `k39-price-anchors` | «Ориентиры цен»: matching a menu line to the catalog. |
+| `k39-venue-page` | A venue page: modules, passport, links. |
+| `k39-publish-review` | The author checklist, then the separate reviewer pass, before publish. |
+| `k39-ui` | Any UI change. Read it before `frontend-design`. |
+| `frontend-design` | Craft and anti-generic taste during a UI change, after `k39-ui`. |
 
 ## Run
 
