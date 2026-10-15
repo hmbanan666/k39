@@ -8,9 +8,10 @@ export default defineMcpTool({
   inputSchema: {
     slug: z.string().regex(/^[a-z0-9-]+$/).describe('Latin slug, e.g. cappuccino'),
     title: z.string().min(1).max(80).describe('Russian name, e.g. Капучино'),
-    category: z.string().min(1).max(40).describe('coffee, pizza, sushi, soup, burger, dessert...'),
+    category: z.string().min(1).max(40).describe('coffee, bakery, dessert, breakfast, tea, drinks, beer, pizza, burger, street-food, sushi, salad, soup, pasta, main, fish, lunch'),
     defaultVariant: z.string().max(40).nullable().optional().describe('Usual size, e.g. 300 мл or 30 см'),
     sortOrder: z.number().int().min(0).optional(),
+    image: z.string().max(300).nullable().optional().describe('Optional sticker: a site path (/stickers/latte.webp) or https URL. Null clears it. Omit to keep the stored picture. The line icon shows when this is empty.'),
   },
   handler: async (input) => {
     const row = await db.prices.upsertItem(input)

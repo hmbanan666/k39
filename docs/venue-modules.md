@@ -29,7 +29,7 @@ Rules:
 | `practical` | «Полезно знать» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
 | `best-time` | «Когда лучше прийти» | `{ title?, text }` | Only with real data (hours, queues seen, season). |
 | `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map, including when the venue has no coordinates. The heading shows the `with-map` sticker. |
-| `prices` | «Ориентиры цен» | `{ title? }` | Rows come from `venue_prices` (see below), not from the module. Hidden without fresh verified prices. |
+| `prices` | «Ориентиры цен» | `{ title? }` | Cards come from `venue_prices` (see below), not from the module. Hidden without fresh verified prices. |
 | `tips` | «Советы» | `{ title?, items: [text] }` | Short practical tips. |
 | `faq` | «Вопросы» | `{ title?, items: [{ question, answer }] }` | Answers from known facts only. |
 
@@ -64,22 +64,61 @@ A short showcase of what the venue wants a visitor to notice. Not the menu. The 
 
 ## «Ориентиры цен» and the shared price catalog
 
-No full menus. A venue shows a few familiar benchmark items with prices so
-visitors can compare venues.
+No full menus. A venue shows a few familiar benchmark items so a visitor can
+tell, in one glance, whether this place is cheap or expensive.
 
 - `price_items` is the shared catalog: `slug`, `title`, `category`,
-  `default_variant`, `sort_order`. Seeded with капучино, американо, пицца
-  «Маргарита», ролл «Филадельфия», борщ, бургер. Edit with
-  `price_items_list` and `price_item_upsert`.
+  `default_variant`, `sort_order`, and an optional `image`. The live catalog
+  includes latte, raf, espresso, pepperoni, carbonara, shawarma, pelmeni,
+  bliny, tom-yum, ramen, salmon-steak, draniki, klopsy, mors, lemonade,
+  mulled-wine, croissant, cheesecake, syrniki, tea-lemon, orange-juice, beer,
+  margherita, burger, philadelphia, caesar, borscht, ukha, smoked-fish,
+  business-lunch, americano, and cappuccino. Edit with `price_items_list` and
+  `price_item_upsert`. `image` is a site path or an https URL. Null clears it.
+  Omitting it on an update keeps the stored picture.
 - `venue_prices` holds one row per venue, item and variant: `price_rub`,
   `checked_at`, `source_kind` (`official` with a URL to the venue's own menu,
   site or socials, or `owner`), `source_title`, `source_url`. Set with
   `venue_prices_set` (replaces the list); `venue_get` returns them.
 - Prices are never invented or taken from aggregators. Rows older than 365
   days are not shown. Without fresh rows the module is hidden.
-- The catalog is shared so prices compare across venues; `db.prices.forItem`
-  lists one item across published venues, cheapest first, as the base for
-  collections like «Топ капучино области».
+
+The public block is a grid of equal cards, one per catalog row. Every card
+has the same slots:
+
+- an icon in the audience-card style (dashed circle, amber fill). A picture
+  wins when the catalog row's `image` is set, otherwise `PRICE_ITEM_IMAGES[slug]`
+  in `apps/web-app/shared/price-compare.ts` (empty until the sticker art lands).
+  Without a picture the card uses `PRICE_ITEM_ICONS[slug]`, then
+  `PRICE_CATEGORY_ICONS` (`coffee`, `bakery`, `dessert`, `breakfast`, `tea`,
+  `drinks`, `beer`, `pizza`, `burger`, `street-food`, `sushi`, `salad`,
+  `soup`, `pasta`, `main`, `fish`, `lunch`), then the ticket icon;
+- the item name and its portion or volume;
+- a large price;
+- a comparison, computed on the server from `db.prices.forItem` (published
+  venues, checked within a year, same region). One price per venue: the same
+  portion when that venue has it, otherwise its cheapest fresh price. The
+  card itself uses its own price.
+
+With fewer than 3 venues the card says «пока мало данных для сравнения» and
+draws no scale. Otherwise a three-part scale (дёшево, средне, дорого) marks
+this price against the regional median: below 90% of the median is cheap,
+above 110% is expensive, the rest is medium. The line under the scale is the
+conclusion, for example «дешевле, чем в 7 из 10 мест Светлогорска». A price
+in the expensive band and among the three highest, when at least four venues
+are in the sample, says «топ-3 по цене в регионе».
+
+A chip above the grid summarizes the cards, for example «Цены ниже среднего
+по региону». It is omitted when no card has a comparison. Source and date
+are small and muted. When every row shares one source, one footnote replaces
+the repeated links.
+
+Each card links to `/ceny/{slug}` or `/ceny/{slug}/{region}` (the catalog
+slug and the region slug, for example `/ceny/cappuccino` and
+`/ceny/cappuccino/svetlogorsk`). That page lists the venues with a fresh
+price, cheapest first, using `VenueCard`, and is server-rendered. It stays
+`noindex` and out of the sitemap until at least 5 venues are in the list.
+`ceny` is a reserved place slug.
 
 ## Listing modules
 

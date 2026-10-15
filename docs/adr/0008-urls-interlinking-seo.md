@@ -16,6 +16,7 @@ Public URLs are lowercase Latin slugs with hyphens and no trailing slash.
 - Category hubs: `/forty`, `/zamki`, `/plyazhi`, `/kurorty`, `/muzei`, `/eda`. The slug is stored on the category row.
 - Routes: `/marshruty/{slug}`. Collections: `/podborki/{slug}`. Quests: `/kvesty/{slug}`.
 - Regions are a column on the place, not a path segment. A place page names the region and links to other published places in it.
+- Benchmark prices: `/ceny/{item}` and `/ceny/{item}/{region}`. `{item}` is the `price_items` slug (`cappuccino`), `{region}` is the region slug. The page is server-rendered and stays `noindex` until five venues have a fresh price for that item. `ceny` is reserved so a place cannot take the prefix.
 
 Slug transliteration matches the fort seed: `й` to `y`, `х` to `h`, `ц` to `ts`, `ё` and `э` to `e`, `ы` to `y`, hard and soft signs dropped. Reserved slugs (hubs, `admin`, `api`, `map`, and the other names in `shared/seo.ts`) are rejected in the admin and the content API.
 

@@ -1,6 +1,8 @@
 import type { PublicMedia } from './media'
+import type { PublicPriceCard, SharedPriceSource } from './price-compare'
 import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
+import { priceBlockSummary, sharedPriceSource } from './price-compare'
 
 /** Audience card icons (Tabler line icons via shared/icons.ts `aud-*`). Default: `group`. */
 export const AUDIENCE_ICONS = ['group', 'family', 'kids', 'couple', 'solo', 'friends', 'beach', 'day-trip', 'tourist', 'local', 'pets', 'work'] as const
@@ -136,7 +138,7 @@ export type PublicVenueModule
     | { type: 'best-time', id: string, title: string, html: string }
     | { type: 'tips', id: string, title: string, items: string[] }
     | { type: 'faq', id: string, title: string, items: { question: string, html: string }[] }
-    | { type: 'prices', id: string, title: string, items: PublicVenuePrice[] }
+    | { type: 'prices', id: string, title: string, items: PublicPriceCard[], summary: string | null, source: SharedPriceSource | null }
 
 export interface PublicDish {
   /** Persisted id, or a display key when a reverted snapshot has none yet. */
@@ -148,14 +150,7 @@ export interface PublicDish {
   media: PublicMedia | null
 }
 
-export interface PublicVenuePrice {
-  title: string
-  variant: string
-  priceRub: number
-  checkedAt: string
-  sourceTitle: string
-  sourceUrl: string | null
-}
+export type { PriceBand, PublicPriceCard, SharedPriceSource } from './price-compare'
 
 export interface PublicVenueModules {
   /** Content modules in stored order, without how-to-get. */
@@ -170,7 +165,7 @@ export interface VenueModuleView {
 }
 
 /** Validates and renders stored modules. Invalid or empty input yields null. */
-export function toPublicVenueModules(stored: unknown, render: (markdown: string) => string, prices: PublicVenuePrice[] = [], view: VenueModuleView = {}): PublicVenueModules | null {
+export function toPublicVenueModules(stored: unknown, render: (markdown: string) => string, prices: PublicPriceCard[] = [], view: VenueModuleView = {}): PublicVenueModules | null {
   const parsed = venueModulesSchema.safeParse(stored)
   if (!parsed.success || !parsed.data.length) {
     return null
@@ -214,9 +209,16 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
         blocks.push({ type: 'tips', id: idFor('tips'), title: heading, items: module.items })
         break
       case 'prices':
-        // Hidden without verified prices.
+        // Hidden without verified prices. Comparison is already on each card.
         if (prices.length) {
-          blocks.push({ type: 'prices', id: idFor('prices'), title: heading, items: prices })
+          blocks.push({
+            type: 'prices',
+            id: idFor('prices'),
+            title: heading,
+            items: prices,
+            summary: priceBlockSummary(prices.map((row) => row.comparison.band)),
+            source: sharedPriceSource(prices),
+          })
         }
         break
       case 'faq':
