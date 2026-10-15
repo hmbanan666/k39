@@ -20,8 +20,6 @@ export const PRICE_COMPARE_MIN = 3
 /** A /ceny listing stays noindex until about this many published venues have a price. */
 export const PRICE_INDEX_MIN = 5
 
-export const PRICE_TOP = 'топ-3 по цене в регионе'
-
 const CHEAP_RATIO = 0.9
 const EXPENSIVE_RATIO = 1.1
 
@@ -32,6 +30,8 @@ export interface PriceComparison {
   /** 0–100 along дёшево → дорого. Null when the sample is too small. */
   position: number | null
   line: string
+  /** Accessible name of the scale. Empty when there is no band. */
+  scaleLabel: string
 }
 
 export interface CatalogPricePoint {
@@ -136,30 +136,34 @@ export const PRICE_CATEGORY_ICONS: Record<string, string> = {
  */
 export const PRICE_ITEM_IMAGES: Partial<Record<string, string>> = {}
 
-/** Genitive town names for «мест Светлогорска». Unknown slugs stay «региона». */
-const OF_TOWN: Record<string, string> = {
-  kaliningrad: 'Калининграда',
-  svetlogorsk: 'Светлогорска',
-  zelenogradsk: 'Зеленоградска',
-  yantarnyy: 'Янтарного',
-  baltiysk: 'Балтийска',
-  sovetsk: 'Советска',
-  pionerskiy: 'Пионерского',
-  chernyakhovsk: 'Черняховска',
-  gusev: 'Гусева',
-  gvardeysk: 'Гвардейска',
-  guryevsk: 'Гурьевска',
-  bagrationovsk: 'Багратионовска',
-  mamonovo: 'Мамоново',
-  neman: 'Немана',
-  polessk: 'Полесска',
-  pravdinsk: 'Правдинска',
+/**
+ * Town name cases for price comparison. `of` is genitive («мест Светлогорска»).
+ * `by` is dative («по Светлогорску»). The prepositional («в Светлогорске») is
+ * `inTown`. Unknown slugs stay «региона» and «региону».
+ */
+const TOWN: Record<string, { of: string, by: string }> = {
+  kaliningrad: { of: 'Калининграда', by: 'Калининграду' },
+  svetlogorsk: { of: 'Светлогорска', by: 'Светлогорску' },
+  zelenogradsk: { of: 'Зеленоградска', by: 'Зеленоградску' },
+  yantarnyy: { of: 'Янтарного', by: 'Янтарному' },
+  baltiysk: { of: 'Балтийска', by: 'Балтийску' },
+  sovetsk: { of: 'Советска', by: 'Советску' },
+  pionerskiy: { of: 'Пионерского', by: 'Пионерскому' },
+  chernyakhovsk: { of: 'Черняховска', by: 'Черняховску' },
+  gusev: { of: 'Гусева', by: 'Гусеву' },
+  gvardeysk: { of: 'Гвардейска', by: 'Гвардейску' },
+  guryevsk: { of: 'Гурьевска', by: 'Гурьевску' },
+  bagrationovsk: { of: 'Багратионовска', by: 'Багратионовску' },
+  mamonovo: { of: 'Мамоново', by: 'Мамоново' },
+  neman: { of: 'Немана', by: 'Неману' },
+  polessk: { of: 'Полесска', by: 'Полесску' },
+  pravdinsk: { of: 'Правдинска', by: 'Правдинску' },
 }
 
-const SCALE_LABEL: Record<PriceBand, string> = {
-  cheap: 'Дешевле медианы по региону',
-  medium: 'Около медианы по региону',
-  expensive: 'Дороже медианы по региону',
+const SCALE_LEAD: Record<PriceBand, string> = {
+  cheap: 'Дешевле медианы по',
+  medium: 'Около медианы по',
+  expensive: 'Дороже медианы по',
 }
 
 export function priceItemIcon(slug: string, category: string) {
@@ -201,7 +205,15 @@ export function ofTown(slug: string | null | undefined) {
   if (!slug) {
     return 'региона'
   }
-  return OF_TOWN[slug] ?? 'региона'
+  return TOWN[slug]?.of ?? 'региона'
+}
+
+/** Dative for «по Светлогорску». Unknown slugs stay «региону». */
+export function byTown(slug: string | null | undefined) {
+  if (!slug) {
+    return 'региону'
+  }
+  return TOWN[slug]?.by ?? 'региону'
 }
 
 /** Prepositional phrase for «в Светлогорске». Unknown towns stay «в регионе». */
@@ -248,8 +260,9 @@ export function placesOutOf(count: number) {
   return `${n} мест`
 }
 
-export function priceScaleLabel(band: PriceBand) {
-  return SCALE_LABEL[band]
+/** Accessible name of the scale. `by` is the dative town («Светлогорску»). */
+export function priceScaleLabel(band: PriceBand, by = 'региону') {
+  return `${SCALE_LEAD[band]} ${by}`
 }
 
 export function formatRub(value: number) {
@@ -324,6 +337,10 @@ function formatPriceSpan(min: number, max: number) {
   return `${format.format(min)}–${format.format(max)} ₽`
 }
 
+function unranked(line: string): PriceComparison {
+  return { band: null, position: null, line, scaleLabel: '' }
+}
+
 export function compareVenuePrice(input: {
   venueId: string
   priceRub: number
@@ -333,18 +350,20 @@ export function compareVenuePrice(input: {
   place: string
   /** Prepositional phrase: «в Светлогорске». */
   where: string
+  /** Dative: «по Светлогорску». */
+  by: string
   peers: CatalogPricePoint[]
 }): PriceComparison {
   const inRegion = input.peers.filter((row) => (row.regionId ?? null) === (input.regionId ?? null))
   const others = onePricePerVenue(inRegion, input.variant).filter((row) => row.venueId !== input.venueId)
   const prices = [...others.map((row) => row.priceRub), input.priceRub]
   if (others.length === 0) {
-    return { band: null, position: null, line: `пока единственная цена ${input.where}` }
+    return unranked(`пока единственная цена ${input.where}`)
   }
   if (prices.length < PRICE_COMPARE_MIN) {
     const min = Math.min(...prices)
     const max = Math.max(...prices)
-    return { band: null, position: null, line: `${input.where} ${formatPriceSpan(min, max)} (${placesLabel(prices.length)})` }
+    return unranked(`${input.where} ${formatPriceSpan(min, max)} (${placesLabel(prices.length)})`)
   }
   const mid = median(prices)
   const band = bandFor(input.priceRub, mid)
@@ -354,7 +373,7 @@ export function compareVenuePrice(input: {
   const outOf = placesOutOf(prices.length)
   let line: string
   if (band === 'expensive' && rankFromTop <= 3 && prices.length >= 4) {
-    line = PRICE_TOP
+    line = `топ-3 по цене ${input.where}`
   } else if (higher > lower) {
     line = `дешевле, чем в ${higher} из ${outOf} ${input.place}`
   } else if (lower > higher) {
@@ -362,23 +381,24 @@ export function compareVenuePrice(input: {
   } else {
     line = `как в других местах ${input.place}`
   }
-  return { band, position: positionFor(input.priceRub, mid), line }
+  return { band, position: positionFor(input.priceRub, mid), line, scaleLabel: priceScaleLabel(band, input.by) }
 }
 
-export function priceBlockSummary(bands: Array<PriceBand | null>) {
+export function priceBlockSummary(bands: Array<PriceBand | null>, regionSlug?: string | null) {
   const known = bands.filter((band): band is PriceBand => band != null)
   if (!known.length) {
     return null
   }
+  const where = byTown(regionSlug)
   const cheap = known.filter((band) => band === 'cheap').length
   const expensive = known.filter((band) => band === 'expensive').length
   if (cheap > expensive) {
-    return 'Цены ниже среднего по региону'
+    return `Цены ниже среднего по ${where}`
   }
   if (expensive > cheap) {
-    return 'Цены выше среднего по региону'
+    return `Цены выше среднего по ${where}`
   }
-  return 'Цены около среднего по региону'
+  return `Цены около среднего по ${where}`
 }
 
 export function sharedPriceSource(rows: Array<{ sourceTitle: string, sourceUrl: string | null, checkedAt: string }>): SharedPriceSource | null {
@@ -438,6 +458,7 @@ export function buildPublicPrices(input: {
 }): PublicPriceCard[] {
   const place = ofTown(input.regionSlug)
   const where = inPlace(input.regionSlug)
+  const by = byTown(input.regionSlug)
   return input.rows.map((row) => {
     const peers = input.peersByItem[row.item] ?? []
     return {
@@ -459,6 +480,7 @@ export function buildPublicPrices(input: {
         regionId: input.regionId,
         place,
         where,
+        by,
         peers,
       }),
     }

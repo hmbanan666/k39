@@ -116,16 +116,19 @@ sitemap (`PRICE_INDEX_MIN`, five venues).
   The parenthetical uses the nominative plural («1 место», «2 места», «5 мест»).
   No scale.
 - Three or more: a small дёшево / средне / дорого scale marks this price
-  against the regional median (below 90% is cheap, above 110% is expensive).
+  against the median of that town (below 90% is cheap, above 110% is expensive).
+  The accessible name uses the dative, for example «Дешевле медианы по Светлогорску».
   The line is «дешевле, чем в 7 из 10 мест Светлогорска» or the dearer form.
   After «из», 21, 31… take «места» and every other count takes «мест». A price
   in the expensive band and among the three highest, when at least four venues
-  are in the sample, says «топ-3 по цене в регионе».
+  are in the sample, says «топ-3 по цене в Светлогорске». An unknown town stays
+  «в регионе».
 
-A chip above the grid summarizes the cards, for example «Цены ниже среднего
-по региону». It is omitted when no card has a comparison. Source and date
-are a small footnote. When every row shares one source, one footnote replaces
-the repeated links.
+A chip above the grid summarizes the cards in that same dative, for example
+«Цены ниже среднего по Светлогорску», «Цены выше среднего по Светлогорску»,
+or «Цены около среднего по Светлогорску». It is omitted when no card has a
+comparison. Source and date are a small footnote. When every row shares one
+source, one footnote replaces the repeated links.
 
 The whole card is one link to `/ceny/{slug}/{region}?from={venueSlug}` (or
 `/ceny/{slug}?from=` when the venue has no region), for example
