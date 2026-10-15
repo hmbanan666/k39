@@ -4,7 +4,7 @@
     :crumbs="page.doc.crumbs"
   >
     <p>Черновик. Эту страницу нельзя индексировать.</p>
-    <div v-html="page.html" />
+    <ProseHtml :html="page.html" />
   </ArticleShell>
 </template>
 

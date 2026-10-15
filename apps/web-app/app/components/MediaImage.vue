@@ -25,24 +25,25 @@
     </picture>
     <figcaption v-if="showCredit && credit">
       <span v-if="media.author">{{ media.author }}</span>
-      <a
+      <MetaLink
         v-if="href"
         :href="href"
-        v-bind="externalLinkAttrs(href)"
-      >{{ label }}</a>
+      >
+        {{ label }}
+      </MetaLink>
       <span v-else-if="label">{{ label }}</span>
-      <a
+      <MetaLink
         v-if="media.sourceUrl"
         :href="media.sourceUrl"
-        v-bind="externalLinkAttrs(media.sourceUrl)"
-      >источник</a>
+      >
+        источник
+      </MetaLink>
     </figcaption>
   </figure>
 </template>
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
-import { externalLinkAttrs } from '~~/shared/links'
 import { describedAlt, licenseHref, licenseLabel, variantSrcset } from '~~/shared/media'
 
 const props = withDefaults(defineProps<{

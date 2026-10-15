@@ -8,9 +8,9 @@
       class="reader-body prose"
     >
       <slot name="body">
-        <div
+        <ProseHtml
           class="reader-html"
-          v-html="parts.before"
+          :html="parts.before"
         />
       </slot>
       <div
@@ -19,10 +19,10 @@
       >
         <ReaderPartnerSlot :partner="partner" />
       </div>
-      <div
+      <ProseHtml
         v-if="partner && parts.after"
         class="reader-html"
-        v-html="parts.after"
+        :html="parts.after"
       />
       <slot name="after" />
     </div>
@@ -66,6 +66,7 @@
         </div>
       </div>
     </aside>
+    <MetaFootnote class="reader-note" />
   </div>
 </template>
 
@@ -188,6 +189,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 1.6rem;
 }
+.reader-note { grid-column: 1 / -1; }
 .reader-body {
   min-width: 0;
   max-width: 70ch;

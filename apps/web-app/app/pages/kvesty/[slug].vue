@@ -4,9 +4,9 @@
     :crumbs="page.doc.crumbs"
     kicker="Квест"
   >
-    <div
+    <ProseHtml
       class="prose"
-      v-html="page.html"
+      :html="page.html"
     />
     <p
       v-if="page.route?.href"

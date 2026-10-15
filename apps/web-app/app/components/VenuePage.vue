@@ -102,10 +102,10 @@
             >
               {{ ABOUT.title }}
             </h2>
-            <div
+            <ProseHtml
               v-if="venue.html"
               class="reader-html"
-              v-html="venue.html"
+              :html="venue.html"
             />
           </template>
         </template>
@@ -120,25 +120,25 @@
               v-if="actions.primary || actions.secondary.length || hasCoords"
               class="acts"
             >
-              <a
+              <MetaLink
                 v-if="actions.primary"
                 class="btn act-main"
                 :href="actions.primary.href"
-                :target="actions.primary.external ? '_blank' : undefined"
-                :rel="actions.primary.external ? 'noopener nofollow' : undefined"
                 data-track="outbound"
                 :data-track-name="actions.primary.key"
-              >{{ actions.primary.label }}</a>
-              <a
+              >
+                {{ actions.primary.label }}
+              </MetaLink>
+              <MetaLink
                 v-for="action in actions.secondary"
                 :key="action.key"
                 class="btn btn-line"
                 :href="action.href"
-                :target="action.external ? '_blank' : undefined"
-                :rel="action.external ? 'noopener nofollow' : undefined"
                 data-track="outbound"
                 :data-track-name="action.key"
-              >{{ action.label }}</a>
+              >
+                {{ action.label }}
+              </MetaLink>
               <DirectionsLink
                 v-if="hasCoords"
                 variant="line"
@@ -285,10 +285,10 @@
             <p v-if="venue.address">
               {{ venue.address }}
             </p>
-            <div
+            <ProseHtml
               v-if="howToGetHtml"
               class="reader-html"
-              v-html="howToGetHtml"
+              :html="howToGetHtml"
             />
             <MapEmbed
               v-if="hasCoords"

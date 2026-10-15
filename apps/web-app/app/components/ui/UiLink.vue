@@ -1,16 +1,13 @@
 <template>
-  <a
+  <MetaLink
     :href="href"
     class="ui-link"
-    v-bind="externalLinkAttrs(href)"
   >
     <slot />
-  </a>
+  </MetaLink>
 </template>
 
 <script setup lang="ts">
-import { externalLinkAttrs } from '~~/shared/links'
-
 defineProps<{ href: string }>()
 </script>
 

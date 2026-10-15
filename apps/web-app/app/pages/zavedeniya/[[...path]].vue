@@ -100,10 +100,10 @@
         </button>
       </div>
     </nav>
-    <div
+    <ProseHtml
       v-if="page.html"
       class="prose"
-      v-html="page.html"
+      :html="page.html"
     />
     <ListingModules
       v-if="leadModules.length"

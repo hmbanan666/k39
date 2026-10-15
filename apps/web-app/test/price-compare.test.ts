@@ -242,6 +242,7 @@ describe('price cards', () => {
         stubs: {
           Icon: { props: ['name'], template: '<i class="stub-icon" :data-name="name" />' },
           UiLink: { props: ['href'], template: '<a class="stub-link" :href="href"><slot /></a>' },
+          MetaLink: { props: ['href'], template: '<a :href="href"><slot /></a>' },
         },
       },
     })

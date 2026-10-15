@@ -47,8 +47,11 @@ Layout shifts at 720px (two cards), 900px (desktop nav, three nearby cards), 100
 
 | Component | Use |
 | --- | --- |
-| `UiButton` | Primary, quiet, or sea. An `href` renders a plain `<a>`. |
-| `UiLink` | Text link, always an `<a href>`. |
+| `UiButton` | Primary, quiet, or sea. An `href` renders a plain `<a>` through `MetaLink`. |
+| `UiLink` | Text link, always an `<a href>`, through `MetaLink`. |
+| `MetaLink` | Outbound text link. A Meta host is plain text only: no logo or brand icon, a superscript asterisk, `target="_blank"`, and `rel="nofollow noopener"`. Hosts: `instagram.com`, `facebook.com`, `fb.com`, `threads.net`, `whatsapp.com`, `wa.me`. |
+| `MetaFootnote` | One muted line after the article, the reader, or the cabinet form, only when that page rendered a Meta link. The sentence names just those products. It is in the server HTML. The first one in the tree wins, so a reader inside an article shell does not print it twice. |
+| `ProseHtml` | Markdown HTML. Registers Meta hosts in the fragment so the footnote still appears. |
 | `UiBadge` | Hub or status chip. Pass `href` when it navigates. |
 | `MediaImage` | `<picture>` for a processed place photo: AVIF and WebP srcset, LQIP background, focal point, credit line. SVG art stays when there is no cover. |
 | `Stamp` | Perforated postage frame (CSS mask). Optional picture and a short label. |
@@ -76,6 +79,10 @@ Layout shifts at 720px (two cards), 900px (desktop nav, three nearby cards), 100
 | `UiField`, `UiInput`, `UiTextarea`, `UiSelect`, `UiSwitch` | Admin. Select and switch use Reka. Counters sit on the field. |
 
 Do not add tabs for primary content. Closed panels must not be the only place a fact exists.
+
+## Meta links
+
+Instagram, Facebook, Threads, and WhatsApp stay as words, not icons. `shared/meta-links.ts` detects the host. `UiLink`, `UiButton`, venue action buttons, the owner cabinet contact links, photo credits, and markdown anchors all use that check. A page that contains one of those links ends with a short muted footnote, for example «* Instagram и Facebook принадлежат компании Meta, признанной экстремистской и запрещённой в России.» One product uses «принадлежит»; two or more use «принадлежат». The line is omitted when the page has no such link.
 
 ## Illustrations and stamps
 

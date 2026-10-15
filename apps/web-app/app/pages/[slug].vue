@@ -143,10 +143,10 @@
                 decorative
               />
             </h2>
-            <div
+            <ProseHtml
               v-if="page.directionsHtml"
               class="directions-text"
-              v-html="page.directionsHtml"
+              :html="page.directionsHtml"
             />
             <MapEmbed
               v-if="hasCoords"

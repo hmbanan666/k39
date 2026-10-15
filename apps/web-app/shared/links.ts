@@ -1,3 +1,5 @@
+import { metaProductFromHref } from './meta-links'
+
 export interface TextLink {
   href: string
   text: string
@@ -55,6 +57,12 @@ export function isExternalHref(href: string) {
 }
 
 export function externalLinkAttrs(href: string) {
+  if (metaProductFromHref(href)) {
+    return {
+      target: '_blank' as const,
+      rel: 'nofollow noopener',
+    }
+  }
   if (!isExternalHref(href)) {
     return {}
   }

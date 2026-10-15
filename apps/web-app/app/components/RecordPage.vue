@@ -4,9 +4,9 @@
     :crumbs="page.doc.crumbs"
     :kicker="kicker"
   >
-    <div
+    <ProseHtml
       class="prose"
-      v-html="page.html"
+      :html="page.html"
     />
     <RouteSteps
       :title="listTitle"

@@ -8,6 +8,7 @@
       :lede="lede"
     />
     <slot />
+    <MetaFootnote />
   </article>
 </template>
 

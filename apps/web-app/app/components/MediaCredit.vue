@@ -4,23 +4,24 @@
     class="credit"
   >
     <span v-if="media.author">{{ media.author }}</span>
-    <a
+    <MetaLink
       v-if="href"
       :href="href"
-      v-bind="externalLinkAttrs(href)"
-    >{{ label }}</a>
+    >
+      {{ label }}
+    </MetaLink>
     <span v-else-if="label">{{ label }}</span>
-    <a
+    <MetaLink
       v-if="media.sourceUrl"
       :href="media.sourceUrl"
-      v-bind="externalLinkAttrs(media.sourceUrl)"
-    >источник</a>
+    >
+      источник
+    </MetaLink>
   </span>
 </template>
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
-import { externalLinkAttrs } from '~~/shared/links'
 import { licenseHref, licenseLabel } from '~~/shared/media'
 
 const props = defineProps<{ media: PublicMedia }>()

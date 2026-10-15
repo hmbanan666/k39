@@ -107,3 +107,7 @@ Editors and agents publish venues only after a check. OSM is a draft source, not
 ## Addendum: cabinet claims (ADR 0031)
 
 `contact_email` stores the official mailbox (OSM `email` / `contact:email`). It is not rendered. A verified owner edits `venues.modules` and `venue_prices` through `/kabinet`, with the same checks as `venue_update` and `venue_prices_set`. Status, slug, and SEO stay editorial. `businesses.venue_id` is the later subscription link.
+
+## Addendum: Meta links
+
+A venue social, site, booking, order, delivery, or menu URL on a Meta host is a plain-text `MetaLink` (`docs/design-system.md`). The public page and the owner cabinet both render it with the asterisk. The footnote lists only the products linked on that page. There is no Meta logo.

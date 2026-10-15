@@ -3,9 +3,9 @@
     <h2 v-if="module.title">
       {{ module.title }}
     </h2>
-    <div
+    <ProseHtml
       class="prose"
-      v-html="module.html"
+      :html="module.html"
     />
   </section>
 </template>

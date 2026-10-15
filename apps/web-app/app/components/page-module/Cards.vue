@@ -13,9 +13,9 @@
           v-if="fitsPicker(entry.fit)"
           class="badge"
         >Под ваш выбор</span>
-        <div
+        <ProseHtml
           class="prose"
-          v-html="entry.item.html"
+          :html="entry.item.html"
         />
       </li>
     </ol>

@@ -41,6 +41,12 @@ a {
   text-underline-offset: 0.15em;
 }
 
+sup.meta-mark {
+  font-size: 0.72em;
+  line-height: 0;
+  margin-left: 0.08em;
+}
+
 a:hover { color: var(--color-brick); }
 
 :focus-visible {
