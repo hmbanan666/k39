@@ -54,6 +54,7 @@
               :schedule="item.schedule ?? null"
               show-unknown
               compact
+              hide-remaining
             />
             <span
               v-if="item.stale"
@@ -155,8 +156,9 @@ li:nth-child(even) .card { transform: rotate(0.4deg); }
   border-radius: 4px;
   background: var(--color-amber-soft);
 }
-.pic :deep(figure) { margin: 0; height: 100%; }
-.pic img, .pic :deep(img) { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pic :deep(figure), .pic :deep(picture) { display: block; margin: 0; width: 100%; height: 100%; }
+/* Fill the 4:3 box: MediaImage's own 3:2 ratio left a beige strip below the photo. */
+.pic img, .pic :deep(img) { display: block; width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; }
 .kind, .dist {
   position: absolute;
   top: 6px;
