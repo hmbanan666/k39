@@ -63,6 +63,12 @@ Site search (ADR 0030) is Postgres full-text (`russian`) plus `pg_trgm` over the
 - Architecture decisions: `docs/adr/NNNN-title.md`.
 - Vue files: template, then script, then style. ESLint is `@antfu/eslint-config` with the local overrides in `eslint.config.mjs`.
 
+## UI
+
+For any UI change, read `.cursor/skills/frontend-design/SKILL.md` first. That file is Anthropic's frontend-design skill, copied verbatim from https://github.com/anthropics/skills (`skills/frontend-design`), with its Apache-2.0 `LICENSE.txt` in the same folder. `.cursor/rules/frontend-design.mdc` attaches the same instruction to `apps/web-app/**/*.vue`, CSS, and components.
+
+K39 precedence: the existing design system wins over the skill's generic advice. Keep the current tokens, typography, and colors (ADR 0010, `docs/design-system.md`). Moose and food stickers go through `<Sticker>` (`docs/stickers.md`, `docs/food-stickers.md`). Block components own their styling. Keep server rendering for bots and people. Prefer simplicity. Use the skill for craft, polish, and anti-generic taste. Do not restyle the brand.
+
 ## Run
 
 ```bash
