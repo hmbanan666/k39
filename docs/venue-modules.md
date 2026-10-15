@@ -21,10 +21,10 @@ Rules:
 | --- | --- | --- | --- |
 | `text` | «О месте» or own title | `{ title?, variant: lead\|plain, text }` | Same shape as ADR 0023 `text`. |
 | `dishes` | «Что заказать» | `{ title?, items: [{ name, priceRub?, note? }], note? }` | Up to 8. Falls back to `signatureDishes`. Price only when seen on the official menu. |
-| `audience` | «Кому подойдёт» | `{ title?, items: [{ who, icon?, text }] }` | 2 to 5 short cards. `icon` is one of `AUDIENCE_ICONS` (group, family, kids, couple, solo, friends, beach, day-trip, tourist, local, pets, work), default `group`. The heading gets the `with-heart` sticker only when the hero has photos (no hero sticker), so the page keeps at most two stickers. |
+| `audience` | «Кому подойдёт» | `{ title?, items: [{ who, icon?, text }] }` | 2 to 5 short cards. `icon` is one of `AUDIENCE_ICONS` (group, family, kids, couple, solo, friends, beach, day-trip, tourist, local, pets, work), default `group`. The heading gets the `with-heart` sticker only when the hero has photos and the «Как добраться» section is absent, so the page keeps at most two stickers. |
 | `practical` | «Полезно знать» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
 | `best-time` | «Когда лучше прийти» | `{ title?, text }` | Only with real data (hours, queues seen, season). |
-| `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map. |
+| `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map. When the hero has photos, that heading gets the `with-map` sticker (same size and placement as `with-heart`). It takes the content-sticker slot, so the audience sticker stays off on a page that has coordinates. |
 | `prices` | «Ориентиры цен» | `{ title? }` | Rows come from `venue_prices` (see below), not from the module. Hidden without fresh verified prices. |
 | `tips` | «Советы» | `{ title?, items: [text] }` | Short practical tips. |
 | `faq` | «Вопросы» | `{ title?, items: [{ question, answer }] }` | Answers from known facts only. |
