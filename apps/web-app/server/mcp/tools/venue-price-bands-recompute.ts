@@ -5,7 +5,7 @@ import { recomputeTownPriceBands } from '../../utils/venues/price-band'
 
 export default defineMcpTool({
   name: 'venue_price_bands_recompute',
-  description: 'Recompute the stored price band (low, mid, high, or null) for every venue in a town. One venue\'s prices change the comparison for the others. Publishing a venue does this too. The badge reads the stored band. Does not list or filter the public site.',
+  description: 'Recompute the stored price band (low, mid, high, or null) for every venue in a town. The band stays null until at least three of that venue\'s prices have a town comparison. One venue\'s prices change the comparison for the others. Publishing a venue does this too. The badge reads the stored band. Does not list or filter the public site.',
   inputSchema: {
     regionSlug: z.string(),
   },

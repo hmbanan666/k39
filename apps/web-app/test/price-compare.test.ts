@@ -17,6 +17,7 @@ import {
   onePricePerVenue,
   placesLabel,
   placesOutOf,
+  PRICE_BAND_MIN,
   PRICE_CATEGORY_ICONS,
   PRICE_ITEM_ICONS,
   PRICE_ITEM_IMAGES,
@@ -265,19 +266,24 @@ describe('price comparison', () => {
   })
 
   it('summarizes the cards and collapses one shared source', () => {
+    expect(PRICE_BAND_MIN).toBe(3)
     expect(priceBlockSummary(['cheap', 'cheap', 'expensive'], 'svetlogorsk')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску' })
-    expect(priceBlockSummary(['expensive', 'medium'], 'svetlogorsk')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по Светлогорску' })
-    expect(priceBlockSummary(['medium', 'medium'], 'zelenogradsk')).toEqual({ text: 'около среднего', label: 'Цены около среднего по Зеленоградску' })
-    expect(priceBlockSummary(['cheap'], 'yantarnyy')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Янтарному' })
-    expect(priceBlockSummary(['cheap'], 'mamonovo')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Мамоново' })
-    expect(priceBlockSummary(['cheap'], null)).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по региону' })
-    expect(priceBlockSummary(['expensive'], 'missing')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по региону' })
+    expect(priceBlockSummary(['expensive', 'expensive', 'cheap'], 'svetlogorsk')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по Светлогорску' })
+    expect(priceBlockSummary(['medium', 'medium', 'medium'], 'zelenogradsk')).toEqual({ text: 'около среднего', label: 'Цены около среднего по Зеленоградску' })
+    expect(priceBlockSummary(['cheap', 'cheap'], 'svetlogorsk')).toBeNull()
+    expect(priceBlockSummary(['cheap'], 'yantarnyy')).toBeNull()
+    expect(priceBlockSummary(['expensive'], 'missing')).toBeNull()
     expect(priceBlockSummary([null, null], 'svetlogorsk')).toBeNull()
     expect(priceBandFromBands(['cheap', 'cheap', 'expensive'])).toEqual({ level: 'low', basis: 3 })
-    expect(priceBandFromBands(['expensive', 'medium'])).toEqual({ level: 'high', basis: 2 })
-    expect(priceBandFromBands(['medium', 'medium'])).toEqual({ level: 'mid', basis: 2 })
+    expect(priceBandFromBands(['expensive', 'medium', 'medium'])).toEqual({ level: 'high', basis: 3 })
+    expect(priceBandFromBands(['cheap', 'expensive', 'medium'])).toEqual({ level: 'mid', basis: 3 })
+    expect(priceBandFromBands(['expensive', 'medium'])).toEqual({ level: null, basis: 2 })
+    expect(priceBandFromBands(['medium'])).toEqual({ level: null, basis: 1 })
     expect(priceBandFromBands([null, null])).toEqual({ level: null, basis: 0 })
-    expect(priceBadgeFromBand('low', 'svetlogorsk')).toEqual(priceBlockSummary(['cheap'], 'svetlogorsk'))
+    expect(priceBadgeFromBand('low', 'yantarnyy')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Янтарному' })
+    expect(priceBadgeFromBand('low', 'mamonovo')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Мамоново' })
+    expect(priceBadgeFromBand('high', 'missing')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по региону' })
+    expect(priceBadgeFromBand('low', null)).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по региону' })
     expect(priceBadgeFromBand(null, 'svetlogorsk')).toBeNull()
     const shared = sharedPriceSource([
       { sourceTitle: 'Старое меню', sourceUrl: 'https://cafe.example/menu', checkedAt: '2026-03-01' },

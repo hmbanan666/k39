@@ -16,6 +16,9 @@ import { pageTitle } from './seo'
  */
 export const PRICE_COMPARE_MIN = 3
 
+/** A venue band needs at least this many of its own prices that have a town comparison. */
+export const PRICE_BAND_MIN = 3
+
 /** A /ceny listing stays noindex until about this many published venues have a price. */
 export const PRICE_INDEX_MIN = 5
 
@@ -441,13 +444,13 @@ export interface PriceSummary {
 export type StoredPriceBand = 'low' | 'mid' | 'high'
 
 /**
- * The badge decision. `basis` is how many of this venue's prices had a band.
- * No band means the sample was below the comparison threshold.
+ * The badge decision. `basis` is how many of this venue's prices had a town
+ * comparison. Below `PRICE_BAND_MIN` the level stays null, so the badge hides.
  */
 export function priceBandFromBands(bands: Array<PriceBand | null>): { level: StoredPriceBand | null, basis: number } {
   const known = bands.filter((band): band is PriceBand => band != null)
-  if (!known.length) {
-    return { level: null, basis: 0 }
+  if (known.length < PRICE_BAND_MIN) {
+    return { level: null, basis: known.length }
   }
   const cheap = known.filter((band) => band === 'cheap').length
   const expensive = known.filter((band) => band === 'expensive').length

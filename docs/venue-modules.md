@@ -162,7 +162,11 @@ The band is stored on the venue, not computed while the page renders.
 editorial `price_level` of 1–4. `price_band_basis` is how many of this
 venue's prices had a town comparison. `price_band_computed_at` is when that
 row was written. The sample is the same as the cards: published venues in
-the town, one fresh price each, and no band below three venues. Saving
+the town, one fresh price each. A single price is compared only when that
+town sample has at least three venues. The venue band itself stays null
+until at least `PRICE_BAND_MIN` (3) of this venue's prices have such a
+comparison. Below that, `price_band` is null and the header badge is hidden.
+The basis is still stored. Saving
 prices, publishing or unpublishing, or moving a venue to another town
 recomputes every venue in the affected town, because one price changes the
 others. `venue_price_bands_recompute` does that for one town on demand.
