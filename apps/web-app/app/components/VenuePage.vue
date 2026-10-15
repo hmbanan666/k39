@@ -274,7 +274,15 @@
             :id="PAGE_SECTIONS.directions.id"
             class="block"
           >
-            <h2>{{ PAGE_SECTIONS.directions.title }}</h2>
+            <h2 :class="{ 'with-sticker': directionsSticker }">
+              {{ PAGE_SECTIONS.directions.title }}
+              <Sticker
+                v-if="directionsSticker"
+                slug="with-map"
+                :width="72"
+                decorative
+              />
+            </h2>
             <p v-if="venue.address">
               {{ venue.address }}
             </p>
@@ -446,6 +454,8 @@ const modules = venue.modules
 const hasDishesModule = Boolean(modules?.blocks.some((block) => block.type === 'dishes'))
 const showLegacyOrder = !hasDishesModule && (venue.dishes.length > 0 || Boolean(venue.menuUrl))
 const hasCoords = venue.latitude != null && venue.longitude != null
+// Heart and map both show when the hero has photos. The headings are far apart.
+const directionsSticker = Boolean(cover) && hasCoords
 const sectionsBefore = modules
   ? modules.blocks.map((block) => ({ id: block.id, title: block.title }))
   : presentSections([[ABOUT, Boolean(venue.html)]])
@@ -635,6 +645,8 @@ function openPhoto(id: string) {
 .owner a { font-weight: 600; }
 .block { margin-top: 3rem; }
 .block h2 { margin-bottom: 0.9rem; }
+.block h2.with-sticker { display: flex; gap: 0.6rem; align-items: center; }
+.block h2.with-sticker :deep(.sticker) { flex: none; width: 56px; margin: -0.6rem 0; transform: rotate(-6deg); }
 .dishes { margin: 0 0 1rem; padding: 0; list-style: none; }
 .dishes li {
   display: grid;

@@ -135,7 +135,14 @@
             :id="SECTIONS.directions.id"
             class="directions"
           >
-            <h2>{{ SECTIONS.directions.title }}</h2>
+            <h2 class="with-sticker">
+              {{ SECTIONS.directions.title }}
+              <Sticker
+                slug="with-map"
+                :width="72"
+                decorative
+              />
+            </h2>
             <div
               v-if="page.directionsHtml"
               class="directions-text"
@@ -374,6 +381,8 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 .routes ul { margin: 0; padding: 0; list-style: none; }
 .routes li { padding: 0.6rem 0; border-top: 1px solid var(--color-line); }
 .directions h2 { margin-bottom: 0.8rem; }
+.directions h2.with-sticker { display: flex; gap: 0.6rem; align-items: center; }
+.directions h2.with-sticker :deep(.sticker) { flex: none; width: 56px; margin: -0.6rem 0; transform: rotate(-6deg); }
 .directions-text { max-width: 65ch; line-height: 1.6; }
 .directions-text :deep(p) { margin: 0 0 0.6rem; }
 .hero {
