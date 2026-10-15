@@ -155,7 +155,19 @@ the same row from 720px and on the next line below that. The visible text is
 «ниже среднего», «выше среднего», or «около среднего». The full phrase, for
 example «Цены ниже среднего по Светлогорску», is the badge `title` and
 `aria-label`. The town is already in the line under the heading. The badge
-is omitted when no card has a comparison.
+is omitted when the stored band is null.
+
+The band is stored on the venue, not computed while the page renders.
+`price_band` is `low`, `mid`, or `high` (ниже, около, выше). It is not the
+editorial `price_level` of 1–4. `price_band_basis` is how many of this
+venue's prices had a town comparison. `price_band_computed_at` is when that
+row was written. The sample is the same as the cards: published venues in
+the town, one fresh price each, and no band below three venues. Saving
+prices, publishing or unpublishing, or moving a venue to another town
+recomputes every venue in the affected town, because one price changes the
+others. `venue_price_bands_recompute` does that for one town on demand.
+`venue_get` and `venues_list` return the three fields. There is no public
+filter yet.
 
 One line sits under the whole grid, for example «Меню на сайте заведения,
 15 октября 2026 г. Цены могли измениться.» It names a single source: the URL

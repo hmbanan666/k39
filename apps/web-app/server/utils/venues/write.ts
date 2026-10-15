@@ -7,6 +7,7 @@ import { auditMcp } from '../mcp/audit'
 import { parseFactsCheckedAt } from '../mcp/facts'
 import { loadSchedule, saveSchedule } from '../schedule'
 import { normalizeDishModules } from './dishes'
+import { recomputePriceBandsAfterStatus } from './price-band'
 
 export function venueError(error: unknown): never {
   if (error instanceof VenueInputError) {
@@ -106,6 +107,10 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
       throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
     }
     await syncVenueSchedule(saved, input)
+    await recomputePriceBandsAfterStatus(
+      { regionId: current.regionId, status: current.status },
+      { regionId: saved.regionId, status: saved.status },
+    )
     await auditMcp('venue_update', 'venue', saved.id)
     return saved
   } catch (error) {

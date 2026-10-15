@@ -410,4 +410,20 @@ describe('venue repository', () => {
     const paths = (await Search.query('смёрреброд')).map((row) => row.path)
     expect(paths).toContain('/zavedeniya/bochka-pab-svetlogorsk')
   })
+
+  it('keeps a stored price band across an ordinary edit', async () => {
+    const venue = await Venues.create({ name: 'Полоса цен', slug: 'price-band-cafe', kind: 'cafe', status: 'draft' })
+    const computedAt = '2026-10-15T12:00:00.000Z'
+    await Venues.setPriceBand(venue.id, { level: 'low', basis: 4, computedAt })
+    const stored = await Venues.byId(venue.id)
+    expect(stored?.priceBand).toBe('low')
+    expect(stored?.priceBandBasis).toBe(4)
+    expect(stored?.priceBandComputedAt && new Date(stored.priceBandComputedAt).toISOString()).toBe(computedAt)
+    const edited = await Venues.update(venue.id, { name: 'Полоса цен два' })
+    expect(edited?.priceBand).toBe('low')
+    expect(edited?.priceBandBasis).toBe(4)
+    const town = await Venues.inRegion(null)
+    expect(town.map((row) => row.id)).toContain(venue.id)
+    await useDatabase().delete(venues).where(eq(venues.id, venue.id))
+  })
 })

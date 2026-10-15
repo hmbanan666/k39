@@ -21,6 +21,8 @@ import {
   PRICE_ITEM_ICONS,
   PRICE_ITEM_IMAGES,
   PRICE_STICKER_WIDTH,
+  priceBadgeFromBand,
+  priceBandFromBands,
   priceBlockSummary,
   priceCardTap,
   priceCompareLead,
@@ -271,6 +273,12 @@ describe('price comparison', () => {
     expect(priceBlockSummary(['cheap'], null)).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по региону' })
     expect(priceBlockSummary(['expensive'], 'missing')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по региону' })
     expect(priceBlockSummary([null, null], 'svetlogorsk')).toBeNull()
+    expect(priceBandFromBands(['cheap', 'cheap', 'expensive'])).toEqual({ level: 'low', basis: 3 })
+    expect(priceBandFromBands(['expensive', 'medium'])).toEqual({ level: 'high', basis: 2 })
+    expect(priceBandFromBands(['medium', 'medium'])).toEqual({ level: 'mid', basis: 2 })
+    expect(priceBandFromBands([null, null])).toEqual({ level: null, basis: 0 })
+    expect(priceBadgeFromBand('low', 'svetlogorsk')).toEqual(priceBlockSummary(['cheap'], 'svetlogorsk'))
+    expect(priceBadgeFromBand(null, 'svetlogorsk')).toBeNull()
     const shared = sharedPriceSource([
       { sourceTitle: 'Старое меню', sourceUrl: 'https://cafe.example/menu', checkedAt: '2026-03-01' },
       { sourceTitle: 'Меню на сайте заведения', sourceUrl: 'https://cafe.example/menu', checkedAt: '2026-10-12' },
@@ -406,7 +414,9 @@ describe('price comparison', () => {
     })
     expect(plain[0]?.sticker).toBeNull()
     expect(plain[0]?.icon).toBe('glass')
-    const out = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards, { regionSlug: 'svetlogorsk' })
+    const hidden = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards, { regionSlug: 'svetlogorsk' })
+    expect(hidden?.blocks[0]).toMatchObject({ type: 'prices', summary: null })
+    const out = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards, { regionSlug: 'svetlogorsk', priceBand: 'low' })
     expect(out?.blocks[0]).toMatchObject({
       type: 'prices',
       summary: { text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску' },
@@ -428,7 +438,7 @@ describe('price comparison', () => {
     expect(priceListNode([], 'Ориентиры цен')).toBeNull()
     expect(list && schemaProblems([{ '@context': 'https://schema.org', ...list }])).toEqual([])
     expect(cards[0]?.comparison.scaleLabel).toBe('Дешевле медианы по Светлогорску')
-    const unnamed = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards)
+    const unnamed = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards, { priceBand: 'low' })
     expect(unnamed?.blocks[0]).toMatchObject({ summary: { text: 'ниже среднего', label: 'Цены ниже среднего по региону' } })
   })
 })

@@ -5,6 +5,7 @@ import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } f
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
 import { normalizeDishModules } from '../venues/dishes'
+import { recomputeTownPriceBands } from '../venues/price-band'
 import { asOwnerPrices, venuePricesWriteSchema } from '../venues/prices'
 import { syncVenueSchedule } from '../venues/write'
 import { ClaimDeliveryError, claimTransportConfig, postClaimCode } from './deliver'
@@ -283,6 +284,7 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     await syncVenueSchedule(saved, { hours: touchHours ? saved.hours : undefined, lastVerifiedAt: touchHours ? saved.lastVerifiedAt : undefined })
     if (ownerPrices) {
       await db.prices.setForVenue(venueId, ownerPrices)
+      await recomputeTownPriceBands(saved.regionId)
     }
     const fields = [...Object.keys(write), ...(ownerPrices ? ['prices'] : [])]
     await db.venueClaims.audit(venueId, userId, 'owner_update', { fields })
