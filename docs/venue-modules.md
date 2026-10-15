@@ -21,7 +21,7 @@ Rules:
 | --- | --- | --- | --- |
 | `text` | «О месте» or own title | `{ title?, variant: lead\|plain, text }` | Same shape as ADR 0023 `text`. |
 | `dishes` | «Что заказать» | `{ title?, items: [{ name, priceRub?, note? }], note? }` | Up to 8. Falls back to `signatureDishes`. Price only when seen on the official menu. |
-| `audience` | «Кому подойдёт» | `{ title?, items: [{ who, text }] }` | 2 to 5 short cards. |
+| `audience` | «Кому подойдёт» | `{ title?, items: [{ who, icon?, text }] }` | 2 to 5 short cards. `icon` is one of `AUDIENCE_ICONS` (group, family, kids, couple, solo, friends, beach, day-trip, tourist, local, pets, work), default `group`. The heading gets the `with-heart` sticker only when the hero has photos (no hero sticker), so the page keeps at most two stickers. |
 | `practical` | «Полезно знать» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
 | `best-time` | «Когда лучше прийти» | `{ title?, text }` | Only with real data (hours, queues seen, season). |
 | `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map. |

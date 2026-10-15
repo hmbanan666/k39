@@ -7,7 +7,15 @@
     class="vm"
     :class="`vm-${block.type}`"
   >
-    <h2>{{ block.title }}</h2>
+    <h2 :class="{ 'with-sticker': block.type === 'audience' && audienceSticker }">
+      {{ block.title }}
+      <Sticker
+        v-if="block.type === 'audience' && audienceSticker"
+        slug="with-heart"
+        :width="72"
+        decorative
+      />
+    </h2>
     <div
       v-if="block.type === 'text'"
       class="reader-html"
@@ -56,6 +64,10 @@
         :key="item.who"
       >
         <p class="who">
+          <span class="aud-icon"><Icon
+            :name="tablerIcon(`aud-${item.icon}`)"
+            size="20"
+          /></span>
           {{ item.who }}
         </p>
         <div v-html="item.html" />
@@ -142,7 +154,8 @@
 import type { PublicVenueModule } from '~~/shared/venue-modules'
 import { tablerIcon } from '~~/shared/icons'
 
-defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
+// `audienceSticker`: the page decides, so it stays within two stickers (docs/stickers.md).
+defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null, audienceSticker?: boolean }>()
 
 const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`
@@ -180,8 +193,21 @@ const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} 
   border-radius: 12px;
   background: var(--color-paper, #fffdf8);
 }
-.cards :deep(p) { margin: 0; }
-.who { margin-bottom: 0.3rem !important; font-weight: 700; }
+.cards :deep(p) { margin: 0; font-size: 0.92rem; line-height: 1.45; }
+.cards .who { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem; font-size: 1rem; font-weight: 700; line-height: 1.25; }
+.aud-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1.5px dashed var(--color-line);
+  border-radius: 50%;
+  background: var(--color-amber-soft);
+  color: var(--accent);
+}
+.vm h2.with-sticker { display: flex; gap: 0.6rem; align-items: center; }
+.vm h2.with-sticker :deep(.sticker) { flex: none; width: 56px; margin: -0.6rem 0; transform: rotate(-6deg); }
 .practical { display: grid; gap: 0; margin: 0; }
 .practical > div {
   display: grid;

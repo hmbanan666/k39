@@ -94,6 +94,7 @@
             v-if="modules"
             :blocks="modules.blocks"
             :menu-url="venue.menuUrl"
+            :audience-sticker="Boolean(cover)"
           />
           <template v-else>
             <h2
