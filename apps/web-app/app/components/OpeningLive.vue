@@ -40,6 +40,8 @@ const props = defineProps<{
   showUnknown?: boolean
   /** Smaller type for list rows. */
   compact?: boolean
+  /** Open state reads «Открыто до 23:00» without the «· ещё 12 ч» countdown. */
+  hideRemaining?: boolean
 }>()
 // Rendered only after hydration too, so cached HTML never carries it.
 const unverified = ref(false)
@@ -56,7 +58,7 @@ function update() {
     ? null
     : value.closure
       ? { open: false, muted: false, text: main ?? '', sub: rest.join(' · ') || undefined }
-      : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen) || value.status === 'appointment' || Boolean(value.slot), text: [availabilityText(value, now), value.status === 'appointment' ? props.schedule?.rules.note : ''].filter(Boolean).join(': ') }
+      : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen) || value.status === 'appointment' || Boolean(value.slot), text: [props.hideRemaining && value.closesAt && (value.minutesLeft ?? 0) < 24 * 60 ? (availabilityText(value, now).split(' · ')[0] ?? '') : availabilityText(value, now), value.status === 'appointment' ? props.schedule?.rules.note : ''].filter(Boolean).join(': ') }
   unverified.value = value.status === 'unknown' && Boolean(props.hasHours)
   unknown.value = value.status === 'unknown'
 }
