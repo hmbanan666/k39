@@ -46,6 +46,7 @@ export default defineMcpTool({
       delivery: venue.delivery,
       signatureDishes: venue.signatureDishes,
       modules: venue.modules,
+      prices: await db.prices.forVenue(venue.id),
       description: venue.description,
       sources: venue.sources,
       status: venue.status,

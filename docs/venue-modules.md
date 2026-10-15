@@ -25,6 +25,7 @@ Rules:
 | `practical` | «Практично» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
 | `best-time` | «Когда лучше прийти» | `{ title?, text }` | Only with real data (hours, queues seen, season). |
 | `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map. |
+| `prices` | «Ориентиры цен» | `{ title? }` | Rows come from `venue_prices` (see below), not from the module. Hidden without fresh verified prices. |
 | `tips` | «Советы» | `{ title?, items: [text] }` | Short practical tips. |
 | `faq` | «Вопросы» | `{ title?, items: [{ question, answer }] }` | Answers from known facts only. |
 
@@ -44,3 +45,22 @@ Rules:
 
 Hero, then the stored modules in stored order, then «Как внутри», «Как
 добраться» (with `how-to-get` text), «Рядом посмотреть», «Источники».
+
+## «Ориентиры цен» and the shared price catalog
+
+No full menus. A venue shows a few familiar benchmark items with prices so
+visitors can compare venues.
+
+- `price_items` is the shared catalog: `slug`, `title`, `category`,
+  `default_variant`, `sort_order`. Seeded with капучино, американо, пицца
+  «Маргарита», ролл «Филадельфия», борщ, бургер. Edit with
+  `price_items_list` and `price_item_upsert`.
+- `venue_prices` holds one row per venue, item and variant: `price_rub`,
+  `checked_at`, `source_kind` (`official` with a URL to the venue's own menu,
+  site or socials, or `owner`), `source_title`, `source_url`. Set with
+  `venue_prices_set` (replaces the list); `venue_get` returns them.
+- Prices are never invented or taken from aggregators. Rows older than 365
+  days are not shown. Without fresh rows the module is hidden.
+- The catalog is shared so prices compare across venues; `db.prices.forItem`
+  lists one item across published venues, cheapest first, as the base for
+  collections like «Топ капучино области».

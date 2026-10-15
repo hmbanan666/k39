@@ -161,7 +161,15 @@ async function loadVenue(slug: string) {
   const stale = isStale(venue.lastVerifiedAt, now)
   const closed = venue.status === 'closed'
   const missingDescription = descriptionLength(venue.description) === 0
-  const modules = toPublicVenueModules(venue.modules, renderMarkdown)
+  const prices = (await db.prices.freshForVenue(venue.id)).map((row) => ({
+    title: row.title,
+    variant: row.variant,
+    priceRub: row.priceRub,
+    checkedAt: row.checkedAt,
+    sourceTitle: row.sourceTitle,
+    sourceUrl: row.sourceUrl,
+  }))
+  const modules = toPublicVenueModules(venue.modules, renderMarkdown, prices)
   const town = region ? inTown(region.slug, regionLabel(region)) : ''
   const firstBlock = modules?.blocks.find((block) => block.type === 'text')
   const firstText = firstBlock?.type === 'text' ? firstBlock.html.replace(/<[^>]+>/g, ' ') : venue.description

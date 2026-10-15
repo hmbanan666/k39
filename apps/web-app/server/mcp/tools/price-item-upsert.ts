@@ -1,0 +1,20 @@
+import { db } from '@k39/database'
+import { z } from 'zod'
+import { auditMcp } from '../../utils/mcp/audit'
+
+export default defineMcpTool({
+  name: 'price_item_upsert',
+  description: 'Add or rename a benchmark item in the shared price catalog. Keep the catalog small and familiar: items people compare between venues.',
+  inputSchema: {
+    slug: z.string().regex(/^[a-z0-9-]+$/).describe('Latin slug, e.g. cappuccino'),
+    title: z.string().min(1).max(80).describe('Russian name, e.g. Капучино'),
+    category: z.string().min(1).max(40).describe('coffee, pizza, sushi, soup, burger, dessert...'),
+    defaultVariant: z.string().max(40).nullable().optional().describe('Usual size, e.g. 300 мл or 30 см'),
+    sortOrder: z.number().int().min(0).optional(),
+  },
+  handler: async (input) => {
+    const row = await db.prices.upsertItem(input)
+    await auditMcp('price_item_upsert', 'price_item', row?.id ?? null)
+    return { item: row ?? null }
+  },
+})

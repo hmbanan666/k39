@@ -51,6 +51,11 @@ export const venueModuleSchema = z.discriminatedUnion('type', [
     items: z.array(z.string().trim().min(1).max(400)).min(1).max(8),
   }),
   z.object({
+    /** «Ориентиры цен»: rows come from venue_prices, not from the module. */
+    type: z.literal('prices'),
+    title: title.optional(),
+  }),
+  z.object({
     type: z.literal('faq'),
     title: title.optional(),
     items: z.array(z.object({ question: short, answer: z.string().trim().min(1).max(800) })).min(1).max(8),
@@ -58,7 +63,7 @@ export const venueModuleSchema = z.discriminatedUnion('type', [
 ])
 
 export const venueModulesSchema = z.array(venueModuleSchema).max(16).superRefine((modules, ctx) => {
-  for (const unique of ['dishes', 'audience', 'practical', 'best-time', 'how-to-get', 'faq'] as const) {
+  for (const unique of ['prices', 'dishes', 'audience', 'practical', 'best-time', 'how-to-get', 'faq'] as const) {
     if (modules.filter((item) => item.type === unique).length > 1) {
       ctx.addIssue({ code: 'custom', message: `At most one ${unique} module` })
     }
@@ -75,6 +80,7 @@ export const VENUE_MODULE_TITLES: Record<VenueModule['type'], string> = {
   'best-time': 'Когда лучше прийти',
   'how-to-get': 'Как добраться',
   'tips': 'Советы',
+  'prices': 'Ориентиры цен',
   'faq': 'Вопросы',
 }
 
@@ -87,6 +93,7 @@ export const VENUE_MODULE_IDS: Record<VenueModule['type'], string> = {
   'best-time': 'kogda-prijti',
   'how-to-get': 'kak-dobratsya',
   'tips': 'sovety',
+  'prices': 'tseny',
   'faq': 'voprosy',
 }
 
@@ -98,6 +105,16 @@ export type PublicVenueModule
     | { type: 'best-time', id: string, title: string, html: string }
     | { type: 'tips', id: string, title: string, items: string[] }
     | { type: 'faq', id: string, title: string, items: { question: string, html: string }[] }
+    | { type: 'prices', id: string, title: string, items: PublicVenuePrice[] }
+
+export interface PublicVenuePrice {
+  title: string
+  variant: string
+  priceRub: number
+  checkedAt: string
+  sourceTitle: string
+  sourceUrl: string | null
+}
 
 export interface PublicVenueModules {
   /** Content modules in stored order, without how-to-get. */
@@ -107,7 +124,7 @@ export interface PublicVenueModules {
 }
 
 /** Validates and renders stored modules. Invalid or empty input yields null. */
-export function toPublicVenueModules(stored: unknown, render: (markdown: string) => string): PublicVenueModules | null {
+export function toPublicVenueModules(stored: unknown, render: (markdown: string) => string, prices: PublicVenuePrice[] = []): PublicVenueModules | null {
   const parsed = venueModulesSchema.safeParse(stored)
   if (!parsed.success || !parsed.data.length) {
     return null
@@ -144,10 +161,16 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
       case 'tips':
         blocks.push({ type: 'tips', id: idFor('tips'), title: heading, items: module.items })
         break
+      case 'prices':
+        // Hidden without verified prices.
+        if (prices.length) {
+          blocks.push({ type: 'prices', id: idFor('prices'), title: heading, items: prices })
+        }
+        break
       case 'faq':
         blocks.push({ type: 'faq', id: idFor('faq'), title: heading, items: module.items.map((item) => ({ question: item.question, html: render(item.answer) })) })
         break
     }
   }
-  return { blocks, howToGetHtml }
+  return blocks.length || howToGetHtml ? { blocks, howToGetHtml } : null
 }

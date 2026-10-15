@@ -95,6 +95,33 @@
         {{ tip }}
       </li>
     </ul>
+    <template v-else-if="block.type === 'prices'">
+      <ul class="dishes">
+        <li
+          v-for="row in block.items"
+          :key="row.title + row.variant"
+        >
+          <span class="dish-name">{{ row.title }}<span
+            v-if="row.variant"
+            class="variant"
+          >, {{ row.variant }}</span></span>
+          <span class="dish-price">{{ rub(row.priceRub) }}</span>
+          <span class="dish-note">
+            <UiLink
+              v-if="row.sourceUrl"
+              :href="row.sourceUrl"
+              data-track="outbound"
+              data-track-name="price-source"
+            >{{ row.sourceTitle }}</UiLink>
+            <template v-else>{{ row.sourceTitle }}</template>,
+            {{ shortDate(row.checkedAt) }}
+          </span>
+        </li>
+      </ul>
+      <p class="note">
+        Цены для сравнения заведений, не меню целиком. Могли измениться.
+      </p>
+    </template>
     <div
       v-else-if="block.type === 'faq'"
       class="faq"
@@ -117,6 +144,7 @@ import { tablerIcon } from '~~/shared/icons'
 
 defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
 
+const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`
 </script>
 
@@ -136,6 +164,7 @@ const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} 
 .dish-name { font-weight: 700; }
 .dish-price { color: var(--muted); white-space: nowrap; }
 .dish-note { grid-column: 1 / -1; color: var(--muted); font-size: 0.92rem; }
+.variant { font-weight: 400; color: var(--muted); }
 .note { color: var(--muted); font-size: 0.92rem; }
 .cards {
   display: grid;

@@ -344,6 +344,40 @@ export const venueMedia = pgTable('venue_media', {
   index('venue_media_venue_idx').on(table.venueId),
 ])
 
+/**
+ * Shared catalog of benchmark menu items («Ориентиры цен»). One row per
+ * familiar dish or drink, so prices compare across venues and feed
+ * collections like «Топ капучино области».
+ */
+export const priceItems = pgTable('price_items', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  slug: varchar('slug').notNull().unique(),
+  title: varchar('title').notNull(),
+  category: varchar('category').notNull(),
+  defaultVariant: varchar('default_variant'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: createdAt(),
+})
+
+/** A venue's price for a catalog item. Only official sources or the owner. */
+export const venuePrices = pgTable('venue_prices', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  venueId: cuid2('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  itemId: cuid2('item_id').notNull().references(() => priceItems.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  variant: varchar('variant').notNull().default(''),
+  priceRub: integer('price_rub').notNull(),
+  checkedAt: date('checked_at', { mode: 'string' }).notNull(),
+  sourceKind: varchar('source_kind').notNull().$type<'official' | 'owner'>(),
+  sourceTitle: varchar('source_title').notNull(),
+  sourceUrl: varchar('source_url'),
+  updatedAt: updatedAt(),
+}, (table) => [
+  uniqueIndex('venue_prices_venue_item_variant').on(table.venueId, table.itemId, table.variant),
+  index('venue_prices_item_idx').on(table.itemId),
+  check('venue_prices_price_check', sql`${table.priceRub} > 0`),
+  check('venue_prices_source_check', sql`${table.sourceKind} in ('official', 'owner')`),
+])
+
 export const venueListingIntros = pgTable('venue_listing_intros', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),
