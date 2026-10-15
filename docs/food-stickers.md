@@ -8,7 +8,7 @@
 - They are our generated illustrations in the K39 sticker style (white outline, transparent background). Never present one as a photo of a venue's real dish, never use one in «Что заказать» (the business uploads real photos there), and never put one next to a guest photo as if it were that dish.
 - The moose rules (at most two per page, no stickers in cards) do not apply here: food stickers are item icons, not mascot art.
 - Alt text comes from the catalog. When the card already prints the item name, render the sticker `decorative` (empty alt).
-- Typical size is 48 to 128 CSS px wide. Price cards and the `/ceny/{slug}` listing use 56. Do not stretch beyond 512 px.
+- Typical size is 48 to 128 CSS px wide. On a price card and on the `/ceny` title the sticker sits in a fixed 56×56 px box (`object-fit: contain`, overflow hidden). Do not size that box by the file width: trimmed stickers do not share an aspect ratio, and a tall glass then covers the title. Do not stretch beyond 512 px.
 - Resolution for a catalog item: `price_items.image` when it is set, otherwise this sticker when `isFoodStickerSlug(slug)`, otherwise the Tabler icon from `PRICE_ITEM_ICONS`, then `PRICE_CATEGORY_ICONS`.
 
 ## Component

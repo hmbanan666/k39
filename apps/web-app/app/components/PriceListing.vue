@@ -10,21 +10,21 @@
         v-if="page.item.sticker || page.item.image"
         #mark
       >
-        <Sticker
-          v-if="page.item.sticker"
-          set="food"
-          :slug="page.item.sticker"
-          :width="PRICE_STICKER_WIDTH"
-          decorative
-        />
-        <img
-          v-else
-          class="item-art"
-          :src="page.item.image ?? ''"
-          alt=""
-          :width="PRICE_STICKER_WIDTH"
-          :height="PRICE_STICKER_WIDTH"
-        >
+        <span class="item-mark">
+          <Sticker
+            v-if="page.item.sticker"
+            set="food"
+            :slug="page.item.sticker"
+            :width="PRICE_STICKER_WIDTH"
+            decorative
+          />
+          <img
+            v-else
+            class="item-art"
+            :src="page.item.image ?? ''"
+            alt=""
+          >
+        </span>
       </template>
     </PageHeader>
     <nav
@@ -47,6 +47,7 @@
       <li
         v-for="item in page.items"
         :key="item.slug"
+        :class="{ current: from === item.slug }"
       >
         <VenueCard
           :href="item.href"
@@ -65,6 +66,10 @@
               class="portion"
             >{{ item.variant }}</span>
           </template>
+          <span
+            v-if="from === item.slug"
+            class="here"
+          >Это заведение</span>
         </VenueCard>
       </li>
     </ul>
@@ -102,7 +107,7 @@ export interface PriceListingData {
   }>
 }
 
-const props = defineProps<{ page: PriceListingData }>()
+const props = defineProps<{ page: PriceListingData, from?: string }>()
 
 usePublicHead(props.page.doc)
 </script>
@@ -128,6 +133,8 @@ ul {
   list-style: none;
 }
 li { display: flex; min-width: 0; }
+li.current :deep(.card) { box-shadow: 0 0 0 2px var(--color-sea); }
+.here { color: var(--color-sea); font-size: 0.82rem; font-weight: 700; }
 .ask {
   font-family: var(--font-display);
   font-size: 1.45rem;
@@ -136,5 +143,22 @@ li { display: flex; min-width: 0; }
 }
 .portion { color: var(--muted); font-size: var(--step--1); }
 .note { margin: 1.2rem 0 0; color: var(--muted); font-size: 0.92rem; }
-.item-art { flex: none; object-fit: contain; }
+.item-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+}
+.item-mark :deep(picture.sticker),
+.item-mark :deep(picture.sticker img),
+.item-mark .item-art {
+  display: block;
+  width: 56px;
+  height: 56px;
+  max-width: 56px;
+  max-height: 56px;
+  object-fit: contain;
+}
 </style>

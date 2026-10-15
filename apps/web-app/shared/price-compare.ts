@@ -5,17 +5,21 @@ import { pageTitle } from './seo'
 
 /**
  * «Ориентиры цен» (docs/venue-modules.md).
- * Comparison is pure: the server loads `db.prices.forItem` and calls these
- * helpers, so the HTML already contains the conclusion.
+ * Comparison is pure: the server loads `db.prices.forItem` (published venues
+ * only, one fresh price each) and calls these helpers, so the HTML already
+ * contains the conclusion.
  */
 
-/** Below this many venues the card refuses to rank the price. */
+/**
+ * Below this many venues in the region (this one included) the card does not
+ * rank the price. One venue states that it is the only price. Two venues show
+ * the real min and max.
+ */
 export const PRICE_COMPARE_MIN = 3
 
-/** A /ceny listing stays noindex until about this many venues have a price. */
+/** A /ceny listing stays noindex until about this many published venues have a price. */
 export const PRICE_INDEX_MIN = 5
 
-export const PRICE_FEW_DATA = 'пока мало данных для сравнения'
 export const PRICE_TOP = 'топ-3 по цене в регионе'
 
 const CHEAP_RATIO = 0.9
@@ -200,6 +204,50 @@ export function ofTown(slug: string | null | undefined) {
   return OF_TOWN[slug] ?? 'региона'
 }
 
+/** Prepositional phrase for «в Светлогорске». Unknown towns stay «в регионе». */
+export function inPlace(slug: string | null | undefined) {
+  if (!slug) {
+    return 'в регионе'
+  }
+  const phrase = inTown(slug, '')
+  return phrase.startsWith('в ') ? phrase : 'в регионе'
+}
+
+/** One line under «Ориентиры цен». Town is genitive: «заведениями Светлогорска». */
+export function priceCompareLead(slug: string | null | undefined) {
+  return `Сравниваем с другими заведениями ${ofTown(slug)}`
+}
+
+/**
+ * Nominative count for a parenthetical: «1 место», «2 места», «5 мест», «21 место».
+ */
+export function placesLabel(count: number) {
+  const n = Math.abs(Math.trunc(count))
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${n} место`
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${n} места`
+  }
+  return `${n} мест`
+}
+
+/**
+ * Noun after «из». «из 3 мест», «из 21 места»: 1, 21, 31… take genitive singular,
+ * every other count takes genitive plural.
+ */
+export function placesOutOf(count: number) {
+  const n = Math.abs(Math.trunc(count))
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${n} места`
+  }
+  return `${n} мест`
+}
+
 export function priceScaleLabel(band: PriceBand) {
   return SCALE_LABEL[band]
 }
@@ -268,32 +316,49 @@ function positionFor(priceRub: number, mid: number) {
   return Math.round(Math.min(0.96, Math.max(0.04, raw)) * 100)
 }
 
+function formatPriceSpan(min: number, max: number) {
+  if (min === max) {
+    return formatRub(min)
+  }
+  const format = new Intl.NumberFormat('ru-RU')
+  return `${format.format(min)}–${format.format(max)} ₽`
+}
+
 export function compareVenuePrice(input: {
   venueId: string
   priceRub: number
   variant: string
   regionId: string | null
+  /** Genitive: «мест Светлогорска». */
   place: string
+  /** Prepositional phrase: «в Светлогорске». */
+  where: string
   peers: CatalogPricePoint[]
 }): PriceComparison {
   const inRegion = input.peers.filter((row) => (row.regionId ?? null) === (input.regionId ?? null))
   const others = onePricePerVenue(inRegion, input.variant).filter((row) => row.venueId !== input.venueId)
   const prices = [...others.map((row) => row.priceRub), input.priceRub]
+  if (others.length === 0) {
+    return { band: null, position: null, line: `пока единственная цена ${input.where}` }
+  }
   if (prices.length < PRICE_COMPARE_MIN) {
-    return { band: null, position: null, line: PRICE_FEW_DATA }
+    const min = Math.min(...prices)
+    const max = Math.max(...prices)
+    return { band: null, position: null, line: `${input.where} ${formatPriceSpan(min, max)} (${placesLabel(prices.length)})` }
   }
   const mid = median(prices)
   const band = bandFor(input.priceRub, mid)
   const higher = prices.filter((value) => value > input.priceRub).length
   const lower = prices.filter((value) => value < input.priceRub).length
   const rankFromTop = higher + 1
+  const outOf = placesOutOf(prices.length)
   let line: string
   if (band === 'expensive' && rankFromTop <= 3 && prices.length >= 4) {
     line = PRICE_TOP
   } else if (higher > lower) {
-    line = `дешевле, чем в ${higher} из ${prices.length} мест ${input.place}`
+    line = `дешевле, чем в ${higher} из ${outOf} ${input.place}`
   } else if (lower > higher) {
-    line = `дороже, чем в ${lower} из ${prices.length} мест ${input.place}`
+    line = `дороже, чем в ${lower} из ${outOf} ${input.place}`
   } else {
     line = `как в других местах ${input.place}`
   }
@@ -346,8 +411,16 @@ function listingHref(slug: string, regionSlug: string | null, regionId: string |
   return ''
 }
 
+function withVenueFrom(href: string, venueSlug: string | null | undefined) {
+  if (!href || !venueSlug) {
+    return href
+  }
+  return `${href}?from=${encodeURIComponent(venueSlug)}`
+}
+
 export function buildPublicPrices(input: {
   venueId: string
+  venueSlug?: string | null
   regionId: string | null
   regionSlug: string | null
   rows: Array<{
@@ -364,6 +437,7 @@ export function buildPublicPrices(input: {
   peersByItem: Record<string, CatalogPricePoint[]>
 }): PublicPriceCard[] {
   const place = ofTown(input.regionSlug)
+  const where = inPlace(input.regionSlug)
   return input.rows.map((row) => {
     const peers = input.peersByItem[row.item] ?? []
     return {
@@ -377,13 +451,14 @@ export function buildPublicPrices(input: {
       icon: priceItemIcon(row.item, row.category),
       image: priceItemImage(row.item, row.image),
       sticker: priceItemSticker(row.item, row.image),
-      href: listingHref(row.item, input.regionSlug, input.regionId, peers),
+      href: withVenueFrom(listingHref(row.item, input.regionSlug, input.regionId, peers), input.venueSlug),
       comparison: compareVenuePrice({
         venueId: input.venueId,
         priceRub: row.priceRub,
         variant: row.variant,
         regionId: input.regionId,
         place,
+        where,
         peers,
       }),
     }

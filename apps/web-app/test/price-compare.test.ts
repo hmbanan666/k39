@@ -9,16 +9,19 @@ import {
   compareVenuePrice,
   formatPriceDate,
   indexablePriceLocs,
+  inPlace,
   isPriceIndexable,
   ofTown,
   onePricePerVenue,
+  placesLabel,
+  placesOutOf,
   PRICE_CATEGORY_ICONS,
-  PRICE_FEW_DATA,
   PRICE_ITEM_ICONS,
   PRICE_ITEM_IMAGES,
   PRICE_STICKER_WIDTH,
   PRICE_TOP,
   priceBlockSummary,
+  priceCompareLead,
   priceItemIcon,
   priceItemImage,
   priceItemSticker,
@@ -46,14 +49,80 @@ function compare(priceRub: number, peers: ReturnType<typeof peer>[], variant = '
     variant,
     regionId: REGION,
     place: 'Светлогорска',
+    where: 'в Светлогорске',
     peers,
   })
 }
 
 describe('price comparison', () => {
-  it('says there is not enough data below three venues', () => {
-    const result = compare(180, [peer('a', 200)])
-    expect(result).toEqual({ band: null, position: null, line: PRICE_FEW_DATA })
+  it('names the only price, a two-venue range, and a rank from three venues', () => {
+    expect(compare(220, [])).toEqual({ band: null, position: null, line: 'пока единственная цена в Светлогорске' })
+    expect(compare(220, [peer('a', 180)])).toEqual({
+      band: null,
+      position: null,
+      line: 'в Светлогорске 180–220 ₽ (2 места)',
+    })
+    expect(compare(180, [peer('a', 180)]).line).toBe('в Светлогорске 180 ₽ (2 места)')
+    const ranked = compare(300, [peer('a', 100), peer('b', 150)])
+    expect(ranked.band).toBe('expensive')
+    expect(ranked.position).not.toBeNull()
+    expect(ranked.line).toBe('дороже, чем в 2 из 3 мест Светлогорска')
+  })
+
+  it('uses Russian plurals for the range and for «из N»', () => {
+    expect(placesLabel(1)).toBe('1 место')
+    expect(placesLabel(2)).toBe('2 места')
+    expect(placesLabel(3)).toBe('3 места')
+    expect(placesLabel(4)).toBe('4 места')
+    expect(placesLabel(5)).toBe('5 мест')
+    expect(placesLabel(11)).toBe('11 мест')
+    expect(placesLabel(21)).toBe('21 место')
+    expect(placesLabel(22)).toBe('22 места')
+    expect(placesOutOf(1)).toBe('1 места')
+    expect(placesOutOf(2)).toBe('2 мест')
+    expect(placesOutOf(3)).toBe('3 мест')
+    expect(placesOutOf(4)).toBe('4 мест')
+    expect(placesOutOf(5)).toBe('5 мест')
+    expect(placesOutOf(11)).toBe('11 мест')
+    expect(placesOutOf(21)).toBe('21 места')
+    expect(placesOutOf(22)).toBe('22 мест')
+    const twenty = Array.from({ length: 20 }, (_, index) => peer(`p${index}`, 100 + index))
+    expect(compare(90, twenty).line).toBe('дешевле, чем в 20 из 21 места Светлогорска')
+    const twentyOne = Array.from({ length: 21 }, (_, index) => peer(`q${index}`, 200))
+    expect(compare(100, twentyOne).line).toBe('дешевле, чем в 21 из 22 мест Светлогорска')
+  })
+
+  it('puts the town in the prepositional and the genitive', () => {
+    expect(inPlace('svetlogorsk')).toBe('в Светлогорске')
+    expect(inPlace('kaliningrad')).toBe('в Калининграде')
+    expect(inPlace('zelenogradsk')).toBe('в Зеленоградске')
+    expect(inPlace('yantarnyy')).toBe('в Янтарном')
+    expect(inPlace('missing')).toBe('в регионе')
+    expect(inPlace(null)).toBe('в регионе')
+    expect(ofTown('svetlogorsk')).toBe('Светлогорска')
+    expect(priceCompareLead('svetlogorsk')).toBe('Сравниваем с другими заведениями Светлогорска')
+    expect(priceCompareLead('kaliningrad')).toBe('Сравниваем с другими заведениями Калининграда')
+    expect(priceCompareLead(null)).toBe('Сравниваем с другими заведениями региона')
+    const only = compareVenuePrice({
+      venueId: 'self',
+      priceRub: 160,
+      variant: '30 мл',
+      regionId: REGION,
+      place: ofTown('zelenogradsk'),
+      where: inPlace('zelenogradsk'),
+      peers: [],
+    })
+    expect(only.line).toBe('пока единственная цена в Зеленоградске')
+    const pair = compareVenuePrice({
+      venueId: 'self',
+      priceRub: 250,
+      variant: '300 мл',
+      regionId: null,
+      place: ofTown(null),
+      where: inPlace(null),
+      peers: [peer('a', 180, '300 мл', null)],
+    })
+    expect(pair.line).toBe('в регионе 180–250 ₽ (2 места)')
   })
 
   it('places a price against the regional median and counts dearer venues', () => {
@@ -202,6 +271,7 @@ describe('price comparison', () => {
     expect(toPublicVenueModules([{ type: 'prices' }], (text) => text, [])).toBeNull()
     const cards = buildPublicPrices({
       venueId: 'self',
+      venueSlug: 'bochka-pab',
       regionId: REGION,
       regionSlug: 'svetlogorsk',
       rows: [{
@@ -218,7 +288,7 @@ describe('price comparison', () => {
         cappuccino: [100, 120, 200, 210, 220, 230, 240, 250, 400].map((price, index) => peer(`v${index}`, price)),
       },
     })
-    expect(cards[0]?.href).toBe('/ceny/cappuccino/svetlogorsk')
+    expect(cards[0]?.href).toBe('/ceny/cappuccino/svetlogorsk?from=bochka-pab')
     expect(cards[0]?.icon).toBe('coffee')
     expect(cards[0]?.image).toBeNull()
     expect(cards[0]?.sticker).toBe('cappuccino')
@@ -292,6 +362,7 @@ describe('price cards', () => {
           type: 'prices',
           id: 'tseny',
           title: 'Ориентиры цен',
+          lead: 'Сравниваем с другими заведениями Светлогорска',
           items,
           summary,
           source,
@@ -322,6 +393,7 @@ describe('price cards', () => {
     expect(cards[0]?.text()).toContain('180 ₽')
     expect(cards[0]?.text()).toContain('дешевле, чем в 7 из 10 мест Светлогорска')
     expect(cards[0]?.text()).toContain('дёшево')
+    expect(cards[0]?.find('.price-art picture.sticker').exists()).toBe(true)
     const picture = cards[0]?.find('picture.sticker')
     expect(picture?.find('img').attributes('src')).toBe('/stickers/food/cappuccino-256.png')
     expect(picture?.find('img').attributes('alt')).toBe('')
@@ -330,12 +402,11 @@ describe('price cards', () => {
     expect(picture?.find('source[type="image/avif"]').attributes('srcset')).toContain('/stickers/food/cappuccino-512.avif 512w')
     expect(picture?.find('source[type="image/avif"]').attributes('sizes')).toBe(`${PRICE_STICKER_WIDTH}px`)
     expect(picture?.find('source[type="image/webp"]').attributes('srcset')).toContain('/stickers/food/cappuccino-256.webp 256w')
-    expect(cards[0]?.find('.price-icon').classes()).toContain('sticker')
-    expect(cards[0]?.find('.price-icon').attributes('style')).toContain(`--mark: ${PRICE_STICKER_WIDTH}px`)
-    expect(cards[1]?.find('.price-icon').classes()).not.toContain('sticker')
+    expect(cards[1]?.find('.price-art picture.sticker').exists()).toBe(false)
+    expect(cards[1]?.find('.price-art img').attributes('src')).toBe('/stickers/americano.webp')
     expect(wrapper.findAll('.stub-icon')).toHaveLength(0)
-    expect(wrapper.find('img[src="/stickers/americano.webp"]').exists()).toBe(true)
     expect(wrapper.findAll('picture.sticker')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Сравниваем с другими заведениями Светлогорска')
     expect(wrapper.text()).toContain('Цены ниже среднего по региону')
     const links = wrapper.findAll('.stub-link')
     expect(links).toHaveLength(1)
@@ -346,11 +417,11 @@ describe('price cards', () => {
   it('keeps a separate muted source when the rows do not share one', () => {
     const wrapper = mountPrices([
       card,
-      { ...card, slug: 'burger', title: 'Бургер', sticker: 'burger' as const, sourceTitle: 'Сообщено заведением', sourceUrl: null, comparison: { band: null, position: null, line: PRICE_FEW_DATA } },
+      { ...card, slug: 'burger', title: 'Бургер', sticker: 'burger' as const, sourceTitle: 'Сообщено заведением', sourceUrl: null, comparison: { band: null, position: null, line: 'пока единственная цена в Светлогорске' } },
     ], null, null)
     expect(wrapper.find('.price-chip').exists()).toBe(false)
     expect(wrapper.findAll('.scale')).toHaveLength(1)
-    expect(wrapper.text()).toContain(PRICE_FEW_DATA)
+    expect(wrapper.text()).toContain('пока единственная цена в Светлогорске')
     expect(wrapper.findAll('.price-src')).toHaveLength(2)
     expect(wrapper.text()).toContain('Сообщено заведением')
   })
@@ -421,5 +492,57 @@ describe('price cards', () => {
     expect(custom.find('picture.sticker').exists()).toBe(false)
     expect(custom.get('img.item-art').attributes('src')).toBe('https://cdn.example/cup.webp')
     expect(custom.get('img.item-art').attributes('alt')).toBe('')
+  })
+
+  it('highlights the venue from the query and leaves the cheaper ones unmarked', () => {
+    const doc = collectionDocument({
+      path: '/ceny/cappuccino/svetlogorsk',
+      h1: 'Капучино в Светлогорске',
+      summary: 'Капучино в Светлогорске: свежие цены.',
+      seoTitle: 'Капучино в Светлогорске: цены',
+      crumbName: 'список',
+      parent: { name: 'Капучино', href: '/ceny/cappuccino' },
+      items: [],
+      kind: 'CollectionPage',
+    })
+    const venue = {
+      kindLabel: 'Бар',
+      media: null,
+      schedule: null,
+      stale: false,
+      meta: '',
+      variant: '300 мл',
+    }
+    const wrapper = mount(PriceListing, {
+      props: {
+        from: 'bochka-pab',
+        page: {
+          doc,
+          item: { slug: 'cappuccino', title: 'Капучино', image: null, sticker: 'cappuccino' },
+          regionSlug: 'svetlogorsk',
+          towns: [],
+          oblastHref: '/ceny/cappuccino',
+          items: [
+            { ...venue, href: '/zavedeniya/cheap', slug: 'cheap', name: 'Дешёвое', priceLabel: '180 ₽' },
+            { ...venue, href: '/zavedeniya/bochka-pab', slug: 'bochka-pab', name: 'Бочка', priceLabel: '220 ₽' },
+          ],
+        },
+      },
+      global: {
+        components: { Sticker },
+        stubs: {
+          PageHeader: { template: '<header><h1>{{ h1 }}</h1></header>', props: ['h1'] },
+          VenueCard: { props: ['name'], template: '<a class="card"><span>{{ name }}</span><slot /></a>' },
+        },
+      },
+    })
+    expect(wrapper.text()).toContain('Капучино в Светлогорске')
+    const rows = wrapper.findAll('li')
+    expect(rows[0]?.text()).toContain('Дешёвое')
+    expect(rows[0]?.classes()).not.toContain('current')
+    expect(rows[0]?.text()).not.toContain('Это заведение')
+    expect(rows[1]?.classes()).toContain('current')
+    expect(rows[1]?.text()).toContain('Бочка')
+    expect(rows[1]?.text()).toContain('Это заведение')
   })
 })
