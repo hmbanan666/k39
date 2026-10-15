@@ -62,10 +62,18 @@ export interface PublicPriceCard {
 /** Rendered width of a food sticker on a price card, in CSS px. `sizes` matches. */
 export const PRICE_STICKER_WIDTH = 56
 
-export interface SharedPriceSource {
+export interface PriceSourceLink {
   title: string
   url: string | null
-  when: string
+}
+
+/** One footnote for the whole price grid. Each card still carries its own source. */
+export interface SharedPriceSource {
+  links: PriceSourceLink[]
+  /** Earliest check day, YYYY-MM-DD. */
+  from: string
+  /** Latest check day. Equals `from` when every row was checked the same day. */
+  until: string
 }
 
 /**
@@ -384,7 +392,14 @@ export function compareVenuePrice(input: {
   return { band, position: positionFor(input.priceRub, mid), line, scaleLabel: priceScaleLabel(band, input.by) }
 }
 
-export function priceBlockSummary(bands: Array<PriceBand | null>, regionSlug?: string | null) {
+export interface PriceSummary {
+  /** Short badge: «ниже среднего». */
+  text: string
+  /** Full name: «Цены ниже среднего по Светлогорску». */
+  label: string
+}
+
+export function priceBlockSummary(bands: Array<PriceBand | null>, regionSlug?: string | null): PriceSummary | null {
   const known = bands.filter((band): band is PriceBand => band != null)
   if (!known.length) {
     return null
@@ -392,13 +407,16 @@ export function priceBlockSummary(bands: Array<PriceBand | null>, regionSlug?: s
   const where = byTown(regionSlug)
   const cheap = known.filter((band) => band === 'cheap').length
   const expensive = known.filter((band) => band === 'expensive').length
+  let level = 'около'
   if (cheap > expensive) {
-    return `Цены ниже среднего по ${where}`
+    level = 'ниже'
+  } else if (expensive > cheap) {
+    level = 'выше'
   }
-  if (expensive > cheap) {
-    return `Цены выше среднего по ${where}`
+  return {
+    text: `${level} среднего`,
+    label: `Цены ${level} среднего по ${where}`,
   }
-  return `Цены около среднего по ${where}`
 }
 
 export function sharedPriceSource(rows: Array<{ sourceTitle: string, sourceUrl: string | null, checkedAt: string }>): SharedPriceSource | null {
@@ -406,16 +424,59 @@ export function sharedPriceSource(rows: Array<{ sourceTitle: string, sourceUrl: 
   if (!first) {
     return null
   }
-  const url = first.sourceUrl || null
-  const same = rows.every((row) => row.sourceTitle === first.sourceTitle && (row.sourceUrl || null) === url)
-  if (!same) {
-    return null
+  const links: PriceSourceLink[] = []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    const url = row.sourceUrl || null
+    const key = `${row.sourceTitle}\n${url ?? ''}`
+    if (seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    links.push({ title: row.sourceTitle, url })
   }
   const dates = [...new Set(rows.map((row) => row.checkedAt.slice(0, 10)))].sort()
-  const when = dates.length > 1
-    ? `проверено с ${formatPriceDate(dates[0] ?? first.checkedAt)} по ${formatPriceDate(dates[dates.length - 1] ?? first.checkedAt)}`
-    : formatPriceDate(dates[0] ?? first.checkedAt)
-  return { title: first.sourceTitle, url, when }
+  return {
+    links,
+    from: dates[0] ?? first.checkedAt.slice(0, 10),
+    until: dates[dates.length - 1] ?? first.checkedAt.slice(0, 10),
+  }
+}
+
+/**
+ * First tap on a coarse pointer reveals the comparison. A second tap, a
+ * keyboard activation, or any click with a fine pointer follows the card link.
+ */
+export function priceCardTap(input: { finePointer: boolean, keyboard: boolean, open: boolean }) {
+  if (input.finePointer || input.keyboard || input.open) {
+    return 'follow' as const
+  }
+  return 'open' as const
+}
+
+/** schema.org list of the benchmark prices. Sources stay here when the cards hide them. */
+export function priceListNode(items: PublicPriceCard[], title: string) {
+  if (!items.length) {
+    return null
+  }
+  return {
+    '@type': 'ItemList',
+    'name': title,
+    'itemListElement': items.map((item, index) => {
+      const offer: Record<string, unknown> = {
+        '@type': 'Offer',
+        'name': item.variant ? `${item.title}, ${item.variant}` : item.title,
+        'price': item.priceRub,
+        'priceCurrency': 'RUB',
+        'description': item.sourceTitle,
+        'validFrom': item.checkedAt.slice(0, 10),
+      }
+      if (item.sourceUrl && /^https?:\/\//.test(item.sourceUrl)) {
+        offer.url = item.sourceUrl
+      }
+      return { '@type': 'ListItem', 'position': index + 1, 'item': offer }
+    }),
+  }
 }
 
 function listingHref(slug: string, regionSlug: string | null, regionId: string | null, peers: CatalogPricePoint[]) {
