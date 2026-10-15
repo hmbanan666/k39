@@ -190,6 +190,13 @@
       "when": 1792040000000,
       "tag": "0026_venue_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792050000000,
+      "tag": "0027_venue_claims",
+      "breakpoints": true
     }
   ]
 }

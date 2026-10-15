@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { db } from '@k39/database'
+import { safeInternalPath } from '../../shared/cabinet'
 import { CONSENT_COOKIE, CONSENT_METHOD, CONSENT_VERSION, consentDeniedLocation, consentParamAccepted, isOAuthCallback, oauthCallbackAllowed, oauthStartAllowed } from '../../shared/consent'
 
 const cookieOptions = {
@@ -58,6 +59,5 @@ export async function completeConsentedSession(event: H3Event, user: { id: strin
   await setUserSession(event, {
     user: { id: user.id, email: user.email, role: user.role },
   })
-  const redirectTo = getCookie(event, 'redirectTo')
-  return sendRedirect(event, redirectTo || '/')
+  return sendRedirect(event, safeInternalPath(getCookie(event, 'redirectTo')))
 }

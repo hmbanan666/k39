@@ -212,13 +212,8 @@
               decorative
             />
             <p>
-              Вы из «{{ venue.name }}»? Добавим бесплатно фото зала, меню, бронь и
-              ответы на частые вопросы. Скоро здесь будет кабинет владельца, а пока
-              <a
-                :href="ownerHref"
-                data-track="outbound"
-                data-track-name="venue-owner"
-              >напишите нам</a>.
+              Вы из «{{ venue.name }}»? Подтвердите страницу и правьте фото, часы и меню сами.
+              <a :href="venueClaimPath(venue.slug)">Это моё заведение</a>
             </p>
           </aside>
         </template>
@@ -375,6 +370,7 @@ import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import type { StickerSlug } from '~~/shared/stickers'
 import type { PublicVenueModules } from '~~/shared/venue-modules'
+import { venueClaimPath } from '~~/shared/cabinet'
 import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
@@ -493,8 +489,6 @@ function heroStickerFor(): StickerSlug {
 }
 const heroSticker = heroStickerFor()
 
-const ownerSubject = encodeURIComponent(`Фото и меню: ${venue.name}`)
-const ownerHref = `mailto:${operator.email}?subject=${ownerSubject}`
 const errorHref = `mailto:${operator.email}?subject=${encodeURIComponent(`Ошибка на странице: ${venue.name}`)}`
 const formatKm = (km: number) => km < 10 ? `${km.toFixed(1).replace('.', ',')} км` : `${Math.round(km)} км`
 

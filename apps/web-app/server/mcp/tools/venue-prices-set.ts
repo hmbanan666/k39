@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { auditMcp } from '../../utils/mcp/audit'
+import { venuePricesWriteSchema } from '../../utils/venues/prices'
 
 export default defineMcpTool({
   name: 'venue_prices_set',
@@ -8,15 +9,7 @@ export default defineMcpTool({
   inputSchema: {
     venueId: z.string().optional(),
     slug: z.string().optional(),
-    prices: z.array(z.object({
-      item: z.string().describe('Catalog slug, e.g. cappuccino'),
-      variant: z.string().max(40).nullable().optional().describe('Size as on the menu, e.g. 250 мл. Omitted: the catalog default'),
-      priceRub: z.number().int().min(1).max(100000),
-      checkedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}/).describe('ISO date the price was seen'),
-      sourceKind: z.enum(['official', 'owner']),
-      sourceTitle: z.string().min(1).max(160).describe('e.g. «Меню на сайте заведения»'),
-      sourceUrl: z.string().url().nullable().optional(),
-    })).max(12),
+    prices: venuePricesWriteSchema,
   },
   handler: async ({ venueId, slug, prices }) => {
     const venue = venueId ? await db.venues.byId(venueId) : slug ? await db.venues.bySlug(slug) : null

@@ -1,3 +1,4 @@
+import { safeInternalPath } from '../../../shared/cabinet'
 import { assertOAuthProvider } from '../../utils/oauth'
 import { guardOAuthStart } from '../../utils/oauth-consent'
 
@@ -11,8 +12,9 @@ export default defineEventHandler((event) => {
     return denied
   }
 
-  if (query.redirectTo) {
-    setCookie(event, 'redirectTo', query.redirectTo.toString(), { path: '/', httpOnly: true, sameSite: 'lax' })
+  const redirectTo = safeInternalPath(query.redirectTo, '')
+  if (redirectTo) {
+    setCookie(event, 'redirectTo', redirectTo, { path: '/', httpOnly: true, sameSite: 'lax' })
   }
 
   return sendRedirect(event, `/api/auth/${provider}`)

@@ -22,4 +22,4 @@ An editor attaches an active offer to a place or a route, using the existing `of
 
 ADR 0017. Not built yet.
 
-Redeeming a code adds `bid` kopecks to `spent` and ends the offer when the budget is used up. The business owner signs in to a cabinet that shows their offers, codes, and redemptions, and can pause an offer. Collecting the payment is a later step. Auction bids wait until redemptions are real.
+The shared cabinet and venue claims are ADR 0031: one user, a verified owner per venue, and edits to that page. Redeeming a code, showing offers in the cabinet, adding `bid` kopecks to `spent`, and pausing an offer are still this phase. `businesses.venue_id` is where a subscription will attach. Collecting the payment is a later step. Auction bids wait until redemptions are real.

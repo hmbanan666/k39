@@ -89,6 +89,14 @@ describe('venue policy', () => {
     expect(draft?.osmId).toBe('node/42')
     expect(draft?.slug).toBe('kofeynya-u-forta')
     expect(draft?.town).toBeNull()
+    expect(draft?.contactEmail).toBeNull()
+    expect(osmElementToDraft({
+      type: 'node',
+      id: 43,
+      lat: FORT.latitude,
+      lon: FORT.longitude,
+      tags: { amenity: 'cafe', name: 'Почта', email: 'Desk@Cafe.Test' },
+    })?.contactEmail).toBe('desk@cafe.test')
     expect(draft?.hours.days.find((day) => day.weekday === 'mon')?.opens).toBe('09:00')
     expect(osmElementToDraft({ type: 'node', id: 1, lat: 1, lon: 1, tags: { amenity: 'cafe' } })).toBeNull()
     const query = overpassQuery({ latitude: 54.7, longitude: 20.5, radiusMeters: 800 })

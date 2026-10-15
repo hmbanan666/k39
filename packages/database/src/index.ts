@@ -1,4 +1,5 @@
 export * from './body-sections'
+export * from './claims'
 export * from './database'
 export { repository as db } from './repository'
 export { PRICE_FRESH_DAYS } from './repository/prices'

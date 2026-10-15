@@ -1,4 +1,5 @@
 import type { BodySection } from './body-sections'
+import type { ClaimChannel, ClaimStatus, VenueMemberRole } from './claims'
 import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
 import type { ScoreChecks } from './types/scoring'
 import type { VenueDish, VenueHours, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from './venues'
@@ -312,6 +313,7 @@ export const venues = pgTable('venues', {
   signatureDishes: jsonb('signature_dishes').$type<VenueDish[]>().notNull().default(sql`'[]'::jsonb`),
   // Page modules (docs/venue-modules.md), validated in the web app.
   modules: jsonb('modules').$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+  contactEmail: varchar('contact_email'),
   description: text('description').notNull().default(''),
   sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
   status: varchar('status').notNull().default('draft').$type<VenueStatus>(),
@@ -397,7 +399,57 @@ export const businesses = pgTable('businesses', {
   name: varchar('name').notNull(),
   contactEmail: varchar('contact_email'),
   ownerUserId: cuid2('owner_user_id').references(() => users.id, { onUpdate: 'cascade' }),
-})
+  // Later subscription and offers hang off the claimed venue (ADR 0030).
+  venueId: cuid2('venue_id').references(() => venues.id, { onUpdate: 'cascade', onDelete: 'set null' }),
+}, (table) => [
+  uniqueIndex('businesses_venue_idx').on(table.venueId).where(sql`${table.venueId} is not null`),
+])
+
+export const venueMembers = pgTable('venue_members', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  venueId: cuid2('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  userId: cuid2('user_id').notNull().references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  role: varchar('role').notNull().$type<VenueMemberRole>(),
+}, (table) => [
+  uniqueIndex('venue_members_venue_user_idx').on(table.venueId, table.userId),
+  uniqueIndex('venue_members_one_owner_idx').on(table.venueId).where(sql`${table.role} = 'owner'`),
+  index('venue_members_user_idx').on(table.userId),
+  check('venue_members_role_check', sql`${table.role} in ('owner', 'editor')`),
+])
+
+export const venueClaims = pgTable('venue_claims', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  venueId: cuid2('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  userId: cuid2('user_id').notNull().references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  status: varchar('status').notNull().default('pending').$type<ClaimStatus>(),
+  channel: varchar('channel').notNull().$type<ClaimChannel>(),
+  destination: varchar('destination'),
+  codeHash: varchar('code_hash'),
+  codeExpiresAt: timestamp('code_expires_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  attempts: integer('attempts').notNull().default(0),
+  evidence: text('evidence'),
+  decidedAt: timestamp('decided_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  decidedBy: cuid2('decided_by').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+}, (table) => [
+  uniqueIndex('venue_claims_open_idx').on(table.venueId, table.userId).where(sql`${table.status} = 'pending'`),
+  index('venue_claims_status_idx').on(table.status, table.createdAt),
+  check('venue_claims_status_check', sql`${table.status} in ('pending', 'verified', 'rejected', 'withdrawn')`),
+  check('venue_claims_channel_check', sql`${table.channel} in ('email', 'phone', 'manual')`),
+])
+
+export const venueAudits = pgTable('venue_audits', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  venueId: cuid2('venue_id').notNull().references(() => venues.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  actorUserId: cuid2('actor_user_id').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+  action: varchar('action').notNull(),
+  summary: jsonb('summary').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+}, (table) => [
+  index('venue_audits_venue_idx').on(table.venueId, table.createdAt),
+])
 
 export const offers = pgTable('offers', {
   id: cuid2('id').defaultRandom().primaryKey(),

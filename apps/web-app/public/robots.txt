@@ -6,6 +6,7 @@ Disallow: /mcp
 Disallow: /map/
 Disallow: /sign-in
 Disallow: /preview
+Disallow: /kabinet
 
 User-agent: Yandex
 Allow: /
@@ -15,6 +16,7 @@ Disallow: /mcp
 Disallow: /map/
 Disallow: /sign-in
 Disallow: /preview
+Disallow: /kabinet
 Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid&gclid&fbclid
 Clean-param: i&c&t /podborki/
 Host: k39.online

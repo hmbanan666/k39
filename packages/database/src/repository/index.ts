@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { Analytics } from './analytics'
+import { VenueClaims } from './claims'
 import { Consent } from './consent'
 import { Content, Editor } from './content'
 import { EventLog } from './event-log'
@@ -24,6 +25,7 @@ class Repository {
   readonly scoring = Scoring
   readonly search = Search
   readonly user = User
+  readonly venueClaims = VenueClaims
   readonly venues = Venues
 
   async checkHealth(): Promise<boolean> {

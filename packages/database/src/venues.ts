@@ -149,6 +149,7 @@ export interface OsmDraft {
   district: string | null
   phone: string | null
   website: string | null
+  contactEmail: string | null
   socials: VenueSocial[]
   menuUrl: string | null
   reservation: VenueReservation | null
@@ -557,6 +558,15 @@ export function osmKind(tags: Record<string, string>) {
   return null
 }
 
+/** Official venue mailbox from OSM. Anything that is not a single address is dropped. */
+export function osmEmail(value: string | undefined) {
+  const text = (value || '').trim().toLowerCase().slice(0, 120)
+  if (!/^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/.test(text)) {
+    return null
+  }
+  return text
+}
+
 export function osmElementToDraft(element: OsmElement): OsmDraft | null {
   if (element.type !== 'node' && element.type !== 'way' && element.type !== 'relation') {
     return null
@@ -593,6 +603,7 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
     district,
     phone: (tags.phone || tags['contact:phone'] || '').trim().slice(0, 40) || null,
     website: (tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null,
+    contactEmail: osmEmail(tags.email || tags['contact:email']),
     socials: osmSocials(tags),
     menuUrl: osmUrl(tags['website:menu'] || tags['contact:menu'] || tags.menu),
     reservation: osmReservation(tags.reservation),
