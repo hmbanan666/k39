@@ -1,7 +1,10 @@
 <template>
   <article class="page page-wide venue">
     <UiBreadcrumbs :crumbs="page.doc.crumbs" />
-    <header class="hero">
+    <header
+      class="hero"
+      :class="{ 'hero-sticker': !cover }"
+    >
       <Postcard
         class="hero-card"
         :src="cover?.src || illustrationFor('food')"
@@ -48,8 +51,14 @@
         </template>
       </Postcard>
       <div class="hero-copy">
-        <p class="kicker">
-          {{ kicker }}
+        <p
+          v-if="kickerParts.length"
+          class="kicker"
+        >
+          <span
+            v-for="(part, index) in kickerParts"
+            :key="index"
+          >{{ part }}</span>
         </p>
         <h1>{{ page.doc.h1 }}</h1>
         <p
@@ -75,6 +84,12 @@
             {{ chip }}
           </li>
         </ul>
+        <p
+          v-if="venue.address"
+          class="hero-where"
+        >
+          {{ venue.address }}
+        </p>
       </div>
     </header>
     <div class="venue-body">
@@ -216,152 +231,153 @@
             </p>
           </aside>
         </template>
-        <template #after>
-          <section
-            v-if="showLegacyOrder"
-            :id="SECTIONS.order.id"
-            class="block"
-          >
-            <h2>{{ SECTIONS.order.title }}</h2>
-            <ul
-              v-if="venue.dishes.length"
-              class="dishes"
-            >
-              <li
-                v-for="dish in venue.dishes"
-                :key="dish.name"
-              >
-                <span class="dish-name">{{ dish.name }}</span>
-                <span
-                  v-if="dish.priceRub"
-                  class="dish-price"
-                >{{ rub(dish.priceRub) }}</span>
-                <span
-                  v-if="dish.note"
-                  class="dish-note"
-                >{{ dish.note }}</span>
-              </li>
-            </ul>
-            <p v-if="venue.menuUrl">
-              <UiLink
-                :href="venue.menuUrl"
-                data-track="outbound"
-                data-track-name="menu"
-              >
-                Всё меню на сайте заведения
-              </UiLink>
-            </p>
-          </section>
-          <section
-            v-if="interior.length"
-            :id="SECTIONS.inside.id"
-            class="block"
-          >
-            <h2>{{ SECTIONS.inside.title }}</h2>
-            <div class="inside">
-              <PlacePhoto
-                v-for="photo in interior"
-                :key="photo.id"
-                :media="photo"
-                sizes="(min-width: 900px) 260px, 50vw"
-                @open="openPhoto(photo.id)"
-              />
-            </div>
-          </section>
-          <section
-            v-if="showDirections"
-            :id="PAGE_SECTIONS.directions.id"
-            class="block"
-          >
-            <h2 :class="{ 'with-sticker': howToGetHtml }">
-              {{ PAGE_SECTIONS.directions.title }}
-              <Sticker
-                v-if="howToGetHtml"
-                slug="with-map"
-                :width="72"
-                decorative
-              />
-            </h2>
-            <p v-if="venue.address">
-              {{ venue.address }}
-            </p>
-            <ProseHtml
-              v-if="howToGetHtml"
-              class="reader-html"
-              :html="howToGetHtml"
-            />
-            <MapEmbed
-              v-if="hasCoords"
-              class="venue-map"
-              label="Карта заведения"
-              :focus-href="`/zavedeniya/${venue.slug}`"
-              :latitude="venue.latitude!"
-              :longitude="venue.longitude!"
-            />
-          </section>
-          <section
-            v-if="page.places.length"
-            :id="SECTIONS.see.id"
-            class="block"
-          >
-            <h2>{{ SECTIONS.see.title }}</h2>
-            <div class="near">
-              <PlaceCard
-                v-for="place in page.places"
-                :key="place.href"
-                :href="place.href"
-                :title="place.text"
-                :distance-km="place.distanceKm"
-                :kind="place.kind || ''"
-                :media="place.media"
-              />
-            </div>
-            <p
-              v-if="page.farPlaces.length"
-              class="far"
-            >
-              На машине:
-              <template
-                v-for="(place, index) in page.farPlaces"
-                :key="place.href"
-              >
-                <NuxtLink :to="place.href">
-                  {{ place.text }}
-                </NuxtLink>
-                ({{ formatKm(place.distanceKm) }}){{ index < page.farPlaces.length - 1 ? ', ' : '' }}
-              </template>
-            </p>
-          </section>
-          <section
-            v-if="venue.sources.length"
-            class="sources"
-          >
-            <h2>{{ PAGE_SECTIONS.sources.title }}</h2>
-            <p v-if="checkedLabel">
-              Факты проверены {{ checkedLabel }}.
-              <a
-                :href="errorHref"
-                data-track="outbound"
-                data-track-name="venue-error"
-              >Сообщить об ошибке</a>
-            </p>
-            <ul>
-              <li
-                v-for="source in venue.sources"
-                :key="source.url"
-              >
-                <UiLink
-                  :href="source.url"
-                  data-track="outbound"
-                  data-track-name="source"
-                >
-                  {{ source.title }}
-                </UiLink>
-              </li>
-            </ul>
-          </section>
-        </template>
       </ReaderLayout>
+      <div class="venue-tail">
+        <section
+          v-if="showLegacyOrder"
+          :id="SECTIONS.order.id"
+          class="block"
+        >
+          <h2>{{ SECTIONS.order.title }}</h2>
+          <ul
+            v-if="venue.dishes.length"
+            class="dishes"
+          >
+            <li
+              v-for="dish in venue.dishes"
+              :key="dish.name"
+            >
+              <span class="dish-name">{{ dish.name }}</span>
+              <span
+                v-if="dish.priceRub"
+                class="dish-price"
+              >{{ rub(dish.priceRub) }}</span>
+              <span
+                v-if="dish.note"
+                class="dish-note"
+              >{{ dish.note }}</span>
+            </li>
+          </ul>
+          <p v-if="venue.menuUrl">
+            <UiLink
+              :href="venue.menuUrl"
+              data-track="outbound"
+              data-track-name="menu"
+            >
+              Всё меню на сайте заведения
+            </UiLink>
+          </p>
+        </section>
+        <section
+          v-if="interior.length"
+          :id="SECTIONS.inside.id"
+          class="block"
+        >
+          <h2>{{ SECTIONS.inside.title }}</h2>
+          <div class="inside">
+            <PlacePhoto
+              v-for="photo in interior"
+              :key="photo.id"
+              :media="photo"
+              sizes="(min-width: 900px) 260px, 50vw"
+              @open="openPhoto(photo.id)"
+            />
+          </div>
+        </section>
+        <section
+          v-if="showDirections"
+          :id="PAGE_SECTIONS.directions.id"
+          class="block"
+        >
+          <h2 :class="{ 'with-sticker': howToGetHtml }">
+            {{ PAGE_SECTIONS.directions.title }}
+            <Sticker
+              v-if="howToGetHtml"
+              slug="with-map"
+              :width="72"
+              decorative
+            />
+          </h2>
+          <p v-if="showStreet">
+            {{ venue.address }}
+          </p>
+          <ProseHtml
+            v-if="howToGetHtml"
+            class="reader-html"
+            :html="howToGetHtml"
+          />
+          <MapEmbed
+            v-if="hasCoords"
+            class="venue-map"
+            label="Карта заведения"
+            :focus-href="`/zavedeniya/${venue.slug}`"
+            :latitude="venue.latitude!"
+            :longitude="venue.longitude!"
+          />
+        </section>
+        <section
+          v-if="page.places.length"
+          :id="SECTIONS.see.id"
+          class="block"
+        >
+          <h2>{{ SECTIONS.see.title }}</h2>
+          <div class="near">
+            <PlaceCard
+              v-for="place in page.places"
+              :key="place.href"
+              meta-place="stack"
+              :href="place.href"
+              :title="place.text"
+              :distance-km="place.distanceKm"
+              :kind="place.kind || ''"
+              :media="place.media"
+            />
+          </div>
+          <p
+            v-if="page.farPlaces.length"
+            class="far"
+          >
+            На машине:
+            <template
+              v-for="(place, index) in page.farPlaces"
+              :key="place.href"
+            >
+              <NuxtLink :to="place.href">
+                {{ place.text }}
+              </NuxtLink>
+              ({{ formatKm(place.distanceKm) }}){{ index < page.farPlaces.length - 1 ? ', ' : '' }}
+            </template>
+          </p>
+        </section>
+        <section
+          v-if="venue.sources.length"
+          class="sources"
+        >
+          <h2>{{ PAGE_SECTIONS.sources.title }}</h2>
+          <p v-if="checkedLabel">
+            Факты проверены {{ checkedLabel }}.
+            <a
+              :href="errorHref"
+              data-track="outbound"
+              data-track-name="venue-error"
+            >Сообщить об ошибке</a>
+          </p>
+          <ul>
+            <li
+              v-for="source in venue.sources"
+              :key="source.url"
+            >
+              <UiLink
+                :href="source.url"
+                data-track="outbound"
+                data-track-name="source"
+              >
+                {{ source.title }}
+              </UiLink>
+            </li>
+          </ul>
+        </section>
+      </div>
     </div>
     <PhotoViewer
       v-if="photos.length"
@@ -378,6 +394,7 @@ import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import type { StickerSlug } from '~~/shared/stickers'
 import type { PublicVenueModules } from '~~/shared/venue-modules'
+import { htmlContainsAddress } from '~~/shared/address'
 import { venueClaimPath } from '~~/shared/cabinet'
 import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
@@ -454,7 +471,7 @@ const SECTIONS = {
 const modules = venue.modules
 const orderedBlocks = modules ? presentVenueBlocks(modules.blocks) : []
 const hasDishesModule = Boolean(modules?.blocks.some((block) => block.type === 'dishes'))
-const showLegacyOrder = !hasDishesModule && (venue.dishes.length > 0 || Boolean(venue.menuUrl))
+const showLegacyOrder = !hasDishesModule && venue.dishes.length > 0
 const hasCoords = venue.latitude != null && venue.longitude != null
 const howToGetHtml = modules?.howToGetHtml ?? null
 const showDirections = Boolean(howToGetHtml) || hasCoords
@@ -468,7 +485,8 @@ const sectionsAfter = presentSections([
   [SECTIONS.see, props.page.places.length > 0],
 ])
 
-const kicker = [venue.kindLabel, venue.regionTitle].filter(Boolean).join(' · ')
+const kickerParts = [venue.kindLabel, venue.regionTitle].filter(Boolean)
+const showStreet = Boolean(venue.address) && !htmlContainsAddress(howToGetHtml, venue.address)
 const caption = venue.address ? venue.address.replace(/^[^,]+,\s*/, '') : venue.name
 const actions = venueActions(venue)
 const chips = [...venue.cuisine.slice(0, 3), ...venueServiceNotes(venue)]
@@ -522,11 +540,17 @@ function openPhoto(id: string) {
 <style scoped>
 .hero {
   display: grid;
-  gap: 1.6rem;
-  align-items: center;
-  padding-top: 0.4rem;
+  gap: 1.35rem;
+  align-items: start;
+  padding-top: 0.35rem;
 }
-.hero-card { margin: 0.8rem 0.7rem 0.2rem 0.15rem; }
+.hero-card { margin: 0.85rem 0.85rem 0.15rem 0.1rem; }
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
 .bento {
   display: grid;
   gap: 0.35rem;
@@ -542,29 +566,32 @@ function openPhoto(id: string) {
 .bento :deep(img) { height: 100%; aspect-ratio: auto; }
 .sticker-art {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   width: 100%;
-  aspect-ratio: 16 / 10;
-  padding-top: 1rem;
-  background: linear-gradient(160deg, var(--color-sea-light), var(--color-amber-soft));
+  min-height: 12.5rem;
+  padding: 1.15rem 1.75rem 0.45rem 0.55rem;
+  background: linear-gradient(165deg, var(--color-sea-light), var(--color-amber-soft));
 }
-.sticker-art :deep(.sticker) { width: min(240px, 46%); }
-.sticker-art :deep(img) { width: 100%; }
+.sticker-art :deep(.sticker) { width: min(220px, 72%); }
+.sticker-art :deep(img) { width: 100%; height: auto; }
 .kicker {
-  margin: 0 0 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.85rem;
+  margin: 0 0 0.4rem;
   color: var(--color-brick);
   font-family: var(--font-stamp);
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 1.15rem;
+  line-height: 1.2;
 }
 .hero-copy h1 {
-  margin: 0.35rem 0 0.7rem;
-  font-size: clamp(2.35rem, 1.15rem + 2.5vw, 3.5rem);
-  line-height: 1.05;
+  margin: 0 0 0.7rem;
+  font-size: clamp(2.4rem, 1.2rem + 2.6vw, 3.6rem);
+  line-height: 1.02;
   letter-spacing: -0.02em;
 }
+.hero-where { display: none; }
 .lede {
   max-width: 38ch;
   color: var(--color-ink);
@@ -574,11 +601,11 @@ function openPhoto(id: string) {
 .closed-note { margin: 1rem 0 0; color: var(--color-brick-dark); font-weight: 700; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0; padding: 0; list-style: none; }
 .chips li {
-  padding: 0.2rem 0.65rem;
+  padding: 0.28rem 0.75rem;
   border-radius: 999px;
   background: var(--color-amber-soft);
   color: var(--color-partner);
-  font-size: 0.85rem;
+  font-size: 0.92rem;
 }
 .venue-body { margin-top: 2.4rem; }
 .stale-note { color: var(--color-warn); }
@@ -600,9 +627,9 @@ function openPhoto(id: string) {
   background: repeating-linear-gradient(90deg, var(--color-brick) 0 18px, transparent 18px 26px, var(--color-sea) 26px 44px, transparent 44px 52px);
 }
 .facts h2 { margin: 0.35rem 0 0.3rem; font-size: 1.35rem; }
-.acts { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.9rem 0 0.4rem; }
-.acts > * { justify-content: center; text-align: center; }
-.acts .act-main { grid-column: 1 / -1; }
+.acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.9rem 0 0.4rem; }
+.acts > * { flex: 1 1 calc(50% - 0.5rem); justify-content: center; text-align: center; }
+.acts .act-main { flex-basis: 100%; }
 .fact {
   display: grid;
   grid-template-columns: 28px 1fr;
@@ -613,11 +640,9 @@ function openPhoto(id: string) {
 .fact svg { width: 22px; height: 22px; margin-top: 0.15rem; color: var(--color-brick); }
 .fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
 .fact .label {
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
   color: var(--muted);
-  font: 600 0.72rem/1 var(--font-body);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 600 0.84rem/1.2 var(--font-body);
 }
 .socials { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; }
 .checked {
@@ -669,21 +694,39 @@ function openPhoto(id: string) {
   scroll-snap-type: x mandatory;
   padding-bottom: 0.3rem;
 }
-.near > * { flex: 0 0 min(78%, 15rem); scroll-snap-align: start; }
+.near > * { flex: 0 0 min(78%, 16rem); scroll-snap-align: start; }
+.venue-tail { margin-top: 2.6rem; }
+.venue-tail :deep(figure.embed) { height: 22rem; }
 .sources {
+  max-width: 65ch;
   margin-top: 2.8rem;
   border-top: 1px solid var(--color-line);
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.92rem;
 }
 .sources h2 { margin: 1rem 0 0.4rem; color: var(--color-ink); font-size: 1rem; }
-.sources a { color: inherit; }
+.sources a { font-weight: 600; }
 .far { margin-top: 0.9rem; color: var(--muted); font-size: 0.92rem; }
 .sources ul { margin: 0 0 0.4rem; padding: 0; list-style: none; }
 @media (min-width: 1000px) {
-  .hero { grid-template-columns: 1.2fr 0.95fr; gap: 3rem; }
-  .venue-body { margin-top: 4rem; }
-  .near { display: grid; grid-template-columns: repeat(2, 1fr); overflow: visible; }
+  .hero { grid-template-columns: 1.15fr 0.9fr; gap: 2.75rem; align-items: stretch; }
+  .hero-copy { padding-top: 0.35rem; }
+  .hero-sticker { grid-template-columns: minmax(16rem, 24rem) minmax(0, 1fr); gap: 2.5rem; }
+  .hero-sticker .sticker-art :deep(.sticker) { width: min(220px, 68%); }
+  .hero-where {
+    display: block;
+    margin: 1.15rem 0 0;
+    color: var(--color-brick-dark);
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .hero-sticker .hero-where { margin-top: auto; padding-top: 1.15rem; }
+  .venue-body { margin-top: 3rem; }
+  .venue-tail :deep(figure.embed) { height: 26rem; }
+  .near { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
   .near > * { flex: none; }
 }
 </style>
