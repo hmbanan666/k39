@@ -1,5 +1,9 @@
 import { z } from 'zod'
 
+/** Audience card icons (Tabler line icons via shared/icons.ts `aud-*`). Default: `group`. */
+export const AUDIENCE_ICONS = ['group', 'family', 'kids', 'couple', 'solo', 'friends', 'beach', 'day-trip', 'tourist', 'local', 'pets', 'work'] as const
+export type AudienceIcon = typeof AUDIENCE_ICONS[number]
+
 // Venue page modules (docs/venue-modules.md). Stored in venues.modules,
 // edited through venue_update. Each module renders only with data.
 
@@ -29,7 +33,7 @@ export const venueModuleSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('audience'),
     title: title.optional(),
-    items: z.array(z.object({ who: short, text: z.string().trim().min(1).max(400) })).min(1).max(5),
+    items: z.array(z.object({ who: short, icon: z.enum(AUDIENCE_ICONS).optional(), text: z.string().trim().min(1).max(400) })).min(1).max(5),
   }),
   z.object({
     type: z.literal('practical'),
@@ -100,7 +104,7 @@ export const VENUE_MODULE_IDS: Record<VenueModule['type'], string> = {
 export type PublicVenueModule
   = | { type: 'text', id: string, title: string, variant: 'lead' | 'plain', html: string }
     | { type: 'dishes', id: string, title: string, items: { name: string, priceRub: number | null, note: string | null }[], note: string | null }
-    | { type: 'audience', id: string, title: string, items: { who: string, html: string }[] }
+    | { type: 'audience', id: string, title: string, items: { who: string, icon: AudienceIcon, html: string }[] }
     | { type: 'practical', id: string, title: string, items: { key: string, label: string, value: string }[] }
     | { type: 'best-time', id: string, title: string, html: string }
     | { type: 'tips', id: string, title: string, items: string[] }
@@ -150,7 +154,7 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
         blocks.push({ type: 'dishes', id: idFor('dishes'), title: heading, items: module.items.map((item) => ({ name: item.name, priceRub: item.priceRub ?? null, note: item.note ?? null })), note: module.note ?? null })
         break
       case 'audience':
-        blocks.push({ type: 'audience', id: idFor('audience'), title: heading, items: module.items.map((item) => ({ who: item.who, html: render(item.text) })) })
+        blocks.push({ type: 'audience', id: idFor('audience'), title: heading, items: module.items.map((item) => ({ who: item.who, icon: item.icon ?? 'group', html: render(item.text) })) })
         break
       case 'practical':
         blocks.push({ type: 'practical', id: idFor('practical'), title: heading, items: module.items })
