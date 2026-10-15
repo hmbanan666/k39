@@ -90,17 +90,24 @@
           >
             {{ venue.staleNote }}
           </p>
-          <h2
-            v-if="venue.html"
-            :id="ABOUT.id"
-          >
-            {{ ABOUT.title }}
-          </h2>
-          <div
-            v-if="venue.html"
-            class="reader-html"
-            v-html="venue.html"
+          <VenueModules
+            v-if="modules"
+            :blocks="modules.blocks"
+            :menu-url="venue.menuUrl"
           />
+          <template v-else>
+            <h2
+              v-if="venue.html"
+              :id="ABOUT.id"
+            >
+              {{ ABOUT.title }}
+            </h2>
+            <div
+              v-if="venue.html"
+              class="reader-html"
+              v-html="venue.html"
+            />
+          </template>
         </template>
         <template #lead>
           <section class="facts">
@@ -110,7 +117,7 @@
               :has-hours="venue.hours.length > 0"
             />
             <div
-              v-if="actions.primary || actions.secondary.length"
+              v-if="actions.primary || actions.secondary.length || hasCoords"
               class="acts"
             >
               <a
@@ -204,18 +211,19 @@
               decorative
             />
             <p>
-              Вы из «{{ venue.name }}»? Пришлите фото и меню, добавим бесплатно.
+              Вы из «{{ venue.name }}»? Добавим бесплатно фото зала, меню, бронь и
+              ответы на частые вопросы. Скоро здесь будет кабинет владельца, а пока
               <a
                 :href="ownerHref"
                 data-track="outbound"
                 data-track-name="venue-owner"
-              >Написать нам</a>
+              >напишите нам</a>.
             </p>
           </aside>
         </template>
         <template #after>
           <section
-            v-if="venue.dishes.length || venue.menuUrl"
+            v-if="showLegacyOrder"
             :id="SECTIONS.order.id"
             class="block"
           >
@@ -274,6 +282,11 @@
             <p v-if="venue.address">
               {{ venue.address }}
             </p>
+            <div
+              v-if="modules?.howToGetHtml"
+              class="reader-html"
+              v-html="modules.howToGetHtml"
+            />
             <MapEmbed
               class="venue-map"
               label="Карта заведения"
@@ -299,12 +312,35 @@
                 :media="place.media"
               />
             </div>
+            <p
+              v-if="page.farPlaces.length"
+              class="far"
+            >
+              На машине:
+              <template
+                v-for="(place, index) in page.farPlaces"
+                :key="place.href"
+              >
+                <NuxtLink :to="place.href">
+                  {{ place.text }}
+                </NuxtLink>
+                ({{ formatKm(place.distanceKm) }}){{ index < page.farPlaces.length - 1 ? ', ' : '' }}
+              </template>
+            </p>
           </section>
-          <details
+          <section
             v-if="venue.sources.length"
             class="sources"
           >
-            <summary>{{ PAGE_SECTIONS.sources.title }}</summary>
+            <h2>{{ PAGE_SECTIONS.sources.title }}</h2>
+            <p v-if="checkedLabel">
+              Факты проверены {{ checkedLabel }}.
+              <a
+                :href="errorHref"
+                data-track="outbound"
+                data-track-name="venue-error"
+              >Сообщить об ошибке</a>
+            </p>
             <ul>
               <li
                 v-for="source in venue.sources"
@@ -319,7 +355,7 @@
                 </UiLink>
               </li>
             </ul>
-          </details>
+          </section>
         </template>
       </ReaderLayout>
     </div>
@@ -337,6 +373,7 @@ import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import type { StickerSlug } from '~~/shared/stickers'
+import type { PublicVenueModules } from '~~/shared/venue-modules'
 import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
@@ -383,10 +420,12 @@ export interface VenuePageData {
     checkedAt: string | null
     regionTitle: string | null
     schedule: ScheduleRecord | null
+    modules: PublicVenueModules | null
   }
   photos: PublicMedia[]
   cover: PublicMedia | null
   places: Array<{ href: string, text: string, distanceKm: number, kind: string | null, media: PublicMedia | null }>
+  farPlaces: Array<{ href: string, text: string, distanceKm: number }>
 }
 
 const props = defineProps<{ page: VenuePageData }>()
@@ -406,10 +445,15 @@ const SECTIONS = {
   see: { id: 'ryadom-posmotret', title: 'Рядом посмотреть' },
 }
 
+const modules = venue.modules
+const hasDishesModule = Boolean(modules?.blocks.some((block) => block.type === 'dishes'))
+const showLegacyOrder = !hasDishesModule && (venue.dishes.length > 0 || Boolean(venue.menuUrl))
 const hasCoords = venue.latitude != null && venue.longitude != null
-const sectionsBefore = presentSections([[ABOUT, Boolean(venue.html)]])
+const sectionsBefore = modules
+  ? modules.blocks.map((block) => ({ id: block.id, title: block.title }))
+  : presentSections([[ABOUT, Boolean(venue.html)]])
 const sectionsAfter = presentSections([
-  [SECTIONS.order, venue.dishes.length > 0 || Boolean(venue.menuUrl)],
+  [SECTIONS.order, showLegacyOrder],
   [SECTIONS.inside, interior.length > 0],
   [PAGE_SECTIONS.directions, hasCoords],
   [SECTIONS.see, props.page.places.length > 0],
@@ -450,6 +494,8 @@ const heroSticker = heroStickerFor()
 
 const ownerSubject = encodeURIComponent(`Фото и меню: ${venue.name}`)
 const ownerHref = `mailto:${operator.email}?subject=${ownerSubject}`
+const errorHref = `mailto:${operator.email}?subject=${encodeURIComponent(`Ошибка на странице: ${venue.name}`)}`
+const formatKm = (km: number) => km < 10 ? `${km.toFixed(1).replace('.', ',')} км` : `${Math.round(km)} км`
 
 const heroSizes = '(min-width: 1000px) 720px, 100vw'
 const heroPreload = cover ? lcpPreload(cover, heroSizes) : null
@@ -621,7 +667,9 @@ function openPhoto(id: string) {
   color: var(--muted);
   font-size: 0.88rem;
 }
-.sources summary { width: fit-content; padding: 0.75rem 0; color: var(--color-ink); font-weight: 600; cursor: pointer; }
+.sources h2 { margin: 1rem 0 0.4rem; color: var(--color-ink); font-size: 1rem; }
+.sources a { color: inherit; }
+.far { margin-top: 0.9rem; color: var(--muted); font-size: 0.92rem; }
 .sources ul { margin: 0 0 0.4rem; padding: 0; list-style: none; }
 @media (min-width: 1000px) {
   .hero { grid-template-columns: 1.2fr 0.95fr; gap: 3rem; }

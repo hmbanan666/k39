@@ -28,6 +28,7 @@ import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { regionLabel } from '../../../shared/region'
 import { collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
+import { toPublicVenueModules } from '../../../shared/venue-modules'
 import { loadSchedule } from '../schedule'
 
 export function sponsoredVenuesEnabled() {
@@ -36,7 +37,10 @@ export function sponsoredVenuesEnabled() {
 
 const LISTING_SUMMARY = 'Кафе, кофейни и рестораны Калининградской области: часы, средний чек, адрес и как дойти от места. Карточки публикуются после проверки.'
 
-export async function eatNearby(origins: Array<{ latitude: number | null, longitude: number | null }>) {
+/** Venues a town page shows in «Где поесть рядом». */
+export const TOWN_EAT_LIMIT = 8
+
+export async function eatNearby(origins: Array<{ latitude: number | null, longitude: number | null }>, options: { limit?: number } = {}) {
   const points = origins.flatMap((point) => {
     if (point.latitude == null || point.longitude == null) {
       return []
@@ -44,7 +48,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
     return [{ latitude: point.latitude, longitude: point.longitude }]
   })
   const found = await db.venues.nearby(points)
-  const ranked = rankNearby(found, { sponsoredSlot: sponsoredVenuesEnabled(), limit: NEARBY_LIMIT })
+  const ranked = rankNearby(found, { sponsoredSlot: sponsoredVenuesEnabled(), limit: options.limit ?? NEARBY_LIMIT })
   const covers = await db.venues.coversFor(ranked.map((row) => row.id))
   // Rules only: the browser computes «открыто сейчас» from them (ADR 0028).
   const schedules = await Promise.all(ranked.map((row) => loadSchedule('venue', row.id)))
@@ -73,6 +77,29 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
       regionSlug: row.regionId ? regionSlugs.get(row.regionId) ?? null : null,
     }
   })
+}
+
+/** Places this far or closer are «рядом»; farther ones go to one line. */
+export const NEAR_PLACES_KM = 3
+
+function plainText(value: string) {
+  return value.replace(/[#*_>`[\]]/g, '').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * The hero lead: the SEO description, never the start of the body, so the
+ * page does not say the same thing twice. Hidden when the body opens with it.
+ */
+export function venueLead(seo: string | null, body: string, max = 180) {
+  const lead = seo?.trim() ? plainText(seo) : ''
+  if (!lead) {
+    return ''
+  }
+  const start = plainText(body).slice(0, 80).toLowerCase()
+  if (start && lead.toLowerCase().startsWith(start.slice(0, 60))) {
+    return ''
+  }
+  return venueSummary(lead, '', max)
 }
 
 /** One or two sentences for the hero: the SEO description, else the start of the description. */
@@ -134,6 +161,10 @@ async function loadVenue(slug: string) {
   const stale = isStale(venue.lastVerifiedAt, now)
   const closed = venue.status === 'closed'
   const missingDescription = descriptionLength(venue.description) === 0
+  const modules = toPublicVenueModules(venue.modules, renderMarkdown)
+  const town = region ? inTown(region.slug, regionLabel(region)) : ''
+  const firstBlock = modules?.blocks.find((block) => block.type === 'text')
+  const firstText = firstBlock?.type === 'text' ? firstBlock.html.replace(/<[^>]+>/g, ' ') : venue.description
   const doc = venueDocument({
     slug: venue.slug,
     name: venue.name,
@@ -152,10 +183,30 @@ async function loadVenue(slug: string) {
     seoDescription: venue.seoDescription,
     noindex: venue.noindex || closed || missingDescription,
     image: cover ? socialImage(cover, cover.alt || venue.name) : null,
+    kindLabel: kindLabel(venue.kind),
+    inTown: town.startsWith('в ') ? town : null,
+    regionSlug: region?.slug ?? null,
+    cuisineLabels: cuisineLabels(venue.cuisineTags, 6),
+    menuUrl: venue.menuUrl,
+    reservation: venue.reservation,
   })
+  const faq = modules?.blocks.find((block) => block.type === 'faq')
+  if (faq?.type === 'faq' && !doc.robots.includes('noindex')) {
+    doc.jsonLd.push({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      'mainEntity': faq.items.map((item) => ({
+        '@type': 'Question',
+        'name': item.question,
+        'acceptedAnswer': { '@type': 'Answer', 'text': item.html.replace(/<[^>]+>/g, '').trim() },
+      })),
+    })
+  }
   const sponsored = await db.venues.sponsoredIds([venue.id])
   const places = venue.latitude != null && venue.longitude != null
-    ? await db.content.nearest(venue.latitude, venue.longitude, '', 4)
+    ? (await db.content.nearest(venue.latitude, venue.longitude, '', 6))
+        // The town itself is in the crumbs, not a sight «рядом».
+        .filter((place) => place.slug !== region?.slug)
     : []
   const placeCovers = await db.content.coversFor(places.map((place) => place.place_id))
   return {
@@ -193,14 +244,15 @@ async function loadVenue(slug: string) {
       takeaway: venue.takeaway,
       delivery: venue.delivery,
       dishes: venue.signatureDishes ?? [],
-      summary: venueSummary(venue.seoDescription, venue.description),
+      summary: venueLead(venue.seoDescription, firstText),
+      modules,
       checkedAt: venue.lastVerifiedAt,
       regionTitle: region ? regionLabel(region) : null,
       schedule: await loadSchedule('venue', venue.id),
     },
     photos,
     cover,
-    places: places.map((place) => {
+    places: places.filter((place) => Number(place.distance_km) <= NEAR_PLACES_KM).slice(0, 4).map((place) => {
       const media = placeCovers.get(place.place_id)
       return {
         href: `/${place.slug}`,
@@ -210,6 +262,11 @@ async function loadVenue(slug: string) {
         media: media ? toPublicMedia(media) : null,
       }
     }),
+    farPlaces: places.filter((place) => Number(place.distance_km) > NEAR_PLACES_KM).slice(0, 3).map((place) => ({
+      href: `/${place.slug}`,
+      text: place.title,
+      distanceKm: Number(place.distance_km),
+    })),
   }
 }
 

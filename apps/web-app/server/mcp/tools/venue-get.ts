@@ -45,6 +45,7 @@ export default defineMcpTool({
       takeaway: venue.takeaway,
       delivery: venue.delivery,
       signatureDishes: venue.signatureDishes,
+      modules: venue.modules,
       description: venue.description,
       sources: venue.sources,
       status: venue.status,

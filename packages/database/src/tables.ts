@@ -310,6 +310,8 @@ export const venues = pgTable('venues', {
   takeaway: boolean('takeaway'),
   delivery: boolean('delivery'),
   signatureDishes: jsonb('signature_dishes').$type<VenueDish[]>().notNull().default(sql`'[]'::jsonb`),
+  // Page modules (docs/venue-modules.md), validated in the web app.
+  modules: jsonb('modules').$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
   description: text('description').notNull().default(''),
   sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
   status: varchar('status').notNull().default('draft').$type<VenueStatus>(),

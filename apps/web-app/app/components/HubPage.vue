@@ -63,6 +63,17 @@
               <p>
                 <a :href="EAT_NOW_PATH">Где поесть сейчас: что открыто по городам</a>
               </p>
+              <p v-if="eatTowns.length">
+                Заведения:
+                <template
+                  v-for="(town, index) in eatTowns"
+                  :key="town.slug"
+                >
+                  <NuxtLink :to="`/zavedeniya/${town.slug}`">
+                    {{ town.title }}
+                  </NuxtLink>{{ index < eatTowns.length - 1 ? ', ' : '' }}
+                </template>
+              </p>
             </div>
           </div>
         </section>
@@ -127,6 +138,9 @@ const page = await fetchPublic<{
   routes: { href: string, text: string }[]
 }>(`/api/public/hubs/${props.slug}`)
 const articleHtml = `${page.html}${page.bodyHtml}`
+const eatTowns = props.slug === 'eda'
+  ? (await fetchPublic<{ towns: Array<{ slug: string, title: string }> }>('/api/public/eat-now')).towns
+  : []
 const hrefs = page.places.map((place) => place.href)
 const sections = presentSections([
   [PAGE_SECTIONS.map, hrefs.length > 0],

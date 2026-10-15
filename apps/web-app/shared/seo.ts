@@ -266,11 +266,17 @@ export function placeNodeTypes(categorySlug: string): string | string[] {
 
 const FOOD_SERVICE = new Set(['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'fastfood'])
 
+const VENUE_SCHEMA: Record<string, string> = {
+  cafe: 'CafeOrCoffeeShop',
+  coffee: 'CafeOrCoffeeShop',
+  bakery: 'Bakery',
+  bar: 'BarOrPub',
+  fastfood: 'FastFoodRestaurant',
+  restaurant: 'Restaurant',
+}
+
 export function venueSchemaType(kind: string) {
-  if (kind === 'cafe' || kind === 'coffee') {
-    return 'CafeOrCoffeeShop'
-  }
-  return FOOD_SERVICE.has(kind) ? 'Restaurant' : 'LocalBusiness'
+  return VENUE_SCHEMA[kind] ?? (FOOD_SERVICE.has(kind) ? 'Restaurant' : 'LocalBusiness')
 }
 
 const TITLE_MAX = 70
@@ -507,13 +513,30 @@ const SCHEMA_DAY: Record<string, string> = {
   sun: 'Sunday',
 }
 
-function searchBlurb(text: string) {
-  const clean = text.replace(/\s+/g, ' ').trim()
-  if (clean.length <= 160) {
+/** Whole sentences up to 160 chars, so a snippet never stops mid-phrase. */
+export function searchBlurb(text: string, max = 160) {
+  const clean = text.replace(/[#*_>`[\]]/g, '').replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) {
     return clean
   }
-  const cut = clean.slice(0, 157).replace(/\s+\S*$/, '').trim()
-  return cut.length >= 110 ? cut : clean.slice(0, 160)
+  const sentences = clean.match(/[^.!?]+[.!?]+/g) ?? []
+  let out = ''
+  for (const sentence of sentences) {
+    if ((out + sentence).trim().length > max) {
+      break
+    }
+    out += sentence
+  }
+  if (out.trim().length >= 70) {
+    return out.trim()
+  }
+  return `${clean.slice(0, max - 1).replace(/\s+\S*$/, '').replace(/[,;:\s]+$/, '')}…`
+}
+
+/** «Сковородка, ресторан в Зеленоградске». */
+export function venueTitleBase(name: string, kindLabel?: string | null, inTownLabel?: string | null) {
+  const who = [kindLabel?.trim(), inTownLabel?.trim()].filter(Boolean).join(' ')
+  return who ? `${name}, ${who}` : name
 }
 
 export interface VenueSeoInput {
@@ -534,18 +557,31 @@ export interface VenueSeoInput {
   seoDescription?: string | null
   noindex?: boolean
   image?: SeoImage | null
+  /** «ресторан», shown in the title. */
+  kindLabel?: string | null
+  /** «в Зеленоградске», shown in the title. */
+  inTown?: string | null
+  /** Region crumb links to the town listing. */
+  regionSlug?: string | null
+  /** Human cuisine labels for servesCuisine. */
+  cuisineLabels?: string[]
+  menuUrl?: string | null
+  reservation?: string | null
 }
 
 export function venueDocument(input: VenueSeoInput): SeoDocument {
   const path = `/zavedeniya/${input.slug}`
-  const title = intentTitle(input.name, venueIntent(input), input.seoTitle)
+  const title = intentTitle(venueTitleBase(input.name, input.kindLabel, input.inTown), venueIntent(input), input.seoTitle)
   const description = pageDescription(searchBlurb(input.description || input.name), input.seoDescription, [
     input.regionTitle,
     input.address,
   ])
   const crumbs: Crumb[] = [
     { name: 'Главная', href: '/' },
-    { name: 'Заведения', href: '/zavedeniya' },
+    { name: 'Еда', href: '/eda' },
+    input.regionSlug && input.regionTitle
+      ? { name: input.regionTitle, href: `/zavedeniya/${input.regionSlug}` }
+      : { name: 'Заведения', href: '/zavedeniya' },
     { name: input.name, href: path },
   ]
   const image = input.image ?? DEFAULT_OG_IMAGE
@@ -579,9 +615,21 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
   if (input.priceLevel && input.priceLevel >= 1 && input.priceLevel <= 4) {
     node.priceRange = '₽'.repeat(input.priceLevel)
   }
-  const cuisine = (input.cuisine ?? []).map((item) => item.trim()).filter(Boolean)
+  const cuisine = (input.cuisineLabels?.length ? input.cuisineLabels : input.cuisine ?? []).map((item) => item.trim()).filter(Boolean)
   if (cuisine.length) {
     node.servesCuisine = cuisine
+  }
+  if (geo) {
+    node.hasMap = absoluteUrl(`/map?focus=${encodeURIComponent(path.slice(1))}`)
+  }
+  const menu = input.menuUrl?.trim()
+  if (menu?.startsWith('https://') || menu?.startsWith('http://')) {
+    node.hasMenu = menu
+  }
+  if (input.reservation === 'no') {
+    node.acceptsReservations = false
+  } else if (input.reservation) {
+    node.acceptsReservations = true
   }
   const specs = (input.hours ?? []).flatMap((day) => {
     if (day.closed || !day.opens || !day.closes) {
@@ -1105,6 +1153,9 @@ const SCHEMA_TYPES = new Set([
   'Answer',
   'Restaurant',
   'CafeOrCoffeeShop',
+  'Bakery',
+  'BarOrPub',
+  'FastFoodRestaurant',
   'LocalBusiness',
   'OpeningHoursSpecification',
   'GeoCoordinates',

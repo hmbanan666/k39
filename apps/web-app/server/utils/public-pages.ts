@@ -10,7 +10,7 @@ import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
 import { loadSchedule } from './schedule'
-import { eatNearby } from './venues/public'
+import { eatNearby, TOWN_EAT_LIMIT } from './venues/public'
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
   return {
@@ -249,7 +249,11 @@ export async function loadPlace(slug: string, page = 1) {
     groups,
     routeBand,
     sources: loaded.place.sources ?? [],
-    eatNearby: await eatNearby([{ latitude: loaded.place.latitude, longitude: loaded.place.longitude }]),
+    // A town page lists more of its venues, so each one gets a link from it.
+    eatNearby: await eatNearby(
+      [{ latitude: loaded.place.latitude, longitude: loaded.place.longitude }],
+      { limit: loaded.region?.slug === loaded.place.slug ? TOWN_EAT_LIMIT : undefined },
+    ),
   }
 }
 
