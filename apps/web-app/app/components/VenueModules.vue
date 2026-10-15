@@ -7,10 +7,10 @@
     class="vm"
     :class="`vm-${block.type}`"
   >
-    <h2 :class="{ 'with-sticker': block.type === 'audience' && audienceSticker }">
+    <h2 :class="{ 'with-sticker': block.type === 'audience' }">
       {{ block.title }}
       <Sticker
-        v-if="block.type === 'audience' && audienceSticker"
+        v-if="block.type === 'audience'"
         slug="with-heart"
         :width="72"
         decorative
@@ -154,8 +154,7 @@
 import type { PublicVenueModule } from '~~/shared/venue-modules'
 import { tablerIcon } from '~~/shared/icons'
 
-// `audienceSticker`: the page decides, so it stays within two stickers (docs/stickers.md).
-defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null, audienceSticker?: boolean }>()
+defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
 
 const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`

@@ -4,7 +4,7 @@ The K39 moose is a cartoon mascot. 68 stickers live in `apps/web-app/public/stic
 
 ## Usage rules
 
-- At most two stickers on one page. One is the norm. Zero is fine. A venue page with photos may also show `with-heart` on «Кому подойдёт» and `with-map` on «Как добраться» together: those headings are far apart.
+- At most two stickers on one page. One is the norm. Zero is fine. A sticker that belongs to a venue module is part of that module and is outside this count.
 - A sticker must say something about the task or the moment: an empty state, an error, a success, a season, the topic of the section. Never use one as decoration or filler.
 - Modals and dialogs may carry one sticker (sign-in, success, quest reward).
 - Never put a sticker inside place cards, lists, maps, or next to photos of real places. Never cover content or push the main answer below the fold.
