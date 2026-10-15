@@ -164,6 +164,8 @@ export interface VenueModuleView {
   mediaById?: ReadonlyMap<string, PublicMedia>
   /** «Сравниваем с другими заведениями Светлогорска». */
   priceLead?: string
+  /** Town slug for the price chip («по Светлогорску»). */
+  regionSlug?: string | null
 }
 
 /** Validates and renders stored modules. Invalid or empty input yields null. */
@@ -219,7 +221,7 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
             title: heading,
             items: prices,
             lead: view.priceLead || priceCompareLead(null),
-            summary: priceBlockSummary(prices.map((row) => row.comparison.band)),
+            summary: priceBlockSummary(prices.map((row) => row.comparison.band), view.regionSlug),
             source: sharedPriceSource(prices),
           })
         }

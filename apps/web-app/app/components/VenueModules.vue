@@ -199,7 +199,7 @@
               v-if="row.comparison.band"
               class="scale"
               role="img"
-              :aria-label="priceScaleLabel(row.comparison.band)"
+              :aria-label="row.comparison.scaleLabel"
             >
               <span class="track-wrap">
                 <span class="track">
@@ -281,7 +281,7 @@ import type { PublicMedia } from '~~/shared/media'
 import type { PublicVenueModule } from '~~/shared/venue-modules'
 import { tablerIcon } from '~~/shared/icons'
 import { licenseHref, licenseLabel } from '~~/shared/media'
-import { formatPriceDate, formatRub, PRICE_STICKER_WIDTH, priceScaleLabel } from '~~/shared/price-compare'
+import { formatPriceDate, formatRub, PRICE_STICKER_WIDTH } from '~~/shared/price-compare'
 import MetaLink from './MetaLink.vue'
 
 defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()

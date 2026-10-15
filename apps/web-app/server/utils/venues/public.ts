@@ -183,6 +183,7 @@ async function loadVenue(slug: string) {
     now,
     mediaById,
     priceLead: priceCompareLead(region?.slug ?? null),
+    regionSlug: region?.slug ?? null,
   })
   const town = region ? inTown(region.slug, regionLabel(region)) : ''
   const firstBlock = modules?.blocks.find((block) => block.type === 'text')
