@@ -212,6 +212,7 @@ const SEARCH_DONE = 'search-done'
 export async function runAnalyticsMaintenance(now = new Date()) {
   const today = dayStamp(now)
   await db.analytics.purgeRaw(now)
+  await db.search.purgeRaw(now)
   const yesterday = dayStamp(new Date(now.getTime() - 86_400_000))
   if (await db.analytics.claimRun(yesterday, 'rollup')) {
     await db.analytics.rollupDay(yesterday)

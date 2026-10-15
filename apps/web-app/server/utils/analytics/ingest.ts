@@ -31,7 +31,7 @@ function cookie(event: H3Event, name: string, value: string) {
   })
 }
 
-async function editorRequest(event: H3Event) {
+export async function editorRequest(event: H3Event) {
   try {
     const session = await getUserSession(event)
     const role = session.user?.role

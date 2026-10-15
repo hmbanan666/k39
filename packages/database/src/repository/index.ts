@@ -7,6 +7,7 @@ import { EventLog } from './event-log'
 import { MapCatalog } from './map'
 import { Schedules } from './schedules'
 import { Scoring } from './scoring'
+import { Search } from './search'
 import { User } from './user'
 import { Venues } from './venues'
 
@@ -19,6 +20,7 @@ class Repository {
   readonly map = MapCatalog
   readonly schedules = Schedules
   readonly scoring = Scoring
+  readonly search = Search
   readonly user = User
   readonly venues = Venues
 

@@ -576,3 +576,28 @@ export const scheduleIntervals = pgTable('schedule_intervals', {
   index('schedule_intervals_entity').on(table.entityType, table.entityId),
   index('schedule_intervals_time').on(table.startsAt, table.endsAt),
 ])
+
+// Site search events (ADR 0030). No cookie, no IP: the visitor key is the
+// ADR 0013 daily HMAC and the session key comes from the latest page view.
+export const searchEvents = pgTable('search_events', {
+  id: varchar('id').primaryKey(),
+  occurredAt: timestamp('occurred_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  searchId: varchar('search_id').notNull(),
+  eventType: varchar('event_type').notNull().$type<'search' | 'click'>(),
+  visitorKey: varchar('visitor_key').notNull(),
+  sessionKey: varchar('session_key'),
+  isBot: boolean('is_bot').notNull().default(false),
+  surface: varchar('surface'),
+  query: text('query'),
+  normalized: text('normalized'),
+  resultCount: integer('result_count'),
+  refinedFrom: varchar('refined_from'),
+  position: integer('position'),
+  resultPath: varchar('result_path'),
+}, (table) => [
+  index('search_events_occurred_idx').on(table.occurredAt),
+  index('search_events_search_idx').on(table.searchId),
+  index('search_events_session_idx').on(table.sessionKey, table.occurredAt),
+  index('search_events_normalized_idx').on(table.normalized, table.occurredAt),
+  check('search_events_type_check', sql`${table.eventType} in ('search', 'click')`),
+])
