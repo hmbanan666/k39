@@ -9,6 +9,7 @@
       <a href="/admin/taxonomy">Разделы</a>
       <a href="/admin/media">Медиа</a>
       <a href="/admin/analytics">Аналитика</a>
+      <a href="/admin/search">Поиск</a>
       <a href="/admin/content-scores">Оценки</a>
       <a href="/admin/consents">Согласия</a>
       <a href="/">На сайт</a>
