@@ -77,6 +77,7 @@ const SOCIAL_LABEL: Record<string, string> = {
   instagram: 'Instagram',
   whatsapp: 'WhatsApp',
   facebook: 'Facebook',
+  threads: 'Threads',
   youtube: 'YouTube',
   ok: 'Одноклассники',
 }

@@ -111,6 +111,18 @@
       >
         Ещё соцсеть
       </UiButton>
+      <p
+        v-if="metaContacts.length"
+        class="socials"
+      >
+        <MetaLink
+          v-for="(item, index) in metaContacts"
+          :key="`${item.label}-${item.href}-${index}`"
+          :href="item.href"
+        >
+          {{ item.label }}
+        </MetaLink>
+      </p>
     </fieldset>
     <fieldset>
       <legend>Цены</legend>
@@ -575,10 +587,13 @@
       </UiButton>
     </form>
   </section>
+  <MetaFootnote />
 </template>
 
 <script setup lang="ts">
 import { ofetch } from 'ofetch'
+import { metaProductFromHref } from '~~/shared/meta-links'
+import { socialLabel } from '~~/shared/venue-actions'
 import { AUDIENCE_ICONS, DISH_SHOWCASE_MAX, dishPriceIsFresh, isDishId, PRACTICAL_KEYS, VENUE_MODULE_TITLES } from '~~/shared/venue-modules'
 
 const props = defineProps<{ venueId: string }>()
@@ -668,6 +683,26 @@ const form = reactive({
   modules: [] as ModuleDraft[],
   dishes: [] as Array<{ name: string, priceRub: string, note: string }>,
   days: weekdays.map((weekday) => ({ weekday, closed: true, opens: '', closes: '' })) as Day[],
+})
+
+const metaContacts = computed(() => {
+  const items: Array<{ href: string, label: string }> = []
+  const push = (href: string, label: string) => {
+    const url = href.trim()
+    if (!url || !metaProductFromHref(url)) {
+      return
+    }
+    items.push({ href: url, label })
+  }
+  push(form.website, 'Сайт')
+  push(form.bookingUrl, 'Бронь')
+  push(form.orderUrl, 'Заказ')
+  push(form.deliveryUrl, 'Доставка')
+  push(form.menuUrl, 'Меню')
+  for (const social of form.socials) {
+    push(social.url, socialLabel(social.network.trim()) || 'Соцсеть')
+  }
+  return items
 })
 
 function blankDays() {
@@ -1105,6 +1140,7 @@ legend { padding: 0; font-weight: 700; }
   margin: 0.35rem 0;
 }
 .muted { margin: 0.2rem 0 0.4rem; color: var(--muted); font-size: 0.92rem; }
+.socials { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin: 0.4rem 0 0; }
 .error { color: var(--color-danger, var(--color-brick)); }
 .ok { color: var(--color-sea-dark, var(--color-ink)); }
 .photos { margin-top: 2rem; }

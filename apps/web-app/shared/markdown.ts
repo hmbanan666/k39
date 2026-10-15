@@ -1,4 +1,5 @@
 import { externalLinkAttrs } from './links'
+import { metaMarkHtml } from './meta-links'
 import { headingId } from './reader-nav'
 
 function escapeHtml(value: string) {
@@ -12,7 +13,7 @@ function escapeHtml(value: string) {
 function anchor(label: string, href: string) {
   const attrs = externalLinkAttrs(href)
   const extra = attrs.target ? ` target="${attrs.target}" rel="${attrs.rel}"` : ''
-  return `<a href="${href}"${extra}>${label}</a>`
+  return `<a href="${href}"${extra}>${label}${metaMarkHtml(href)}</a>`
 }
 
 function inline(value: string) {

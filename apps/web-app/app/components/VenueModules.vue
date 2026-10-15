@@ -16,11 +16,11 @@
         decorative
       />
     </h2>
-    <div
+    <ProseHtml
       v-if="block.type === 'text'"
       class="reader-html"
       :class="{ lead: block.variant === 'lead' }"
-      v-html="block.html"
+      :html="block.html"
     />
     <template v-else-if="block.type === 'dishes'">
       <ul class="showcase">
@@ -63,11 +63,12 @@
               class="credit"
             >
               <span v-if="dish.media.author">{{ dish.media.author }}</span>
-              <a
+              <MetaLink
                 v-if="licenseHref(dish.media.license)"
-                :href="licenseHref(dish.media.license)"
-                v-bind="externalLinkAttrs(licenseHref(dish.media.license))"
-              >{{ licenseLabel(dish.media.license) }}</a>
+                :href="licenseHref(dish.media.license) || ''"
+              >
+                {{ licenseLabel(dish.media.license) }}
+              </MetaLink>
               <span v-else-if="licenseLabel(dish.media.license)">{{ licenseLabel(dish.media.license) }}</span>
             </p>
           </div>
@@ -104,7 +105,7 @@
           /></span>
           {{ item.who }}
         </p>
-        <div v-html="item.html" />
+        <ProseHtml :html="item.html" />
       </li>
     </ul>
     <dl
@@ -125,10 +126,10 @@
         <dd>{{ item.value }}</dd>
       </div>
     </dl>
-    <div
+    <ProseHtml
       v-else-if="block.type === 'best-time'"
       class="reader-html"
-      v-html="block.html"
+      :html="block.html"
     />
     <ul
       v-else-if="block.type === 'tips'"
@@ -154,7 +155,7 @@
           :key="row.slug + row.variant"
         >
           <component
-            :is="row.href ? 'a' : 'div'"
+            :is="row.href ? 'MetaLink' : 'div'"
             class="price-card"
             v-bind="row.href ? { href: row.href } : {}"
           >
@@ -254,7 +255,7 @@
         open
       >
         <summary>{{ item.question }}</summary>
-        <div v-html="item.html" />
+        <ProseHtml :html="item.html" />
       </details>
     </div>
   </section>
@@ -264,7 +265,6 @@
 import type { PublicMedia } from '~~/shared/media'
 import type { PublicVenueModule } from '~~/shared/venue-modules'
 import { tablerIcon } from '~~/shared/icons'
-import { externalLinkAttrs } from '~~/shared/links'
 import { licenseHref, licenseLabel } from '~~/shared/media'
 import { formatPriceDate, formatRub, priceScaleLabel } from '~~/shared/price-compare'
 

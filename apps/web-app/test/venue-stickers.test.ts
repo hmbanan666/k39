@@ -11,6 +11,8 @@ const stubs = {
   },
   Icon: true,
   UiLink: true,
+  MetaLink: true,
+  ProseHtml: { props: ['html'], template: '<div v-html="html" />' },
 }
 
 describe('venue module stickers', () => {

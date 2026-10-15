@@ -16,7 +16,7 @@
         </AccordionTrigger>
       </AccordionHeader>
       <AccordionContent class="accordion-content">
-        <div v-html="item.html" />
+        <ProseHtml :html="item.html" />
       </AccordionContent>
     </AccordionItem>
   </AccordionRoot>

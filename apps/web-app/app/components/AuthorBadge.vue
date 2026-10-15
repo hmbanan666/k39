@@ -1,10 +1,9 @@
 <template>
   <p class="badge">
-    <component
-      :is="profileHref ? 'a' : 'span'"
+    <MetaLink
+      v-if="profileHref"
       class="who"
-      :href="profileHref || undefined"
-      v-bind="profileHref ? externalLinkAttrs(profileHref) : {}"
+      :href="profileHref"
     >
       <span class="avatar">
         <img
@@ -15,29 +14,44 @@
         <span v-else>{{ initials }}</span>
       </span>
       <span class="name">{{ author.name }}</span>
-    </component>
-    <a
+    </MetaLink>
+    <span
+      v-else
+      class="who"
+    >
+      <span class="avatar">
+        <img
+          v-if="author.avatarUrl"
+          :src="author.avatarUrl"
+          alt=""
+        >
+        <span v-else>{{ initials }}</span>
+      </span>
+      <span class="name">{{ author.name }}</span>
+    </span>
+    <MetaLink
       v-if="licenseUrl"
       class="license"
       :href="licenseUrl"
-      v-bind="externalLinkAttrs(licenseUrl)"
-    >{{ label }}</a>
+    >
+      {{ label }}
+    </MetaLink>
     <span
       v-else-if="label"
       class="license"
     >{{ label }}</span>
-    <a
+    <MetaLink
       v-if="author.sourceUrl"
       class="source"
       :href="author.sourceUrl"
-      v-bind="externalLinkAttrs(author.sourceUrl)"
-    >Источник</a>
+    >
+      Источник
+    </MetaLink>
   </p>
 </template>
 
 <script setup lang="ts">
 import type { AuthorBadgeData } from '~~/shared/media'
-import { externalLinkAttrs } from '~~/shared/links'
 import { authorInitials, licenseHref, licenseLabel } from '~~/shared/media'
 
 const props = defineProps<{ author: AuthorBadgeData }>()

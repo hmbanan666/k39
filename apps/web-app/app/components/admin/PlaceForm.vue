@@ -52,7 +52,7 @@
       </UiField>
       <div class="preview">
         <h2>Предпросмотр</h2>
-        <div v-html="preview" />
+        <ProseHtml :html="preview" />
       </div>
       <UiField label="Часы">
         <UiInput v-model="form.hours" />
@@ -139,6 +139,7 @@
         {{ message }}
       </p>
     </form>
+    <MetaFootnote />
   </main>
 </template>
 
