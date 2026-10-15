@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import VenueModules from '../app/components/VenueModules.vue'
+import { TABLER_ICONS } from '../shared/icons'
 import {
   buildPublicPrices,
   compareVenuePrice,
@@ -9,12 +10,16 @@ import {
   isPriceIndexable,
   ofTown,
   onePricePerVenue,
+  PRICE_CATEGORY_ICONS,
   PRICE_FEW_DATA,
   PRICE_ITEM_ICONS,
+  PRICE_ITEM_IMAGES,
   PRICE_TOP,
   priceBlockSummary,
   priceItemIcon,
+  priceItemImage,
   priceListingMeta,
+  safePriceImage,
   sharedPriceSource,
 } from '../shared/price-compare'
 import { collectionDocument } from '../shared/seo'
@@ -84,10 +89,23 @@ describe('price comparison', () => {
   })
 
   it('names icons per catalog item and falls back by category, then ticket', () => {
-    expect(priceItemIcon('cappuccino', 'coffee')).toBe(PRICE_ITEM_ICONS.cappuccino)
-    expect(priceItemIcon('philadelphia', 'sushi')).toBe('fish')
-    expect(priceItemIcon('latte', 'coffee')).toBe('coffee')
+    const slugs = ['latte', 'raf', 'espresso', 'pepperoni', 'carbonara', 'shawarma', 'pelmeni', 'bliny', 'tom-yum', 'ramen', 'salmon-steak', 'draniki', 'klopsy', 'mors', 'lemonade', 'mulled-wine', 'croissant', 'cheesecake', 'syrniki', 'tea-lemon', 'orange-juice', 'beer', 'margherita', 'burger', 'philadelphia', 'caesar', 'borscht', 'ukha', 'smoked-fish', 'business-lunch', 'americano', 'cappuccino']
+    const categories = ['coffee', 'bakery', 'dessert', 'breakfast', 'tea', 'drinks', 'beer', 'pizza', 'burger', 'street-food', 'sushi', 'salad', 'soup', 'pasta', 'main', 'fish', 'lunch']
+    for (const slug of slugs) {
+      expect(PRICE_ITEM_ICONS[slug] in TABLER_ICONS).toBe(true)
+    }
+    for (const category of categories) {
+      expect(PRICE_CATEGORY_ICONS[category] in TABLER_ICONS).toBe(true)
+      expect(priceItemIcon(`new-${category}`, category)).toBe(PRICE_CATEGORY_ICONS[category])
+    }
     expect(priceItemIcon('unknown', 'nope')).toBe('price')
+    expect(safePriceImage('javascript:alert(1)')).toBeNull()
+    expect(priceItemImage('latte', 'https://cdn.example/latte.webp')).toBe('https://cdn.example/latte.webp')
+    expect(priceItemImage('latte', null)).toBeNull()
+    PRICE_ITEM_IMAGES.latte = '/stickers/latte.webp'
+    expect(priceItemImage('latte', null)).toBe('/stickers/latte.webp')
+    expect(priceItemImage('latte', 'https://cdn.example/latte.webp')).toBe('https://cdn.example/latte.webp')
+    delete PRICE_ITEM_IMAGES.latte
     expect(ofTown('svetlogorsk')).toBe('Светлогорска')
     expect(ofTown('missing')).toBe('региона')
     expect(ofTown(null)).toBe('региона')
@@ -203,6 +221,7 @@ describe('price cards', () => {
     sourceTitle: 'Меню на сайте заведения',
     sourceUrl: 'https://cafe.example/menu',
     icon: 'coffee',
+    image: null,
     href: '/ceny/cappuccino/svetlogorsk',
     comparison: { band: 'cheap' as const, position: 23, line: 'дешевле, чем в 7 из 10 мест Светлогорска' },
   }
@@ -229,7 +248,7 @@ describe('price cards', () => {
   }
 
   it('renders the same card layout, one shared footnote, and the conclusion', () => {
-    const wrapper = mountPrices([card, { ...card, slug: 'americano', title: 'Американо', priceRub: 140, icon: 'cup' }], 'Цены ниже среднего по региону', {
+    const wrapper = mountPrices([card, { ...card, slug: 'americano', title: 'Американо', priceRub: 140, icon: 'cup', image: '/stickers/americano.webp' }], 'Цены ниже среднего по региону', {
       title: 'Меню на сайте заведения',
       url: 'https://cafe.example/menu',
       when: '1 октября 2026 г.',
@@ -243,6 +262,8 @@ describe('price cards', () => {
     expect(cards[0]?.text()).toContain('дешевле, чем в 7 из 10 мест Светлогорска')
     expect(cards[0]?.text()).toContain('дёшево')
     expect(wrapper.find('.stub-icon').attributes('data-name')).toBe('tabler:coffee')
+    expect(wrapper.findAll('.stub-icon')).toHaveLength(1)
+    expect(wrapper.find('img').attributes('src')).toBe('/stickers/americano.webp')
     expect(wrapper.text()).toContain('Цены ниже среднего по региону')
     const links = wrapper.findAll('.stub-link')
     expect(links).toHaveLength(1)

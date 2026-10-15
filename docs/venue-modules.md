@@ -68,9 +68,14 @@ No full menus. A venue shows a few familiar benchmark items so a visitor can
 tell, in one glance, whether this place is cheap or expensive.
 
 - `price_items` is the shared catalog: `slug`, `title`, `category`,
-  `default_variant`, `sort_order`. Seeded with капучино (`cappuccino`),
-  американо, пицца «Маргарита», ролл «Филадельфия», борщ, бургер. Edit with
-  `price_items_list` and `price_item_upsert`.
+  `default_variant`, `sort_order`, and an optional `image`. The live catalog
+  includes latte, raf, espresso, pepperoni, carbonara, shawarma, pelmeni,
+  bliny, tom-yum, ramen, salmon-steak, draniki, klopsy, mors, lemonade,
+  mulled-wine, croissant, cheesecake, syrniki, tea-lemon, orange-juice, beer,
+  margherita, burger, philadelphia, caesar, borscht, ukha, smoked-fish,
+  business-lunch, americano, and cappuccino. Edit with `price_items_list` and
+  `price_item_upsert`. `image` is a site path or an https URL. Null clears it.
+  Omitting it on an update keeps the stored picture.
 - `venue_prices` holds one row per venue, item and variant: `price_rub`,
   `checked_at`, `source_kind` (`official` with a URL to the venue's own menu,
   site or socials, or `owner`), `source_title`, `source_url`. Set with
@@ -81,9 +86,13 @@ tell, in one glance, whether this place is cheap or expensive.
 The public block is a grid of equal cards, one per catalog row. Every card
 has the same slots:
 
-- an icon in the audience-card style (dashed circle, amber fill). The icon
-  is chosen per catalog slug in `PRICE_ITEM_ICONS` (`apps/web-app/shared/price-compare.ts`),
-  then by category, then the ticket icon;
+- an icon in the audience-card style (dashed circle, amber fill). A picture
+  wins when the catalog row's `image` is set, otherwise `PRICE_ITEM_IMAGES[slug]`
+  in `apps/web-app/shared/price-compare.ts` (empty until the sticker art lands).
+  Without a picture the card uses `PRICE_ITEM_ICONS[slug]`, then
+  `PRICE_CATEGORY_ICONS` (`coffee`, `bakery`, `dessert`, `breakfast`, `tea`,
+  `drinks`, `beer`, `pizza`, `burger`, `street-food`, `sushi`, `salad`,
+  `soup`, `pasta`, `main`, `fish`, `lunch`), then the ticket icon;
 - the item name and its portion or volume;
 - a large price;
 - a comparison, computed on the server from `db.prices.forItem` (published

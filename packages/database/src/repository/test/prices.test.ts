@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { venues } from '../../tables'
 import { Editor } from '../content'
-import { Prices } from '../prices'
+import { normalizePriceItemImage, Prices } from '../prices'
 import { Venues } from '../venues'
 
 const DAY = 86_400_000
@@ -93,5 +93,20 @@ describe('price catalog', () => {
     expect(fresh).toEqual([])
     const own = await Prices.freshForVenue(cheap.id)
     expect(own.map((item) => item.priceRub).sort((a, b) => a - b)).toEqual([150, 220])
+  })
+
+  it('stores an optional catalog picture and keeps it when an update omits it', async () => {
+    expect(() => normalizePriceItemImage('javascript:alert(1)')).toThrow(/Картинка/)
+    const row = await Prices.upsertItem({
+      slug: 'latte',
+      title: 'Латте',
+      category: 'coffee',
+      image: '/stickers/latte.webp',
+    })
+    expect(row?.image).toBe('/stickers/latte.webp')
+    const kept = await Prices.upsertItem({ slug: 'latte', title: 'Латте', category: 'coffee' })
+    expect(kept?.image).toBe('/stickers/latte.webp')
+    const cleared = await Prices.upsertItem({ slug: 'latte', title: 'Латте', category: 'coffee', image: null })
+    expect(cleared?.image).toBeNull()
   })
 })

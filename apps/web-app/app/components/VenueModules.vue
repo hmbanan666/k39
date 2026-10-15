@@ -162,7 +162,15 @@
               class="price-icon"
               aria-hidden="true"
             >
+              <img
+                v-if="row.image"
+                :src="row.image"
+                alt=""
+                width="22"
+                height="22"
+              >
               <Icon
+                v-else
                 :name="tablerIcon(row.icon)"
                 size="22"
               />
@@ -366,6 +374,7 @@ function dishCredit(media: PublicMedia) {
   background: var(--color-amber-soft);
   color: var(--accent);
 }
+.price-icon img { width: 22px; height: 22px; object-fit: contain; }
 .price-name { font-weight: 700; line-height: 1.25; }
 .price-variant { min-height: 1.25em; color: var(--muted); font-size: 0.92rem; }
 .price-rub {

@@ -17,6 +17,19 @@ export interface VenuePriceInput {
 /** Prices older than this are not shown. */
 export const PRICE_FRESH_DAYS = 365
 
+/** A catalog picture is a site path or an https URL. Empty clears it. */
+export function normalizePriceItemImage(value: string | null | undefined) {
+  const text = value?.trim() ?? ''
+  if (!text) {
+    return null
+  }
+  const sitePath = text.startsWith('/') && !text.startsWith('//') && !text.includes('..')
+  if (sitePath || text.startsWith('https://')) {
+    return text
+  }
+  throw new Error('Картинка позиции: путь от корня сайта или https-ссылка')
+}
+
 function freshCutoff(now = new Date()) {
   return new Date(now.getTime() - PRICE_FRESH_DAYS * 86_400_000).toISOString().slice(0, 10)
 }
@@ -26,17 +39,25 @@ export class Prices {
     return useDatabase().select().from(priceItems).orderBy(asc(priceItems.sortOrder), asc(priceItems.slug))
   }
 
-  static async upsertItem(input: { slug: string, title: string, category: string, defaultVariant?: string | null, sortOrder?: number }) {
+  static async upsertItem(input: { slug: string, title: string, category: string, defaultVariant?: string | null, sortOrder?: number, image?: string | null }) {
+    const image = input.image === undefined ? undefined : normalizePriceItemImage(input.image)
     const values = {
       slug: input.slug.trim().toLowerCase(),
       title: input.title.trim(),
       category: input.category.trim().toLowerCase(),
       defaultVariant: input.defaultVariant?.trim() || null,
       sortOrder: input.sortOrder ?? 0,
+      image: image ?? null,
     }
     const [row] = await useDatabase().insert(priceItems).values(values).onConflictDoUpdate({
       target: priceItems.slug,
-      set: { title: values.title, category: values.category, defaultVariant: values.defaultVariant, sortOrder: values.sortOrder },
+      set: {
+        title: values.title,
+        category: values.category,
+        defaultVariant: values.defaultVariant,
+        sortOrder: values.sortOrder,
+        ...(image === undefined ? {} : { image }),
+      },
     }).returning()
     return row
   }
@@ -48,6 +69,7 @@ export class Prices {
       item: priceItems.slug,
       title: priceItems.title,
       category: priceItems.category,
+      image: priceItems.image,
       variant: venuePrices.variant,
       priceRub: venuePrices.priceRub,
       checkedAt: venuePrices.checkedAt,

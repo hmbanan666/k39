@@ -45,6 +45,8 @@ export interface PublicPriceCard {
   sourceTitle: string
   sourceUrl: string | null
   icon: string
+  /** Sticker or illustration. Null keeps the line icon. */
+  image: string | null
   href: string
   comparison: PriceComparison
 }
@@ -55,26 +57,71 @@ export interface SharedPriceSource {
   when: string
 }
 
-/** Tabler keys. A new catalog slug gets an entry here; category is the fallback. */
+/**
+ * Tabler keys for the live catalog. A sticker path in `PRICE_ITEM_IMAGES`
+ * or `price_items.image` replaces the line icon for that slug.
+ */
 export const PRICE_ITEM_ICONS: Record<string, string> = {
-  cappuccino: 'coffee',
-  americano: 'cup',
-  margherita: 'pizza',
-  philadelphia: 'fish',
-  borscht: 'bowl',
-  burger: 'burger',
+  'latte': 'mug',
+  'raf': 'glass',
+  'espresso': 'cup',
+  'pepperoni': 'pizza',
+  'carbonara': 'meat',
+  'shawarma': 'grill',
+  'pelmeni': 'dumpling',
+  'bliny': 'flame',
+  'tom-yum': 'soup',
+  'ramen': 'bowl-chopsticks',
+  'salmon-steak': 'fish',
+  'draniki': 'flame',
+  'klopsy': 'meat',
+  'mors': 'glass',
+  'lemonade': 'lemon',
+  'mulled-wine': 'glass-full',
+  'croissant': 'baguette',
+  'cheesecake': 'cake',
+  'syrniki': 'cheese',
+  'tea-lemon': 'lemon',
+  'orange-juice': 'glass',
+  'beer': 'beer',
+  'margherita': 'pizza',
+  'burger': 'burger',
+  'philadelphia': 'fish',
+  'caesar': 'salad',
+  'borscht': 'soup',
+  'ukha': 'soup',
+  'smoked-fish': 'fish',
+  'business-lunch': 'tools-kitchen-2',
+  'americano': 'cup',
+  'cappuccino': 'coffee',
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  coffee: 'coffee',
-  pizza: 'pizza',
-  sushi: 'fish',
-  soup: 'bowl',
-  burger: 'burger',
-  dessert: 'ice-cream',
-  bakery: 'bread',
-  drink: 'glass-full',
+/** Used when a slug has no icon of its own. */
+export const PRICE_CATEGORY_ICONS: Record<string, string> = {
+  'coffee': 'coffee',
+  'bakery': 'bread',
+  'dessert': 'cake',
+  'breakfast': 'egg',
+  'tea': 'mug',
+  'drinks': 'glass',
+  'beer': 'beer',
+  'pizza': 'pizza',
+  'burger': 'burger',
+  'street-food': 'grill',
+  'sushi': 'fish',
+  'salad': 'salad',
+  'soup': 'soup',
+  'pasta': 'meat',
+  'main': 'tools-kitchen-2',
+  'fish': 'fish',
+  'lunch': 'tools-kitchen-2',
 }
+
+/**
+ * Optional picture per catalog slug. A site path (`/stickers/latte.webp`) or
+ * an https URL. The catalog row's `image` wins when it is set.
+ */
+export const PRICE_ITEM_IMAGES: Partial<Record<string, string>> = {}
 
 /** Genitive town names for «мест Светлогорска». Unknown slugs stay «региона». */
 const OF_TOWN: Record<string, string> = {
@@ -103,7 +150,25 @@ const SCALE_LABEL: Record<PriceBand, string> = {
 }
 
 export function priceItemIcon(slug: string, category: string) {
-  return PRICE_ITEM_ICONS[slug] ?? CATEGORY_ICONS[category] ?? 'price'
+  return PRICE_ITEM_ICONS[slug] ?? PRICE_CATEGORY_ICONS[category] ?? 'price'
+}
+
+/** A picture the card may show: a site path or an https URL. Anything else is dropped. */
+export function safePriceImage(value: string | null | undefined) {
+  const text = value?.trim() ?? ''
+  if (!text) {
+    return null
+  }
+  const sitePath = text.startsWith('/') && !text.startsWith('//') && !text.includes('..')
+  if (sitePath || text.startsWith('https://')) {
+    return text
+  }
+  return null
+}
+
+/** Row image, then the code map. Null means the line icon. */
+export function priceItemImage(slug: string, stored?: string | null) {
+  return safePriceImage(stored) ?? safePriceImage(PRICE_ITEM_IMAGES[slug] ?? null)
 }
 
 export function priceItemPath(slug: string, regionSlug?: string | null) {
@@ -277,6 +342,7 @@ export function buildPublicPrices(input: {
     checkedAt: string
     sourceTitle: string
     sourceUrl: string | null
+    image?: string | null
   }>
   peersByItem: Record<string, CatalogPricePoint[]>
 }): PublicPriceCard[] {
@@ -292,6 +358,7 @@ export function buildPublicPrices(input: {
       sourceTitle: row.sourceTitle,
       sourceUrl: row.sourceUrl,
       icon: priceItemIcon(row.item, row.category),
+      image: priceItemImage(row.item, row.image),
       href: listingHref(row.item, input.regionSlug, input.regionId, peers),
       comparison: compareVenuePrice({
         venueId: input.venueId,

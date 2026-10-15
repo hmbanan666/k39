@@ -358,6 +358,8 @@ export const priceItems = pgTable('price_items', {
   category: varchar('category').notNull(),
   defaultVariant: varchar('default_variant'),
   sortOrder: integer('sort_order').notNull().default(0),
+  // Optional sticker or illustration. A site path or https URL. Null keeps the line icon.
+  image: varchar('image'),
   createdAt: createdAt(),
 })
 
