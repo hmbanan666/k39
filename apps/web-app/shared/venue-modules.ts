@@ -1,8 +1,8 @@
 import type { PublicMedia } from './media'
-import type { PriceSummary, PublicPriceCard, SharedPriceSource } from './price-compare'
+import type { PriceSummary, PublicPriceCard, SharedPriceSource, StoredPriceBand } from './price-compare'
 import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
-import { priceBlockSummary, priceCompareLead, sharedPriceSource } from './price-compare'
+import { priceBadgeFromBand, priceCompareLead, sharedPriceSource } from './price-compare'
 
 /** Audience card icons (Tabler line icons via shared/icons.ts `aud-*`). Default: `group`. */
 export const AUDIENCE_ICONS = ['group', 'family', 'kids', 'couple', 'solo', 'friends', 'beach', 'day-trip', 'tourist', 'local', 'pets', 'work'] as const
@@ -184,6 +184,8 @@ export interface VenueModuleView {
   priceLead?: string
   /** Town slug for the price chip («по Светлогорску»). */
   regionSlug?: string | null
+  /** Stored comparison. The badge does not recompute this from the cards. */
+  priceBand?: StoredPriceBand | null
 }
 
 /** Validates and renders stored modules. Invalid or empty input yields null. */
@@ -239,7 +241,7 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
             title: heading,
             items: prices,
             lead: view.priceLead || priceCompareLead(null),
-            summary: priceBlockSummary(prices.map((row) => row.comparison.band), view.regionSlug),
+            summary: priceBadgeFromBand(view.priceBand, view.regionSlug),
             source: sharedPriceSource(prices),
           })
         }

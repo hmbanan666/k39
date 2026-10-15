@@ -298,6 +298,11 @@ export const venues = pgTable('venues', {
   latitude: doublePrecision('latitude'),
   longitude: doublePrecision('longitude'),
   priceLevel: integer('price_level'),
+  /** Computed comparison: low, mid, or high. Null until enough published peers exist. Not the 1–4 editorial mark. */
+  priceBand: varchar('price_band').$type<'low' | 'mid' | 'high' | null>(),
+  priceBandComputedAt: timestamp('price_band_computed_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  /** How many of this venue's prices had a town comparison when the band was stored. */
+  priceBandBasis: integer('price_band_basis'),
   avgCheck: integer('avg_check'),
   hours: jsonb('hours').$type<VenueHours>().notNull().default(sql`'{"days":[],"note":null}'::jsonb`),
   phone: varchar('phone'),
@@ -328,6 +333,9 @@ export const venues = pgTable('venues', {
   index('venues_kind_idx').on(table.kind),
   index('venues_region_idx').on(table.regionId),
   check('venues_price_level_check', sql`${table.priceLevel} is null or ${table.priceLevel} between 1 and 4`),
+  check('venues_price_band_check', sql`${table.priceBand} is null or ${table.priceBand} in ('low', 'mid', 'high')`),
+  check('venues_price_band_basis_check', sql`${table.priceBandBasis} is null or ${table.priceBandBasis} >= 0`),
+  index('venues_price_band_idx').on(table.regionId, table.priceBand),
   check('venues_avg_check_check', sql`${table.avgCheck} is null or ${table.avgCheck} >= 0`),
   check('venues_status_check', sql`${table.status} in ('draft', 'published', 'closed', 'archived')`),
   check('venues_reservation_check', sql`${table.reservation} is null or ${table.reservation} in ('yes', 'no', 'required', 'recommended')`),

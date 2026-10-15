@@ -1,6 +1,6 @@
 import type { SourceLink } from '../types/entities'
 import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import {
@@ -488,6 +488,26 @@ export class Venues {
     }
     await useDatabase().delete(venues).where(eq(venues.id, current.id))
     return { id: current.id, slug: current.slug, action: 'deleted' as const }
+  }
+
+  /** Every venue in a town, including drafts. A null region is its own group. */
+  static async inRegion(regionId: string | null) {
+    const where = regionId == null ? isNull(venues.regionId) : eq(venues.regionId, regionId)
+    return useDatabase().select({
+      id: venues.id,
+      slug: venues.slug,
+      regionId: venues.regionId,
+      status: venues.status,
+    }).from(venues).where(where)
+  }
+
+  /** Stores the computed comparison without a revision and without touching updatedAt. */
+  static async setPriceBand(id: string, value: { level: 'low' | 'mid' | 'high' | null, basis: number, computedAt: string }) {
+    await useDatabase().update(venues).set({
+      priceBand: value.level,
+      priceBandBasis: value.basis,
+      priceBandComputedAt: value.computedAt,
+    }).where(eq(venues.id, id))
   }
 
   static async list(filter: VenueListFilter = {}) {

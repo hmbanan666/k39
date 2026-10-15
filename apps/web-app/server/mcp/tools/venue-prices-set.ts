@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { auditMcp } from '../../utils/mcp/audit'
+import { recomputeTownPriceBands } from '../../utils/venues/price-band'
 import { venuePricesWriteSchema } from '../../utils/venues/prices'
 
 export default defineMcpTool({
@@ -18,8 +19,9 @@ export default defineMcpTool({
     }
     try {
       const saved = await db.prices.setForVenue(venue.id, prices)
+      const bands = await recomputeTownPriceBands(venue.regionId)
       await auditMcp('venue_prices_set', 'venue', venue.id)
-      return { venueId: venue.id, prices: saved }
+      return { venueId: venue.id, prices: saved, priceBands: bands }
     } catch (error) {
       throw createError({ statusCode: 400, statusMessage: error instanceof Error ? error.message : 'Не удалось сохранить цены' })
     }

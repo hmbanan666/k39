@@ -437,24 +437,48 @@ export interface PriceSummary {
   label: string
 }
 
-export function priceBlockSummary(bands: Array<PriceBand | null>, regionSlug?: string | null): PriceSummary | null {
+/** Stored town comparison. Distinct from the editorial 1–4 `priceLevel`. */
+export type StoredPriceBand = 'low' | 'mid' | 'high'
+
+/**
+ * The badge decision. `basis` is how many of this venue's prices had a band.
+ * No band means the sample was below the comparison threshold.
+ */
+export function priceBandFromBands(bands: Array<PriceBand | null>): { level: StoredPriceBand | null, basis: number } {
   const known = bands.filter((band): band is PriceBand => band != null)
   if (!known.length) {
-    return null
+    return { level: null, basis: 0 }
   }
-  const where = byTown(regionSlug)
   const cheap = known.filter((band) => band === 'cheap').length
   const expensive = known.filter((band) => band === 'expensive').length
-  let level = 'около'
+  let level: StoredPriceBand = 'mid'
   if (cheap > expensive) {
-    level = 'ниже'
+    level = 'low'
   } else if (expensive > cheap) {
-    level = 'выше'
+    level = 'high'
+  }
+  return { level, basis: known.length }
+}
+
+/** Badge copy for a stored band. Null hides the badge. */
+export function priceBadgeFromBand(level: StoredPriceBand | null | undefined, regionSlug?: string | null): PriceSummary | null {
+  if (!level) {
+    return null
+  }
+  let word = 'около'
+  if (level === 'low') {
+    word = 'ниже'
+  } else if (level === 'high') {
+    word = 'выше'
   }
   return {
-    text: `${level} среднего`,
-    label: `Цены ${level} среднего по ${where}`,
+    text: `${word} среднего`,
+    label: `Цены ${word} среднего по ${byTown(regionSlug)}`,
   }
+}
+
+export function priceBlockSummary(bands: Array<PriceBand | null>, regionSlug?: string | null): PriceSummary | null {
+  return priceBadgeFromBand(priceBandFromBands(bands).level, regionSlug)
 }
 
 /**
