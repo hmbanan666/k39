@@ -27,9 +27,10 @@ export default defineConfig({
       {
         plugins: [vue()],
         resolve: {
-          alias: {
-            '~': fileURLToPath(new URL('./apps/web-app/app', import.meta.url)),
-          },
+          alias: [
+            { find: '~~', replacement: fileURLToPath(new URL('./apps/web-app', import.meta.url)) },
+            { find: '~', replacement: fileURLToPath(new URL('./apps/web-app/app', import.meta.url)) },
+          ],
         },
         test: {
           name: 'web-app',

@@ -94,7 +94,6 @@
             v-if="modules"
             :blocks="modules.blocks"
             :menu-url="venue.menuUrl"
-            :audience-sticker="Boolean(cover)"
           />
           <template v-else>
             <h2
@@ -270,14 +269,14 @@
             </div>
           </section>
           <section
-            v-if="hasCoords"
+            v-if="showDirections"
             :id="PAGE_SECTIONS.directions.id"
             class="block"
           >
-            <h2 :class="{ 'with-sticker': directionsSticker }">
+            <h2 :class="{ 'with-sticker': howToGetHtml }">
               {{ PAGE_SECTIONS.directions.title }}
               <Sticker
-                v-if="directionsSticker"
+                v-if="howToGetHtml"
                 slug="with-map"
                 :width="72"
                 decorative
@@ -287,11 +286,12 @@
               {{ venue.address }}
             </p>
             <div
-              v-if="modules?.howToGetHtml"
+              v-if="howToGetHtml"
               class="reader-html"
-              v-html="modules.howToGetHtml"
+              v-html="howToGetHtml"
             />
             <MapEmbed
+              v-if="hasCoords"
               class="venue-map"
               label="Карта заведения"
               :focus-href="`/zavedeniya/${venue.slug}`"
@@ -454,15 +454,15 @@ const modules = venue.modules
 const hasDishesModule = Boolean(modules?.blocks.some((block) => block.type === 'dishes'))
 const showLegacyOrder = !hasDishesModule && (venue.dishes.length > 0 || Boolean(venue.menuUrl))
 const hasCoords = venue.latitude != null && venue.longitude != null
-// Heart and map both show when the hero has photos. The headings are far apart.
-const directionsSticker = Boolean(cover) && hasCoords
+const howToGetHtml = modules?.howToGetHtml ?? null
+const showDirections = Boolean(howToGetHtml) || hasCoords
 const sectionsBefore = modules
   ? modules.blocks.map((block) => ({ id: block.id, title: block.title }))
   : presentSections([[ABOUT, Boolean(venue.html)]])
 const sectionsAfter = presentSections([
   [SECTIONS.order, showLegacyOrder],
   [SECTIONS.inside, interior.length > 0],
-  [PAGE_SECTIONS.directions, hasCoords],
+  [PAGE_SECTIONS.directions, showDirections],
   [SECTIONS.see, props.page.places.length > 0],
 ])
 

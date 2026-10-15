@@ -9,6 +9,10 @@ Rules:
 
 - Every module renders only when it has data. An empty or invalid list falls
   back to the plain `description` as «О месте».
+- A sticker is part of the module component. `audience` shows `with-heart` and
+  `how-to-get` shows `with-map` whenever that module renders. Photos,
+  coordinates, and other stickers on the page do not hide them. The hero
+  sticker and the owner card stay as they are.
 - Text is ours and original. Facts (hours, address, takeaway, prices) come from
   OSM, the venue's own site or socials, or our visit. Nothing is copied from
   aggregators or other guides. No ratings.
@@ -21,10 +25,10 @@ Rules:
 | --- | --- | --- | --- |
 | `text` | «О месте» or own title | `{ title?, variant: lead\|plain, text }` | Same shape as ADR 0023 `text`. |
 | `dishes` | «Что заказать» | `{ title?, items: [{ name, priceRub?, note? }], note? }` | Up to 8. Falls back to `signatureDishes`. Price only when seen on the official menu. |
-| `audience` | «Кому подойдёт» | `{ title?, items: [{ who, icon?, text }] }` | 2 to 5 short cards. `icon` is one of `AUDIENCE_ICONS` (group, family, kids, couple, solo, friends, beach, day-trip, tourist, local, pets, work), default `group`. The heading gets the `with-heart` sticker when the hero has photos (no hero sticker). |
+| `audience` | «Кому подойдёт» | `{ title?, items: [{ who, icon?, text }] }` | 2 to 5 short cards. `icon` is one of `AUDIENCE_ICONS` (group, family, kids, couple, solo, friends, beach, day-trip, tourist, local, pets, work), default `group`. The heading shows the `with-heart` sticker. |
 | `practical` | «Полезно знать» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
 | `best-time` | «Когда лучше прийти» | `{ title?, text }` | Only with real data (hours, queues seen, season). |
-| `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map. When the hero has photos, that heading gets the `with-map` sticker (same size and placement as `with-heart`). Both stickers show together: the headings are far apart. |
+| `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map, including when the venue has no coordinates. The heading shows the `with-map` sticker. |
 | `prices` | «Ориентиры цен» | `{ title? }` | Rows come from `venue_prices` (see below), not from the module. Hidden without fresh verified prices. |
 | `tips` | «Советы» | `{ title?, items: [text] }` | Short practical tips. |
 | `faq` | «Вопросы» | `{ title?, items: [{ question, answer }] }` | Answers from known facts only. |
