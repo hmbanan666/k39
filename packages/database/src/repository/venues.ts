@@ -1,6 +1,6 @@
 import type { SourceLink } from '../types/entities'
 import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import {
@@ -45,6 +45,7 @@ export interface VenueWrite {
   delivery?: boolean | null
   signatureDishes?: VenueDish[]
   modules?: unknown[]
+  contactEmail?: string | null
   description?: string
   sources?: SourceLink[]
   status?: VenueStatus
@@ -95,6 +96,20 @@ function cleanUrl(value: string | null | undefined) {
   const text = cleanText(value, 500)
   if (text && !/^https?:\/\//i.test(text)) {
     throw new VenueInputError('Ссылка должна начинаться с http:// или https://')
+  }
+  return text
+}
+
+function cleanEmail(value: string | null | undefined) {
+  if (value == null) {
+    return null
+  }
+  const text = value.trim().toLowerCase().slice(0, 120)
+  if (!text) {
+    return null
+  }
+  if (!/^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/.test(text)) {
+    throw new VenueInputError('Почта заведения выглядит неверно')
   }
   return text
 }
@@ -348,6 +363,7 @@ export class Venues {
         delivery: input.delivery ?? null,
         signatureDishes: cleanDishes(input.signatureDishes) ?? [],
         modules: input.modules ?? [],
+        contactEmail: cleanEmail(input.contactEmail),
         description,
         sources: cleanSources(input.sources) ?? [],
         status,
@@ -432,6 +448,7 @@ export class Venues {
         delivery: input.delivery === undefined ? current.delivery : input.delivery,
         signatureDishes: cleanDishes(input.signatureDishes) ?? current.signatureDishes,
         modules: input.modules ?? current.modules,
+        contactEmail: input.contactEmail === undefined ? current.contactEmail : cleanEmail(input.contactEmail),
         description: nextDescription,
         sources: cleanSources(input.sources) ?? current.sources,
         status: nextStatus,
@@ -608,6 +625,7 @@ export class Venues {
           longitude: draft.longitude,
           phone: draft.phone,
           website: draft.website,
+          contactEmail: draft.contactEmail,
           socials: draft.socials,
           menuUrl: draft.menuUrl,
           reservation: draft.reservation,
@@ -747,6 +765,71 @@ export class Venues {
   static async listIntros() {
     return useDatabase().select().from(venueListingIntros)
   }
+
+  /** Published and closed cards only. Drafts stay out of the cabinet search. */
+  static async searchPublic(query: string, limit = 20) {
+    const q = query.trim().toLowerCase().replace(/[%_\\]/g, '').slice(0, 60)
+    if (q.length < 2) {
+      return []
+    }
+    return useDatabase()
+      .select({
+        id: venues.id,
+        slug: venues.slug,
+        name: venues.name,
+        address: venues.address,
+        kind: venues.kind,
+        status: venues.status,
+      })
+      .from(venues)
+      .where(and(
+        inArray(venues.status, ['published', 'closed']),
+        sql`lower(${venues.name}) like ${`%${q}%`}`,
+      ))
+      .orderBy(asc(venues.name))
+      .limit(limit)
+  }
+
+  static async revisions(venueId: string, limit = 30) {
+    return useDatabase()
+      .select()
+      .from(revisions)
+      .where(and(eq(revisions.entityType, 'venue'), eq(revisions.entityId, venueId)))
+      .orderBy(desc(revisions.createdAt))
+      .limit(limit)
+  }
+
+  /** Restore a previous snapshot. The current row is stored as a new revision first. */
+  static async revertTo(venueId: string, revisionId: string, userId?: string | null) {
+    const [revision] = await useDatabase().select().from(revisions).where(eq(revisions.id, revisionId)).limit(1)
+    if (!revision || revision.entityType !== 'venue' || revision.entityId !== venueId) {
+      return null
+    }
+    const snap = revision.snapshot
+    if (!snap || typeof snap !== 'object') {
+      return null
+    }
+    const row = snap as Record<string, unknown>
+    return this.update(venueId, writeFromSnapshot(row), userId)
+  }
+}
+
+const RESTORE_KEYS = [
+  'slug', 'name', 'kind', 'cuisineTags', 'regionId', 'address', 'latitude', 'longitude',
+  'priceLevel', 'avgCheck', 'hours', 'phone', 'website', 'socials', 'bookingUrl', 'orderUrl',
+  'deliveryUrl', 'menuUrl', 'reservation', 'takeaway', 'delivery', 'signatureDishes',
+  'modules', 'contactEmail', 'description', 'sources', 'status', 'lastVerifiedAt',
+  'osmId', 'seoTitle', 'seoDescription', 'noindex',
+] as const
+
+function writeFromSnapshot(row: Record<string, unknown>): VenueWrite {
+  const write: Record<string, unknown> = {}
+  for (const key of RESTORE_KEYS) {
+    if (key in row) {
+      write[key] = row[key]
+    }
+  }
+  return write as VenueWrite
 }
 
 function haversineLocal(aLat: number, aLng: number, bLat: number, bLng: number) {

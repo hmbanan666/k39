@@ -51,6 +51,7 @@ export function venueWriteFromInput(input: {
   delivery?: boolean | null
   signatureDishes?: VenueDish[]
   modules?: unknown[]
+  contactEmail?: string | null
   description?: string
   sources?: Array<{ title: string, url: string }>
   status?: 'draft' | 'published' | 'closed' | 'archived'

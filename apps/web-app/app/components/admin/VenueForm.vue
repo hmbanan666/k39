@@ -134,6 +134,41 @@
         Загрузить
       </button>
     </form>
+    <section
+      v-if="venueId"
+      class="history"
+    >
+      <h2>Журнал</h2>
+      <p
+        v-if="historyError"
+        class="error"
+      >
+        {{ historyError }}
+      </p>
+      <ul>
+        <li
+          v-for="row in revisions"
+          :key="row.id"
+        >
+          <span>{{ row.createdAt }} · {{ row.summary.name }} · {{ row.actorEmail || 'без автора' }}</span>
+          <button
+            type="button"
+            @click="revert(row.id)"
+          >
+            Вернуть эту версию
+          </button>
+        </li>
+      </ul>
+      <h3>События</h3>
+      <ul>
+        <li
+          v-for="row in audits"
+          :key="row.id"
+        >
+          {{ row.createdAt }} · {{ row.action }} · {{ row.actorEmail || 'система' }}
+        </li>
+      </ul>
+    </section>
   </main>
 </template>
 
@@ -145,6 +180,9 @@ const kinds = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastf
 const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 const regions = ref<Array<{ id: string, slug: string, title: string }>>([])
 const error = ref('')
+const historyError = ref('')
+const revisions = ref<Array<{ id: string, createdAt: string, actorEmail: string | null, summary: { name: string } }>>([])
+const audits = ref<Array<{ id: string, createdAt: string, action: string, actorEmail: string | null }>>([])
 const file = ref<File | null>(null)
 const photo = reactive({ alt: '', author: '', license: 'own', sourceUrl: '' })
 
@@ -285,6 +323,36 @@ function onFile(event: Event) {
   file.value = (event.target as HTMLInputElement).files?.[0] ?? null
 }
 
+async function loadHistory() {
+  if (!props.venueId) {
+    return
+  }
+  const history = await ofetch<{
+    revisions: typeof revisions.value
+    audits: typeof audits.value
+  }>(`/api/admin/venues/${props.venueId}/revisions`)
+  revisions.value = history.revisions
+  audits.value = history.audits
+}
+
+if (props.venueId) {
+  await loadHistory().catch(() => {
+    historyError.value = 'Журнал не загрузился'
+  })
+}
+
+async function revert(revisionId: string) {
+  historyError.value = ''
+  try {
+    await ofetch(`/api/admin/venues/${props.venueId}/revert`, { method: 'POST', body: { revisionId } })
+    window.location.reload()
+  } catch (reason) {
+    historyError.value = (reason as { data?: { message?: string, statusMessage?: string } }).data?.statusMessage
+      || (reason as { data?: { message?: string } }).data?.message
+      || 'Не удалось вернуть версию'
+  }
+}
+
 async function upload() {
   if (!props.venueId || !file.value) {
     return
@@ -313,5 +381,6 @@ input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; }
 .day { grid-template-columns: 2.5rem auto auto 5.5rem 5.5rem; align-items: center; }
 .hint, .error { margin: 0; }
 .error { color: var(--color-danger); }
-.photo { margin-top: 2rem; }
+.photo, .history { margin-top: 2rem; }
+.history li { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; justify-content: space-between; padding: 0.4rem 0; }
 </style>

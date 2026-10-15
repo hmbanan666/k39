@@ -99,3 +99,7 @@ Editors and agents publish venues only after a check. OSM is a draft source, not
 - OSM import maps `reservation`, `takeaway`, `delivery`, `website:menu` and
   `contact:*` (vk, telegram, instagram, facebook, whatsapp, youtube, ok).
 - The public page shows a field only when it is set. No ratings.
+
+## Addendum: cabinet claims (ADR 0031)
+
+`contact_email` stores the official mailbox (OSM `email` / `contact:email`). It is not rendered. A verified owner edits `venues.modules` and `venue_prices` through `/kabinet`, with the same checks as `venue_update` and `venue_prices_set`. Status, slug, and SEO stay editorial. `businesses.venue_id` is the later subscription link.

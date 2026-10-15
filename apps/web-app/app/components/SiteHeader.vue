@@ -43,18 +43,23 @@
           href="/map"
           :class="{ active: path === '/map' }"
         >Карта</a>
-        <a
-          v-if="!loggedIn"
-          href="/sign-in"
-          class="account"
-          :class="{ active: path === '/sign-in' }"
-        >Войти</a>
-        <a
-          v-else-if="isAdmin"
-          href="/admin"
-          class="account"
-          :class="{ active: path.startsWith('/admin') }"
-        >Админка</a>
+        <span class="account">
+          <a
+            v-if="loggedIn"
+            href="/kabinet"
+            :class="{ active: path.startsWith('/kabinet') }"
+          >Кабинет</a>
+          <a
+            v-if="isStaff"
+            href="/admin"
+            :class="{ active: path.startsWith('/admin') }"
+          >Админка</a>
+          <a
+            v-if="!loggedIn"
+            href="/sign-in?redirectTo=/kabinet"
+            :class="{ active: path === '/sign-in' }"
+          >Войти</a>
+        </span>
       </nav>
       <SearchForm
         class="search-box"
@@ -88,7 +93,7 @@ const route = useRoute()
 const { loggedIn, user } = useUserSession()
 const hubs = HUBS
 const path = computed(() => route.path)
-const isAdmin = computed(() => loggedIn.value && user.value?.role === 'admin')
+const isStaff = computed(() => loggedIn.value && (user.value?.role === 'admin' || user.value?.role === 'editor'))
 
 // The tokens give the exact height for the usual layout. When the pill row
 // wraps (narrow desktop with an extra admin link, zoomed text), the live
@@ -164,7 +169,11 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
   align-items: center;
   gap: 0.25rem;
 }
-.account { margin-left: auto; }
+.account {
+  display: flex;
+  margin-left: auto;
+  gap: 0.25rem;
+}
 .nav a {
   padding: 0.5rem 0.75rem;
   border-radius: 8px;

@@ -39,7 +39,7 @@ Rules:
 | «Как добраться» map | coordinates | coordinates set |
 | «Рядом посмотреть» | nearest places within 3 km; farther ones as one line | any place found |
 | «Источники» | `sources` | at least one source |
-| Owner note | mailto until the owner cabinet exists | always |
+| Owner note | link to `/kabinet/zayavka/{slug}` | always |
 
 ## Order on the page
 
@@ -64,3 +64,11 @@ visitors can compare venues.
 - The catalog is shared so prices compare across venues; `db.prices.forItem`
   lists one item across published venues, cheapest first, as the base for
   collections like «Топ капучино области».
+
+## Owner cabinet (ADR 0031)
+
+A verified owner edits `venues.modules` in `/kabinet` with `venueModulesSchema`,
+the same check as `venue_update.modules`. «Ориентиры цен» is `venue_prices`
+with `sourceKind: owner`, the same object as `venue_prices_set`. The server
+forces that source and does not let the owner edit `price_items`. The public
+card links to the claim instead of a mailto.
