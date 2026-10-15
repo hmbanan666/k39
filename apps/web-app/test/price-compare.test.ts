@@ -21,16 +21,18 @@ import {
   PRICE_ITEM_IMAGES,
   PRICE_STICKER_WIDTH,
   priceBlockSummary,
+  priceCardTap,
   priceCompareLead,
   priceItemIcon,
   priceItemImage,
   priceItemSticker,
   priceListingMeta,
+  priceListNode,
   safePriceImage,
   sharedPriceSource,
 } from '../shared/price-compare'
-import { collectionDocument } from '../shared/seo'
-import { toPublicVenueModules } from '../shared/venue-modules'
+import { collectionDocument, schemaProblems } from '../shared/seo'
+import { presentVenueBlocks, toPublicVenueModules } from '../shared/venue-modules'
 
 vi.mock('~/composables/usePublicHead', () => ({
   usePublicHead: () => {},
@@ -251,26 +253,37 @@ describe('price comparison', () => {
   })
 
   it('summarizes the cards and collapses one shared source', () => {
-    expect(priceBlockSummary(['cheap', 'cheap', 'expensive'], 'svetlogorsk')).toBe('Цены ниже среднего по Светлогорску')
-    expect(priceBlockSummary(['expensive', 'medium'], 'svetlogorsk')).toBe('Цены выше среднего по Светлогорску')
-    expect(priceBlockSummary(['medium', 'medium'], 'zelenogradsk')).toBe('Цены около среднего по Зеленоградску')
-    expect(priceBlockSummary(['cheap'], 'yantarnyy')).toBe('Цены ниже среднего по Янтарному')
-    expect(priceBlockSummary(['cheap'], 'mamonovo')).toBe('Цены ниже среднего по Мамоново')
-    expect(priceBlockSummary(['cheap'], null)).toBe('Цены ниже среднего по региону')
-    expect(priceBlockSummary(['expensive'], 'missing')).toBe('Цены выше среднего по региону')
+    expect(priceBlockSummary(['cheap', 'cheap', 'expensive'], 'svetlogorsk')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску' })
+    expect(priceBlockSummary(['expensive', 'medium'], 'svetlogorsk')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по Светлогорску' })
+    expect(priceBlockSummary(['medium', 'medium'], 'zelenogradsk')).toEqual({ text: 'около среднего', label: 'Цены около среднего по Зеленоградску' })
+    expect(priceBlockSummary(['cheap'], 'yantarnyy')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Янтарному' })
+    expect(priceBlockSummary(['cheap'], 'mamonovo')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Мамоново' })
+    expect(priceBlockSummary(['cheap'], null)).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по региону' })
+    expect(priceBlockSummary(['expensive'], 'missing')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по региону' })
     expect(priceBlockSummary([null, null], 'svetlogorsk')).toBeNull()
     const shared = sharedPriceSource([
       { sourceTitle: 'Меню на сайте заведения', sourceUrl: 'https://cafe.example/menu', checkedAt: '2026-03-01' },
       { sourceTitle: 'Меню на сайте заведения', sourceUrl: 'https://cafe.example/menu', checkedAt: '2026-10-12' },
     ])
-    expect(shared?.title).toBe('Меню на сайте заведения')
-    expect(shared?.url).toBe('https://cafe.example/menu')
-    expect(shared?.when).toContain('проверено с')
-    expect(shared?.when).toContain(formatPriceDate('2026-03-01'))
-    expect(sharedPriceSource([
+    expect(shared?.links).toEqual([{ title: 'Меню на сайте заведения', url: 'https://cafe.example/menu' }])
+    expect(shared?.from).toBe('2026-03-01')
+    expect(shared?.until).toBe('2026-10-12')
+    expect(formatPriceDate(shared?.from ?? '')).toContain('2026')
+    const mixed = sharedPriceSource([
       { sourceTitle: 'Меню', sourceUrl: 'https://a.example', checkedAt: '2026-10-01' },
       { sourceTitle: 'Сообщено заведением', sourceUrl: null, checkedAt: '2026-10-01' },
-    ])).toBeNull()
+      { sourceTitle: 'Меню', sourceUrl: 'https://a.example', checkedAt: '2026-10-01' },
+    ])
+    expect(mixed?.links).toEqual([
+      { title: 'Меню', url: 'https://a.example' },
+      { title: 'Сообщено заведением', url: null },
+    ])
+    expect(mixed?.from).toBe('2026-10-01')
+    expect(mixed?.until).toBe('2026-10-01')
+    expect(priceCardTap({ finePointer: true, keyboard: false, open: false })).toBe('follow')
+    expect(priceCardTap({ finePointer: false, keyboard: true, open: false })).toBe('follow')
+    expect(priceCardTap({ finePointer: false, keyboard: false, open: true })).toBe('follow')
+    expect(priceCardTap({ finePointer: false, keyboard: false, open: false })).toBe('open')
   })
 
   it('keeps a thin listing noindex and indexes one with five venues', () => {
@@ -379,12 +392,27 @@ describe('price comparison', () => {
     const out = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards, { regionSlug: 'svetlogorsk' })
     expect(out?.blocks[0]).toMatchObject({
       type: 'prices',
-      summary: 'Цены ниже среднего по Светлогорску',
-      source: { title: 'Меню на сайте заведения' },
+      summary: { text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску' },
+      source: { links: [{ title: 'Меню на сайте заведения', url: 'https://cafe.example/menu' }], from: '2026-10-01', until: '2026-10-01' },
     })
+    const list = priceListNode(cards, 'Ориентиры цен')
+    expect(list?.itemListElement[0]).toMatchObject({
+      position: 1,
+      item: {
+        '@type': 'Offer',
+        'name': 'Капучино, 300 мл',
+        'price': 180,
+        'priceCurrency': 'RUB',
+        'url': 'https://cafe.example/menu',
+        'description': 'Меню на сайте заведения',
+        'validFrom': '2026-10-01',
+      },
+    })
+    expect(priceListNode([], 'Ориентиры цен')).toBeNull()
+    expect(list && schemaProblems([{ '@context': 'https://schema.org', ...list }])).toEqual([])
     expect(cards[0]?.comparison.scaleLabel).toBe('Дешевле медианы по Светлогорску')
     const unnamed = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards)
-    expect(unnamed?.blocks[0]).toMatchObject({ summary: 'Цены ниже среднего по региону' })
+    expect(unnamed?.blocks[0]).toMatchObject({ summary: { text: 'ниже среднего', label: 'Цены ниже среднего по региону' } })
   })
 })
 
@@ -404,7 +432,7 @@ describe('price cards', () => {
     comparison: { band: 'cheap' as const, position: 23, line: 'дешевле, чем в 7 из 10 мест Светлогорска', scaleLabel: 'Дешевле медианы по Светлогорску' },
   }
 
-  function mountPrices(items: typeof card[], summary: string | null, source: { title: string, url: string | null, when: string } | null) {
+  function mountPrices(items: typeof card[], summary: { text: string, label: string } | null, source: { links: Array<{ title: string, url: string | null }>, from: string, until: string } | null) {
     return mount(VenueModules, {
       props: {
         blocks: [{
@@ -428,20 +456,29 @@ describe('price cards', () => {
     })
   }
 
-  it('renders the same card layout, one shared footnote, and the conclusion', () => {
-    const wrapper = mountPrices([card, { ...card, slug: 'americano', title: 'Американо', priceRub: 140, icon: 'cup', image: '/stickers/americano.webp', sticker: null }], 'Цены ниже среднего по Светлогорску', {
-      title: 'Меню на сайте заведения',
-      url: 'https://cafe.example/menu',
-      when: '1 октября 2026 г.',
+  it('renders the glance row, keeps the conclusion in the tooltip, and one source line', () => {
+    const wrapper = mountPrices([card, { ...card, slug: 'americano', title: 'Американо', priceRub: 140, icon: 'cup', image: '/stickers/americano.webp', sticker: null }], { text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску' }, {
+      links: [{ title: 'Меню на сайте заведения', url: 'https://cafe.example/menu' }],
+      from: '2026-10-01',
+      until: '2026-10-01',
     })
     const cards = wrapper.findAll('.price-card')
     expect(cards).toHaveLength(2)
     expect(cards[0]?.attributes('href')).toBe('/ceny/cappuccino/svetlogorsk')
+    expect(cards[0]?.attributes('aria-describedby')).toBe('tseny-d0')
     expect(cards[0]?.text()).toContain('Капучино')
     expect(cards[0]?.text()).toContain('300 мл')
     expect(cards[0]?.text()).toContain('180 ₽')
-    expect(cards[0]?.text()).toContain('дешевле, чем в 7 из 10 мест Светлогорска')
-    expect(cards[0]?.text()).toContain('дёшево')
+    expect(cards[0]?.text()).not.toContain('дешевле')
+    expect(cards[0]?.text()).not.toContain('дёшево')
+    expect(cards[0]?.find('.scale-labels').exists()).toBe(false)
+    const detail = wrapper.get('#tseny-d0')
+    expect(detail.attributes('role')).toBe('tooltip')
+    expect(detail.text()).toContain('дешевле, чем в 7 из 10 мест Светлогорска')
+    expect(detail.text()).toContain('дёшево')
+    expect(detail.text()).toContain('средне')
+    expect(detail.text()).toContain('дорого')
+    expect(wrapper.html()).toContain('дешевле, чем в 7 из 10 мест Светлогорска')
     expect(cards[0]?.find('.price-art picture.sticker').exists()).toBe(true)
     const picture = cards[0]?.find('picture.sticker')
     expect(picture?.find('img').attributes('src')).toBe('/stickers/food/cappuccino-256.png')
@@ -457,23 +494,78 @@ describe('price cards', () => {
     expect(wrapper.findAll('picture.sticker')).toHaveLength(1)
     expect(wrapper.text()).toContain('Сравниваем с другими заведениями Светлогорска')
     expect(cards[0]?.find('.scale').attributes('aria-label')).toBe('Дешевле медианы по Светлогорску')
-    expect(wrapper.text()).toContain('Цены ниже среднего по Светлогорску')
+    const badge = wrapper.get('.price-badge')
+    expect(badge.text()).toBe('ниже среднего')
+    expect(badge.attributes('title')).toBe('Цены ниже среднего по Светлогорску')
+    expect(badge.attributes('aria-label')).toBe('Цены ниже среднего по Светлогорску')
+    expect(wrapper.find('.price-chip').exists()).toBe(false)
+    expect(wrapper.get('.price-head h2').text()).toBe('Ориентиры цен')
     const links = wrapper.findAll('.stub-link')
     expect(links).toHaveLength(1)
     expect(links[0]?.attributes('href')).toBe('https://cafe.example/menu')
-    expect(wrapper.text()).toContain('Могли измениться.')
+    expect(wrapper.get('.price-foot time').attributes('datetime')).toBe('2026-10-01')
+    expect(wrapper.findAll('.price-foot')).toHaveLength(1)
+    expect(wrapper.get('.price-foot').text()).toContain('Меню на сайте заведения,')
+    expect(wrapper.get('.price-foot').text()).toContain('Цены могли измениться.')
+    expect(wrapper.text()).not.toContain('не меню целиком')
+    expect(wrapper.find('.price-src').exists()).toBe(false)
   })
 
-  it('keeps a separate muted source when the rows do not share one', () => {
+  it('puts every menu link and a date range on one line, and a quiet mark when there is no scale', () => {
     const wrapper = mountPrices([
       card,
-      { ...card, slug: 'burger', title: 'Бургер', sticker: 'burger' as const, sourceTitle: 'Сообщено заведением', sourceUrl: null, comparison: { band: null, position: null, line: 'пока единственная цена в Светлогорске', scaleLabel: '' } },
-    ], null, null)
+      { ...card, slug: 'burger', title: 'Бургер', sticker: 'burger' as const, sourceTitle: 'Сообщено заведением', sourceUrl: null, checkedAt: '2026-03-01', comparison: { band: null, position: null, line: 'пока единственная цена в Светлогорске', scaleLabel: '' } },
+    ], null, {
+      links: [
+        { title: 'Меню на сайте заведения', url: 'https://cafe.example/menu' },
+        { title: 'Сообщено заведением', url: null },
+      ],
+      from: '2026-03-01',
+      until: '2026-10-01',
+    })
     expect(wrapper.find('.price-chip').exists()).toBe(false)
-    expect(wrapper.findAll('.scale')).toHaveLength(1)
-    expect(wrapper.text()).toContain('пока единственная цена в Светлогорске')
-    expect(wrapper.findAll('.price-src')).toHaveLength(2)
+    expect(wrapper.findAll('.scale:not(.scale-quiet)')).toHaveLength(1)
+    expect(wrapper.findAll('.scale-quiet')).toHaveLength(1)
+    expect(wrapper.find('#tseny-d1').text()).toContain('пока единственная цена в Светлогорске')
+    expect(wrapper.find('.price-src').exists()).toBe(false)
+    expect(wrapper.findAll('.price-sources')).toHaveLength(1)
     expect(wrapper.text()).toContain('Сообщено заведением')
+    expect(wrapper.text()).toContain('проверено с')
+    expect(wrapper.get('.price-foot').text()).toContain('Цены могли измениться.')
+    expect(wrapper.findAll('.price-foot')).toHaveLength(1)
+    const times = wrapper.findAll('.price-foot time')
+    expect(times.map((node) => node.attributes('datetime'))).toEqual(['2026-03-01', '2026-10-01'])
+  })
+
+  it('renders prices, then dishes, then the other modules', () => {
+    const stored = [
+      { type: 'text' as const, id: 'o-meste', title: 'О месте', variant: 'lead' as const, html: '<p>Про место.</p>' },
+      { type: 'dishes' as const, id: 'chto-zakazat', title: 'Что заказать', note: null, items: [{ id: 'soup', name: 'Борщ', description: 'Со сметаной', priceRub: 450, media: null }] },
+      { type: 'prices' as const, id: 'tseny', title: 'Ориентиры цен', lead: 'Сравниваем', items: [card], summary: null, source: null },
+    ]
+    expect(presentVenueBlocks(stored).map((block) => block.type)).toEqual(['prices', 'dishes', 'text'])
+    expect(stored.map((block) => block.type)).toEqual(['text', 'dishes', 'prices'])
+    const wrapper = mount(VenueModules, {
+      props: { blocks: stored },
+      global: {
+        components: { Sticker },
+        stubs: {
+          Icon: true,
+          UiLink: true,
+          MetaLink: { props: ['href'], template: '<a :href="href"><slot /></a>' },
+          ProseHtml: { props: ['html'], template: '<div class="prose-html" v-html="html" />' },
+          MediaImage: true,
+        },
+      },
+    })
+    expect(wrapper.findAll('section.vm').map((section) => section.attributes('id'))).toEqual(['tseny', 'chto-zakazat', 'o-meste'])
+    const dish = wrapper.get('#chto-zakazat .dish-card')
+    expect(dish.text()).toContain('Борщ')
+    expect(dish.text()).toContain('450 ₽')
+    expect(dish.text()).not.toContain('Со сметаной')
+    expect(wrapper.get('#chto-zakazat-d0').text()).toContain('Со сметаной')
+    expect(wrapper.get('#chto-zakazat picture.sticker img').attributes('src')).toContain('cook-with-pan')
+    expect(dish.attributes('tabindex')).toBe('0')
   })
 
   it('falls back to the line icon when the slug has no food sticker', () => {

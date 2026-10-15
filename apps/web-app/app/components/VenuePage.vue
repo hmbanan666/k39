@@ -77,6 +77,12 @@
         </ul>
       </div>
     </header>
+    <VenueModules
+      v-if="frontBlocks.length"
+      class="venue-front"
+      :blocks="frontBlocks"
+      :menu-url="venue.menuUrl"
+    />
     <div class="venue-body">
       <ReaderLayout
         :html="venue.html"
@@ -91,8 +97,8 @@
             {{ venue.staleNote }}
           </p>
           <VenueModules
-            v-if="modules"
-            :blocks="modules.blocks"
+            v-if="restBlocks.length"
+            :blocks="restBlocks"
             :menu-url="venue.menuUrl"
           />
           <template v-else>
@@ -386,6 +392,7 @@ import { operator } from '~~/shared/operator'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 import { russianDay } from '~~/shared/place-guide'
 import { socialLabel, venueActions, venueServiceNotes } from '~~/shared/venue-actions'
+import { presentVenueBlocks } from '~~/shared/venue-modules'
 
 export interface VenuePageData {
   type: 'venue'
@@ -451,13 +458,16 @@ const SECTIONS = {
 }
 
 const modules = venue.modules
+const orderedBlocks = modules ? presentVenueBlocks(modules.blocks) : []
+const frontBlocks = orderedBlocks.filter((block) => block.type === 'prices' || block.type === 'dishes')
+const restBlocks = orderedBlocks.filter((block) => block.type !== 'prices' && block.type !== 'dishes')
 const hasDishesModule = Boolean(modules?.blocks.some((block) => block.type === 'dishes'))
 const showLegacyOrder = !hasDishesModule && (venue.dishes.length > 0 || Boolean(venue.menuUrl))
 const hasCoords = venue.latitude != null && venue.longitude != null
 const howToGetHtml = modules?.howToGetHtml ?? null
 const showDirections = Boolean(howToGetHtml) || hasCoords
 const sectionsBefore = modules
-  ? modules.blocks.map((block) => ({ id: block.id, title: block.title }))
+  ? orderedBlocks.map((block) => ({ id: block.id, title: block.title }))
   : presentSections([[ABOUT, Boolean(venue.html)]])
 const sectionsAfter = presentSections([
   [SECTIONS.order, showLegacyOrder],
@@ -578,7 +588,9 @@ function openPhoto(id: string) {
   color: var(--color-partner);
   font-size: 0.85rem;
 }
+.venue-front { margin-top: 2.2rem; }
 .venue-body { margin-top: 2.4rem; }
+.venue-front + .venue-body { margin-top: 2rem; }
 .stale-note { color: var(--color-warn); }
 .facts {
   position: relative;
@@ -680,7 +692,9 @@ function openPhoto(id: string) {
 .sources ul { margin: 0 0 0.4rem; padding: 0; list-style: none; }
 @media (min-width: 1000px) {
   .hero { grid-template-columns: 1.2fr 0.95fr; gap: 3rem; }
+  .venue-front { margin-top: 2.8rem; }
   .venue-body { margin-top: 4rem; }
+  .venue-front + .venue-body { margin-top: 2.6rem; }
   .near { display: grid; grid-template-columns: repeat(2, 1fr); overflow: visible; }
   .near > * { flex: none; }
 }

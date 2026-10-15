@@ -28,7 +28,7 @@ import { illustrationFor } from '../../../shared/illustrations'
 import { attachSituationCards, toPublicListingModules } from '../../../shared/listing-modules'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
-import { buildPublicPrices, priceCompareLead } from '../../../shared/price-compare'
+import { buildPublicPrices, priceCompareLead, priceListNode } from '../../../shared/price-compare'
 import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
 import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
@@ -213,6 +213,13 @@ async function loadVenue(slug: string) {
     menuUrl: venue.menuUrl,
     reservation: venue.reservation,
   })
+  const priceBlock = modules?.blocks.find((block) => block.type === 'prices')
+  if (priceBlock?.type === 'prices') {
+    const list = priceListNode(priceBlock.items, priceBlock.title)
+    if (list) {
+      doc.jsonLd.push({ '@context': 'https://schema.org', ...list })
+    }
+  }
   const dishes = modules?.blocks.find((block) => block.type === 'dishes')
   if (dishes?.type === 'dishes' && !doc.robots.includes('noindex')) {
     const menu = dishMenuNode(dishes, { menuUrl: venue.menuUrl, absolute: absoluteUrl })

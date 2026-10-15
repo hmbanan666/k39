@@ -1,5 +1,5 @@
 import type { PublicMedia } from './media'
-import type { PublicPriceCard, SharedPriceSource } from './price-compare'
+import type { PriceSummary, PublicPriceCard, SharedPriceSource } from './price-compare'
 import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
 import { priceBlockSummary, priceCompareLead, sharedPriceSource } from './price-compare'
@@ -138,7 +138,7 @@ export type PublicVenueModule
     | { type: 'best-time', id: string, title: string, html: string }
     | { type: 'tips', id: string, title: string, items: string[] }
     | { type: 'faq', id: string, title: string, items: { question: string, html: string }[] }
-    | { type: 'prices', id: string, title: string, lead: string, items: PublicPriceCard[], summary: string | null, source: SharedPriceSource | null }
+    | { type: 'prices', id: string, title: string, lead: string, items: PublicPriceCard[], summary: PriceSummary | null, source: SharedPriceSource | null }
 
 export interface PublicDish {
   /** Persisted id, or a display key when a reverted snapshot has none yet. */
@@ -153,10 +153,28 @@ export interface PublicDish {
 export type { PriceBand, PublicPriceCard, SharedPriceSource } from './price-compare'
 
 export interface PublicVenueModules {
-  /** Content modules in stored order, without how-to-get. */
+  /** Content modules in stored order, without how-to-get. The page reorders at render. */
   blocks: PublicVenueModule[]
   /** how-to-get text, rendered inside the directions block. */
   howToGetHtml: string | null
+}
+
+/** Page order: prices, then the dish showcase, then the other modules as stored. */
+export function presentVenueBlocks<T extends { type: string }>(blocks: readonly T[]) {
+  return blocks
+    .map((block, index) => ({ block, index }))
+    .sort((a, b) => venueBlockRank(a.block.type) - venueBlockRank(b.block.type) || a.index - b.index)
+    .map((item) => item.block)
+}
+
+function venueBlockRank(type: string) {
+  if (type === 'prices') {
+    return 0
+  }
+  if (type === 'dishes') {
+    return 1
+  }
+  return 2
 }
 
 export interface VenueModuleView {

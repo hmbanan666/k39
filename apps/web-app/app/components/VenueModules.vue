@@ -1,13 +1,35 @@
 <template>
   <!-- Venue content modules (docs/venue-modules.md). Server-rendered in full. -->
   <section
-    v-for="block in blocks"
+    v-for="block in shown"
     :id="block.id"
     :key="block.id"
     class="vm"
     :class="`vm-${block.type}`"
   >
-    <h2 :class="{ 'with-sticker': block.type === 'audience' }">
+    <header
+      v-if="block.type === 'prices'"
+      class="price-head"
+    >
+      <div class="price-head-copy">
+        <h2>{{ block.title }}</h2>
+        <p class="price-lead">
+          {{ block.lead }}
+        </p>
+      </div>
+      <p
+        v-if="block.summary"
+        class="price-badge"
+        :title="block.summary.label"
+        :aria-label="block.summary.label"
+      >
+        {{ block.summary.text }}
+      </p>
+    </header>
+    <h2
+      v-else
+      :class="{ 'with-sticker': block.type === 'audience' }"
+    >
       {{ block.title }}
       <Sticker
         v-if="block.type === 'audience'"
@@ -23,42 +45,52 @@
       :html="block.html"
     />
     <template v-else-if="block.type === 'dishes'">
-      <ul class="showcase">
+      <ul class="price-grid">
         <li
-          v-for="dish in block.items"
+          v-for="(dish, index) in block.items"
           :key="dish.id"
+          class="price-item"
         >
           <div
-            class="pic"
-            :class="{ empty: !dish.media }"
+            class="dish-card"
+            :tabindex="dishHasDetail(dish) ? 0 : undefined"
+            :aria-describedby="dishHasDetail(dish) ? detailId(block.id, index) : undefined"
           >
-            <MediaImage
-              v-if="dish.media"
-              :media="dish.media"
-              sizes="(min-width: 800px) 280px, 100vw"
-              :show-credit="false"
-            />
-            <Icon
-              v-else
-              :name="tablerIcon('food')"
-              size="40"
-            />
-          </div>
-          <div class="body">
-            <p class="line">
-              <span class="dish-name">{{ dish.name }}</span>
+            <span class="price-row">
+              <span
+                class="price-art"
+                :class="{ photo: Boolean(dish.media) }"
+              >
+                <MediaImage
+                  v-if="dish.media"
+                  :media="dish.media"
+                  sizes="56px"
+                  :show-credit="false"
+                />
+                <Sticker
+                  v-else
+                  slug="cook-with-pan"
+                  :width="PRICE_STICKER_WIDTH"
+                  decorative
+                />
+              </span>
+              <span class="price-copy">
+                <span class="price-name">{{ dish.name }}</span>
+              </span>
               <span
                 v-if="dish.priceRub"
-                class="dish-price"
+                class="price-rub"
               >{{ formatRub(dish.priceRub) }}</span>
-            </p>
-            <p
-              v-if="dish.description"
-              class="blurb"
-            >
-              {{ dish.description }}
-            </p>
-            <p
+            </span>
+          </div>
+          <span
+            v-if="dishHasDetail(dish)"
+            :id="detailId(block.id, index)"
+            class="price-detail"
+            role="tooltip"
+          >
+            <span v-if="dish.description">{{ dish.description }}</span>
+            <span
               v-if="dish.media && dishCredit(dish.media)"
               class="credit"
             >
@@ -70,8 +102,8 @@
                 {{ licenseLabel(dish.media.license) }}
               </MetaLink>
               <span v-else-if="licenseLabel(dish.media.license)">{{ licenseLabel(dish.media.license) }}</span>
-            </p>
-          </div>
+            </span>
+          </span>
         </li>
       </ul>
       <p
@@ -143,24 +175,20 @@
       </li>
     </ul>
     <template v-else-if="block.type === 'prices'">
-      <p class="price-lead">
-        {{ block.lead }}
-      </p>
-      <p
-        v-if="block.summary"
-        class="price-chip"
-      >
-        {{ block.summary }}
-      </p>
       <ul class="price-grid">
         <li
-          v-for="row in block.items"
+          v-for="(row, index) in block.items"
           :key="row.slug + row.variant"
+          class="price-item"
+          :class="{ 'is-open': openDetail === detailId(block.id, index) }"
         >
           <component
             :is="row.href ? MetaLink : 'div'"
             class="price-card"
+            :tabindex="row.href ? undefined : 0"
+            :aria-describedby="detailId(block.id, index)"
             v-bind="row.href ? { href: row.href } : {}"
+            @click="onPriceClick($event, detailId(block.id, index))"
           >
             <span class="price-row">
               <span
@@ -194,7 +222,6 @@
               </span>
               <span class="price-rub">{{ formatRub(row.priceRub) }}</span>
             </span>
-            <span class="price-line">{{ row.comparison.line }}</span>
             <span
               v-if="row.comparison.band"
               class="scale"
@@ -213,51 +240,64 @@
                   :style="{ left: `${row.comparison.position ?? 0}%` }"
                 />
               </span>
-              <span class="scale-labels">
-                <span :class="{ on: row.comparison.band === 'cheap' }">дёшево</span>
-                <span :class="{ on: row.comparison.band === 'medium' }">средне</span>
-                <span :class="{ on: row.comparison.band === 'expensive' }">дорого</span>
-              </span>
+            </span>
+            <span
+              v-else
+              class="scale scale-quiet"
+              aria-hidden="true"
+            >
+              <i />
             </span>
           </component>
-          <p
-            v-if="!block.source"
-            class="price-src"
+          <span
+            :id="detailId(block.id, index)"
+            class="price-detail"
+            role="tooltip"
           >
-            <UiLink
-              v-if="row.sourceUrl"
-              :href="row.sourceUrl"
-              data-track="outbound"
-              data-track-name="price-source"
+            {{ row.comparison.line }}
+            <span
+              v-if="row.comparison.band"
+              class="scale-labels"
             >
-              {{ row.sourceTitle }}
-            </UiLink>
-            <template v-else>
-              {{ row.sourceTitle }}
-            </template>,
-            {{ formatPriceDate(row.checkedAt) }}
-          </p>
+              <span :class="{ on: row.comparison.band === 'cheap' }">дёшево</span>
+              <span :class="{ on: row.comparison.band === 'medium' }">средне</span>
+              <span :class="{ on: row.comparison.band === 'expensive' }">дорого</span>
+            </span>
+          </span>
         </li>
       </ul>
       <p
         v-if="block.source"
-        class="price-foot"
+        class="price-foot price-sources"
       >
-        <UiLink
-          v-if="block.source.url"
-          :href="block.source.url"
-          data-track="outbound"
-          data-track-name="price-source"
+        <template
+          v-for="(link, index) in block.source.links"
+          :key="`${link.title}\n${link.url ?? ''}`"
         >
-          {{ block.source.title }}
-        </UiLink>
-        <template v-else>
-          {{ block.source.title }}
+          <span v-if="index > 0">, </span>
+          <UiLink
+            v-if="link.url"
+            :href="link.url"
+            data-track="outbound"
+            data-track-name="price-source"
+          >
+            {{ link.title }}
+          </UiLink>
+          <template v-else>
+            {{ link.title }}
+          </template>
         </template>,
-        {{ block.source.when }}
-      </p>
-      <p class="price-foot">
-        Цены для сравнения заведений, не меню целиком. Могли измениться.
+        <time
+          v-if="block.source.from === block.source.until"
+          :datetime="block.source.from"
+        >{{ formatPriceDate(block.source.from) }}</time>
+        <template v-else>
+          проверено с
+          <time :datetime="block.source.from">{{ formatPriceDate(block.source.from) }}</time>
+          по
+          <time :datetime="block.source.until">{{ formatPriceDate(block.source.until) }}</time>
+        </template>
+        Цены могли измениться.
       </p>
     </template>
     <div
@@ -278,17 +318,70 @@
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
-import type { PublicVenueModule } from '~~/shared/venue-modules'
+import type { PublicDish, PublicVenueModule } from '~~/shared/venue-modules'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { tablerIcon } from '~~/shared/icons'
 import { licenseHref, licenseLabel } from '~~/shared/media'
-import { formatPriceDate, formatRub, PRICE_STICKER_WIDTH } from '~~/shared/price-compare'
+import { formatPriceDate, formatRub, PRICE_STICKER_WIDTH, priceCardTap } from '~~/shared/price-compare'
+import { presentVenueBlocks } from '~~/shared/venue-modules'
 import MetaLink from './MetaLink.vue'
 
-defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
+const props = defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
+const shown = computed(() => presentVenueBlocks(props.blocks))
+const openDetail = ref<string | null>(null)
+
+function detailId(blockId: string, index: number) {
+  return `${blockId}-d${index}`
+}
 
 function dishCredit(media: PublicMedia) {
   return Boolean(media.author || licenseLabel(media.license))
 }
+
+function dishHasDetail(dish: PublicDish) {
+  return Boolean(dish.description || (dish.media && dishCredit(dish.media)))
+}
+
+function finePointer() {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+}
+
+function onPriceClick(event: MouseEvent, id: string) {
+  const action = priceCardTap({
+    finePointer: finePointer(),
+    keyboard: event.detail === 0,
+    open: openDetail.value === id,
+  })
+  if (action === 'follow') {
+    return
+  }
+  event.preventDefault()
+  openDetail.value = id
+}
+
+function onPointerDown(event: Event) {
+  const target = event.target
+  if (!(target instanceof Element) || target.closest('.price-item.is-open')) {
+    return
+  }
+  openDetail.value = null
+}
+
+function onKey(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    openDetail.value = null
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onPointerDown)
+  document.addEventListener('keydown', onKey)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onPointerDown)
+  document.removeEventListener('keydown', onKey)
+})
 </script>
 
 <style scoped>
@@ -296,69 +389,34 @@ function dishCredit(media: PublicMedia) {
 .vm:first-child { margin-top: 0; }
 .vm h2 { margin-bottom: 0.9rem; }
 .lead { font-size: 1.08rem; }
-.showcase {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
-  gap: 0.8rem;
-  margin: 0 0 1rem;
-  padding: 0;
-  list-style: none;
-}
-.showcase > li {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  border: 1px solid var(--color-line);
-  border-radius: 12px;
-  background: var(--color-paper, #fffdf8);
-  overflow: hidden;
-}
-.pic {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 3;
-  background: var(--color-amber-soft);
-  color: var(--accent);
-}
-.pic :deep(figure),
-.pic :deep(picture) { display: block; width: 100%; height: 100%; margin: 0; }
-.pic :deep(img) { width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; border-radius: 0; }
-.showcase .body { padding: 0.85rem 1rem 1rem; }
-.showcase .line { display: flex; gap: 0.75rem; align-items: baseline; justify-content: space-between; margin: 0; }
-.showcase .dish-name { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
-.showcase .dish-price { color: var(--text); font-weight: 700; white-space: nowrap; }
-.showcase .blurb { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
-.showcase .credit { display: flex; flex-wrap: wrap; gap: 0.35rem 0.7rem; margin: 0.45rem 0 0; color: var(--muted); font-size: 0.78rem; }
-.dishes { margin: 0 0 1rem; padding: 0; list-style: none; }
-.dishes li {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.1rem 1rem;
-  padding: 0.7rem 0;
-  border-top: 1px solid var(--color-line);
-}
-.dish-name { font-weight: 700; }
-.dish-price { color: var(--muted); white-space: nowrap; }
-.dish-note { grid-column: 1 / -1; color: var(--muted); font-size: 0.92rem; }
-.variant { font-weight: 400; color: var(--muted); }
 .note { color: var(--muted); font-size: 0.92rem; }
 .note :deep(a) { font-weight: 400; }
-.vm-prices > h2 { margin-bottom: 0.2rem; }
+.price-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.85rem;
+  margin-bottom: 0.75rem;
+}
+.price-head-copy { flex: 1 1 100%; min-width: 0; }
+.price-head h2 { margin: 0; }
 .price-lead {
-  margin: 0 0 0.65rem;
+  margin: 0.15rem 0 0;
   color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.35;
 }
-.price-chip {
-  display: inline-block;
-  margin: 0 0 0.65rem;
-  padding: 0.2rem 0.65rem;
+.price-badge {
+  flex: none;
+  margin: 0 0 0 auto;
+  padding: 0.12rem 0.5rem;
   border-radius: 99px;
   background: var(--color-amber-soft);
   color: var(--color-partner);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 .price-grid {
   display: grid;
@@ -368,16 +426,21 @@ function dishCredit(media: PublicMedia) {
   padding: 0;
   list-style: none;
 }
-.price-grid > li {
+.price-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-.price-card {
+.price-item:hover,
+.price-item:focus-within,
+.price-item.is-open { z-index: 2; }
+.price-card,
+.dish-card {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.28rem;
+  gap: 0.35rem;
   padding: 0.55rem 0.7rem 0.6rem;
   border: 1px solid var(--color-line);
   border-radius: 12px;
@@ -386,7 +449,9 @@ function dishCredit(media: PublicMedia) {
   text-decoration: none;
   transition: border-color var(--duration) var(--ease), background-color var(--duration) var(--ease);
 }
-.price-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.dish-card { cursor: default; }
+.price-card:focus-visible,
+.dish-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .price-card:hover {
   border-color: var(--color-sea);
   background: var(--color-sea-light);
@@ -415,6 +480,21 @@ function dishCredit(media: PublicMedia) {
   max-height: 56px;
   object-fit: contain;
 }
+.price-art.photo :deep(figure),
+.price-art.photo :deep(picture) {
+  width: 56px;
+  height: 56px;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.price-art.photo :deep(img) {
+  width: 56px;
+  height: 56px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
 .price-copy { grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
 .price-name { display: block; font-weight: 700; line-height: 1.2; }
 .price-variant { display: block; color: var(--muted); font-size: 0.82rem; line-height: 1.25; }
@@ -427,8 +507,52 @@ function dishCredit(media: PublicMedia) {
   line-height: 1;
   white-space: nowrap;
 }
-.price-line { font-size: 0.84rem; line-height: 1.3; }
-.scale { display: grid; gap: 0.18rem; }
+.scale { display: grid; }
+.scale-quiet {
+  display: flex;
+  align-items: center;
+  height: 0.35rem;
+}
+.scale-quiet i {
+  display: block;
+  width: 1.4rem;
+  height: 0.28rem;
+  border-radius: 99px;
+  background: var(--color-line);
+}
+.price-detail {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% - 0.2rem);
+  right: 0;
+  left: 0;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+}
+.price-card:hover + .price-detail,
+.price-card:focus-within + .price-detail,
+.dish-card:hover + .price-detail,
+.dish-card:focus-within + .price-detail,
+.price-item.is-open .price-detail {
+  opacity: 1;
+  pointer-events: auto;
+}
+.price-detail .credit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.55rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
 .track-wrap { position: relative; }
 .track {
   display: grid;
@@ -464,20 +588,21 @@ function dishCredit(media: PublicMedia) {
 .scale-labels span:nth-child(2) { text-align: center; }
 .scale-labels span:nth-child(3) { text-align: right; }
 .scale-labels .on { color: var(--text); font-weight: 700; }
-.price-src,
 .price-foot {
   margin: 0.25rem 0 0;
   color: var(--muted);
   font-size: 0.75rem;
   line-height: 1.35;
 }
-.price-src :deep(a),
 .price-foot :deep(a) { font-weight: 400; }
 @media (min-width: 720px) {
   .price-grid { grid-template-columns: 1fr 1fr; }
+  .price-head-copy { flex-basis: 16rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .price-card { transition: none; }
+  .price-card,
+  .dish-card,
+  .price-detail { transition: none; }
 }
 .cards {
   display: grid;
