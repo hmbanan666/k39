@@ -59,7 +59,12 @@ only the render. `venues.modules` stays as the editor wrote it, so a later
 edit does not have to move the prices module to the top.
 
 Then «Как внутри», «Как добраться» (with `how-to-get` text), «Рядом
-посмотреть», «Источники».
+посмотреть» and «Источники» sit under the two columns and use the full
+frame, so the map and the nearby cards are not stuck in the article measure.
+«Источники» is a collapsed `<details>` whose summary is the heading.
+When the how-to-get text already contains the street address, the page does
+not print that address again above it. A menu link with no dishes does not
+open an empty «Что заказать» section: the menu stays on the «Коротко» button.
 
 ## «Что заказать»
 
@@ -136,13 +141,14 @@ such as «В Светлогорске» («Медиана: 300 ₽», «Диап
 then «В этом заведении» and «Порция: …» when the portion is known. A
 placeholder such as «объём не указан» is not a portion.
 
-- One venue in the region: verdict «Пока единственная цена». A short neutral
-  bar, not the colored scale. The popup still lists that one price as the
-  median and the range, and «Мест: 1».
+- One venue in the region: verdict «Пока единственная цена». A neutral bar
+  of the same weight as the scale, with no mark. The popup still lists that
+  one price as the median and the range, and «Мест: 1».
 - Two venues: verdict «Пока мало данных для сравнения». The same neutral bar.
   The popup lists the real median and range.
-- Three or more: a small colored scale marks this price against the median of
-  that town (below 90% is cheap, above 110% is expensive). The accessible
+- Three or more: a three-part scale (cheaper, typical, dearer) marks this
+  price against the median of that town (below 90% is cheap, above 110% is
+  expensive). The accessible
   name of the bar uses the dative, for example «Дешевле медианы по
   Светлогорску». The verdict is «Дешевле, чем в 7 из 10 мест Светлогорска»
   or the dearer form. After «из», 21, 31… take «места» and every other count
@@ -150,8 +156,8 @@ placeholder such as «объём не указан» is not a portion.
   when at least four venues are in the sample, says «Топ-3 по цене в
   Светлогорске». An unknown town stays «в регионе».
 
-A small badge sits to the right of the heading and the comparison line, on
-the same row from 720px and on the next line below that. The visible text is
+The badge sits on the same row as the heading and wraps under the heading
+when the row is narrow. The visible text is
 «ниже среднего», «выше среднего», or «около среднего». The full phrase, for
 example «Цены ниже среднего по Светлогорску», is the badge `title` and
 `aria-label`. The town is already in the line under the heading. The badge
