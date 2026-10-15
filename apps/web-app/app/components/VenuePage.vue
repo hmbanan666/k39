@@ -17,13 +17,22 @@
         :height="cover?.height || 750"
       >
         <template #art>
-          <PlacePhoto
+          <!-- Bento from the concept: one big photo, up to two small ones. -->
+          <div
             v-if="cover"
-            :media="cover"
-            priority
-            :sizes="heroSizes"
-            @open="openPhoto(cover.id)"
-          />
+            class="bento"
+            :class="`bento-${heroPhotos.length}`"
+          >
+            <PlacePhoto
+              v-for="(photo, index) in heroPhotos"
+              :key="photo.id"
+              :class="index === 0 ? 'bento-main' : 'bento-side'"
+              :media="photo"
+              :priority="index === 0"
+              :sizes="index === 0 ? heroSizes : '(min-width: 1000px) 240px, 35vw'"
+              @open="openPhoto(photo.id)"
+            />
+          </div>
           <!-- No photo yet: one mascot sticker instead of a stock picture. -->
           <div
             v-else
@@ -384,7 +393,11 @@ const props = defineProps<{ page: VenuePageData }>()
 const venue = props.page.venue
 const cover = props.page.cover
 const photos = props.page.photos
-const interior = photos.filter((photo) => photo.id !== cover?.id).slice(0, 6)
+// Hero takes the cover plus up to two more; «Как внутри» shows the rest.
+const heroPhotos = cover
+  ? [cover, ...photos.filter((photo) => photo.id !== cover.id).slice(0, 2)]
+  : []
+const interior = photos.filter((photo) => !heroPhotos.some((shown) => shown.id === photo.id)).slice(0, 6)
 
 const ABOUT = { id: 'o-meste', title: 'О месте' }
 const SECTIONS = {
@@ -461,6 +474,19 @@ function openPhoto(id: string) {
   padding-top: 0.4rem;
 }
 .hero-card { margin: 0.8rem 0.7rem 0.2rem 0.15rem; }
+.bento {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+}
+.bento-2 { grid-template-columns: 1.6fr 1fr; }
+.bento-3 { grid-template-columns: 1.6fr 1fr; grid-template-rows: 1fr 1fr; }
+.bento-3 .bento-main { grid-row: 1 / 3; }
+.bento :deep(.shot) { min-width: 0; min-height: 0; overflow: hidden; }
+.bento :deep(.frame),
+.bento :deep(picture) { height: 100%; }
+.bento :deep(img) { height: 100%; aspect-ratio: auto; }
 .sticker-art {
   display: flex;
   align-items: flex-end;
