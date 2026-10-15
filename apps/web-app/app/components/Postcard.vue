@@ -152,6 +152,8 @@ const frameStyle = computed(() => ({
   line-height: 1.2;
 }
 .title .caption {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--text);
   font-family: var(--font-display);
   font-size: 1.3rem;

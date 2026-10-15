@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { articleBody, shortAddress } from '../shared/address'
+import { articleBody, htmlContainsAddress, shortAddress } from '../shared/address'
 import { externalLinkAttrs, formatDistance } from '../shared/links'
 import { renderMarkdown } from '../shared/markdown'
 import { describedAlt } from '../shared/media'
@@ -165,6 +165,9 @@ describe('place page', () => {
     expect(shortAddress('Неман, ул. Победы, 47 (120 км от Калининграда). Сбор на экскурсию: ул. Победы, 51а.')).toBe('Неман, ул. Победы, 47 (120 км от Калининграда).')
     expect(shortAddress('Ул. Канта, 1, остров Канта. Остановки «Рыбная деревня».')).toBe('Ул. Канта, 1, остров Канта.')
     expect(shortAddress('Литовский вал, 21')).toBe('Литовский вал, 21')
+    expect(htmlContainsAddress('<p>Светлогорск, ул. Ленина, 17. Ориентир: зал.</p>', 'Светлогорск, ул. Ленина, 17')).toBe(true)
+    expect(htmlContainsAddress('<p>От вокзала пять минут.</p>', 'Светлогорск, ул. Ленина, 17')).toBe(false)
+    expect(htmlContainsAddress(null, 'Светлогорск, ул. Ленина, 17')).toBe(false)
     const body = '## История\n\nТекст.\n\n## Как добраться\n\nНа машине 120 км.'
     const article = articleBody('Лид.', body, 'Неман, ул. Победы, 47. Сбор у кластера.')
     expect(article.match(/## Как добраться/g)?.length).toBe(1)

@@ -11,19 +11,19 @@
       v-if="block.type === 'prices'"
       class="price-head"
     >
-      <div class="price-head-copy">
+      <div class="price-title-row">
         <h2>{{ block.title }}</h2>
-        <p class="price-lead">
-          {{ block.lead }}
+        <p
+          v-if="block.summary"
+          class="price-badge"
+          :title="block.summary.label"
+          :aria-label="block.summary.label"
+        >
+          {{ block.summary.text }}
         </p>
       </div>
-      <p
-        v-if="block.summary"
-        class="price-badge"
-        :title="block.summary.label"
-        :aria-label="block.summary.label"
-      >
-        {{ block.summary.text }}
+      <p class="price-lead">
+        {{ block.lead }}
       </p>
     </header>
     <h2
@@ -237,7 +237,7 @@
                 <span
                   class="mark"
                   :class="row.comparison.band"
-                  :style="{ left: `${row.comparison.position ?? 0}%` }"
+                  :style="{ '--pos': `${row.comparison.position ?? 0}%` }"
                 />
               </span>
             </span>
@@ -378,34 +378,42 @@ onBeforeUnmount(() => {
 .vm { margin-top: 2.6rem; }
 .vm:first-child { margin-top: 0; }
 .vm h2 { margin-bottom: 0.9rem; }
-.lead { font-size: 1.08rem; }
+.vm-text .lead {
+  font-size: 1.2rem;
+  line-height: 1.65;
+}
+.vm-text .lead :deep(p) { margin: 0 0 0.95rem; }
+.vm-text .lead :deep(p:last-child) { margin-bottom: 0; }
 .note { color: var(--muted); font-size: 0.92rem; }
 .note :deep(a) { font-weight: 400; }
 .price-head {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: 0.85rem;
+}
+.price-title-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.85rem;
-  margin-bottom: 0.75rem;
+  gap: 0.4rem 0.75rem;
 }
-.price-head-copy { flex: 1 1 100%; min-width: 0; }
 .price-head h2 { margin: 0; }
 .price-lead {
-  margin: 0.15rem 0 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 0.92rem;
-  line-height: 1.35;
+  font-size: 1rem;
+  line-height: 1.4;
 }
 .price-badge {
-  flex: none;
-  margin: 0 0 0 auto;
-  padding: 0.12rem 0.5rem;
-  border-radius: 99px;
+  margin: 0;
+  padding: 0.32rem 0.75rem;
+  border: 1px solid #dfc48a;
+  border-radius: 999px;
   background: var(--color-amber-soft);
   color: var(--color-partner);
-  font-size: 0.75rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.3;
   white-space: nowrap;
 }
 .price-grid {
@@ -430,8 +438,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.55rem 0.7rem 0.6rem;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem 0.75rem;
   border: 1px solid var(--color-line);
   border-radius: 12px;
   background: var(--surface);
@@ -497,16 +505,16 @@ onBeforeUnmount(() => {
   line-height: 1;
   white-space: nowrap;
 }
-.scale { display: grid; }
+.scale { display: block; margin-left: calc(56px + 0.7rem); }
 .scale-quiet {
   display: flex;
   align-items: center;
-  height: 0.35rem;
+  height: 0.55rem;
 }
 .scale-quiet i {
   display: block;
-  width: 1.4rem;
-  height: 0.28rem;
+  width: 42%;
+  height: 0.55rem;
   border-radius: 99px;
   background: var(--color-line);
 }
@@ -558,22 +566,30 @@ onBeforeUnmount(() => {
 .track {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  height: 0.35rem;
-  overflow: hidden;
+  gap: 3px;
+  height: 0.55rem;
+}
+.track i {
+  display: block;
+  height: 100%;
   border-radius: 99px;
   background: var(--color-line);
 }
-.track i { display: block; height: 100%; }
+.track i:nth-child(1) { background: #c9d8cd; }
+.track i:nth-child(2) { background: #f0d7ab; }
+.track i:nth-child(3) { background: #e8c9bf; }
 .track i.on:nth-child(1) { background: var(--color-pine); }
 .track i.on:nth-child(2) { background: var(--color-amber); }
 .track i.on:nth-child(3) { background: var(--color-brick); }
 .mark {
   position: absolute;
   top: 50%;
-  width: 0.62rem;
-  height: 0.62rem;
+  left: clamp(0.45rem, var(--pos), calc(100% - 0.45rem));
+  width: 0.95rem;
+  height: 0.95rem;
   border: 2px solid var(--surface);
   border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(43 36 32 / 28%);
   transform: translate(-50%, -50%);
 }
 .mark.cheap { background: var(--color-pine); }
@@ -588,7 +604,6 @@ onBeforeUnmount(() => {
 .price-foot :deep(a) { font-weight: 400; }
 @media (min-width: 720px) {
   .price-grid { grid-template-columns: 1fr 1fr; }
-  .price-head-copy { flex-basis: 16rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .price-card,
@@ -604,12 +619,12 @@ onBeforeUnmount(() => {
   list-style: none;
 }
 .cards li {
-  padding: 0.9rem 1rem;
+  padding: 1rem 1.05rem 1.05rem;
   border: 1px solid var(--color-line);
-  border-radius: 12px;
-  background: var(--color-paper, #fffdf8);
+  border-radius: 14px;
+  background: var(--color-surface);
 }
-.cards :deep(p) { margin: 0; font-size: 0.92rem; line-height: 1.45; }
+.cards :deep(p) { margin: 0; font-size: 1rem; line-height: 1.45; }
 .cards .who { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem; font-size: 1rem; font-weight: 700; line-height: 1.25; }
 .aud-icon {
   display: inline-grid;
@@ -617,28 +632,41 @@ onBeforeUnmount(() => {
   place-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1.5px dashed var(--color-line);
   border-radius: 50%;
   background: var(--color-amber-soft);
-  color: var(--accent);
+  color: var(--color-brick);
 }
 .vm h2.with-sticker { display: flex; gap: 0.6rem; align-items: center; }
 .vm h2.with-sticker :deep(.sticker) { flex: none; width: 56px; margin: -0.6rem 0; transform: rotate(-6deg); }
 .practical { display: grid; gap: 0; margin: 0; }
 .practical > div {
   display: grid;
-  grid-template-columns: minmax(9rem, 0.6fr) 1fr;
-  gap: 1rem;
-  padding: 0.65rem 0;
+  grid-template-columns: 11.5rem minmax(0, 1fr);
+  gap: 0.35rem 1rem;
+  align-items: start;
+  padding: 0.8rem 0;
   border-top: 1px solid var(--color-line);
 }
-.practical dt { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; }
-.practical dd { margin: 0; }
+.practical dt {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+.practical dd { margin: 0; line-height: 1.45; }
 .tips { margin: 0; padding-left: 1.2rem; }
 .tips li + li { margin-top: 0.4rem; }
-.faq details { padding: 0.6rem 0; border-top: 1px solid var(--color-line); }
-.faq summary { font-weight: 600; cursor: pointer; }
-.faq :deep(p) { margin: 0.4rem 0 0; }
+.faq details { padding: 0.85rem 0 0.95rem; border-top: 1px solid var(--color-line); }
+.faq details:last-child { border-bottom: 1px solid var(--color-line); }
+.faq summary {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.3;
+  cursor: pointer;
+}
+.faq :deep(p) { margin: 0.45rem 0 0; max-width: 62ch; line-height: 1.55; }
 @media (max-width: 560px) {
   .practical > div { grid-template-columns: 1fr; gap: 0.2rem; }
 }

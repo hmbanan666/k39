@@ -37,6 +37,20 @@ export function shortAddress(value: string) {
   return text
 }
 
+/** True when rendered directions already include this street address. */
+export function htmlContainsAddress(html: string | null | undefined, address: string | null | undefined) {
+  const full = address?.trim().toLowerCase()
+  if (!html || !full) {
+    return false
+  }
+  const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').toLowerCase()
+  if (text.includes(full)) {
+    return true
+  }
+  const street = full.replace(/^[^,]+,\s*/, '')
+  return street.length > 4 && street !== full && text.includes(street)
+}
+
 export function articleBody(summary: string, body: string, howToGet: string | null | undefined) {
   const article = stripRepeatedLead(summary, body)
   const directions = howToGet?.trim()
