@@ -254,14 +254,19 @@
             class="price-detail"
             role="tooltip"
           >
-            {{ row.comparison.line }}
+            <span class="price-verdict">{{ row.comparison.line }}</span>
+            <span class="price-facts">
+              <span class="price-kicker">{{ row.comparison.town.where }}</span>
+              <span>Медиана: {{ formatRub(row.comparison.town.medianRub) }}</span>
+              <span>Диапазон: {{ formatTownRange(row.comparison.town) }}</span>
+              <span>Мест: {{ row.comparison.town.places }}</span>
+            </span>
             <span
-              v-if="row.comparison.band"
-              class="scale-labels"
+              v-if="knownPortion(row.variant)"
+              class="price-facts"
             >
-              <span :class="{ on: row.comparison.band === 'cheap' }">дёшево</span>
-              <span :class="{ on: row.comparison.band === 'medium' }">средне</span>
-              <span :class="{ on: row.comparison.band === 'expensive' }">дорого</span>
+              <span class="price-kicker">В этом заведении</span>
+              <span>Порция: {{ knownPortion(row.variant) }}</span>
             </span>
           </span>
         </li>
@@ -270,33 +275,18 @@
         v-if="block.source"
         class="price-foot price-sources"
       >
-        <template
-          v-for="(link, index) in block.source.links"
-          :key="`${link.title}\n${link.url ?? ''}`"
+        <UiLink
+          v-if="block.source.url"
+          :href="block.source.url"
+          data-track="outbound"
+          data-track-name="price-source"
         >
-          <span v-if="index > 0">, </span>
-          <UiLink
-            v-if="link.url"
-            :href="link.url"
-            data-track="outbound"
-            data-track-name="price-source"
-          >
-            {{ link.title }}
-          </UiLink>
-          <template v-else>
-            {{ link.title }}
-          </template>
-        </template>,
-        <time
-          v-if="block.source.from === block.source.until"
-          :datetime="block.source.from"
-        >{{ formatPriceDate(block.source.from) }}</time>
+          {{ block.source.title }}
+        </UiLink>
         <template v-else>
-          проверено с
-          <time :datetime="block.source.from">{{ formatPriceDate(block.source.from) }}</time>
-          по
-          <time :datetime="block.source.until">{{ formatPriceDate(block.source.until) }}</time>
-        </template>
+          {{ block.source.title }}
+        </template>,
+        <time :datetime="block.source.date">{{ formatPriceDate(block.source.date) }}</time>
         Цены могли измениться.
       </p>
     </template>
@@ -322,7 +312,7 @@ import type { PublicDish, PublicVenueModule } from '~~/shared/venue-modules'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { tablerIcon } from '~~/shared/icons'
 import { licenseHref, licenseLabel } from '~~/shared/media'
-import { formatPriceDate, formatRub, PRICE_STICKER_WIDTH, priceCardTap } from '~~/shared/price-compare'
+import { formatPriceDate, formatRub, formatTownRange, knownPortion, PRICE_STICKER_WIDTH, priceCardTap } from '~~/shared/price-compare'
 import { presentVenueBlocks } from '~~/shared/venue-modules'
 import MetaLink from './MetaLink.vue'
 
@@ -523,12 +513,12 @@ onBeforeUnmount(() => {
 .price-detail {
   position: absolute;
   z-index: 3;
-  top: calc(100% - 0.2rem);
-  right: 0;
+  top: calc(100% + 0.4rem);
   left: 0;
   display: grid;
-  gap: 0.35rem;
-  padding: 0.5rem 0.65rem;
+  gap: 0.45rem;
+  width: min(16.5rem, 100%);
+  padding: 0.55rem 0.7rem 0.6rem;
   border: 1px solid var(--color-line);
   border-radius: 10px;
   background: var(--surface);
@@ -537,6 +527,9 @@ onBeforeUnmount(() => {
   line-height: 1.35;
   opacity: 0;
   pointer-events: none;
+  transform: translateY(4px) scale(0.98);
+  transform-origin: top left;
+  transition: opacity 150ms var(--ease), transform 150ms var(--ease);
 }
 .price-card:hover + .price-detail,
 .price-card:focus-within + .price-detail,
@@ -545,6 +538,14 @@ onBeforeUnmount(() => {
 .price-item.is-open .price-detail {
   opacity: 1;
   pointer-events: auto;
+  transform: none;
+}
+.price-verdict { font-weight: 700; }
+.price-facts { display: grid; gap: 0.12rem; }
+.price-kicker {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 .price-detail .credit {
   display: flex;
@@ -578,16 +579,6 @@ onBeforeUnmount(() => {
 .mark.cheap { background: var(--color-pine); }
 .mark.medium { background: var(--color-amber); }
 .mark.expensive { background: var(--color-brick); }
-.scale-labels {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  color: var(--muted);
-  font-size: 0.7rem;
-  line-height: 1.2;
-}
-.scale-labels span:nth-child(2) { text-align: center; }
-.scale-labels span:nth-child(3) { text-align: right; }
-.scale-labels .on { color: var(--text); font-weight: 700; }
 .price-foot {
   margin: 0.25rem 0 0;
   color: var(--muted);
@@ -602,7 +593,7 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .price-card,
   .dish-card,
-  .price-detail { transition: none; }
+  .price-detail { transition: none; transform: none; }
 }
 .cards {
   display: grid;
