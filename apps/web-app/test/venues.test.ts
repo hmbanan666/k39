@@ -155,7 +155,7 @@ describe('eat-nearby card helpers', () => {
 })
 
 describe('venue modules', async () => {
-  const { toPublicVenueModules, venueModulesSchema, venueSectionSticker } = await import('../shared/venue-modules')
+  const { toPublicVenueModules, venueModulesSchema } = await import('../shared/venue-modules')
   const { searchBlurb, venueTitleBase } = await import('../shared/seo')
   it('renders only valid lists and pulls how-to-get out of the blocks', () => {
     expect(toPublicVenueModules([], (text) => text)).toBeNull()
@@ -167,11 +167,6 @@ describe('venue modules', async () => {
     ], (text) => `<p>${text}</p>`)
     expect(out?.blocks.map((block) => block.id)).toEqual(['o-meste', 'praktichno'])
     expect(out?.howToGetHtml).toBe('<p>От вокзала пять минут.</p>')
-  })
-  it('gives «Как добраться» the only content sticker when the hero has photos', () => {
-    expect(venueSectionSticker(false, true)).toBeNull()
-    expect(venueSectionSticker(true, true)).toBe('directions')
-    expect(venueSectionSticker(true, false)).toBe('audience')
   })
   it('allows one practical module', () => {
     const item = { type: 'practical', items: [{ key: 'kids', label: 'Дети', value: 'Есть стульчики' }] }

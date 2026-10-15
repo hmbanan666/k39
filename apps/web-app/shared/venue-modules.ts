@@ -88,19 +88,6 @@ export const VENUE_MODULE_TITLES: Record<VenueModule['type'], string> = {
   'faq': 'Вопросы',
 }
 
-/**
- * One content sticker besides the owner card (docs/stickers.md).
- * No cover: the hero sticker already uses that slot.
- * Cover and a «Как добраться» block: `with-map` there.
- * Cover without that block: `with-heart` on «Кому подойдёт».
- */
-export function venueSectionSticker(hasCover: boolean, hasDirections: boolean): 'directions' | 'audience' | null {
-  if (!hasCover) {
-    return null
-  }
-  return hasDirections ? 'directions' : 'audience'
-}
-
 /** Latin anchors for the reader contents. */
 export const VENUE_MODULE_IDS: Record<VenueModule['type'], string> = {
   'text': 'o-meste',

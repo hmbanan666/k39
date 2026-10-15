@@ -94,7 +94,7 @@
             v-if="modules"
             :blocks="modules.blocks"
             :menu-url="venue.menuUrl"
-            :audience-sticker="sectionSticker === 'audience'"
+            :audience-sticker="Boolean(cover)"
           />
           <template v-else>
             <h2
@@ -274,10 +274,10 @@
             :id="PAGE_SECTIONS.directions.id"
             class="block"
           >
-            <h2 :class="{ 'with-sticker': sectionSticker === 'directions' }">
+            <h2 :class="{ 'with-sticker': directionsSticker }">
               {{ PAGE_SECTIONS.directions.title }}
               <Sticker
-                v-if="sectionSticker === 'directions'"
+                v-if="directionsSticker"
                 slug="with-map"
                 :width="72"
                 decorative
@@ -386,7 +386,6 @@ import { operator } from '~~/shared/operator'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 import { russianDay } from '~~/shared/place-guide'
 import { socialLabel, venueActions, venueServiceNotes } from '~~/shared/venue-actions'
-import { venueSectionSticker } from '~~/shared/venue-modules'
 
 export interface VenuePageData {
   type: 'venue'
@@ -455,8 +454,8 @@ const modules = venue.modules
 const hasDishesModule = Boolean(modules?.blocks.some((block) => block.type === 'dishes'))
 const showLegacyOrder = !hasDishesModule && (venue.dishes.length > 0 || Boolean(venue.menuUrl))
 const hasCoords = venue.latitude != null && venue.longitude != null
-// Hero sticker, or one section sticker, plus the owner card. See venueSectionSticker.
-const sectionSticker = venueSectionSticker(Boolean(cover), hasCoords)
+// Heart and map both show when the hero has photos. The headings are far apart.
+const directionsSticker = Boolean(cover) && hasCoords
 const sectionsBefore = modules
   ? modules.blocks.map((block) => ({ id: block.id, title: block.title }))
   : presentSections([[ABOUT, Boolean(venue.html)]])
