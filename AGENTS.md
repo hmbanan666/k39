@@ -57,17 +57,16 @@ Site search (ADR 0030) is Postgres full-text (`russian`) plus `pg_trgm` over the
 
 ## Conventions
 
-- User-facing UI copy and place/quest/legal content: Russian. Do not use em dashes in UI chrome or in the HTML title. The title pattern is `{title} | K39`, or `{seoTitle} | K39` when that field is set. Do not append a second type word.
-- ADRs, this file, the README, code comments: English.
+- UI copy and place, quest, and legal content: Russian. Docs, ADRs, this file, the README, and code comments: English. Do not use em dashes in UI chrome or in the HTML title. The title pattern is `{title} | K39`, or `{seoTitle} | K39` when that field is set. Do not append a second type word.
+- No hacks. Prefer a long-term solution in the existing architecture.
+- The public site is simple server-rendered HTML for bots and people.
 - Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). Husky runs lint-staged and commitlint.
 - Architecture decisions: `docs/adr/NNNN-title.md`.
 - Vue files: template, then script, then style. ESLint is `@antfu/eslint-config` with the local overrides in `eslint.config.mjs`.
 
 ## UI
 
-For any UI change, read `.cursor/skills/k39-ui/SKILL.md` first. It points at `.cursor/skills/frontend-design/SKILL.md`. That file is Anthropic's frontend-design skill, copied verbatim from https://github.com/anthropics/skills (`skills/frontend-design`), with its Apache-2.0 `LICENSE.txt` in the same folder. `.cursor/rules/frontend-design.mdc` attaches the same instruction to `apps/web-app/**/*.vue`, CSS, and components.
-
-K39 precedence: the existing design system wins over the skill's generic advice. Keep the current tokens, typography, and colors (ADR 0010, `docs/design-system.md`). Moose and food stickers go through `<Sticker>` (`docs/stickers.md`, `docs/food-stickers.md`). Block components own their styling. Keep server rendering for bots and people. Prefer simplicity. Use the skill for craft, polish, and anti-generic taste. Do not restyle the brand.
+For any UI change, read `.cursor/skills/k39-ui/SKILL.md` first. It points at `.cursor/skills/frontend-design/SKILL.md` and holds the K39 precedence. That file is Anthropic's frontend-design skill, copied verbatim from https://github.com/anthropics/skills (`skills/frontend-design`), with its Apache-2.0 `LICENSE.txt` in the same folder. `.cursor/rules/frontend-design.mdc` points at `k39-ui` for Vue and CSS files.
 
 ## Skills
 

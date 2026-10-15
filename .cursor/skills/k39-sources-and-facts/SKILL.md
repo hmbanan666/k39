@@ -7,6 +7,10 @@ description: Use when choosing a source, a photo, hours, a price, or any fact fo
 
 If a source does not state it, do not write it. Voice and the stop-list are `k39-writing`. Price matching is `k39-price-anchors`. Photo files and licenses in the pipeline are ADR 0011.
 
+Never contact a venue. Never do outreach. Never ask a venue for photos or data.
+
+Never copy another site's content: not the sentences, not the photos, and not the structure. Write from the source facts in our order.
+
 ## Allowed
 
 - The official site of the place, museum, administration, or venue (pages and menus).
@@ -60,11 +64,15 @@ For a place, write «уточняйте» (or leave the field empty where the te
 
 ## Photos
 
-`alt`, `author`, `license`, and `sourceUrl` are required. Allowed licenses: `own`, `cc-by`, `cc-by-sa`, `cc0`, `pd`, `permission`.
+Editorial photos are Wikimedia Commons or our own shots. Licenses: `own`, `cc-by`, `cc-by-sa`, `cc0`, `pd`.
 
-Attribution stays in the media fields. `<MediaImage>` and the JSON-LD credit render it (ADR 0011, `shared/media.ts`). Do not write «Фото: …» into the article.
+`permission` and origin `venue` are owner uploads in the cabinet only. The content token refuses both (`media_upload_from_url`, `media_attach_to_venue`). Do not download a photo from the venue site.
 
-A venue dish photo is already attached to that venue. Editorial writes may newly use origin `own` or `commons`. An owner upload is origin `venue` and is not the cover (ADR 0032).
+`alt`, `author`, `license`, and `sourceUrl` are required.
+
+Attribution lives in the markup: the media fields feed JSON-LD (`shared/media.ts`, ADR 0011) and the collapsible «Источники» block (`<details>` with summary «Источники», as on the place page and the venue page). Do not write «Фото: …» into the article.
+
+A venue dish photo is already attached to that venue. An editorial write may newly use origin `own` or `commons`. An owner cabinet upload is origin `venue` and is not the cover (ADR 0032). Sending back the id already on the item keeps that photo.
 
 ## Examples
 
@@ -91,4 +99,6 @@ Good: store 10:00–22:00 from the site, with that page as the source. Keep the 
 - A venue address, hours, phone, and menu come from the official site. OSM only fills a gap and supplies coordinates. A conflict keeps the site.
 - «уточняйте» is used only where the official site says nothing and, for a venue, OSM has no fill-in. Nothing is guessed.
 - `sources` and `factsCheckedAt` or `lastVerifiedAt` match this check.
-- Photo `alt`, `author`, `license`, and `sourceUrl` are set. The article does not repeat the credit.
+- Photo `alt`, `author`, `license`, and `sourceUrl` are set. The credit is in JSON-LD and «Источники», not in the article.
+- No one contacted the venue or asked it for photos or data.
+- The text, the photos, and the structure are ours. Nothing is copied.

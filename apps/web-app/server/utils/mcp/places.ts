@@ -1,9 +1,11 @@
 import type { VisitStatus } from '@k39/database'
 import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
+import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from './audit'
 import { normalizePublication } from './draft'
 import { parseFactsCheckedAt } from './facts'
+import { writingGate } from './writing-guard'
 
 const VISIT = new Set(['open', 'ruins', 'closed', 'unknown'])
 
@@ -98,6 +100,21 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     throw createError({ statusCode: 400, statusMessage: problem || 'Нужны название и адрес' })
   }
   const checked = parseFactsCheckedAt(input.factsCheckedAt)
+  const writingWarnings = writingGate(writingCopy([
+    input.title,
+    input.summary,
+    input.body,
+    input.sections,
+    input.hours,
+    input.price,
+    input.howToGet,
+    input.seoTitle,
+    input.seoDescription,
+    input.visitDuration,
+    input.bestTime,
+    input.faq,
+    input.sources,
+  ]), publicationStatus === 'published')
   const row = await db.editor.savePlace({
     slug,
     title: input.title.trim(),
@@ -125,7 +142,7 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     ...(checked !== undefined ? { lastVerifiedAt: checked } : {}),
   })
   await auditMcp('place_draft_create', 'place', row?.id)
-  return compactPlace(row!)
+  return { ...compactPlace(row!), writingWarnings }
 }
 
 export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'place_draft_update') {
@@ -144,6 +161,21 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     throw createError({ statusCode: 400, statusMessage: problem })
   }
   const checked = parseFactsCheckedAt(input.factsCheckedAt)
+  const writingWarnings = writingGate(writingCopy([
+    input.title ?? current.title,
+    input.summary ?? current.summary,
+    input.body ?? current.body,
+    input.sections,
+    input.hours === undefined ? current.hours : input.hours,
+    input.price === undefined ? current.price : input.price,
+    input.howToGet === undefined ? current.howToGet : input.howToGet,
+    input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+    input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+    input.visitDuration === undefined ? current.visitDuration : input.visitDuration,
+    input.bestTime === undefined ? current.bestTime : input.bestTime,
+    input.faq === undefined ? current.faq : input.faq,
+    input.sources ?? current.sources,
+  ]), publicationStatus === 'published')
   const row = await db.editor.savePlace({
     id: current.id,
     slug,
@@ -172,7 +204,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
   })
   await auditMcp(auditTool, 'place', current.id)
-  return compactPlace(row!)
+  return { ...compactPlace(row!), writingWarnings }
 }
 
 export async function submitPlaceReview(input: { id?: string, slug?: string }) {

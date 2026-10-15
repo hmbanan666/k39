@@ -2,11 +2,13 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { pageModulesSchema } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
+import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from '../../utils/mcp/audit'
 import { rethrowContentWrite } from '../../utils/mcp/content-error'
 import { normalizePublication } from '../../utils/mcp/draft'
 import { orderedStopView } from '../../utils/mcp/routes'
 import { orderedStops, sources } from '../../utils/mcp/schemas'
+import { writingGate } from '../../utils/mcp/writing-guard'
 
 export default defineMcpTool({
   name: 'collection_save',
@@ -37,6 +39,17 @@ export default defineMcpTool({
     const current = input.id
       ? rows.find((item) => item.id === input.id)
       : rows.find((item) => item.slug === input.slug)
+    const publicationStatus = normalizePublication(input.publicationStatus, current?.publicationStatus)
+    const writingWarnings = writingGate(writingCopy([
+      input.title,
+      input.summary === undefined ? current?.summary : input.summary,
+      input.body === undefined ? current?.body : input.body,
+      input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
+      input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
+      input.modules === undefined ? current?.modules : input.modules,
+      input.items,
+      input.sources === undefined ? current?.sources : input.sources,
+    ]), publicationStatus === 'published')
     try {
       const row = await db.editor.saveCollection({
         id: current?.id ?? input.id,
@@ -44,7 +57,7 @@ export default defineMcpTool({
         title: input.title,
         summary: input.summary,
         body: input.body,
-        publicationStatus: normalizePublication(input.publicationStatus, current?.publicationStatus),
+        publicationStatus,
         seoTitle: input.seoTitle,
         seoDescription: input.seoDescription,
         ogImage: input.ogImage,
@@ -66,6 +79,7 @@ export default defineMcpTool({
         sources: row.sources,
         modules: row.modules,
         items: orderedStopView(await db.editor.collectionItems(row.id)),
+        writingWarnings,
       }
     } catch (error) {
       rethrowContentWrite(error)

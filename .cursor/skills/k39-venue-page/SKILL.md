@@ -50,7 +50,23 @@ The page links `/zavedeniya`, the town listing when `regionSlug` is set, and the
 
 Status, slug, and SEO stay editorial. Set `lastVerifiedAt` when you check the facts. A venue is stale after 180 days and leaves «Где поесть рядом» after 365.
 
+## Page chrome
+
+The price-band badge sits to the right of the «Ориентиры цен» title (`price-badge` in `VenueModules.vue`). From 720px it shares the heading row. Below that it wraps. Visible text is «ниже среднего», «выше среднего», or «около среднего». It is hidden when `price_band` is null. Do not type the badge into the description. The scale math is `docs/venue-modules.md`.
+
+«Источники» is a collapsed `<details>` whose summary is «Источники» (`VenuePage.vue`, the same pattern as the place page). Put each source in `sources`. Do not paste the list into the description.
+
+Photos: Commons or our own shots. `permission` and origin `venue` are cabinet owner uploads only (`k39-sources-and-facts`).
+
 ## Examples
+
+Good description:
+
+> Кафе на улице Октябрьской, 10. Кухня с 9:00 до 21:00. Летом сажают на террасе во дворе.
+
+Bad description (price retelling and template phrases):
+
+> Уютное кафе в самом сердце Светлогорска. Капучино 250 ₽, сырники 320 ₽. Сок только свежевыжатый, не из пакета. Цены могли измениться. Отличный выбор для ценителей.
 
 Good modules, prices filled separately with `venue_prices_set`:
 
@@ -74,3 +90,5 @@ Bad: omitting `{ type: 'prices' }` because the menu is not collected yet. Includ
 - Passport has queries, audience, action, and both goals.
 - Region and coordinates are set when known, so the town listing and nearby places link.
 - Address, hours, phone, and menu follow `k39-sources-and-facts`: official site, then an OSM fill-in, then empty.
+- The description does not retell prices or disclaim the price block. Photos follow the photo policy.
+- Publish only after the reviewer pass in `k39-publish-review`. The author does not publish.

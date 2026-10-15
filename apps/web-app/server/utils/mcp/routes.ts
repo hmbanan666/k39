@@ -1,9 +1,11 @@
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { slugError } from '../../../shared/seo'
+import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
 import { normalizePublication } from './draft'
+import { writingGate } from './writing-guard'
 
 type StopInput = { placeSlug: string, note?: string | null }
 
@@ -47,6 +49,16 @@ export async function createRouteDraft(input: {
   if (problem) {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
+  const publicationStatus = normalizePublication(input.publicationStatus)
+  const writingWarnings = writingGate(writingCopy([
+    input.title,
+    input.summary,
+    input.body,
+    input.sections,
+    input.seoTitle,
+    input.seoDescription,
+    input.points,
+  ]), publicationStatus === 'published')
   try {
     const row = await db.editor.saveRoute({
       slug: input.slug,
@@ -54,7 +66,7 @@ export async function createRouteDraft(input: {
       summary: input.summary,
       body: input.body,
       sections: input.sections,
-      publicationStatus: normalizePublication(input.publicationStatus),
+      publicationStatus,
       seoTitle: input.seoTitle,
       seoDescription: input.seoDescription,
       points: input.points,
@@ -67,6 +79,7 @@ export async function createRouteDraft(input: {
       title: row.title,
       publicationStatus: row.publicationStatus,
       points: orderedStopView(await db.editor.routePoints(row.id)),
+      writingWarnings,
     }
   } catch (error) {
     rethrowContentWrite(error)
@@ -86,6 +99,16 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
   if (problem) {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
+  const publicationStatus = normalizePublication(input.publicationStatus, current.publicationStatus)
+  const writingWarnings = writingGate(writingCopy([
+    input.title || current.title,
+    input.summary ?? current.summary,
+    input.body ?? current.body,
+    input.sections,
+    input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+    input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+    input.points,
+  ]), publicationStatus === 'published')
   try {
     const row = await db.editor.saveRoute({
       id: current.id,
@@ -94,7 +117,7 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       summary: input.summary ?? current.summary,
       body: input.body ?? current.body,
       sections: input.sections,
-      publicationStatus: normalizePublication(input.publicationStatus, current.publicationStatus),
+      publicationStatus,
       seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
       seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
       points: input.points,
@@ -107,6 +130,7 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       title: row.title,
       publicationStatus: row.publicationStatus,
       points: orderedStopView(await db.editor.routePoints(row.id)),
+      writingWarnings,
     }
   } catch (error) {
     rethrowContentWrite(error)

@@ -4,7 +4,7 @@ import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
   name: 'media_attach_to_venue',
-  description: 'Attach a stored photo to a venue. origin says who supplied it: own (our photo), venue (sent by the venue with permission), commons (free license). The photo must already carry an author. Never attach a copy from another site.',
+  description: 'Attach a stored photo to a venue. origin is own (our photo) or commons. origin venue is the cabinet owner upload only. The photo must already carry an author. Never attach a copy from another site.',
   inputSchema: {
     venueId: z.string(),
     mediaId: z.string(),
@@ -20,6 +20,9 @@ export default defineMcpTool({
     const media = await db.editor.mediaById(input.mediaId)
     if (!media) {
       throw createError({ statusCode: 404, statusMessage: 'Фото не найдено' })
+    }
+    if (input.origin === 'venue') {
+      throw createError({ statusCode: 400, statusMessage: 'Происхождение venue только для фото владельца из кабинета' })
     }
     if (!(media.author || media.credit)) {
       throw createError({ statusCode: 400, statusMessage: 'У фото нет автора. Укажите автора и лицензию перед привязкой' })

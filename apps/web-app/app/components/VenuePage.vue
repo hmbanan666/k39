@@ -332,11 +332,11 @@
               </template>
             </p>
           </section>
-          <section
+          <details
             v-if="venue.sources.length"
             class="sources"
           >
-            <h2>{{ PAGE_SECTIONS.sources.title }}</h2>
+            <summary>{{ PAGE_SECTIONS.sources.title }}</summary>
             <p v-if="checkedLabel">
               Факты проверены {{ checkedLabel }}.
               <a
@@ -359,7 +359,7 @@
                 </UiLink>
               </li>
             </ul>
-          </section>
+          </details>
         </template>
       </ReaderLayout>
     </div>
@@ -676,7 +676,7 @@ function openPhoto(id: string) {
   color: var(--muted);
   font-size: 0.88rem;
 }
-.sources h2 { margin: 1rem 0 0.4rem; color: var(--color-ink); font-size: 1rem; }
+.sources summary { width: fit-content; padding: 0.75rem 0; color: var(--color-ink); font-weight: 600; cursor: pointer; }
 .sources a { color: inherit; }
 .far { margin-top: 0.9rem; color: var(--muted); font-size: 0.92rem; }
 .sources ul { margin: 0 0 0.4rem; padding: 0; list-style: none; }

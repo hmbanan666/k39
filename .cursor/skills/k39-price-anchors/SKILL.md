@@ -33,14 +33,16 @@ Match the standard dish, not a house special that only shares a word. Put the me
 
 - `caesar`: any chicken or kebab (шашлык) Caesar. Variant carries the protein («с курицей», «с шашлыком»). A shrimp or tofu Caesar is a different dish. Skip it.
 - `tea-lemon`: any tea the venue serves. Variant names the kind («чёрный», «зелёный»). A lemon slice is not required.
-- `orange-juice`: only juice the venue serves, fresh or poured by the glass.
-- Never packaged or bottled: a fridge bottle, a can, or a branded retail drink (a shop juice, a canned soda, a sealed water). Skip the row. This applies to every catalog drink, not only juice.
+- `orange-juice`: freshly squeezed or made in the venue. Never poured from a carton or a bottle. A shop juice is not this row.
+- `beer`: bottled or draft both count. `variant` states which and the volume («разливное, 0,5 л», «бутылка, 0,33 л»).
 
 ## Source
 
-Editorial rows are `sourceKind: official` and need `sourceUrl` on the venue's own menu, site, or official social post. `sourceTitle` is a short label such as «Меню на сайте заведения». `checkedAt` is the day you read that page (`YYYY-MM-DD`). The repository rejects an official row with no URL.
+Editorial rows are `sourceKind: official` and need `sourceUrl` of the venue's own menu: a page on its site or a PDF on that site. No social posts. `sourceTitle` is a short label such as «Меню на сайте заведения». `checkedAt` is the day you read that page (`YYYY-MM-DD`). The repository rejects an official row with no URL.
 
 Do not use Yandex, 2GIS, aggregators, or delivery apps (`k39-sources-and-facts`). Do not invent a price from neighbouring venues.
+
+The public grid prints one source line under the cards (`sharedPriceSource` in `shared/price-compare.ts`, rendered in `VenueModules.vue`): one link, the URL used by the most prices, then the latest date among the prices that use that URL, then «Цены могли измениться». A tie goes to the newer URL. Do not write that sentence into the description. Details: `docs/venue-modules.md`.
 
 `sourceKind: owner` is the cabinet. The server forces it and drops `sourceUrl` (ADR 0031). An editor agent does not send `owner`.
 
@@ -72,7 +74,11 @@ Good:
 
 Bad: the same 490 ₽ with `sourceUrl` on a Yandex or 2GIS page.
 
-Bad: `{ item: 'orange-juice', variant: 'Добрый 0,2', priceRub: 150 }` for a bottled juice in the fridge.
+Bad: `{ item: 'orange-juice', variant: 'из пакета', priceRub: 150 }` for juice poured from a carton or a bottle.
+
+Good beer: `{ item: 'beer', variant: 'разливное, 0,5 л', priceRub: 280, sourceKind: 'official', sourceUrl: 'https://cafe.example/menu.pdf' }`.
+
+Bad: a menu price taken from an Instagram post or a VK album.
 
 Bad: a thirteenth row, or a price you filled in because other cafes in town charge about that.
 

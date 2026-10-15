@@ -21,6 +21,9 @@ export default defineMcpTool({
     isCover: z.boolean().optional(),
   },
   handler: async (input) => {
+    if (input.license === 'permission') {
+      throw createError({ statusCode: 400, statusMessage: 'Лицензия permission только для загрузки владельца в кабинете' })
+    }
     if (Boolean(input.placeId) === Boolean(input.collectionId)) {
       throw createError({ statusCode: 400, statusMessage: 'Нужен ровно один из placeId или collectionId' })
     }

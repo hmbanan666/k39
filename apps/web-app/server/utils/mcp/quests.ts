@@ -1,9 +1,11 @@
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { slugError } from '../../../shared/seo'
+import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
 import { normalizePublication } from './draft'
+import { writingGate } from './writing-guard'
 
 export interface QuestStepInput {
   placeSlug: string
@@ -79,6 +81,15 @@ export async function writeQuest(input: QuestWriteInput, auditTool: string, opti
   }
   const routes = await db.editor.listRoutes()
   const routeId = routeIdForSlug(input.routeSlug, routes)
+  const publicationStatus = normalizePublication(input.publicationStatus, current?.publicationStatus)
+  const writingWarnings = writingGate(writingCopy([
+    title,
+    input.summary === undefined ? current?.summary : input.summary,
+    input.body === undefined ? current?.body : input.body,
+    input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
+    input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
+    input.steps,
+  ]), publicationStatus === 'published')
   try {
     const row = await db.editor.saveQuest({
       id: current?.id,
@@ -86,7 +97,7 @@ export async function writeQuest(input: QuestWriteInput, auditTool: string, opti
       title,
       summary: input.summary,
       body: input.body,
-      publicationStatus: normalizePublication(input.publicationStatus, current?.publicationStatus),
+      publicationStatus,
       seoTitle: input.seoTitle,
       seoDescription: input.seoDescription,
       ogImage: input.ogImage,
@@ -101,6 +112,7 @@ export async function writeQuest(input: QuestWriteInput, auditTool: string, opti
       title: row.title,
       publicationStatus: row.publicationStatus,
       routeSlug: routeSlugOf(row.routeId, routes),
+      writingWarnings,
     }
   } catch (error) {
     rethrowContentWrite(error)

@@ -309,7 +309,7 @@ describe('page score', () => {
     expect(score.checks.quality).not.toContain('no prices')
   })
 
-  it('gives a hub landing page no upper length penalty once it clears 2000 characters', () => {
+  it('accepts a hub inside 2000-8000 characters', () => {
     const score = scorePage(source({
       kind: 'hub',
       path: '/forty',
@@ -319,6 +319,24 @@ describe('page score', () => {
       memberCount: 2,
     }))
     expect(score.checks.quality.filter((check) => check.startsWith('body ') || check.includes('FAQ') || check === 'no FAQ')).toEqual([])
+  })
+
+  it('flags a minor place above 6000 characters and a hub above 8000', () => {
+    const minor = scorePage(source({
+      categorySlug: 'eda',
+      categoryTitle: 'Еда',
+      body: 'б'.repeat(7000),
+    }))
+    expect(minor.checks.quality.some((check) => check.includes('above 6000'))).toBe(true)
+    const hub = scorePage(source({
+      kind: 'hub',
+      path: '/eda',
+      categorySlug: 'eda',
+      body: 'ы'.repeat(9000),
+      photoCount: 1,
+      memberCount: 2,
+    }))
+    expect(hub.checks.quality.some((check) => check.includes('above 8000'))).toBe(true)
   })
 
   it('does not require Как добраться when every collection stop is in one city', () => {

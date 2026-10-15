@@ -163,7 +163,7 @@ export function lengthNorm(kind: PageKind, categorySlug: string | null) {
   if (kind === 'place') {
     return MAJOR_PLACE_CATEGORIES.has(categorySlug || '')
       ? { min: 3000, max: 6000 as number | null }
-      : { min: 2000, max: null }
+      : { min: 2000, max: 6000 as number | null }
   }
   if (kind === 'route') {
     return { min: 8000, max: 12000 as number | null }
@@ -174,8 +174,8 @@ export function lengthNorm(kind: PageKind, categorySlug: string | null) {
   if (kind === 'quest') {
     return { min: 2000, max: 4000 as number | null }
   }
-  // Hub landing pages have a floor and no ceiling. Six FAQ questions are scored on their own.
-  return { min: 2000, max: null }
+  // Hub landing pages include a FAQ. 8000 leaves room for it. Do not pad to the floor.
+  return { min: 2000, max: 8000 as number | null }
 }
 
 function clamp(value: number) {

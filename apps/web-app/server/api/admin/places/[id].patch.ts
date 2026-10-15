@@ -1,6 +1,8 @@
 import { db } from '@k39/database'
 import { slugError } from '../../../../shared/seo'
+import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
+import { writingGate } from '../../../utils/mcp/writing-guard'
 
 export default defineEventHandler(async (event) => {
   const user = await requireEditor(event)
@@ -16,7 +18,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
   const category = body.categorySlug ? await db.content.categoryBySlug(String(body.categorySlug)) : null
-  return db.editor.savePlace({
+  const publicationStatus = body.publicationStatus ?? current.publicationStatus
+  const writingWarnings = writingGate(writingCopy([
+    body.title ?? current.title,
+    body.summary ?? current.summary,
+    body.body ?? current.body,
+    body.hours ?? current.hours,
+    body.price ?? current.price,
+    body.howToGet ?? current.howToGet,
+    body.seoTitle ?? current.seoTitle,
+    body.seoDescription ?? current.seoDescription,
+  ]), publicationStatus === 'published')
+  const row = await db.editor.savePlace({
     id,
     slug,
     title: String(body.title ?? current.title),
@@ -34,8 +47,9 @@ export default defineEventHandler(async (event) => {
     seoTitle: body.seoTitle ?? current.seoTitle,
     seoDescription: body.seoDescription ?? current.seoDescription,
     ogImage: body.ogImage ?? current.ogImage,
-    publicationStatus: body.publicationStatus ?? current.publicationStatus,
+    publicationStatus,
     noindex: body.noindex ?? current.noindex,
     authorKind: body.authorKind ?? current.authorKind,
   }, user.id)
+  return { ...row, writingWarnings }
 })

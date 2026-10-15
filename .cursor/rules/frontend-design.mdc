@@ -4,4 +4,4 @@ globs: apps/web-app/**/*.vue,apps/web-app/**/*.css,**/*.css,apps/web-app/**/comp
 alwaysApply: false
 ---
 
-Read `.cursor/skills/k39-ui/SKILL.md` before changing UI. It points at `.cursor/skills/frontend-design/SKILL.md` and states the K39 precedence (tokens, stickers, one shared size, server rendering, simplicity, before/after screenshots).
+Read `.cursor/skills/k39-ui/SKILL.md` before changing UI.

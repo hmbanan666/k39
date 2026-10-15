@@ -24,16 +24,32 @@ Phrases (`WRITING_STOP_LIST`):
 
 - «уютная атмосфера»
 - «идеальное место»
-- «каждый найдёт» and «каждый найдет»
+- «каждый найдёт»
+- «каждый найдет»
 - «гастрономическое путешествие»
-- «настоящий» as an empty intensifier («настоящий борщ», «настоящая история»)
+- «в самом сердце»
+- «порадует»
+- «приятно удивит»
+- «на любой вкус»
+- «по-домашнему»
+- «атмосферн» (атмосферный, атмосферно, and the rest)
+- «гостеприимн»
+- «отличный выбор»
+- «стоит посетить»
+- «не оставит равнодушн»
+- «окунуться»
+- «для ценителей»
+- «вкусно и недорого»
 
-Patterns (`WRITING_STOP_PATTERNS`):
+Patterns (`WRITING_STOP_PATTERNS`, real regexes in `writing.ts`):
 
-- empty superlatives: лучший, самый, уникальный, неповторимый, незабываемый, идеальный, with no measured fact
-- triads: three adjectives or three nouns in a row («вкусно, душевно и атмосферно»)
+- empty superlatives: лучший, самый, уникальный, неповторимый, незабываемый, идеальный, with other endings
+- настоящий as an intensifier only («настоящий борщ», «настоящая история»). Not «в настоящее время», «настоящий адрес», «настоящее имя»
+- triads of evaluative adjectives («вкусно, душевно и атмосферно»). A neutral list («хлеб, молоко и сыр») is allowed
 - «не просто X, а Y»
-- an em dash (the character —) in body copy, UI chrome, or the HTML title. Use a period, a comma, a colon, or parentheses.
+- an em dash (U+2014, the character —) in body copy, UI chrome, or the HTML title. Use a period, a comma, a colon, or parentheses.
+
+Venue prose (`VENUE_COPY_RULES`): do not retell the price list (price retelling) and do not carry a disclaimer about price anchors or packaged juice (price disclaimer). Prices stay in «Ориентиры цен» and «Что заказать». The grid already prints «Цены могли измениться».
 
 Never name `kgdmore.ru` (`WRITING_BANNED_SITES`). Do not link it and do not use it as a source.
 
@@ -46,12 +62,14 @@ Character counts are `lengthNorm` in `apps/web-app/shared/scoring.ts` and ADR 00
 | Page | Body |
 | --- | --- |
 | Major place (`forty`, `zamki`) | 3000–6000 |
-| Other place | at least 2000, no ceiling |
+| Other place | 2000–6000 |
 | Route | 8000–12000 |
 | Collection | 5000–8000 |
 | Quest | 2000–4000 |
-| Hub | at least 2000, no ceiling |
+| Hub | 2000–8000 |
 | Venue `description` | 300–600 |
+
+Do not pad a page to reach the minimum. A short sourced page stays short. The score may flag it. Padding is a failure, and so is stuffing past the ceiling.
 
 The rendered title (with `| K39`) is 30–65 characters. The description is 110–160. Outside that, the score flags the page. `content_guide` still caps stored `seoTitle` at 70 and `seoDescription` at 170. Do not keyword-stuff. The H1 is the page title.
 

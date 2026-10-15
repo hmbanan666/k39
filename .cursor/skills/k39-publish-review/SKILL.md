@@ -1,6 +1,6 @@
 ---
 name: k39-publish-review
-description: Use before publishing a K39 place, venue, route, collection, quest, or hub. Run the author checklist, then a separate reviewer pass, and publish only after that pass.
+description: Use before publishing a K39 place, venue, route, collection, quest, or hub. Run the author checklist, then a review by a different agent in a separate session, and publish only after that pass.
 ---
 
 # K39 publish review
@@ -19,15 +19,15 @@ Save a draft. Then read the stored row (`place_get`, `venue_get`, `route_get`, `
 
 ## Reviewer pass
 
-A different agent, or a second pass that starts by loading the stored page again. Do not review from memory of the draft you just wrote.
+A different agent, in a separate session. The author does not review their own draft, including in a later turn of the same session. The reviewer starts by loading the stored page.
 
 Reject, with the failing lines, when any of these fail:
 
 - Stop-list. Search `WRITING_STOP_LIST` and `WRITING_STOP_PATTERNS` in `apps/web-app/shared/writing.ts`, including «каждый найдет» without ё, triads, «не просто X, а Y», and an em dash.
 - Facts. Every number, date, hour, and price has an allowed source. Venue address, hours, phone, and menu follow the priority in `k39-sources-and-facts`: official site, then OSM as a fill-in, then nothing. «уточняйте» only when the official site says nothing. `kgdmore.ru` is absent. No sentence is copied from another guide or from another K39 page.
 - Duplicates. The summary is not repeated as the opening. Place `faq` is not also a body `## Частые вопросы`. A price row is not duplicated. A venue dish list is not the full menu.
-- Photos. Each photo has `alt`, `author`, `license`, and `sourceUrl`.
-- Score. `content_score_get` with `refresh: true`. `passport empty`, `facts not checked`, a venue description outside 300–600, missing photos, and `no Как добраться` on a page that needs it block publish.
+- Photos. A missing photo is a note, not a blocker. A photo that is attached still needs `alt`, `author`, `license`, and `sourceUrl`.
+- Score. `content_score_get` with `refresh: true`. `passport empty`, `facts not checked`, a venue description outside 300–600, and `no Как добраться` on a page that needs it block publish. `0 photos` is a note.
 
 One known gap does not block: a place that uses the structured `faq` (3 to 6) and has no body FAQ can show `no FAQ`, because `faqFromBody` reads only `## Частые вопросы`. Note it. Do not ask the author to paste a second FAQ.
 

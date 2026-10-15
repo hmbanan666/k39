@@ -7,7 +7,7 @@ description: Use for any K39 UI change (Vue, CSS, layout, stickers, components).
 
 Read this file, then `.cursor/skills/frontend-design/SKILL.md` for craft and anti-generic taste. `.cursor/rules/frontend-design.mdc` attaches that order to Vue and CSS files. The frontend-design file is Anthropic's skill, copied verbatim, with `LICENSE.txt` beside it.
 
-When the two disagree, K39 wins. The short form is the UI section of `AGENTS.md`. Tokens, type, and color: ADR 0010 and `docs/design-system.md`.
+When the two disagree, K39 wins. This file is the K39 precedence. `AGENTS.md` and `.cursor/rules/frontend-design.mdc` point here and do not restate it. Tokens, type, and color: ADR 0010 and `docs/design-system.md`.
 
 ## Precedence
 
