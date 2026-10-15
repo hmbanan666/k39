@@ -55,7 +55,7 @@ Hero, then the stored modules in stored order, then «Как внутри», «�
 A short showcase of what the venue wants a visitor to notice. Not the menu. The official menu stays a link (`menuUrl`).
 
 - At most 8 items. `venueModulesSchema` enforces it for the cabinet and for `venue_update`.
-- `id` is stable. The server adds one when it is missing and keeps it when the item is edited. A later guest review or guest photo will attach to this id. That feature is not built yet (ADR 0032).
+- `id` is stable. The server adds one when it is missing and keeps it when the item is edited or reordered. Guest reviews and guest photos will be venue-level. They do not attach to this id (ADR 0032).
 - `description` is one short line. Older rows used `note` on the item; a write copies it into `description` and the public page reads either. The module `note` is the line under the cards.
 - `priceRub` is optional. The page and the schema.org `Menu` hide a price whose `updatedAt` is older than 365 days, the same window as «Ориентиры цен». The stored number stays. Editing the name, the text, or the photo does not refresh the date. A new price, or the owner's «Подтвердить цену», does. A row with no date still shows the price.
 - `mediaId` is an optional photo already attached to the venue. The cabinet uploads it with the rights checkbox; origin is `venue`, through the usual image pipeline, and it does not become the cover. An editorial write may newly attach only origin `own` or `commons`. An id that is already on the item is kept.

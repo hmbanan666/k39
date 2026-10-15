@@ -8,7 +8,7 @@ Accepted.
 
 The `dishes` module (docs/venue-modules.md) was a list of up to eight `{ name, priceRub, note }` rows. `signature_dishes` is an older list of five, shown only when that module is absent. A venue page should help a visitor see the few things the place wants to be known for. It should not copy a full menu.
 
-Later, a guest will be able to leave a review and a food photo on one of those items. That needs a stable id now. Reviews themselves are not in this version.
+Later, a guest will be able to leave a review and a food photo on the venue. Those attach to the venue as a whole, not to a dish. They are not in this version. An item id is only so an edit or a reorder keeps the same row.
 
 ## Decision
 
@@ -16,7 +16,7 @@ A venue has at most one `dishes` module, and that module has at most eight items
 
 Each item stores:
 
-- `id`, a stable token. The server assigns one when it is missing and keeps it across edits. A future review or guest photo attaches to `(venue id, item id)`. There is no reviews table yet.
+- `id`, a stable token. The server assigns one when it is missing and keeps it when the item is edited or moved. It is not a review key. Guest reviews and guest photos will be venue-level.
 - `name`
 - `description`, a short line. The old item field `note` is accepted on input and copied here. The module-level `note` under the list stays.
 - `priceRub`, optional
@@ -35,10 +35,10 @@ Revisions still store the whole venue row. Restoring one writes that snapshot ba
 
 ## Consequences
 
-Eight items is the whole showcase. A longer menu stays a link. Guest reviews and guest photos are the next step and should key off `id` rather than the name. Owner photos and editorial photos can sit on the same list only because an unchanged `mediaId` is kept.
+Eight items is the whole showcase. A longer menu stays a link. Guest reviews and guest photos, when they are built, belong to the venue and do not point at a dish. Owner photos and editorial photos can sit on the same list only because an unchanged `mediaId` is kept.
 
 ## Deferred
 
-- Guest reviews and guest food photos on an item.
+- Guest reviews and guest food photos on the venue.
 - Removing `signature_dishes` once every venue uses the module.
-- A separate table of dish rows. The list stays inside `venues.modules` until reviews need their own rows.
+- The dish list stays inside `venues.modules`. Reviews do not need a row per dish.

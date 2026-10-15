@@ -41,7 +41,7 @@ export const venueModuleSchema = z.discriminatedUnion('type', [
     type: z.literal('dishes'),
     title: title.optional(),
     items: z.array(z.object({
-      /** Stable id for a later review or guest photo. Assigned on write when missing. */
+      /** Stable across edits and reordering. Not a review key. Assigned on write when missing. */
       id: z.string().trim().regex(DISH_ID).optional(),
       name: short,
       /** Short text. `note` is the previous field and is accepted on input. */
