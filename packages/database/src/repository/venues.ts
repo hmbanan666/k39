@@ -44,6 +44,7 @@ export interface VenueWrite {
   takeaway?: boolean | null
   delivery?: boolean | null
   signatureDishes?: VenueDish[]
+  modules?: unknown[]
   description?: string
   sources?: SourceLink[]
   status?: VenueStatus
@@ -346,6 +347,7 @@ export class Venues {
         takeaway: input.takeaway ?? null,
         delivery: input.delivery ?? null,
         signatureDishes: cleanDishes(input.signatureDishes) ?? [],
+        modules: input.modules ?? [],
         description,
         sources: cleanSources(input.sources) ?? [],
         status,
@@ -429,6 +431,7 @@ export class Venues {
         takeaway: input.takeaway === undefined ? current.takeaway : input.takeaway,
         delivery: input.delivery === undefined ? current.delivery : input.delivery,
         signatureDishes: cleanDishes(input.signatureDishes) ?? current.signatureDishes,
+        modules: input.modules ?? current.modules,
         description: nextDescription,
         sources: cleanSources(input.sources) ?? current.sources,
         status: nextStatus,

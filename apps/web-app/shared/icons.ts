@@ -47,6 +47,13 @@ export const TABLER_ICONS = {
   menu: 'book-2',
   service: 'paper-bag',
   social: 'message-circle',
+  takeaway: 'paper-bag',
+  terrace: 'armchair',
+  kids: 'baby-carriage',
+  payment: 'credit-card',
+  wifi: 'wifi',
+  dogs: 'dog',
+  parking: 'parking',
 } as const
 
 export type IconKey = keyof typeof TABLER_ICONS

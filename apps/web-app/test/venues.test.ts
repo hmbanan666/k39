@@ -153,3 +153,28 @@ describe('eat-nearby card helpers', () => {
     expect(cuisineLabels([])).toEqual([])
   })
 })
+
+describe('venue modules', async () => {
+  const { toPublicVenueModules, venueModulesSchema } = await import('../shared/venue-modules')
+  const { searchBlurb, venueTitleBase } = await import('../shared/seo')
+  it('renders only valid lists and pulls how-to-get out of the blocks', () => {
+    expect(toPublicVenueModules([], (text) => text)).toBeNull()
+    expect(toPublicVenueModules([{ type: 'nope' }], (text) => text)).toBeNull()
+    const out = toPublicVenueModules([
+      { type: 'text', text: 'Про место.' },
+      { type: 'practical', items: [{ key: 'takeaway', label: 'Навынос', value: 'Да' }] },
+      { type: 'how-to-get', text: 'От вокзала пять минут.' },
+    ], (text) => `<p>${text}</p>`)
+    expect(out?.blocks.map((block) => block.id)).toEqual(['o-meste', 'praktichno'])
+    expect(out?.howToGetHtml).toBe('<p>От вокзала пять минут.</p>')
+  })
+  it('allows one practical module', () => {
+    const item = { type: 'practical', items: [{ key: 'kids', label: 'Дети', value: 'Есть стульчики' }] }
+    expect(venueModulesSchema.safeParse([item, item]).success).toBe(false)
+  })
+  it('cuts snippets at a sentence and builds the title base', () => {
+    const long = `${'Первое предложение про пиццерию на проспекте у моря. '.repeat(2)}А выпечку и десерты делают сами каждый день с утра до вечера.`
+    expect(searchBlurb(long).endsWith('.')).toBe(true)
+    expect(venueTitleBase('Сковородка', 'ресторан', 'в Зеленоградске')).toBe('Сковородка, ресторан в Зеленоградске')
+  })
+})

@@ -1,6 +1,8 @@
 export * from './body-sections'
 export * from './database'
 export { repository as db } from './repository'
+export { PRICE_FRESH_DAYS } from './repository/prices'
+export type { PriceSourceKind, VenuePriceInput } from './repository/prices'
 export type { VenueListFilter, VenueWrite } from './repository/venues'
 export * from './search-text'
 export { applyInitialContent } from './seed/apply'

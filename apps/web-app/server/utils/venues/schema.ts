@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { venueModulesSchema } from '../../../shared/venue-modules'
 
 const point = z.number()
 const day = z.object({
@@ -38,7 +39,8 @@ export const venueFields = {
     note: z.string().nullable().optional(),
     priceRub: z.number().int().min(0).nullable().optional(),
   })).max(5).optional().describe('Up to 5 dishes worth ordering, in our own words, from a visit or the venue. Replaces the list'),
-  description: z.string().optional().describe('Russian description, 300-600 characters to publish'),
+  modules: venueModulesSchema.optional().describe('Page modules, replaces the list. Types: text, dishes, audience, practical, best-time, how-to-get, tips, faq. See docs/venue-modules.md. Original text only'),
+  description: z.string().optional().describe('Russian description, 300-600 characters to publish. Archive and SEO source when modules are set'),
   sources: z.array(z.object({ title: z.string(), url: z.string() })).optional(),
   status: z.enum(['draft', 'published', 'closed', 'archived']).optional(),
   lastVerifiedAt: z.string().nullable().optional().describe('ISO date of the last check. Null clears it. Omit to keep it'),
