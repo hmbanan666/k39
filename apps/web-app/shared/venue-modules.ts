@@ -76,7 +76,7 @@ export const VENUE_MODULE_TITLES: Record<VenueModule['type'], string> = {
   'text': 'О месте',
   'dishes': 'Что заказать',
   'audience': 'Кому подойдёт',
-  'practical': 'Практично',
+  'practical': 'Полезно знать',
   'best-time': 'Когда лучше прийти',
   'how-to-get': 'Как добраться',
   'tips': 'Советы',
