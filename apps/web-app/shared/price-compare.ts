@@ -12,8 +12,7 @@ import { pageTitle } from './seo'
 
 /**
  * Below this many venues in the region (this one included) the card does not
- * rank the price. One venue states that it is the only price. Two venues show
- * the real min and max.
+ * rank the price. The popup still shows the town median, range, and count.
  */
 export const PRICE_COMPARE_MIN = 3
 
@@ -25,13 +24,26 @@ const EXPENSIVE_RATIO = 1.1
 
 export type PriceBand = 'cheap' | 'medium' | 'expensive'
 
+/** Town sample behind one card. This venue is included. */
+export interface PriceTownFacts {
+  medianRub: number
+  minRub: number
+  maxRub: number
+  /** Published venues in the sample. */
+  places: number
+  /** Heading, for example «В Светлогорске». */
+  where: string
+}
+
 export interface PriceComparison {
   band: PriceBand | null
   /** 0–100 along дёшево → дорого. Null when the sample is too small. */
   position: number | null
+  /** Sentence-case verdict. The town figures live on `town`, not in this line. */
   line: string
   /** Accessible name of the scale. Empty when there is no band. */
   scaleLabel: string
+  town: PriceTownFacts
 }
 
 export interface CatalogPricePoint {
@@ -62,18 +74,15 @@ export interface PublicPriceCard {
 /** Rendered width of a food sticker on a price card, in CSS px. `sizes` matches. */
 export const PRICE_STICKER_WIDTH = 56
 
-export interface PriceSourceLink {
+/**
+ * The one source line under the grid. Each card still carries its own source
+ * for schema.org and the stored rows.
+ */
+export interface SharedPriceSource {
   title: string
   url: string | null
-}
-
-/** One footnote for the whole price grid. Each card still carries its own source. */
-export interface SharedPriceSource {
-  links: PriceSourceLink[]
-  /** Earliest check day, YYYY-MM-DD. */
-  from: string
-  /** Latest check day. Equals `from` when every row was checked the same day. */
-  until: string
+  /** Latest check day of the prices that use this source, YYYY-MM-DD. */
+  date: string
 }
 
 /**
@@ -337,6 +346,10 @@ function positionFor(priceRub: number, mid: number) {
   return Math.round(Math.min(0.96, Math.max(0.04, raw)) * 100)
 }
 
+export function formatTownRange(town: PriceTownFacts) {
+  return formatPriceSpan(town.minRub, town.maxRub)
+}
+
 function formatPriceSpan(min: number, max: number) {
   if (min === max) {
     return formatRub(min)
@@ -345,8 +358,34 @@ function formatPriceSpan(min: number, max: number) {
   return `${format.format(min)}–${format.format(max)} ₽`
 }
 
-function unranked(line: string): PriceComparison {
-  return { band: null, position: null, line, scaleLabel: '' }
+function sentenceCase(text: string) {
+  if (!text) {
+    return text
+  }
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+function townFacts(prices: number[], where: string): PriceTownFacts {
+  return {
+    medianRub: median(prices),
+    minRub: Math.min(...prices),
+    maxRub: Math.max(...prices),
+    places: prices.length,
+    where: sentenceCase(where),
+  }
+}
+
+function unranked(line: string, prices: number[], where: string): PriceComparison {
+  return { band: null, position: null, line, scaleLabel: '', town: townFacts(prices, where) }
+}
+
+/** A stored variant that names a real portion. Placeholders stay off the popup. */
+export function knownPortion(variant: string | null | undefined) {
+  const text = variant?.trim() ?? ''
+  if (!text || /не указан/i.test(text)) {
+    return null
+  }
+  return text
 }
 
 export function compareVenuePrice(input: {
@@ -365,15 +404,14 @@ export function compareVenuePrice(input: {
   const inRegion = input.peers.filter((row) => (row.regionId ?? null) === (input.regionId ?? null))
   const others = onePricePerVenue(inRegion, input.variant).filter((row) => row.venueId !== input.venueId)
   const prices = [...others.map((row) => row.priceRub), input.priceRub]
+  const town = townFacts(prices, input.where)
   if (others.length === 0) {
-    return unranked(`пока единственная цена ${input.where}`)
+    return unranked('Пока единственная цена', prices, input.where)
   }
   if (prices.length < PRICE_COMPARE_MIN) {
-    const min = Math.min(...prices)
-    const max = Math.max(...prices)
-    return unranked(`${input.where} ${formatPriceSpan(min, max)} (${placesLabel(prices.length)})`)
+    return unranked('Пока мало данных для сравнения', prices, input.where)
   }
-  const mid = median(prices)
+  const mid = town.medianRub
   const band = bandFor(input.priceRub, mid)
   const higher = prices.filter((value) => value > input.priceRub).length
   const lower = prices.filter((value) => value < input.priceRub).length
@@ -381,15 +419,15 @@ export function compareVenuePrice(input: {
   const outOf = placesOutOf(prices.length)
   let line: string
   if (band === 'expensive' && rankFromTop <= 3 && prices.length >= 4) {
-    line = `топ-3 по цене ${input.where}`
+    line = `Топ-3 по цене ${input.where}`
   } else if (higher > lower) {
-    line = `дешевле, чем в ${higher} из ${outOf} ${input.place}`
+    line = `Дешевле, чем в ${higher} из ${outOf} ${input.place}`
   } else if (lower > higher) {
-    line = `дороже, чем в ${lower} из ${outOf} ${input.place}`
+    line = `Дороже, чем в ${lower} из ${outOf} ${input.place}`
   } else {
-    line = `как в других местах ${input.place}`
+    line = `Как в других местах ${input.place}`
   }
-  return { band, position: positionFor(input.priceRub, mid), line, scaleLabel: priceScaleLabel(band, input.by) }
+  return { band, position: positionFor(input.priceRub, mid), line, scaleLabel: priceScaleLabel(band, input.by), town }
 }
 
 export interface PriceSummary {
@@ -419,28 +457,38 @@ export function priceBlockSummary(bands: Array<PriceBand | null>, regionSlug?: s
   }
 }
 
+/**
+ * One menu link for the footnote. The most common URL wins. A tie goes to the
+ * URL whose newest price is later. Rows with no URL count only when nothing
+ * has a URL. The date is the latest day of the prices that use that source.
+ */
 export function sharedPriceSource(rows: Array<{ sourceTitle: string, sourceUrl: string | null, checkedAt: string }>): SharedPriceSource | null {
-  const first = rows[0]
-  if (!first) {
+  if (!rows.length) {
     return null
   }
-  const links: PriceSourceLink[] = []
-  const seen = new Set<string>()
-  for (const row of rows) {
-    const url = row.sourceUrl || null
-    const key = `${row.sourceTitle}\n${url ?? ''}`
-    if (seen.has(key)) {
+  const withUrl = rows.filter((row) => row.sourceUrl?.trim())
+  const pool = withUrl.length ? withUrl : rows
+  const buckets = new Map<string, { title: string, url: string | null, count: number, latest: string }>()
+  for (const row of pool) {
+    const url = row.sourceUrl?.trim() || null
+    const key = url ?? ''
+    const day = row.checkedAt.slice(0, 10)
+    const current = buckets.get(key)
+    if (!current) {
+      buckets.set(key, { title: row.sourceTitle, url, count: 1, latest: day })
       continue
     }
-    seen.add(key)
-    links.push({ title: row.sourceTitle, url })
+    current.count += 1
+    if (day >= current.latest) {
+      current.latest = day
+      current.title = row.sourceTitle
+    }
   }
-  const dates = [...new Set(rows.map((row) => row.checkedAt.slice(0, 10)))].sort()
-  return {
-    links,
-    from: dates[0] ?? first.checkedAt.slice(0, 10),
-    until: dates[dates.length - 1] ?? first.checkedAt.slice(0, 10),
+  const winner = [...buckets.values()].sort((a, b) => b.count - a.count || b.latest.localeCompare(a.latest))[0]
+  if (!winner) {
+    return null
   }
+  return { title: winner.title, url: winner.url, date: winner.latest }
 }
 
 /**

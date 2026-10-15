@@ -49,14 +49,17 @@ Rules:
 
 The hero stays first: the photo, the title, the short text, and the tag pills.
 
-Directly under the hero the page renders «Ориентиры цен», then «Что заказать»,
+The hero stays above the article. Under it, the reader is the same two
+columns as on other pages: the main column, and «Коротко» beside it from
+the top on a wide screen.
+
+Inside the main column the page renders «Ориентиры цен», then «Что заказать»,
 then the other stored modules in the order they were saved. That order is
 only the render. `venues.modules` stays as the editor wrote it, so a later
 edit does not have to move the prices module to the top.
 
 Then «Как внутри», «Как добраться» (with `how-to-get` text), «Рядом
-посмотреть», «Источники». On a wide screen «Коротко» stays beside the
-article, under the price list and the showcase.
+посмотреть», «Источники».
 
 ## «Что заказать»
 
@@ -119,27 +122,33 @@ price. The same published count is what `/ceny` uses for `noindex` and the
 sitemap (`PRICE_INDEX_MIN`, five venues).
 
 The row that is visible at rest is the picture, the name, the portion, the
-price, and the comparison scale. The sentence and the words дёшево / средне /
-дорого are not in that row. They sit in the HTML and show as a tooltip on
-hover and keyboard focus, and on the first tap when the pointer is coarse.
-A second tap follows the card link. The tooltip is tied to the card with
-`aria-describedby`.
+price, and the comparison scale. The detail sits in the HTML and opens as a
+popup on hover and keyboard focus, and on the first tap when the pointer is
+coarse. A second tap follows the card link. The popup is tied to the card
+with `aria-describedby`. It fades and scales in over about 150ms, and skips
+that motion when the visitor asks for less. It is anchored just under the
+card, so the price on the card stays visible.
 
-- One venue in the region: «пока единственная цена в Светлогорске». A short
-  neutral bar, not the colored scale. The town is prepositional. The sentence
-  is in the tooltip.
-- Two venues: the real range, for example «в Светлогорске 180–220 ₽ (2 места)».
-  The parenthetical uses the nominative plural («1 место», «2 места», «5 мест»).
-  The same neutral bar. The sentence is in the tooltip.
-- Three or more: a small scale marks this price against the median of that
-  town (below 90% is cheap, above 110% is expensive). The bar is colored.
-  The labels дёшево / средне / дорого are in the tooltip, and the active one
-  is marked. The accessible name of the bar uses the dative, for example
-  «Дешевле медианы по Светлогорску». The sentence is «дешевле, чем в 7 из 10
-  мест Светлогорска» or the dearer form. After «из», 21, 31… take «места»
-  and every other count takes «мест». A price in the expensive band and among
-  the three highest, when at least four venues are in the sample, says
-  «топ-3 по цене в Светлогорске». An unknown town stays «в регионе».
+The popup reads, top to bottom: one verdict («Дешевле, чем в 4 из 5 мест
+Светлогорска», «Как в других местах Светлогорска», «Пока единственная цена»,
+or «Пока мало данных для сравнения»), then the town figures under a heading
+such as «В Светлогорске» («Медиана: 300 ₽», «Диапазон: 185–420 ₽», «Мест: 5»),
+then «В этом заведении» and «Порция: …» when the portion is known. A
+placeholder such as «объём не указан» is not a portion.
+
+- One venue in the region: verdict «Пока единственная цена». A short neutral
+  bar, not the colored scale. The popup still lists that one price as the
+  median and the range, and «Мест: 1».
+- Two venues: verdict «Пока мало данных для сравнения». The same neutral bar.
+  The popup lists the real median and range.
+- Three or more: a small colored scale marks this price against the median of
+  that town (below 90% is cheap, above 110% is expensive). The accessible
+  name of the bar uses the dative, for example «Дешевле медианы по
+  Светлогорску». The verdict is «Дешевле, чем в 7 из 10 мест Светлогорска»
+  or the dearer form. After «из», 21, 31… take «места» and every other count
+  takes «мест». A price in the expensive band and among the three highest,
+  when at least four venues are in the sample, says «Топ-3 по цене в
+  Светлогорске». An unknown town stays «в регионе».
 
 A small badge sits to the right of the heading and the comparison line, on
 the same row from 720px and on the next line below that. The visible text is
@@ -149,13 +158,13 @@ example «Цены ниже среднего по Светлогорску», is
 is omitted when no card has a comparison.
 
 One line sits under the whole grid, for example «Меню на сайте заведения,
-15 октября 2026 г. Цены могли измениться.» It lists each distinct menu link
-(the same title and URL once), then the check date, then that sentence.
-When the dates differ it says «проверено с … по …», from the earliest day
-to the latest, and the same sentence follows. A row with no URL is plain
-text in that same line. The line is server-rendered. Each card still carries
-`sourceTitle`, `sourceUrl`, and `checkedAt`, and the page adds a schema.org
-`ItemList` of `Offer`s with that source.
+15 октября 2026 г. Цены могли измениться.» It names a single source: the URL
+used by the most prices. A tie goes to the URL whose newest price is later.
+The date is the latest day among the prices that use that URL. A row with no
+URL is used only when no price has a URL, and then the line is plain text.
+Each card still carries `sourceTitle`, `sourceUrl`, and `checkedAt` for the
+schema.org `ItemList` of `Offer`s. Those per-price sources are not repeated
+under the grid.
 
 The whole card is one link to `/ceny/{slug}/{region}?from={venueSlug}` (or
 `/ceny/{slug}?from=` when the venue has no region), for example
