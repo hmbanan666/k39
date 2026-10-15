@@ -54,6 +54,7 @@ Layout shifts at 720px (two cards), 900px (desktop nav, three nearby cards), 100
 | `Stamp` | Perforated postage frame (CSS mask). Optional picture and a short label. |
 | `Postcard` | Paper card: picture, caption strip, shadow. Tilt, corner stamp, and postmark only when those props are set. |
 | `PlaceCard` | A postcard for a place. Real media wins; otherwise the category SVG. No tilt and no stamp, so long lists stay quiet. |
+| `VenueCard` | Food venue card shared by «Где поесть рядом», «Где поесть сейчас», and `/zavedeniya` listings. The photo fills the box; without a cover the food illustration sits on amber. Kind, name, and after hydration a live status such as «Открыто до 23:00» (closing time only). Optional distance, meta line, partner and stale notes. Slots: `overlay`, `kicker`, `meta`, default. |
 | `PostcardHero` | One `h1`, optional kicker and lede, breadcrumb nav. Text pages, not the place hero. |
 | `UiBreadcrumbs` | Visible crumbs. The same list is the BreadcrumbList JSON-LD. |
 | `SiteHeader` / `SiteFooter` | Moose head, then the plain-text wordmark K39, hub pills. The header background is solid surface, sticky, with a bottom border. Logo and section links sit on the left of `.frame`; «Войти» or «Админка» sits on the right. On a phone the same links stay one scrolling pill row, inset with the frame. The active hub is highlighted. Админка is shown only to a logged-in admin. The subtitle under K39 is the `tagline` prop, default «Калининградская область», and it hides below 900px. |
@@ -61,7 +62,7 @@ Layout shifts at 720px (two cards), 900px (desktop nav, three nearby cards), 100
 | `RouteSteps` | Ordered stops on a place page. Each step is the place name. |
 | `RouteGuide` | Route page: MapLibre map of numbered stops, deep links, stop cards with the note and the straight-line leg, and «Как добраться» on each stop. |
 | `K39Map` | MapLibre frame: paper basemap, round pins, clusters, and a pin card. `/map` is the full page. |
-| `MapEmbed` | Compact frame on a place, venue, route, hub, collection, or quest. Nearby points within 1.2 km, fullscreen, and «Открыть на карте». |
+| `MapEmbed` | Compact frame on a place, venue, route, hub, collection, quest, or town venue listing. Nearby points within 1.2 km, fullscreen, and «Открыть на карте». |
 | `DirectionsLink` | «Как добраться». Opens Yandex Maps with the point as the destination. |
 | `PartnerOffer` | Only for a real active offer. |
 | `PageModuleList` | Module page (ADR 0023). `PageModulePicker` is a bordered strip with one row of chips per question and a status line with «Сбросить». Selected chips are brick. Fitting cards get a brick border and «Под ваш выбор»; nothing is hidden. `PageModuleMonthStats` shows tiles and a collapsed full table. `PageModuleMonths` is a chip row with the current month filled. |

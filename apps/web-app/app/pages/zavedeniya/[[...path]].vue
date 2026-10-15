@@ -27,6 +27,7 @@
         type="button"
         class="open-now"
         :aria-pressed="openNow"
+        :disabled="filtering"
         @click="toggleOpen"
       >
         Открыто сейчас
@@ -43,19 +44,39 @@
     >
       Учитываются только проверенные часы работы.
     </p>
-    <ul class="list">
+    <section
+      v-if="mapHrefs.length"
+      class="town-map"
+    >
+      <h2 :id="PAGE_SECTIONS.map.id">
+        {{ PAGE_SECTIONS.map.title }}
+      </h2>
+      <MapEmbed
+        :label="mapLabel"
+        :focus-href="mapHrefs[0] || '/zavedeniya'"
+        :hrefs="mapHrefs"
+      />
+    </section>
+    <ul
+      v-if="shownItems.length"
+      class="card-grid cols-3 cards"
+    >
       <li
-        v-for="item in shownItems"
+        v-for="(item, index) in shownItems"
         :key="item.href"
       >
-        <a :href="item.href">{{ item.name }}</a>
-        <span>{{ item.kindLabel }}</span>
-        <span v-if="item.address">{{ item.address }}</span>
-        <span v-if="item.avgCheck">{{ item.avgCheck }}</span>
-        <span
-          v-if="item.stale"
-          class="stale"
-        >Давно не проверяли</span>
+        <VenueCard
+          :href="item.href"
+          :name="item.name"
+          :kind-label="item.kindLabel"
+          :media="item.media"
+          :meta="cardMeta(item)"
+          :stale="item.stale"
+          :schedule="item.schedule"
+          :lean="index % 2 === 0 ? 'left' : 'right'"
+          sizes="(min-width: 1100px) 380px, (min-width: 720px) 46vw, 92vw"
+          :priority="index < 2"
+        />
       </li>
     </ul>
     <p
@@ -72,8 +93,27 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicMedia } from '~~/shared/media'
+import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import type { VenuePageData } from '~/components/VenuePage.vue'
+import { PAGE_SECTIONS } from '~~/shared/page-sections'
+
+interface ListingItem {
+  href: string
+  slug: string
+  name: string
+  kindLabel: string
+  address: string | null
+  cuisine: string[]
+  price: string
+  avgCheck: string
+  stale: boolean
+  latitude: number | null
+  longitude: number | null
+  media: PublicMedia | null
+  schedule: ScheduleRecord | null
+}
 
 interface ListingPage {
   type: 'listing'
@@ -86,21 +126,14 @@ interface ListingPage {
     regions: Array<{ slug: string, title: string, href: string }>
     kinds: Array<{ kind: string, label: string, href: string }>
   }
-  items: Array<{
-    href: string
-    name: string
-    kindLabel: string
-    address: string | null
-    price: string
-    avgCheck: string
-    stale: boolean
-  }>
+  items: ListingItem[]
 }
 
 const route = useRoute()
 const page = await fetchPublic<ListingPage | VenuePageData>('/api/public/zavedeniya', { path: route.path })
 // «Открыто сейчас» runs in the browser only, after hydration (ADR 0028).
 const openNow = ref(false)
+const filtering = ref(false)
 const openSlugs = ref(new Set<string>())
 const slugOf = (href: string) => href.split('/').filter(Boolean).pop() || ''
 const openState = (href: string) => openSlugs.value.has(slugOf(href))
@@ -110,15 +143,35 @@ const shownItems = computed(() => {
   }
   return openNow.value ? page.items.filter((item) => openState(item.href)) : page.items
 })
+// A town fits the compact embed. The whole oblast does not: pins would cover the coast.
+// «Открыто сейчас» is applied only after the hours request, so the map does not unmount on an empty set.
+const mapHrefs = computed(() => {
+  if (page.type !== 'listing' || !page.regionSlug) {
+    return []
+  }
+  const source = openNow.value ? shownItems.value : page.items
+  return source.flatMap((item) => item.latitude != null && item.longitude != null ? [item.href] : [])
+})
+const mapLabel = computed(() => page.type === 'listing' ? `Карта: ${page.heading}` : 'Карта')
+
+function cardMeta(item: ListingItem) {
+  return [item.address, item.cuisine.join(', '), item.price, item.avgCheck].filter(Boolean).join(' · ')
+}
 
 async function toggleOpen() {
-  openNow.value = !openNow.value
-  if (!openNow.value) {
+  if (openNow.value) {
+    openNow.value = false
     return
   }
-  // Same rule as the map: only verified schedules report «open».
-  const result = await $fetch<{ items: Array<{ slug: string }> }>('/api/public/availability', { query: { type: 'venue', status: 'open,closing_soon' } }).catch(() => ({ items: [] }))
-  openSlugs.value = new Set(result.items.map((item) => item.slug))
+  filtering.value = true
+  try {
+    // Same rule as the map: only verified schedules report «open».
+    const result = await $fetch<{ items: Array<{ slug: string }> }>('/api/public/availability', { query: { type: 'venue', status: 'open,closing_soon' } }).catch(() => ({ items: [] }))
+    openSlugs.value = new Set(result.items.map((item) => item.slug))
+    openNow.value = true
+  } finally {
+    filtering.value = false
+  }
 }
 
 usePublicHead(page.doc)
@@ -137,9 +190,14 @@ usePublicHead(page.doc)
   cursor: pointer;
 }
 .open-now[aria-pressed='true'] { background: var(--color-sea); color: var(--color-paper, #fff); }
+.open-now:disabled { opacity: 0.6; cursor: progress; }
 .open-note { margin: 0 0 1rem; color: var(--color-muted); font-size: 0.95rem; }
-.list, .places { margin: 0; padding: 0; list-style: none; }
-.list li, .places li {
+.town-map { margin: 0.4rem 0 1.6rem; }
+.town-map h2 { margin: 0 0 0.7rem; }
+.cards { margin: 0.2rem 0 0; padding: 0; list-style: none; }
+.cards li { display: flex; min-width: 0; }
+.places { margin: 0; padding: 0; list-style: none; }
+.places li {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.8rem;

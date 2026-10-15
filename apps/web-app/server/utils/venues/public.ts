@@ -27,6 +27,7 @@ import { EAT_NOW_PATH, eatNowPath, haversineKm, inTown } from '../../../shared/e
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { regionLabel } from '../../../shared/region'
+import { readRules } from '../../../shared/schedule'
 import { collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
 import { toPublicVenueModules } from '../../../shared/venue-modules'
 import { loadSchedule } from '../schedule'
@@ -311,6 +312,15 @@ async function loadListing(
     kind: 'CollectionPage',
   })
   const now = new Date()
+  const ids = shown.map((row) => row.id)
+  const [covers, scheduleRows] = await Promise.all([
+    db.venues.coversFor(ids),
+    db.schedules.forEntities('venue', ids),
+  ])
+  const scheduleById = new Map(scheduleRows.flatMap((row) => {
+    const rules = readRules(row.rules)
+    return rules ? [[row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }] as const] : []
+  }))
   return {
     type: 'listing' as const,
     doc,
@@ -326,15 +336,25 @@ async function loadListing(
         href: listingPath(regionSlug, item),
       })),
     },
-    items: shown.map((row) => ({
-      href: `/zavedeniya/${row.slug}`,
-      name: row.name,
-      kindLabel: kindLabel(row.kind),
-      address: row.address,
-      price: priceMarks(row.priceLevel),
-      avgCheck: formatAvgCheck(row.avgCheck),
-      stale: isStale(row.lastVerifiedAt, now),
-    })),
+    items: shown.map((row) => {
+      const cover = covers.get(row.id)
+      return {
+        href: `/zavedeniya/${row.slug}`,
+        slug: row.slug,
+        name: row.name,
+        kindLabel: kindLabel(row.kind),
+        address: row.address,
+        cuisine: cuisineLabels(row.cuisineTags),
+        price: priceMarks(row.priceLevel),
+        avgCheck: formatAvgCheck(row.avgCheck),
+        stale: isStale(row.lastVerifiedAt, now),
+        latitude: row.latitude,
+        longitude: row.longitude,
+        media: cover ? toPublicMedia(cover) : null,
+        // Rules only. The card computes «открыто» in the browser (ADR 0028).
+        schedule: scheduleById.get(row.id) ?? null,
+      }
+    }),
   }
 }
 
