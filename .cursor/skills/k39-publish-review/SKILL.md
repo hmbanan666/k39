@@ -24,7 +24,7 @@ A different agent, or a second pass that starts by loading the stored page again
 Reject, with the failing lines, when any of these fail:
 
 - Stop-list. Search `WRITING_STOP_LIST` and `WRITING_STOP_PATTERNS` in `apps/web-app/shared/writing.ts`, including «каждый найдет» without ё, triads, «не просто X, а Y», and an em dash.
-- Facts. Every number, date, hour, and price has an allowed source. Unknowns say «уточняйте» or the field is empty. `kgdmore.ru` is absent. No sentence is copied from another guide or from another K39 page.
+- Facts. Every number, date, hour, and price has an allowed source. Venue address, hours, phone, and menu follow the priority in `k39-sources-and-facts`: official site, then OSM as a fill-in, then nothing. «уточняйте» only when the official site says nothing. `kgdmore.ru` is absent. No sentence is copied from another guide or from another K39 page.
 - Duplicates. The summary is not repeated as the opening. Place `faq` is not also a body `## Частые вопросы`. A price row is not duplicated. A venue dish list is not the full menu.
 - Photos. Each photo has `alt`, `author`, `license`, and `sourceUrl`.
 - Score. `content_score_get` with `refresh: true`. `passport empty`, `facts not checked`, a venue description outside 300–600, missing photos, and `no Как добраться` on a page that needs it block publish.

@@ -73,4 +73,4 @@ Bad: omitting `{ type: 'prices' }` because the menu is not collected yet. Includ
 - No sticker slugs in the JSON. Dish and price pictures follow the docs.
 - Passport has queries, audience, action, and both goals.
 - Region and coordinates are set when known, so the town listing and nearby places link.
-- Hours and the bill are empty when the source has none.
+- Address, hours, phone, and menu follow `k39-sources-and-facts`: official site, then an OSM fill-in, then empty.
