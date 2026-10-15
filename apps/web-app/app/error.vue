@@ -15,9 +15,16 @@
           <h1>{{ lost ? 'Такой страницы нет' : 'Что-то сломалось' }}</h1>
           <p class="lede">
             {{ lost
-              ? 'Похоже, адрес устарел или в нём опечатка. Лось уже ищет, а вы пока загляните сюда.'
+              ? 'Похоже, адрес устарел или в нём опечатка. Поищите на сайте или загляните сюда.'
               : 'Мы уже чиним. Обновите страницу через минуту или начните с главной.' }}
           </p>
+          <SearchForm
+            v-if="lost"
+            class="error-search"
+            surface="404"
+            size="large"
+            placeholder="Что вы искали?"
+          />
           <div class="actions">
             <UiButton href="/">
               На главную
@@ -136,6 +143,10 @@ h1 {
   color: var(--muted);
   font-size: var(--step-0);
   line-height: 1.5;
+}
+.error-search {
+  max-width: 32rem;
+  margin-bottom: var(--space-4);
 }
 .actions {
   display: flex;

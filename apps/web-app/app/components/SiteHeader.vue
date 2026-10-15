@@ -56,11 +56,26 @@
           :class="{ active: path.startsWith('/admin') }"
         >Админка</a>
       </nav>
+      <SearchForm
+        class="search-box"
+        surface="header"
+      />
+      <a
+        href="/poisk"
+        class="search-link"
+        aria-label="Поиск по сайту"
+      >
+        <Icon
+          :name="tablerIcon('search')"
+          size="22"
+        />
+      </a>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
+import { tablerIcon } from '~~/shared/icons'
 import { HUBS } from '~~/shared/links'
 
 withDefaults(defineProps<{
@@ -161,6 +176,12 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
   background: rgb(163 64 42 / 8%);
   color: var(--color-brick);
 }
+.search-box {
+  flex: 0 1 13rem;
+}
+.search-link {
+  display: none;
+}
 @media (max-width: 899px) {
   .bar {
     flex-wrap: wrap;
@@ -182,6 +203,20 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
     overflow-x: auto;
   }
   .account { margin-left: 0; }
+  .search-box { display: none; }
+  .search-link {
+    display: inline-flex;
+    order: 1;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-left: auto;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    color: var(--text);
+  }
+  .nav { order: 2; }
   .nav a {
     display: inline-flex;
     flex: none;
