@@ -695,11 +695,14 @@ export class Venues {
     return result
   }
 
-  static async attachMedia(venueId: string, mediaId: string, options?: { isCover?: boolean, origin?: VenuePhotoOrigin | null, sortOrder?: number }) {
+  static async attachMedia(venueId: string, mediaId: string, options?: { isCover?: boolean, origin?: VenuePhotoOrigin | null, sortOrder?: number, promoteIfEmpty?: boolean }) {
     const db = useDatabase()
     const existing = await db.select().from(venueMedia).where(eq(venueMedia.venueId, venueId))
     const found = existing.find((row) => row.mediaId === mediaId)
-    const cover = options?.isCover === true || existing.length === 0
+    // A dish photo passes promoteIfEmpty: false so it does not become the cover.
+    const cover = options?.promoteIfEmpty === false
+      ? options?.isCover === true
+      : options?.isCover === true || existing.length === 0
     if (cover) {
       await db.update(venueMedia).set({ isCover: false }).where(eq(venueMedia.venueId, venueId))
     }

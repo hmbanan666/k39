@@ -1,8 +1,10 @@
 import type { ClaimChannel } from '@k39/database'
+import type { VenueModule } from '../../../shared/venue-modules'
 import process from 'node:process'
 import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
+import { normalizeDishModules } from '../venues/dishes'
 import { asOwnerPrices, venuePricesWriteSchema } from '../venues/prices'
 import { syncVenueSchedule } from '../venues/write'
 import { ClaimDeliveryError, claimTransportConfig, postClaimCode } from './deliver'
@@ -267,6 +269,9 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     }
   }
   const touchHours = write.hours !== undefined
+  if (write.modules) {
+    write.modules = await normalizeDishModules(venueId, write.modules as VenueModule[], 'owner')
+  }
   try {
     const saved = await db.venues.update(venueId, {
       ...write,

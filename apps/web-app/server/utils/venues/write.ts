@@ -1,10 +1,12 @@
 import type { VenueDish, VenueReservation, VenueWrite } from '@k39/database'
+import type { VenueModule } from '../../../shared/venue-modules'
 import { db, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
 import { auditMcp } from '../mcp/audit'
 import { parseFactsCheckedAt } from '../mcp/facts'
 import { loadSchedule, saveSchedule } from '../schedule'
+import { normalizeDishModules } from './dishes'
 
 export function venueError(error: unknown): never {
   if (error instanceof VenueInputError) {
@@ -70,8 +72,9 @@ export function venueWriteFromInput(input: {
 export async function createVenue(input: Parameters<typeof venueWriteFromInput>[0] & { regionSlug?: string | null }, userId?: string | null) {
   try {
     const regionId = await regionIdForSlug(input.regionSlug)
+    const modules = input.modules ? await normalizeDishModules(null, input.modules as VenueModule[], 'editorial') : undefined
     const row = await db.venues.create({
-      ...venueWriteFromInput(input),
+      ...venueWriteFromInput({ ...input, modules }),
       regionId: regionId === undefined ? input.regionId : regionId,
     }, userId)
     await syncVenueSchedule(row, input)
@@ -93,8 +96,9 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
   }
   try {
     const regionId = await regionIdForSlug(input.regionSlug)
+    const modules = input.modules ? await normalizeDishModules(current.id, input.modules as VenueModule[], 'editorial') : undefined
     const saved = await db.venues.update(current.id, {
-      ...venueWriteFromInput(input),
+      ...venueWriteFromInput({ ...input, modules }),
       regionId: regionId === undefined ? undefined : regionId,
       slug: input.slug && input.id ? input.slug : input.id ? undefined : current.slug,
     }, userId)

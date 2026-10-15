@@ -1,8 +1,25 @@
+import type { PublicMedia } from './media'
+import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
 
 /** Audience card icons (Tabler line icons via shared/icons.ts `aud-*`). Default: `group`. */
 export const AUDIENCE_ICONS = ['group', 'family', 'kids', 'couple', 'solo', 'friends', 'beach', 'day-trip', 'tourist', 'local', 'pets', 'work'] as const
 export type AudienceIcon = typeof AUDIENCE_ICONS[number]
+
+/** Curated «Что заказать» list. Not a full menu. */
+export const DISH_SHOWCASE_MAX = 8
+
+/**
+ * A dish price older than this is hidden, the same window as
+ * `PRICE_FRESH_DAYS` for «Ориентиры цен».
+ */
+export const DISH_PRICE_FRESH_DAYS = 365
+
+const DISH_ID = /^[\w-]{8,40}$/
+
+export function isDishId(value: string) {
+  return DISH_ID.test(value)
+}
 
 // Venue page modules (docs/venue-modules.md). Stored in venues.modules,
 // edited through venue_update. Each module renders only with data.
@@ -24,10 +41,20 @@ export const venueModuleSchema = z.discriminatedUnion('type', [
     type: z.literal('dishes'),
     title: title.optional(),
     items: z.array(z.object({
+      /** Stable across edits and reordering. Not a review key. Assigned on write when missing. */
+      id: z.string().trim().regex(DISH_ID).optional(),
       name: short,
-      priceRub: z.number().int().min(0).nullable().optional(),
+      /** Short text. `note` is the previous field and is accepted on input. */
+      description: z.string().trim().max(200).nullable().optional(),
       note: z.string().trim().max(200).nullable().optional(),
-    })).min(1).max(8),
+      priceRub: z.number().int().min(0).nullable().optional(),
+      /** media.id already attached to this venue. */
+      mediaId: z.string().trim().min(1).max(40).nullable().optional(),
+      /** When the price was last set or confirmed. ISO timestamp. */
+      updatedAt: z.string().trim().min(10).max(40).optional(),
+      /** Owner confirms the same price is still right. Not stored. */
+      refreshPrice: z.boolean().optional(),
+    })).min(1).max(DISH_SHOWCASE_MAX),
     note: z.string().trim().max(300).optional(),
   }),
   z.object({
@@ -103,13 +130,23 @@ export const VENUE_MODULE_IDS: Record<VenueModule['type'], string> = {
 
 export type PublicVenueModule
   = | { type: 'text', id: string, title: string, variant: 'lead' | 'plain', html: string }
-    | { type: 'dishes', id: string, title: string, items: { name: string, priceRub: number | null, note: string | null }[], note: string | null }
+    | { type: 'dishes', id: string, title: string, items: PublicDish[], note: string | null }
     | { type: 'audience', id: string, title: string, items: { who: string, icon: AudienceIcon, html: string }[] }
     | { type: 'practical', id: string, title: string, items: { key: string, label: string, value: string }[] }
     | { type: 'best-time', id: string, title: string, html: string }
     | { type: 'tips', id: string, title: string, items: string[] }
     | { type: 'faq', id: string, title: string, items: { question: string, html: string }[] }
     | { type: 'prices', id: string, title: string, items: PublicVenuePrice[] }
+
+export interface PublicDish {
+  /** Persisted id, or a display key when a reverted snapshot has none yet. */
+  id: string
+  name: string
+  description: string | null
+  /** Null when the venue gave no price, or the price is older than a year. */
+  priceRub: number | null
+  media: PublicMedia | null
+}
 
 export interface PublicVenuePrice {
   title: string
@@ -127,8 +164,13 @@ export interface PublicVenueModules {
   howToGetHtml: string | null
 }
 
+export interface VenueModuleView {
+  now?: Date
+  mediaById?: ReadonlyMap<string, PublicMedia>
+}
+
 /** Validates and renders stored modules. Invalid or empty input yields null. */
-export function toPublicVenueModules(stored: unknown, render: (markdown: string) => string, prices: PublicVenuePrice[] = []): PublicVenueModules | null {
+export function toPublicVenueModules(stored: unknown, render: (markdown: string) => string, prices: PublicVenuePrice[] = [], view: VenueModuleView = {}): PublicVenueModules | null {
   const parsed = venueModulesSchema.safeParse(stored)
   if (!parsed.success || !parsed.data.length) {
     return null
@@ -151,7 +193,13 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
         blocks.push({ type: 'text', id: idFor('text'), title: heading, variant: module.variant, html: render(module.text) })
         break
       case 'dishes':
-        blocks.push({ type: 'dishes', id: idFor('dishes'), title: heading, items: module.items.map((item) => ({ name: item.name, priceRub: item.priceRub ?? null, note: item.note ?? null })), note: module.note ?? null })
+        blocks.push({
+          type: 'dishes',
+          id: idFor('dishes'),
+          title: heading,
+          items: module.items.map((item, index) => presentDish(item, index, view)),
+          note: module.note ?? null,
+        })
         break
       case 'audience':
         blocks.push({ type: 'audience', id: idFor('audience'), title: heading, items: module.items.map((item) => ({ who: item.who, icon: item.icon ?? 'group', html: render(item.text) })) })
@@ -177,4 +225,183 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
     }
   }
   return blocks.length || howToGetHtml ? { blocks, howToGetHtml } : null
+}
+
+interface StoredDish {
+  id?: string
+  name?: string
+  description?: string | null
+  note?: string | null
+  priceRub?: number | null
+  mediaId?: string | null
+  updatedAt?: string
+  refreshPrice?: boolean
+}
+
+function dishText(item: { description?: string | null, note?: string | null }) {
+  return (item.description ?? item.note ?? '').trim() || null
+}
+
+export function dishPriceIsFresh(updatedAt: string | null | undefined, now = new Date()) {
+  if (!updatedAt) {
+    return true
+  }
+  const day = updatedAt.slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return true
+  }
+  const cutoff = new Date(now.getTime() - DISH_PRICE_FRESH_DAYS * 86_400_000).toISOString().slice(0, 10)
+  return day >= cutoff
+}
+
+function readStoredDishes(stored: unknown): StoredDish[] {
+  if (!Array.isArray(stored)) {
+    return []
+  }
+  const items: StoredDish[] = []
+  for (const module of stored) {
+    if (!module || typeof module !== 'object') {
+      continue
+    }
+    const row = module as { type?: string, items?: unknown }
+    if (row.type !== 'dishes' || !Array.isArray(row.items)) {
+      continue
+    }
+    for (const item of row.items) {
+      if (item && typeof item === 'object') {
+        items.push(item as StoredDish)
+      }
+    }
+  }
+  return items
+}
+
+function presentDish(item: StoredDish, index: number, view: VenueModuleView): PublicDish {
+  const price = typeof item.priceRub === 'number' ? item.priceRub : null
+  const mediaId = item.mediaId?.trim() || ''
+  return {
+    id: item.id && isDishId(item.id) ? item.id : `item-${index + 1}`,
+    name: item.name?.trim() || '',
+    description: dishText(item),
+    priceRub: price != null && price > 0 && dishPriceIsFresh(item.updatedAt, view.now) ? price : null,
+    media: mediaId ? view.mediaById?.get(mediaId) ?? null : null,
+  }
+}
+
+/**
+ * Gives every dish a stable id and a price date. An unchanged price keeps its
+ * date, so editing the text does not make a year-old price look fresh.
+ * `note` is copied into `description`. The module-level note stays.
+ */
+export function stampDishModules(modules: VenueModule[], previous: unknown, now = new Date()): VenueModule[] {
+  const prior = new Map<string, StoredDish>()
+  for (const item of readStoredDishes(previous)) {
+    if (item.id && isDishId(item.id) && !prior.has(item.id)) {
+      prior.set(item.id, item)
+    }
+  }
+  const used = new Set<string>()
+  return modules.map((module) => {
+    if (module.type !== 'dishes') {
+      return module
+    }
+    const items = module.items.map((item) => {
+      const id = item.id && isDishId(item.id) && !used.has(item.id) ? item.id : createId()
+      used.add(id)
+      const priceRub = typeof item.priceRub === 'number' ? item.priceRub : null
+      const before = prior.get(id)
+      const priceSame = !!before && (before.priceRub ?? null) === priceRub
+      const updatedAt = priceSame && !item.refreshPrice && before.updatedAt
+        ? before.updatedAt
+        : now.toISOString()
+      return {
+        id,
+        name: item.name,
+        description: dishText(item),
+        priceRub,
+        mediaId: item.mediaId?.trim() || null,
+        updatedAt,
+      }
+    })
+    return { ...module, items }
+  })
+}
+
+export interface DishPhotoLink {
+  id: string
+  mediaId: string | null
+}
+
+export interface DishPhotoSlot {
+  mediaId: string
+  origin: string | null
+}
+
+/** Who may point a dish at a photo. An unchanged mediaId is always kept. */
+export function dishPhotoProblem(
+  items: DishPhotoLink[],
+  previous: DishPhotoLink[],
+  gallery: DishPhotoSlot[],
+  actor: 'owner' | 'editorial',
+): string | null {
+  const prior = new Map(previous.map((item) => [item.id, item.mediaId]))
+  const origins = new Map(gallery.map((row) => [row.mediaId, row.origin]))
+  for (const item of items) {
+    if (!item.mediaId) {
+      continue
+    }
+    if (!origins.has(item.mediaId)) {
+      return 'Фото блюда не найдено на странице заведения'
+    }
+    if (prior.get(item.id) === item.mediaId) {
+      continue
+    }
+    const origin = origins.get(item.mediaId)
+    if (actor === 'owner' && origin !== 'venue') {
+      return 'Фото блюда загружается из кабинета и помечается как от заведения'
+    }
+    if (actor === 'editorial' && origin !== 'own' && origin !== 'commons') {
+      return 'К блюду можно прикрепить только своё фото или снимок Commons'
+    }
+  }
+  return null
+}
+
+export function dishLinks(stored: unknown): DishPhotoLink[] {
+  return readStoredDishes(stored).flatMap((item) => {
+    if (!item.id || !isDishId(item.id)) {
+      return []
+    }
+    return [{ id: item.id, mediaId: item.mediaId?.trim() || null }]
+  })
+}
+
+/** schema.org Menu for the showcase. Prices that the page hides are omitted. */
+export function dishMenuNode(
+  block: { title: string, items: PublicDish[] },
+  options?: { menuUrl?: string | null, absolute?: (path: string) => string },
+) {
+  if (!block.items.length) {
+    return null
+  }
+  const absolute = options?.absolute ?? ((path: string) => path)
+  const hasMenuItem = block.items.map((item) => {
+    const row: Record<string, unknown> = { '@type': 'MenuItem', 'name': item.name }
+    if (item.description) {
+      row.description = item.description
+    }
+    if (item.media?.src) {
+      row.image = absolute(item.media.src)
+    }
+    if (item.priceRub) {
+      row.offers = { '@type': 'Offer', 'price': item.priceRub, 'priceCurrency': 'RUB' }
+    }
+    return row
+  })
+  const menu: Record<string, unknown> = { '@type': 'Menu', 'name': block.title, 'hasMenuItem': hasMenuItem }
+  const menuUrl = options?.menuUrl?.trim() || ''
+  if (menuUrl.startsWith('http://') || menuUrl.startsWith('https://')) {
+    menu.url = menuUrl
+  }
+  return menu
 }

@@ -23,20 +23,54 @@
       v-html="block.html"
     />
     <template v-else-if="block.type === 'dishes'">
-      <ul class="dishes">
+      <ul class="showcase">
         <li
           v-for="dish in block.items"
-          :key="dish.name"
+          :key="dish.id"
         >
-          <span class="dish-name">{{ dish.name }}</span>
-          <span
-            v-if="dish.priceRub"
-            class="dish-price"
-          >{{ rub(dish.priceRub) }}</span>
-          <span
-            v-if="dish.note"
-            class="dish-note"
-          >{{ dish.note }}</span>
+          <div
+            class="pic"
+            :class="{ empty: !dish.media }"
+          >
+            <MediaImage
+              v-if="dish.media"
+              :media="dish.media"
+              sizes="(min-width: 800px) 280px, 100vw"
+              :show-credit="false"
+            />
+            <Icon
+              v-else
+              :name="tablerIcon('food')"
+              size="40"
+            />
+          </div>
+          <div class="body">
+            <p class="line">
+              <span class="dish-name">{{ dish.name }}</span>
+              <span
+                v-if="dish.priceRub"
+                class="dish-price"
+              >{{ rub(dish.priceRub) }}</span>
+            </p>
+            <p
+              v-if="dish.description"
+              class="blurb"
+            >
+              {{ dish.description }}
+            </p>
+            <p
+              v-if="dish.media && dishCredit(dish.media)"
+              class="credit"
+            >
+              <span v-if="dish.media.author">{{ dish.media.author }}</span>
+              <a
+                v-if="licenseHref(dish.media.license)"
+                :href="licenseHref(dish.media.license)"
+                v-bind="externalLinkAttrs(licenseHref(dish.media.license))"
+              >{{ licenseLabel(dish.media.license) }}</a>
+              <span v-else-if="licenseLabel(dish.media.license)">{{ licenseLabel(dish.media.license) }}</span>
+            </p>
+          </div>
         </li>
       </ul>
       <p
@@ -151,13 +185,20 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicMedia } from '~~/shared/media'
 import type { PublicVenueModule } from '~~/shared/venue-modules'
 import { tablerIcon } from '~~/shared/icons'
+import { externalLinkAttrs } from '~~/shared/links'
+import { licenseHref, licenseLabel } from '~~/shared/media'
 
 defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
 
 const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`
+
+function dishCredit(media: PublicMedia) {
+  return Boolean(media.author || licenseLabel(media.license))
+}
 </script>
 
 <style scoped>
@@ -165,6 +206,39 @@ const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} 
 .vm:first-child { margin-top: 0; }
 .vm h2 { margin-bottom: 0.9rem; }
 .lead { font-size: 1.08rem; }
+.showcase {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: 0.8rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.showcase > li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-paper, #fffdf8);
+  overflow: hidden;
+}
+.pic {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  background: var(--color-amber-soft);
+  color: var(--accent);
+}
+.pic :deep(figure),
+.pic :deep(picture) { display: block; width: 100%; height: 100%; margin: 0; }
+.pic :deep(img) { width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; border-radius: 0; }
+.showcase .body { padding: 0.85rem 1rem 1rem; }
+.showcase .line { display: flex; gap: 0.75rem; align-items: baseline; justify-content: space-between; margin: 0; }
+.showcase .dish-name { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
+.showcase .dish-price { color: var(--text); font-weight: 700; white-space: nowrap; }
+.showcase .blurb { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
+.showcase .credit { display: flex; flex-wrap: wrap; gap: 0.35rem 0.7rem; margin: 0.45rem 0 0; color: var(--muted); font-size: 0.78rem; }
 .dishes { margin: 0 0 1rem; padding: 0; list-style: none; }
 .dishes li {
   display: grid;

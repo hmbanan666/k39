@@ -230,26 +230,124 @@
           />
         </UiField>
         <template v-if="module.type === 'dishes'">
-          <div
+          <p class="field-count">
+            {{ dishCount(module) }} из {{ dishMax }}
+          </p>
+          <article
             v-for="(item, itemIndex) in module.dishes"
-            :key="itemIndex"
-            class="grid"
+            :key="item.id"
+            class="dish-edit"
           >
-            <UiField label="Блюдо">
-              <UiInput v-model="item.name" />
-            </UiField>
-            <UiField label="₽">
-              <UiInput v-model="item.priceRub" />
-            </UiField>
-            <UiField label="Заметка">
-              <UiInput v-model="item.note" />
-            </UiField>
-          </div>
+            <header class="row">
+              <strong>Позиция {{ itemIndex + 1 }}</strong>
+              <UiButton
+                type="button"
+                variant="line"
+                @click="moveDish(module, itemIndex, -1)"
+              >
+                Выше
+              </UiButton>
+              <UiButton
+                type="button"
+                variant="line"
+                @click="moveDish(module, itemIndex, 1)"
+              >
+                Ниже
+              </UiButton>
+              <UiButton
+                type="button"
+                variant="line"
+                @click="module.dishes.splice(itemIndex, 1)"
+              >
+                Удалить
+              </UiButton>
+            </header>
+            <div class="grid">
+              <UiField label="Блюдо">
+                <UiInput v-model="item.name" />
+              </UiField>
+              <UiField label="Цена, ₽">
+                <UiInput v-model="item.priceRub" />
+              </UiField>
+              <UiField label="Коротко">
+                <UiInput v-model="item.description" />
+              </UiField>
+            </div>
+            <p
+              v-if="stalePrice(item)"
+              class="muted"
+            >
+              На сайте эта цена скрыта: ей больше года. Измените число или подтвердите, что она верна.
+            </p>
+            <p
+              v-if="item.refreshPrice"
+              class="muted"
+            >
+              Цена будет подтверждена при сохранении.
+            </p>
+            <UiButton
+              v-if="stalePrice(item)"
+              type="button"
+              variant="line"
+              @click="item.refreshPrice = true"
+            >
+              Подтвердить цену
+            </UiButton>
+            <div class="dish-photo">
+              <img
+                v-if="dishPhoto(item)"
+                :src="dishPhoto(item)?.src"
+                :alt="item.name || 'Фото блюда'"
+                width="96"
+                height="72"
+              >
+              <span
+                v-else-if="item.mediaId"
+                class="muted"
+              >Фото не найдено</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                @change="onDishFile(item, $event)"
+              >
+              <label class="rights">
+                <input
+                  v-model="item.rights"
+                  type="checkbox"
+                >
+                Права на фото мои, его можно опубликовать на K39. Происхождение: от заведения.
+              </label>
+              <div class="row">
+                <UiButton
+                  type="button"
+                  variant="line"
+                  :disabled="busy"
+                  @click="uploadDish(item)"
+                >
+                  {{ item.mediaId ? 'Заменить фото' : 'Загрузить фото' }}
+                </UiButton>
+                <UiButton
+                  v-if="item.mediaId"
+                  type="button"
+                  variant="line"
+                  @click="item.mediaId = ''"
+                >
+                  Убрать фото
+                </UiButton>
+              </div>
+              <p
+                v-if="item.photoError"
+                class="error"
+              >
+                {{ item.photoError }}
+              </p>
+            </div>
+          </article>
           <UiButton
-            v-if="module.dishes.length < 8"
+            v-if="module.dishes.length < dishMax"
             type="button"
             variant="line"
-            @click="module.dishes.push({ name: '', priceRub: '', note: '' })"
+            @click="module.dishes.push(blankDish())"
           >
             Ещё блюдо
           </UiButton>
@@ -356,7 +454,10 @@
       </div>
     </fieldset>
     <fieldset>
-      <legend>Что заказать</legend>
+      <legend>Короткий список</legend>
+      <p class="muted">
+        Показывается, только если на странице нет блока «Что заказать».
+      </p>
       <div
         v-for="(dish, index) in form.dishes"
         :key="index"
@@ -478,7 +579,7 @@
 
 <script setup lang="ts">
 import { ofetch } from 'ofetch'
-import { AUDIENCE_ICONS, PRACTICAL_KEYS, VENUE_MODULE_TITLES } from '~~/shared/venue-modules'
+import { AUDIENCE_ICONS, DISH_SHOWCASE_MAX, dishPriceIsFresh, isDishId, PRACTICAL_KEYS, VENUE_MODULE_TITLES } from '~~/shared/venue-modules'
 
 const props = defineProps<{ venueId: string }>()
 
@@ -505,12 +606,25 @@ interface Photo {
   src: string
   origin: string | null
 }
+interface DishDraft {
+  id: string
+  name: string
+  description: string
+  priceRub: string
+  savedPrice: string
+  mediaId: string
+  updatedAt: string
+  refreshPrice: boolean
+  rights: boolean
+  file: File | null
+  photoError: string
+}
 interface ModuleDraft {
   type: string
   title: string
   variant: string
   text: string
-  dishes: Array<{ name: string, priceRub: string, note: string }>
+  dishes: DishDraft[]
   audience: Array<{ who: string, icon: string, text: string }>
   practical: Array<{ key: string, label: string, value: string }>
   tips: Array<{ text: string }>
@@ -533,6 +647,7 @@ const nextModule = ref('text')
 const moduleTypes = Object.keys(VENUE_MODULE_TITLES)
 const audienceIcons = AUDIENCE_ICONS
 const practicalKeys = PRACTICAL_KEYS
+const dishMax = DISH_SHOWCASE_MAX
 const photoForm = reactive({ alt: '', author: '', rights: false })
 const form = reactive({
   name: '',
@@ -567,13 +682,75 @@ function variantHint(slug: string) {
   return catalog.value.find((item) => item.slug === slug)?.defaultVariant || 'как в меню'
 }
 
+function blankDish(): DishDraft {
+  return {
+    id: crypto.randomUUID(),
+    name: '',
+    description: '',
+    priceRub: '',
+    savedPrice: '',
+    mediaId: '',
+    updatedAt: '',
+    refreshPrice: false,
+    rights: false,
+    file: null,
+    photoError: '',
+  }
+}
+
+function dishFromStored(item: unknown): DishDraft {
+  const row = item as { id?: string, name?: string, description?: string | null, note?: string | null, priceRub?: number | null, mediaId?: string | null, updatedAt?: string }
+  const price = row.priceRub == null ? '' : String(row.priceRub)
+  return {
+    id: row.id && isDishId(row.id) ? row.id : crypto.randomUUID(),
+    name: row.name || '',
+    description: (row.description || row.note || ''),
+    priceRub: price,
+    savedPrice: price,
+    mediaId: row.mediaId || '',
+    updatedAt: row.updatedAt || '',
+    refreshPrice: false,
+    rights: false,
+    file: null,
+    photoError: '',
+  }
+}
+
+function dishCount(module: ModuleDraft) {
+  return module.dishes.length
+}
+
+function stalePrice(item: DishDraft) {
+  return Boolean(item.priceRub.trim() && item.updatedAt && !dishPriceIsFresh(item.updatedAt) && item.priceRub.trim() === item.savedPrice && !item.refreshPrice)
+}
+
+function dishPhoto(item: DishDraft) {
+  return photos.value.find((photo) => photo.id === item.mediaId) ?? null
+}
+
+function moveDish(module: ModuleDraft, index: number, step: number) {
+  const next = index + step
+  if (next < 0 || next >= module.dishes.length) {
+    return
+  }
+  const [row] = module.dishes.splice(index, 1)
+  if (row) {
+    module.dishes.splice(next, 0, row)
+  }
+}
+
+function onDishFile(item: DishDraft, event: Event) {
+  item.file = (event.target as HTMLInputElement).files?.[0] ?? null
+  item.photoError = ''
+}
+
 function blankModule(type: string): ModuleDraft {
   return {
     type,
     title: '',
     variant: 'plain',
     text: '',
-    dishes: [{ name: '', priceRub: '', note: '' }],
+    dishes: [],
     audience: [{ who: '', icon: 'group', text: '' }],
     practical: [{ key: 'other', label: '', value: '' }],
     tips: [{ text: '' }],
@@ -587,10 +764,7 @@ function moduleFromStored(raw: Record<string, unknown>): ModuleDraft {
   draft.variant = raw.variant === 'lead' ? 'lead' : 'plain'
   draft.text = typeof raw.text === 'string' ? raw.text : ''
   if (Array.isArray(raw.items) && draft.type === 'dishes') {
-    draft.dishes = raw.items.map((item) => {
-      const row = item as { name?: string, priceRub?: number | null, note?: string | null }
-      return { name: row.name || '', priceRub: row.priceRub == null ? '' : String(row.priceRub), note: row.note || '' }
-    })
+    draft.dishes = raw.items.map((item) => dishFromStored(item))
   }
   if (Array.isArray(raw.items) && draft.type === 'audience') {
     draft.audience = raw.items.map((item) => {
@@ -632,7 +806,19 @@ function modulesPayload(): unknown[] {
       return [{ type: 'prices', title }]
     }
     if (module.type === 'dishes') {
-      const items = module.dishes.flatMap((row) => row.name.trim() ? [{ name: row.name.trim(), priceRub: intOrNull(row.priceRub), note: row.note.trim() || null }] : [])
+      const items = module.dishes.flatMap((row) => {
+        if (!row.name.trim()) {
+          return []
+        }
+        return [{
+          id: row.id,
+          name: row.name.trim(),
+          description: row.description.trim().slice(0, 200) || null,
+          priceRub: intOrNull(row.priceRub),
+          mediaId: row.mediaId || null,
+          refreshPrice: row.refreshPrice || undefined,
+        }]
+      })
       return items.length ? [{ type: 'dishes', title, items }] : []
     }
     if (module.type === 'audience') {
@@ -847,11 +1033,48 @@ async function upload() {
   }
 }
 
+async function uploadDish(item: DishDraft) {
+  item.photoError = ''
+  if (!item.file) {
+    item.photoError = 'Выберите файл.'
+    return
+  }
+  if (!item.rights) {
+    item.photoError = 'Нужна отметка, что права на фото ваши.'
+    return
+  }
+  busy.value = true
+  const body = new FormData()
+  body.set('file', item.file)
+  body.set('alt', item.name.trim() || 'Блюдо')
+  body.set('rights', '1')
+  body.set('placement', 'dish')
+  try {
+    const saved = await $fetch<{ id: string }>(`/api/cabinet/venues/${props.venueId}/media`, { method: 'POST', body })
+    item.mediaId = saved.id
+    item.rights = false
+    item.file = null
+    const again = await $fetch<{ photos: Photo[] }>(`/api/cabinet/venues/${props.venueId}`)
+    photos.value = again.photos
+  } catch (reason) {
+    item.photoError = problem(reason, 'Не удалось загрузить фото')
+  } finally {
+    busy.value = false
+  }
+}
+
 async function remove(id: string) {
   photoError.value = ''
   try {
     await $fetch(`/api/cabinet/venues/${props.venueId}/media/${id}`, { method: 'DELETE' })
     photos.value = photos.value.filter((item) => item.id !== id)
+    for (const module of form.modules) {
+      for (const dish of module.dishes) {
+        if (dish.mediaId === id) {
+          dish.mediaId = ''
+        }
+      }
+    }
   } catch (reason) {
     photoError.value = problem(reason, 'Не удалось удалить фото')
   }
@@ -862,6 +1085,9 @@ async function remove(id: string) {
 .editor, .upload { display: grid; gap: 0.75rem; }
 .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .module { display: grid; gap: 0.55rem; margin: 0.8rem 0; padding-top: 0.6rem; border-top: 1px dashed var(--color-line); }
+.dish-edit { display: grid; gap: 0.55rem; margin: 0.6rem 0; padding: 0.7rem 0; border-top: 1px solid var(--color-line); }
+.dish-photo { display: grid; gap: 0.45rem; }
+.dish-photo img { width: 96px; height: 72px; object-fit: cover; border-radius: 8px; }
 select { font: inherit; padding: 0.45rem 0.55rem; }
 fieldset {
   margin: 0;

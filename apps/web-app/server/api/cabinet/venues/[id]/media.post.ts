@@ -40,9 +40,11 @@ export default defineEventHandler(async (event) => {
   if ('error' in result) {
     throw createError({ statusCode: result.statusCode, statusMessage: result.error })
   }
+  const dish = text('placement') === 'dish'
   await db.venues.attachMedia(venueId, result.row.id, {
     origin: 'venue',
-    isCover: text('isCover') === '1',
+    isCover: dish ? false : text('isCover') === '1',
+    promoteIfEmpty: dish ? false : undefined,
   })
   await db.venueClaims.audit(venueId, user.id, 'photo_upload', { mediaId: result.row.id, origin: 'venue' })
   return { id: result.row.id }

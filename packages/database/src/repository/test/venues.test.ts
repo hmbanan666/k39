@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
@@ -19,6 +21,7 @@ import {
   VenueInputError,
 } from '../../venues'
 import { Analytics } from '../analytics'
+import { Search } from '../search'
 import { Venues } from '../venues'
 
 const FORT = { latitude: 54.656847, longitude: 20.567554 }
@@ -352,5 +355,59 @@ describe('venue repository', () => {
     expect(await Venues.byId(published.id)).toBeTruthy()
     const closed = await Venues.create({ name: 'Закрытая булочная', kind: 'bakery', status: 'closed' })
     await expect(Venues.remove(closed.id)).rejects.toThrow('Удалить можно только черновик или архив')
+  })
+
+  it('keeps existing dish names and prices when the showcase columns are filled', async () => {
+    const text = description()
+    const bochka = await Venues.create({
+      name: 'Бочка Паб',
+      slug: 'bochka-pab-svetlogorsk',
+      kind: 'bar',
+      status: 'published',
+      description: text,
+      modules: [{
+        type: 'dishes',
+        note: 'Цены из меню на сайте паба.',
+        items: [
+          { name: 'Дегустационный набор пива', priceRub: 700, note: 'Удобно, чтобы сравнить свои и привозные сорта' },
+          { name: 'Смёрреброд с копчёной форелью', priceRub: 540 },
+        ],
+      }],
+    })
+    const skovorodka = await Venues.create({
+      name: 'Сковородка',
+      slug: 'skovorodka',
+      kind: 'cafe',
+      status: 'published',
+      description: text,
+      signatureDishes: [{ name: 'Пицца Маргарита', note: 'Собственная выпечка', priceRub: 650 }],
+    })
+    const sqlText = readFileSync(resolve(__dirname, '../../../migrations/0029_dish_showcase.sql'), 'utf8')
+    const update = sqlText.split('--> statement-breakpoint')[0] ?? ''
+    await useDatabase().$client.query(update)
+    const once = await Venues.byId(bochka.id)
+    const firstId = ((once?.modules as Array<{ items?: Array<{ id?: string }> }>)[0]?.items?.[0]?.id)
+    await useDatabase().$client.query(update)
+    const again = await Venues.byId(bochka.id)
+    const modules = again?.modules as Array<{ type: string, note?: string, items: Array<Record<string, unknown>> }>
+    const showcase = modules.find((module) => module.type === 'dishes')
+    const items = showcase?.items ?? []
+    expect(items).toHaveLength(2)
+    expect(items[0]).toMatchObject({
+      name: 'Дегустационный набор пива',
+      priceRub: 700,
+      note: 'Удобно, чтобы сравнить свои и привозные сорта',
+      description: 'Удобно, чтобы сравнить свои и привозные сорта',
+    })
+    expect(String(items[0]?.id)).toMatch(/^[0-9a-f-]{36}$/)
+    expect(items[0]?.id).toBe(firstId)
+    expect(String(items[0]?.updatedAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(items[1]).toMatchObject({ name: 'Смёрреброд с копчёной форелью', priceRub: 540 })
+    expect(items[1]?.description).toBeUndefined()
+    const pantry = await Venues.byId(skovorodka.id)
+    expect(pantry?.signatureDishes).toEqual([{ name: 'Пицца Маргарита', note: 'Собственная выпечка', priceRub: 650 }])
+    expect(pantry?.modules).toEqual([])
+    const paths = (await Search.query('смёрреброд')).map((row) => row.path)
+    expect(paths).toContain('/zavedeniya/bochka-pab-svetlogorsk')
   })
 })
