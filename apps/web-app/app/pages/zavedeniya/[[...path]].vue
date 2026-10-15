@@ -7,31 +7,98 @@
     :lede="page.doc.description"
   >
     <nav
-      class="filters"
-      aria-label="Фильтры"
+      class="pick"
+      aria-label="Города"
     >
-      <a href="/zavedeniya">Все</a>
-      <a
-        v-for="region in page.filters.regions"
-        :key="region.slug"
-        :href="region.href"
-        :aria-current="region.slug === page.regionSlug ? 'page' : undefined"
-      >{{ region.title }}</a>
-      <a
-        v-for="kind in page.filters.kinds"
-        :key="kind.kind"
-        :href="kind.href"
-        :aria-current="kind.kind === page.kind ? 'page' : undefined"
-      >{{ kind.label }}</a>
-      <button
-        type="button"
-        class="open-now"
-        :aria-pressed="openNow"
-        :disabled="filtering"
-        @click="toggleOpen"
-      >
-        Открыто сейчас
-      </button>
+      <p class="pick-label">
+        Города
+      </p>
+      <ul class="towns">
+        <li>
+          <a
+            class="town town-all"
+            :href="page.filters.allTownsHref"
+            :aria-current="page.regionSlug ? undefined : 'page'"
+          >
+            <span class="shot plain">
+              <Icon
+                :name="tablerIcon('address')"
+                size="22"
+              />
+            </span>
+            <span class="town-copy">
+              <span class="town-name">Вся область</span>
+            </span>
+          </a>
+        </li>
+        <li
+          v-for="town in page.filters.towns"
+          :key="town.slug"
+        >
+          <a
+            class="town"
+            :href="town.href"
+            :aria-current="town.slug === page.regionSlug ? 'page' : undefined"
+          >
+            <span class="shot">
+              <MediaImage
+                v-if="town.media"
+                :media="town.media"
+                :show-credit="false"
+                sizes="80px"
+              />
+              <img
+                v-else
+                :src="town.image"
+                alt=""
+                width="80"
+                height="80"
+              >
+            </span>
+            <span class="town-copy">
+              <span class="town-name">{{ town.title }}</span>
+              <span class="town-count">{{ venueCount(town.count) }}</span>
+            </span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <nav
+      class="pick"
+      aria-label="Что поесть"
+    >
+      <p class="pick-label">
+        Что поесть
+      </p>
+      <div class="themes">
+        <a
+          class="theme"
+          :href="page.filters.allKindsHref"
+          :aria-current="page.kind ? undefined : 'page'"
+        >Все</a>
+        <a
+          v-for="kind in page.filters.kinds"
+          :key="kind.kind"
+          class="theme"
+          :href="kind.href"
+          :aria-current="kind.kind === page.kind ? 'page' : undefined"
+        >
+          <Icon
+            :name="tablerIcon(kind.kind)"
+            size="18"
+          />
+          {{ kind.label }}
+        </a>
+        <button
+          type="button"
+          class="open-now"
+          :aria-pressed="openNow"
+          :disabled="filtering"
+          @click="toggleOpen"
+        >
+          Открыто сейчас
+        </button>
+      </div>
     </nav>
     <div
       v-if="page.html"
@@ -97,6 +164,7 @@ import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import type { VenuePageData } from '~/components/VenuePage.vue'
+import { tablerIcon } from '~~/shared/icons'
 import { PAGE_SECTIONS } from '~~/shared/page-sections'
 
 interface ListingItem {
@@ -123,7 +191,16 @@ interface ListingPage {
   regionSlug: string | null
   kind: string | null
   filters: {
-    regions: Array<{ slug: string, title: string, href: string }>
+    allTownsHref: string
+    allKindsHref: string
+    towns: Array<{
+      slug: string
+      title: string
+      href: string
+      count: number
+      media: PublicMedia | null
+      image: string
+    }>
     kinds: Array<{ kind: string, label: string, href: string }>
   }
   items: ListingItem[]
@@ -158,6 +235,19 @@ function cardMeta(item: ListingItem) {
   return [item.address, item.cuisine.join(', '), item.price, item.avgCheck].filter(Boolean).join(' · ')
 }
 
+function venueCount(count: number) {
+  const mod100 = Math.abs(count) % 100
+  const mod10 = mod100 % 10
+  const word = mod100 > 10 && mod100 < 20
+    ? 'заведений'
+    : mod10 === 1
+      ? 'заведение'
+      : mod10 > 1 && mod10 < 5
+        ? 'заведения'
+        : 'заведений'
+  return `${count} ${word}`
+}
+
 async function toggleOpen() {
   if (openNow.value) {
     openNow.value = false
@@ -178,15 +268,88 @@ usePublicHead(page.doc)
 </script>
 
 <style scoped>
-.filters { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; margin: 0 0 1.5rem; }
-.filters a { color: var(--color-sea); }
+.pick { margin: 0 0 1.15rem; }
+.pick-label {
+  margin: 0 0 0.45rem;
+  color: var(--muted);
+  font: 700 0.72rem/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.towns {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.15rem 0.1rem 0.45rem;
+  list-style: none;
+  overflow-x: auto;
+}
+@media (min-width: 900px) {
+  .towns { flex-wrap: wrap; overflow: visible; }
+}
+.town {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: 12rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: inherit;
+  text-decoration: none;
+}
+.town[aria-current='page'] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.shot {
+  display: grid;
+  flex: 0 0 3.4rem;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--color-amber-soft);
+}
+.shot.plain { color: var(--accent); }
+.shot :deep(figure),
+.shot :deep(picture) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.shot img,
+.shot :deep(img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  object-fit: cover;
+}
+.town-copy { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.town-name { font-weight: 700; line-height: 1.2; }
+.town-count { color: var(--muted); font-size: var(--step--1); }
+.themes { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+.theme {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--color-amber-soft);
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+.theme[aria-current='page'] { background: var(--accent); color: var(--surface); }
 .open-now {
-  padding: 0.1rem 0.7rem;
+  padding: 0.35rem 0.75rem;
   border: 1px solid var(--color-sea);
   border-radius: 999px;
   background: transparent;
   color: var(--color-sea);
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
 }
 .open-now[aria-pressed='true'] { background: var(--color-sea); color: var(--color-paper, #fff); }

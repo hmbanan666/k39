@@ -24,6 +24,7 @@ import {
   STALE_NOTE,
 } from '@k39/database'
 import { EAT_NOW_PATH, eatNowPath, haversineKm, inTown } from '../../../shared/eat-now'
+import { illustrationFor } from '../../../shared/illustrations'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { regionLabel } from '../../../shared/region'
@@ -290,13 +291,33 @@ async function loadListing(
   }
   const intro = await db.venues.listingIntro(region?.id ?? null, kind)
   const indexable = descriptionLength(intro?.body || '') >= LISTING_INTRO_MIN
-  const rows = await db.venues.list({
-    regionId: region?.id,
+  // One pass for the page and for the town counts. A kind narrows both.
+  const catalog = await db.venues.list({
     kind: kind ?? undefined,
     status: 'published',
     foodOnly: !kind,
   })
-  const shown = kind ? rows : rows.filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
+  const food = kind ? catalog : catalog.filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
+  const counts = new Map<string, number>()
+  for (const row of food) {
+    if (row.regionId) {
+      counts.set(row.regionId, (counts.get(row.regionId) ?? 0) + 1)
+    }
+  }
+  const shown = region ? food.filter((row) => row.regionId === region.id) : food
+  const townRows = regionRows
+    .filter((row) => (counts.get(row.id) ?? 0) > 0 || row.slug === regionSlug)
+    .map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      title: regionLabel(row),
+      href: listingPath(row.slug, kind),
+      count: counts.get(row.id) ?? 0,
+    }))
+    .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'ru'))
+  const hubs = await db.editor.publishedPlacesForSlugs(townRows.map((town) => town.slug))
+  const hubCovers = await db.content.coversFor(hubs.map((hub) => hub.id))
+  const hubBySlug = new Map(hubs.map((hub) => [hub.slug, hub]))
   const heading = listingHeading(region ? regionLabel(region) : null, kind)
   const summary = plainIntro(intro?.body) || LISTING_SUMMARY
   const doc = collectionDocument({
@@ -329,7 +350,20 @@ async function loadListing(
     regionSlug,
     kind,
     filters: {
-      regions: regionRows.map((row) => ({ slug: row.slug, title: regionLabel(row), href: listingPath(row.slug, kind) })),
+      allTownsHref: listingPath(null, kind),
+      allKindsHref: listingPath(regionSlug, null),
+      towns: townRows.map((town) => {
+        const hub = hubBySlug.get(town.slug)
+        const cover = hub ? hubCovers.get(hub.id) : undefined
+        return {
+          slug: town.slug,
+          title: town.title,
+          href: town.href,
+          count: town.count,
+          media: cover ? toPublicMedia(cover) : null,
+          image: illustrationFor(hub?.categorySlug || 'kurorty', town.slug),
+        }
+      }),
       kinds: FOOD_KINDS.map((item) => ({
         kind: item,
         label: KIND_HEADING[item],
