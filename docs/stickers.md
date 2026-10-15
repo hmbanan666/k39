@@ -1,6 +1,6 @@
 # Mascot stickers
 
-The K39 moose is a cartoon mascot. 68 stickers live in `apps/web-app/public/stickers/`. The typed catalog is `apps/web-app/shared/stickers.ts`; the component is `<Sticker>`.
+The K39 moose is a cartoon mascot. 68 stickers live in `apps/web-app/public/stickers/`. The typed catalog is `apps/web-app/shared/stickers.ts`; the component is `<Sticker>`. Food stickers for price-anchor cards are a separate set in `public/stickers/food/`, see `docs/food-stickers.md`.
 
 ## Usage rules
 
