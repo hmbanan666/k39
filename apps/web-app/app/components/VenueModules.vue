@@ -161,6 +161,8 @@
           >
             <span
               class="price-icon"
+              :class="{ sticker: Boolean(row.sticker) && !row.image }"
+              :style="row.sticker && !row.image ? { '--mark': `${PRICE_STICKER_WIDTH}px` } : undefined"
               aria-hidden="true"
             >
               <img
@@ -170,6 +172,13 @@
                 width="22"
                 height="22"
               >
+              <Sticker
+                v-else-if="row.sticker"
+                set="food"
+                :slug="row.sticker"
+                :width="PRICE_STICKER_WIDTH"
+                decorative
+              />
               <Icon
                 v-else
                 :name="tablerIcon(row.icon)"
@@ -266,7 +275,7 @@ import type { PublicMedia } from '~~/shared/media'
 import type { PublicVenueModule } from '~~/shared/venue-modules'
 import { tablerIcon } from '~~/shared/icons'
 import { licenseHref, licenseLabel } from '~~/shared/media'
-import { formatPriceDate, formatRub, priceScaleLabel } from '~~/shared/price-compare'
+import { formatPriceDate, formatRub, PRICE_STICKER_WIDTH, priceScaleLabel } from '~~/shared/price-compare'
 
 defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
 
@@ -375,6 +384,18 @@ function dishCredit(media: PublicMedia) {
   color: var(--accent);
 }
 .price-icon img { width: 22px; height: 22px; object-fit: contain; }
+.price-icon.sticker {
+  width: var(--mark);
+  height: var(--mark);
+  border: 0;
+  background: transparent;
+}
+.price-icon.sticker :deep(.sticker),
+.price-icon.sticker :deep(img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 .price-name { font-weight: 700; line-height: 1.25; }
 .price-variant { min-height: 1.25em; color: var(--muted); font-size: 0.92rem; }
 .price-rub {

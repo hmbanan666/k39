@@ -3,13 +3,30 @@
        then a kicker, the title and an optional lede. No card, no postmark. -->
   <UiBreadcrumbs :crumbs="crumbs" />
   <header class="page-header">
-    <p
-      v-if="kicker"
-      class="kicker"
+    <div
+      v-if="$slots.mark"
+      class="with-mark"
     >
-      {{ kicker }}
-    </p>
-    <h1>{{ h1 }}</h1>
+      <slot name="mark" />
+      <div>
+        <p
+          v-if="kicker"
+          class="kicker"
+        >
+          {{ kicker }}
+        </p>
+        <h1>{{ h1 }}</h1>
+      </div>
+    </div>
+    <template v-else>
+      <p
+        v-if="kicker"
+        class="kicker"
+      >
+        {{ kicker }}
+      </p>
+      <h1>{{ h1 }}</h1>
+    </template>
     <p
       v-if="lede"
       class="lede"
@@ -68,4 +85,10 @@ h1 {
   line-height: 1.55;
 }
 .extra { margin-top: var(--space-4); }
+.with-mark {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+.with-mark :deep(.sticker) { flex: none; }
 </style>

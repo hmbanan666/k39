@@ -12,7 +12,7 @@ The UI and place articles are Russian. Docs, ADRs, and code comments are English
 
 Monorepo (pnpm):
 
-- `apps/web-app`: Nuxt 4, Reka UI (headless only), `@nuxtjs/seo`, `nuxt-auth-utils`. Styling is local CSS tokens, not Tailwind and not `@nuxt/ui`. See ADR 0010 and `docs/design-system.md`. Place photos are processed with `sharp` (ADR 0011): master plus AVIF/WebP variants under `MEDIA_DIR/{id}/`. `<MediaImage>` is the public `<picture>`. Category SVG art is the fallback when a place has no cover. Moose mascot stickers: `docs/stickers.md` (`<Sticker>`). Food stickers for price-anchor cards: `docs/food-stickers.md` (`public/stickers/food/`, `shared/food-stickers.ts`).
+- `apps/web-app`: Nuxt 4, Reka UI (headless only), `@nuxtjs/seo`, `nuxt-auth-utils`. Styling is local CSS tokens, not Tailwind and not `@nuxt/ui`. See ADR 0010 and `docs/design-system.md`. Place photos are processed with `sharp` (ADR 0011): master plus AVIF/WebP variants under `MEDIA_DIR/{id}/`. `<MediaImage>` is the public `<picture>`. Category SVG art is the fallback when a place has no cover. Moose mascot stickers: `docs/stickers.md` (`<Sticker>`). Food stickers for price-anchor cards: `docs/food-stickers.md` (`<Sticker set="food">`, `public/stickers/food/`, `shared/food-stickers.ts`).
 - `packages/database`: Drizzle ORM and Postgres. Schema, repositories, SQL migrations, initial seed.
 - `packages/types`: Zod schemas shared by the API.
 

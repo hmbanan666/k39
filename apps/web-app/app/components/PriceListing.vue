@@ -5,7 +5,28 @@
       :crumbs="page.doc.crumbs"
       kicker="Цены"
       :lede="page.doc.description"
-    />
+    >
+      <template
+        v-if="page.item.sticker || page.item.image"
+        #mark
+      >
+        <Sticker
+          v-if="page.item.sticker"
+          set="food"
+          :slug="page.item.sticker"
+          :width="PRICE_STICKER_WIDTH"
+          decorative
+        />
+        <img
+          v-else
+          class="item-art"
+          :src="page.item.image ?? ''"
+          alt=""
+          :width="PRICE_STICKER_WIDTH"
+          :height="PRICE_STICKER_WIDTH"
+        >
+      </template>
+    </PageHeader>
     <nav
       v-if="page.towns.length"
       class="towns"
@@ -54,13 +75,16 @@
 </template>
 
 <script setup lang="ts">
+import type { FoodStickerSlug } from '~~/shared/food-stickers'
 import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
+import { PRICE_STICKER_WIDTH } from '~~/shared/price-compare'
+import { usePublicHead } from '~/composables/usePublicHead'
 
 export interface PriceListingData {
   doc: SeoDocument
-  item: { slug: string, title: string }
+  item: { slug: string, title: string, image: string | null, sticker: FoodStickerSlug | null }
   regionSlug: string | null
   towns: Array<{ slug: string, title: string, href: string, count: number }>
   oblastHref: string
@@ -112,4 +136,5 @@ li { display: flex; min-width: 0; }
 }
 .portion { color: var(--muted); font-size: var(--step--1); }
 .note { margin: 1.2rem 0 0; color: var(--muted); font-size: 0.92rem; }
+.item-art { flex: none; object-fit: contain; }
 </style>

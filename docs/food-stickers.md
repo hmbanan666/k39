@@ -8,8 +8,16 @@
 - They are our generated illustrations in the K39 sticker style (white outline, transparent background). Never present one as a photo of a venue's real dish, never use one in «Что заказать» (the business uploads real photos there), and never put one next to a guest photo as if it were that dish.
 - The moose rules (at most two per page, no stickers in cards) do not apply here: food stickers are item icons, not mascot art.
 - Alt text comes from the catalog. When the card already prints the item name, render the sticker `decorative` (empty alt).
-- Typical size is 48 to 128 CSS px wide. Do not stretch beyond 512 px.
-- An item without a sticker falls back to its Tabler icon from `PRICE_ITEM_ICONS`.
+- Typical size is 48 to 128 CSS px wide. Price cards and the `/ceny/{slug}` listing use 56. Do not stretch beyond 512 px.
+- Resolution for a catalog item: `price_items.image` when it is set, otherwise this sticker when `isFoodStickerSlug(slug)`, otherwise the Tabler icon from `PRICE_ITEM_ICONS`, then `PRICE_CATEGORY_ICONS`.
+
+## Component
+
+`<Sticker set="food">` uses the same `<picture>` as the moose (`docs/stickers.md`): AVIF and WebP srcset at 128, 256 and 512, PNG fallback at 256, and `sizes` equal to the `width` prop. Omit `set` for the moose. Do not point a card at one file under `public/stickers/food/` on its own.
+
+```vue
+<Sticker set="food" slug="cappuccino" :width="56" decorative />
+```
 
 ## Files
 

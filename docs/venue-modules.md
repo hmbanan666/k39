@@ -86,10 +86,13 @@ tell, in one glance, whether this place is cheap or expensive.
 The public block is a grid of equal cards, one per catalog row. Every card
 has the same slots:
 
-- an icon in the audience-card style (dashed circle, amber fill). A picture
-  wins when the catalog row's `image` is set, otherwise `PRICE_ITEM_IMAGES[slug]`
-  in `apps/web-app/shared/price-compare.ts` (empty until the sticker art lands).
-  Without a picture the card uses `PRICE_ITEM_ICONS[slug]`, then
+- an icon in the audience-card style (dashed circle, amber fill) when the
+  item has no picture. `price_items.image` wins when it is set, otherwise
+  `PRICE_ITEM_IMAGES[slug]` in `apps/web-app/shared/price-compare.ts`. Without
+  a custom picture, a slug in `FOOD_STICKERS` renders `<Sticker set="food">`
+  at 56 CSS px (`sizes` matches). The card already prints the item name, so
+  the sticker is `decorative` (empty alt). The dashed circle stays for the
+  line icon only. That icon is `PRICE_ITEM_ICONS[slug]`, then
   `PRICE_CATEGORY_ICONS` (`coffee`, `bakery`, `dessert`, `breakfast`, `tea`,
   `drinks`, `beer`, `pizza`, `burger`, `street-food`, `sushi`, `salad`,
   `soup`, `pasta`, `main`, `fish`, `lunch`), then the ticket icon;

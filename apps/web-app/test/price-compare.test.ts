@@ -1,5 +1,7 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import PriceListing from '../app/components/PriceListing.vue'
+import Sticker from '../app/components/Sticker.vue'
 import VenueModules from '../app/components/VenueModules.vue'
 import { TABLER_ICONS } from '../shared/icons'
 import {
@@ -14,16 +16,22 @@ import {
   PRICE_FEW_DATA,
   PRICE_ITEM_ICONS,
   PRICE_ITEM_IMAGES,
+  PRICE_STICKER_WIDTH,
   PRICE_TOP,
   priceBlockSummary,
   priceItemIcon,
   priceItemImage,
+  priceItemSticker,
   priceListingMeta,
   safePriceImage,
   sharedPriceSource,
 } from '../shared/price-compare'
 import { collectionDocument } from '../shared/seo'
 import { toPublicVenueModules } from '../shared/venue-modules'
+
+vi.mock('~/composables/usePublicHead', () => ({
+  usePublicHead: () => {},
+}))
 
 const REGION = 'svet'
 
@@ -102,10 +110,21 @@ describe('price comparison', () => {
     expect(safePriceImage('javascript:alert(1)')).toBeNull()
     expect(priceItemImage('latte', 'https://cdn.example/latte.webp')).toBe('https://cdn.example/latte.webp')
     expect(priceItemImage('latte', null)).toBeNull()
+    expect(priceItemSticker('latte', null)).toBe('latte')
+    expect(priceItemSticker('latte', 'https://cdn.example/latte.webp')).toBeNull()
+    expect(priceItemSticker('kvass', null)).toBeNull()
+    expect(PRICE_STICKER_WIDTH).toBeGreaterThanOrEqual(48)
+    expect(PRICE_STICKER_WIDTH).toBeLessThanOrEqual(64)
+    for (const slug of slugs) {
+      expect(priceItemSticker(slug, null)).toBe(slug)
+      expect(priceItemSticker(slug, '/stickers/custom.webp')).toBeNull()
+    }
     PRICE_ITEM_IMAGES.latte = '/stickers/latte.webp'
     expect(priceItemImage('latte', null)).toBe('/stickers/latte.webp')
+    expect(priceItemSticker('latte', null)).toBeNull()
     expect(priceItemImage('latte', 'https://cdn.example/latte.webp')).toBe('https://cdn.example/latte.webp')
     delete PRICE_ITEM_IMAGES.latte
+    expect(priceItemSticker('latte', null)).toBe('latte')
     expect(ofTown('svetlogorsk')).toBe('Светлогорска')
     expect(ofTown('missing')).toBe('региона')
     expect(ofTown(null)).toBe('региона')
@@ -201,7 +220,46 @@ describe('price comparison', () => {
     })
     expect(cards[0]?.href).toBe('/ceny/cappuccino/svetlogorsk')
     expect(cards[0]?.icon).toBe('coffee')
+    expect(cards[0]?.image).toBeNull()
+    expect(cards[0]?.sticker).toBe('cappuccino')
     expect(cards[0]?.comparison.line).toBe('дешевле, чем в 7 из 10 мест Светлогорска')
+    const pictured = buildPublicPrices({
+      venueId: 'self',
+      regionId: REGION,
+      regionSlug: 'svetlogorsk',
+      rows: [{
+        item: 'cappuccino',
+        title: 'Капучино',
+        category: 'coffee',
+        variant: '300 мл',
+        priceRub: 180,
+        checkedAt: '2026-10-01',
+        sourceTitle: 'Меню',
+        sourceUrl: null,
+        image: 'https://cdn.example/cup.webp',
+      }],
+      peersByItem: {},
+    })
+    expect(pictured[0]?.image).toBe('https://cdn.example/cup.webp')
+    expect(pictured[0]?.sticker).toBeNull()
+    const plain = buildPublicPrices({
+      venueId: 'self',
+      regionId: REGION,
+      regionSlug: null,
+      rows: [{
+        item: 'kvass',
+        title: 'Квас',
+        category: 'drinks',
+        variant: '300 мл',
+        priceRub: 120,
+        checkedAt: '2026-10-01',
+        sourceTitle: 'Меню',
+        sourceUrl: null,
+      }],
+      peersByItem: {},
+    })
+    expect(plain[0]?.sticker).toBeNull()
+    expect(plain[0]?.icon).toBe('glass')
     const out = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards)
     expect(out?.blocks[0]).toMatchObject({
       type: 'prices',
@@ -222,6 +280,7 @@ describe('price cards', () => {
     sourceUrl: 'https://cafe.example/menu',
     icon: 'coffee',
     image: null,
+    sticker: 'cappuccino' as const,
     href: '/ceny/cappuccino/svetlogorsk',
     comparison: { band: 'cheap' as const, position: 23, line: 'дешевле, чем в 7 из 10 мест Светлогорска' },
   }
@@ -239,6 +298,7 @@ describe('price cards', () => {
         }],
       },
       global: {
+        components: { Sticker },
         stubs: {
           Icon: { props: ['name'], template: '<i class="stub-icon" :data-name="name" />' },
           UiLink: { props: ['href'], template: '<a class="stub-link" :href="href"><slot /></a>' },
@@ -249,7 +309,7 @@ describe('price cards', () => {
   }
 
   it('renders the same card layout, one shared footnote, and the conclusion', () => {
-    const wrapper = mountPrices([card, { ...card, slug: 'americano', title: 'Американо', priceRub: 140, icon: 'cup', image: '/stickers/americano.webp' }], 'Цены ниже среднего по региону', {
+    const wrapper = mountPrices([card, { ...card, slug: 'americano', title: 'Американо', priceRub: 140, icon: 'cup', image: '/stickers/americano.webp', sticker: null }], 'Цены ниже среднего по региону', {
       title: 'Меню на сайте заведения',
       url: 'https://cafe.example/menu',
       when: '1 октября 2026 г.',
@@ -262,9 +322,20 @@ describe('price cards', () => {
     expect(cards[0]?.text()).toContain('180 ₽')
     expect(cards[0]?.text()).toContain('дешевле, чем в 7 из 10 мест Светлогорска')
     expect(cards[0]?.text()).toContain('дёшево')
-    expect(wrapper.find('.stub-icon').attributes('data-name')).toBe('tabler:coffee')
-    expect(wrapper.findAll('.stub-icon')).toHaveLength(1)
-    expect(wrapper.find('img').attributes('src')).toBe('/stickers/americano.webp')
+    const picture = cards[0]?.find('picture.sticker')
+    expect(picture?.find('img').attributes('src')).toBe('/stickers/food/cappuccino-256.png')
+    expect(picture?.find('img').attributes('alt')).toBe('')
+    expect(picture?.find('img').attributes('width')).toBe(String(PRICE_STICKER_WIDTH))
+    expect(picture?.find('source[type="image/avif"]').attributes('srcset')).toContain('/stickers/food/cappuccino-128.avif 128w')
+    expect(picture?.find('source[type="image/avif"]').attributes('srcset')).toContain('/stickers/food/cappuccino-512.avif 512w')
+    expect(picture?.find('source[type="image/avif"]').attributes('sizes')).toBe(`${PRICE_STICKER_WIDTH}px`)
+    expect(picture?.find('source[type="image/webp"]').attributes('srcset')).toContain('/stickers/food/cappuccino-256.webp 256w')
+    expect(cards[0]?.find('.price-icon').classes()).toContain('sticker')
+    expect(cards[0]?.find('.price-icon').attributes('style')).toContain(`--mark: ${PRICE_STICKER_WIDTH}px`)
+    expect(cards[1]?.find('.price-icon').classes()).not.toContain('sticker')
+    expect(wrapper.findAll('.stub-icon')).toHaveLength(0)
+    expect(wrapper.find('img[src="/stickers/americano.webp"]').exists()).toBe(true)
+    expect(wrapper.findAll('picture.sticker')).toHaveLength(1)
     expect(wrapper.text()).toContain('Цены ниже среднего по региону')
     const links = wrapper.findAll('.stub-link')
     expect(links).toHaveLength(1)
@@ -275,12 +346,80 @@ describe('price cards', () => {
   it('keeps a separate muted source when the rows do not share one', () => {
     const wrapper = mountPrices([
       card,
-      { ...card, slug: 'burger', title: 'Бургер', sourceTitle: 'Сообщено заведением', sourceUrl: null, comparison: { band: null, position: null, line: PRICE_FEW_DATA } },
+      { ...card, slug: 'burger', title: 'Бургер', sticker: 'burger' as const, sourceTitle: 'Сообщено заведением', sourceUrl: null, comparison: { band: null, position: null, line: PRICE_FEW_DATA } },
     ], null, null)
     expect(wrapper.find('.price-chip').exists()).toBe(false)
     expect(wrapper.findAll('.scale')).toHaveLength(1)
     expect(wrapper.text()).toContain(PRICE_FEW_DATA)
     expect(wrapper.findAll('.price-src')).toHaveLength(2)
     expect(wrapper.text()).toContain('Сообщено заведением')
+  })
+
+  it('falls back to the line icon when the slug has no food sticker', () => {
+    const wrapper = mountPrices([
+      { ...card, slug: 'kvass', title: 'Квас', icon: 'glass', sticker: null },
+    ], null, null)
+    expect(wrapper.find('picture.sticker').exists()).toBe(false)
+    expect(wrapper.find('.stub-icon').attributes('data-name')).toBe('tabler:glass')
+  })
+
+  it('shows one decorative food sticker on the price listing', () => {
+    const doc = collectionDocument({
+      path: '/ceny/cappuccino',
+      h1: 'Капучино',
+      summary: 'Капучино в области: свежие цены.',
+      seoTitle: 'Капучино: цены',
+      crumbName: 'список',
+      parent: { name: 'Заведения', href: '/zavedeniya' },
+      items: [],
+      kind: 'CollectionPage',
+    })
+    const wrapper = mount(PriceListing, {
+      props: {
+        page: {
+          doc,
+          item: { slug: 'cappuccino', title: 'Капучино', image: null, sticker: 'cappuccino' },
+          regionSlug: null,
+          towns: [],
+          oblastHref: '/ceny/cappuccino',
+          items: [],
+        },
+      },
+      global: {
+        components: { Sticker },
+        stubs: {
+          PageHeader: { template: '<header><slot name="mark" /><h1>{{ h1 }}</h1><slot /></header>', props: ['h1'] },
+          VenueCard: true,
+        },
+      },
+    })
+    const picture = wrapper.get('picture.sticker')
+    expect(picture.find('img').attributes('alt')).toBe('')
+    expect(picture.find('img').attributes('src')).toBe('/stickers/food/cappuccino-256.png')
+    expect(picture.find('source[type="image/avif"]').attributes('sizes')).toBe(`${PRICE_STICKER_WIDTH}px`)
+    expect(wrapper.text()).toContain('Капучино')
+
+    const custom = mount(PriceListing, {
+      props: {
+        page: {
+          doc,
+          item: { slug: 'cappuccino', title: 'Капучино', image: 'https://cdn.example/cup.webp', sticker: null },
+          regionSlug: null,
+          towns: [],
+          oblastHref: '/ceny/cappuccino',
+          items: [],
+        },
+      },
+      global: {
+        components: { Sticker },
+        stubs: {
+          PageHeader: { template: '<header><slot name="mark" /><slot /></header>' },
+          VenueCard: true,
+        },
+      },
+    })
+    expect(custom.find('picture.sticker').exists()).toBe(false)
+    expect(custom.get('img.item-art').attributes('src')).toBe('https://cdn.example/cup.webp')
+    expect(custom.get('img.item-art').attributes('alt')).toBe('')
   })
 })

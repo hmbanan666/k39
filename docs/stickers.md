@@ -21,9 +21,11 @@ The K39 moose is a cartoon mascot. 68 stickers live in `apps/web-app/public/stic
 <Sticker slug="shocked" :width="120" decorative />
 
 <Sticker slug="postman-hi" :width="140" priority />
+
+<Sticker set="food" slug="cappuccino" :width="56" decorative />
 ```
 
-`<picture>` with AVIF and WebP sources at 128, 256 and 512 px (`sizes` equals the given width), PNG fallback at 256 px. Lazy loading by default; `priority` makes it eager.
+`<picture>` with AVIF and WebP sources at 128, 256 and 512 px (`sizes` equals the given width), PNG fallback at 256 px. Lazy loading by default; `priority` makes it eager. Omit `set` for the moose. `set="food"` uses the price-catalog stickers in `docs/food-stickers.md` and the same markup.
 
 ## Files
 

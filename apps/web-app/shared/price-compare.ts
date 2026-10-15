@@ -1,4 +1,6 @@
+import type { FoodStickerSlug } from './food-stickers'
 import { inTown } from './eat-now'
+import { isFoodStickerSlug } from './food-stickers'
 import { pageTitle } from './seo'
 
 /**
@@ -45,11 +47,16 @@ export interface PublicPriceCard {
   sourceTitle: string
   sourceUrl: string | null
   icon: string
-  /** Sticker or illustration. Null keeps the line icon. */
+  /** Custom picture from the catalog row. Wins over the food sticker. */
   image: string | null
+  /** Food sticker when the slug has one and `image` is empty. */
+  sticker: FoodStickerSlug | null
   href: string
   comparison: PriceComparison
 }
+
+/** Rendered width of a food sticker on a price card, in CSS px. `sizes` matches. */
+export const PRICE_STICKER_WIDTH = 56
 
 export interface SharedPriceSource {
   title: string
@@ -58,8 +65,9 @@ export interface SharedPriceSource {
 }
 
 /**
- * Tabler keys for the live catalog. A sticker path in `PRICE_ITEM_IMAGES`
- * or `price_items.image` replaces the line icon for that slug.
+ * Tabler keys for the live catalog. A custom picture (`price_items.image`,
+ * then `PRICE_ITEM_IMAGES`) wins. Otherwise a slug in `FOOD_STICKERS` uses
+ * that sticker. This icon is the last resort, before `PRICE_CATEGORY_ICONS`.
  */
 export const PRICE_ITEM_ICONS: Record<string, string> = {
   'latte': 'mug',
@@ -118,8 +126,9 @@ export const PRICE_CATEGORY_ICONS: Record<string, string> = {
 }
 
 /**
- * Optional picture per catalog slug. A site path (`/stickers/latte.webp`) or
- * an https URL. The catalog row's `image` wins when it is set.
+ * Optional picture per catalog slug, used when the row has no `image`.
+ * A site path or an https URL. Empty means the food sticker, when the slug
+ * has one, otherwise the line icon.
  */
 export const PRICE_ITEM_IMAGES: Partial<Record<string, string>> = {}
 
@@ -166,9 +175,17 @@ export function safePriceImage(value: string | null | undefined) {
   return null
 }
 
-/** Row image, then the code map. Null means the line icon. */
+/** Custom picture: the stored row, then `PRICE_ITEM_IMAGES`. Null when neither is set. */
 export function priceItemImage(slug: string, stored?: string | null) {
   return safePriceImage(stored) ?? safePriceImage(PRICE_ITEM_IMAGES[slug] ?? null)
+}
+
+/** Food sticker when the catalog has one and no custom picture is set. */
+export function priceItemSticker(slug: string, stored?: string | null): FoodStickerSlug | null {
+  if (priceItemImage(slug, stored)) {
+    return null
+  }
+  return isFoodStickerSlug(slug) ? slug : null
 }
 
 export function priceItemPath(slug: string, regionSlug?: string | null) {
@@ -359,6 +376,7 @@ export function buildPublicPrices(input: {
       sourceUrl: row.sourceUrl,
       icon: priceItemIcon(row.item, row.category),
       image: priceItemImage(row.item, row.image),
+      sticker: priceItemSticker(row.item, row.image),
       href: listingHref(row.item, input.regionSlug, input.regionId, peers),
       comparison: compareVenuePrice({
         venueId: input.venueId,
