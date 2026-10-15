@@ -30,8 +30,8 @@ import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
-import { collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
-import { toPublicVenueModules } from '../../../shared/venue-modules'
+import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
+import { dishMenuNode, toPublicVenueModules } from '../../../shared/venue-modules'
 import { loadSchedule } from '../schedule'
 
 export function sponsoredVenuesEnabled() {
@@ -172,7 +172,8 @@ async function loadVenue(slug: string) {
     sourceTitle: row.sourceTitle,
     sourceUrl: row.sourceUrl,
   }))
-  const modules = toPublicVenueModules(venue.modules, renderMarkdown, prices)
+  const mediaById = new Map(photos.map((photo) => [photo.id, photo]))
+  const modules = toPublicVenueModules(venue.modules, renderMarkdown, prices, { now, mediaById })
   const town = region ? inTown(region.slug, regionLabel(region)) : ''
   const firstBlock = modules?.blocks.find((block) => block.type === 'text')
   const firstText = firstBlock?.type === 'text' ? firstBlock.html.replace(/<[^>]+>/g, ' ') : venue.description
@@ -201,6 +202,17 @@ async function loadVenue(slug: string) {
     menuUrl: venue.menuUrl,
     reservation: venue.reservation,
   })
+  const dishes = modules?.blocks.find((block) => block.type === 'dishes')
+  if (dishes?.type === 'dishes' && !doc.robots.includes('noindex')) {
+    const menu = dishMenuNode(dishes, { menuUrl: venue.menuUrl, absolute: absoluteUrl })
+    const business = doc.jsonLd.find((node) => {
+      const type = node['@type']
+      return type && type !== 'BreadcrumbList' && type !== 'FAQPage'
+    })
+    if (menu && business) {
+      business.hasMenu = menu
+    }
+  }
   const faq = modules?.blocks.find((block) => block.type === 'faq')
   if (faq?.type === 'faq' && !doc.robots.includes('noindex')) {
     doc.jsonLd.push({

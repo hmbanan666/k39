@@ -204,6 +204,13 @@
       "when": 1792060000000,
       "tag": "0028_listing_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792070000000,
+      "tag": "0029_dish_showcase",
+      "breakpoints": true
     }
   ]
 }

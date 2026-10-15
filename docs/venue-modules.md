@@ -24,7 +24,7 @@ Rules:
 | type | Title on page | Shape | Notes |
 | --- | --- | --- | --- |
 | `text` | «О месте» or own title | `{ title?, variant: lead\|plain, text }` | Same shape as ADR 0023 `text`. |
-| `dishes` | «Что заказать» | `{ title?, items: [{ name, priceRub?, note? }], note? }` | Up to 8. Falls back to `signatureDishes`. Price only when seen on the official menu. |
+| `dishes` | «Что заказать» | `{ title?, items: [{ id, name, description?, priceRub?, mediaId?, updatedAt }], note? }` | Showcase of at most 8, not a menu. See below. Falls back to `signatureDishes` when this module is absent. |
 | `audience` | «Кому подойдёт» | `{ title?, items: [{ who, icon?, text }] }` | 2 to 5 short cards. `icon` is one of `AUDIENCE_ICONS` (group, family, kids, couple, solo, friends, beach, day-trip, tourist, local, pets, work), default `group`. The heading shows the `with-heart` sticker. |
 | `practical` | «Полезно знать» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
 | `best-time` | «Когда лучше прийти» | `{ title?, text }` | Only with real data (hours, queues seen, season). |
@@ -49,6 +49,18 @@ Rules:
 
 Hero, then the stored modules in stored order, then «Как внутри», «Как
 добраться» (with `how-to-get` text), «Рядом посмотреть», «Источники».
+
+## «Что заказать»
+
+A short showcase of what the venue wants a visitor to notice. Not the menu. The official menu stays a link (`menuUrl`).
+
+- At most 8 items. `venueModulesSchema` enforces it for the cabinet and for `venue_update`.
+- `id` is stable. The server adds one when it is missing and keeps it when the item is edited. A later guest review or guest photo will attach to this id. That feature is not built yet (ADR 0032).
+- `description` is one short line. Older rows used `note` on the item; a write copies it into `description` and the public page reads either. The module `note` is the line under the cards.
+- `priceRub` is optional. The page and the schema.org `Menu` hide a price whose `updatedAt` is older than 365 days, the same window as «Ориентиры цен». The stored number stays. Editing the name, the text, or the photo does not refresh the date. A new price, or the owner's «Подтвердить цену», does. A row with no date still shows the price.
+- `mediaId` is an optional photo already attached to the venue. The cabinet uploads it with the rights checkbox; origin is `venue`, through the usual image pipeline, and it does not become the cover. An editorial write may newly attach only origin `own` or `commons`. An id that is already on the item is kept.
+- Cards are server-rendered: photo or a plain fallback, name, price, short text. The same HTML is what a bot receives.
+- Migration `0029_dish_showcase` fills `id`, `description` (from `note`), and `updatedAt` on existing items and does not drop `note` or `signature_dishes`. `updatedAt` is the migration time, so a price that is visible today stays visible.
 
 ## «Ориентиры цен» and the shared price catalog
 
@@ -88,7 +100,9 @@ At most one module of each type. Do not invent the copy here: the tool only stor
 ## Owner cabinet (ADR 0031)
 
 A verified owner edits `venues.modules` in `/kabinet` with `venueModulesSchema`,
-the same check as `venue_update.modules`. «Ориентиры цен» is `venue_prices`
+the same check as `venue_update.modules`. «Что заказать» is that module: add,
+edit, reorder, remove, change the price, and upload a photo with the rights
+checkbox (at most 8, counter «5 из 8»). «Ориентиры цен» is `venue_prices`
 with `sourceKind: owner`, the same object as `venue_prices_set`. The server
 forces that source and does not let the owner edit `price_items`. The public
 card links to the claim instead of a mailto.

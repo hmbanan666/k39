@@ -1163,6 +1163,9 @@ const SCHEMA_TYPES = new Set([
   'Person',
   'CreativeWork',
   'WebPage',
+  'Menu',
+  'MenuItem',
+  'Offer',
 ])
 
 const OPENING_HOURS = /^(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))? \d{2}:\d{2}-\d{2}:\d{2}$/
