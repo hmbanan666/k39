@@ -59,7 +59,7 @@ export const scheduleRulesSchema = z.object({
     until: isoDate.optional(),
     viewableOutside: z.boolean().default(false),
   }).optional(),
-  /** Set when the rules still need checking against an official source. */
+  /** Set when the rules still need checking against an allowed source. */
   needsCheck: z.boolean().default(false),
 })
 

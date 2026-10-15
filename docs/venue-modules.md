@@ -13,9 +13,12 @@ Rules:
   `how-to-get` shows `with-map` whenever that module renders. Photos,
   coordinates, and other stickers on the page do not hide them. The hero
   sticker and the owner card stay as they are.
-- Text is ours and original. Facts (hours, address, takeaway, prices) come from
-  OSM, the venue's own site or socials, or our visit. Nothing is copied from
-  aggregators or other guides. No ratings.
+- Text is ours and original. For a venue that really exists and operates,
+  hours, phone, address, operating status, and coordinates come from the
+  official site, then Yandex Maps, 2GIS, or OSM when the site does not state
+  them. Prices come from the official menu. Nothing is copied from map cards,
+  aggregators, or other guides: no texts, descriptions, photos, reviews,
+  ratings, or an average check. No ratings.
 - `description` stays as the archive and the source for the meta description
   and JSON-LD.
 

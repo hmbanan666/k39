@@ -89,6 +89,6 @@ Bad: omitting `{ type: 'prices' }` because the menu is not collected yet. Includ
 - No sticker slugs in the JSON. Dish and price pictures follow the docs.
 - Passport has queries, audience, action, and both goals.
 - Region and coordinates are set when known, so the town listing and nearby places link.
-- Address, hours, phone, and menu follow `k39-sources-and-facts`: official site, then an OSM fill-in, then empty.
+- Address, hours, phone, operating status, and coordinates follow `k39-sources-and-facts`: official site, then Yandex Maps, 2GIS, and OSM for a fact the site does not state, then «уточняйте». A map card is `{ title, url }` in `sources`. Menu lines and prices stay the official menu. No text, description, photo, review, rating, or average check comes from a map.
 - The description does not retell prices or disclaim the price block. Photos follow the photo policy.
 - Publish only after the reviewer pass in `k39-publish-review`. The author does not publish.
