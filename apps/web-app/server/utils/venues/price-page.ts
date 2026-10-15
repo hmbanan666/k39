@@ -1,6 +1,6 @@
 import { db, isStale, kindLabel } from '@k39/database'
 import { toPublicMedia } from '../../../shared/media'
-import { formatRub, indexablePriceLocs, onePricePerVenue, priceItemPath, priceListingMeta } from '../../../shared/price-compare'
+import { formatRub, indexablePriceLocs, onePricePerVenue, priceItemImage, priceItemPath, priceItemSticker, priceListingMeta } from '../../../shared/price-compare'
 import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
 import { collectionDocument } from '../../../shared/seo'
@@ -110,7 +110,12 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
   })
   return {
     doc,
-    item: { slug: item.slug, title: item.title },
+    item: {
+      slug: item.slug,
+      title: item.title,
+      image: priceItemImage(item.slug, item.image),
+      sticker: priceItemSticker(item.slug, item.image),
+    },
     regionSlug: region?.slug ?? null,
     towns,
     oblastHref: priceItemPath(item.slug),
