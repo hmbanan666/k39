@@ -105,6 +105,10 @@
       class="prose"
       v-html="page.html"
     />
+    <ListingModules
+      v-if="leadModules.length"
+      :blocks="leadModules"
+    />
     <p
       v-if="openNow"
       class="open-note"
@@ -146,6 +150,10 @@
         />
       </li>
     </ul>
+    <ListingModules
+      v-if="tailModules.length"
+      :blocks="tailModules"
+    />
     <p
       v-if="!shownItems.length"
       class="empty"
@@ -160,6 +168,7 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicListingModule } from '~~/shared/listing-modules'
 import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
@@ -187,6 +196,7 @@ interface ListingPage {
   type: 'listing'
   doc: SeoDocument
   html: string
+  modules: PublicListingModule[]
   heading: string
   regionSlug: string | null
   kind: string | null
@@ -208,6 +218,9 @@ interface ListingPage {
 
 const route = useRoute()
 const page = await fetchPublic<ListingPage | VenuePageData>('/api/public/zavedeniya', { path: route.path })
+const listingModules = page.type === 'listing' ? page.modules : []
+const leadModules = listingModules.filter((block) => block.type === 'choose' || block.type === 'situation')
+const tailModules = listingModules.filter((block) => block.type !== 'choose' && block.type !== 'situation')
 // «Открыто сейчас» runs in the browser only, after hydration (ADR 0028).
 const openNow = ref(false)
 const filtering = ref(false)

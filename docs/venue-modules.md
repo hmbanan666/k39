@@ -65,6 +65,22 @@ visitors can compare venues.
   lists one item across published venues, cheapest first, as the base for
   collections like «Топ капучино области».
 
+## Listing modules
+
+A town or kind listing (`/zavedeniya`, `/zavedeniya/{region}`, `/zavedeniya/{kind}`, `/zavedeniya/{region}/{kind}`) can carry its own modules in `venue_listing_intros.modules`. `venue_listing_modules_set` replaces that list. It does not change the intro. An empty array clears the modules. The intro of at least 300 characters is still what makes a filter URL indexable.
+
+Each block is optional and renders only when it has data. Invalid JSON renders nothing, and the card grid stays. «Как выбрать» and «По ситуации» sit above the grid. «Районы и улицы», «Сезонность» and «Вопросы» sit below it. «Вопросы» adds FAQPage when the page is indexable. «По ситуации» links to published venues and reuses `VenueCard`. A missing venue is left out of that block.
+
+| type | Title on page | Shape |
+| --- | --- | --- |
+| `choose` | «Как выбрать» | `{ title?, text }` markdown |
+| `situation` | «По ситуации» | `{ title?, items: [{ label, note?, placeSlug, icon? }] }` up to 8. `icon` is `kids`, `beaches`, `hours`, `coffee`, `family`, or `group`. `placeSlug` must be a published venue. |
+| `areas` | «Районы и улицы» | `{ title?, items: [{ name, text }] }` up to 8 |
+| `season` | «Сезонность» | `{ title?, text?, items?: [{ when, text }] }`. Needs `text` or at least one item. |
+| `faq` | «Вопросы» | `{ title?, items: [{ question, answer }] }` up to 8 |
+
+At most one module of each type. Do not invent the copy here: the tool only stores what an editor sends.
+
 ## Owner cabinet (ADR 0031)
 
 A verified owner edits `venues.modules` in `/kabinet` with `venueModulesSchema`,

@@ -100,6 +100,10 @@ Editors and agents publish venues only after a check. OSM is a draft source, not
   `contact:*` (vk, telegram, instagram, facebook, whatsapp, youtube, ok).
 - The public page shows a field only when it is set. No ratings.
 
+## Addendum: listing modules
+
+`venue_listing_intros.modules` holds optional blocks for a town or kind listing: `choose`, `situation`, `areas`, `season`, and `faq`. `venue_listing_modules_set` replaces the list and does not change the intro. The page renders them around the card grid. `faq` adds FAQPage when the listing is indexable. Details are in `docs/venue-modules.md`.
+
 ## Addendum: cabinet claims (ADR 0031)
 
 `contact_email` stores the official mailbox (OSM `email` / `contact:email`). It is not rendered. A verified owner edits `venues.modules` and `venue_prices` through `/kabinet`, with the same checks as `venue_update` and `venue_prices_set`. Status, slug, and SEO stay editorial. `businesses.venue_id` is the later subscription link.

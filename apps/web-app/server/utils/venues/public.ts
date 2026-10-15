@@ -25,6 +25,7 @@ import {
 } from '@k39/database'
 import { EAT_NOW_PATH, eatNowPath, haversineKm, inTown } from '../../../shared/eat-now'
 import { illustrationFor } from '../../../shared/illustrations'
+import { attachSituationCards, toPublicListingModules } from '../../../shared/listing-modules'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { regionLabel } from '../../../shared/region'
@@ -333,7 +334,14 @@ async function loadListing(
     kind: 'CollectionPage',
   })
   const now = new Date()
-  const ids = shown.map((row) => row.id)
+  const draftModules = toPublicListingModules(intro?.modules ?? [], renderMarkdown)
+  const situationSlugs = draftModules.flatMap((block) => block.type === 'situation' ? block.items.map((item) => item.placeSlug) : [])
+  const extraSlugs = [...new Set(situationSlugs.filter((slug) => !shown.some((row) => row.slug === slug)))]
+  const extras = (await Promise.all(extraSlugs.map((slug) => db.venues.bySlug(slug)))).flatMap((row) => {
+    return row && row.status === 'published' ? [row] : []
+  })
+  const cardRows = [...shown, ...extras]
+  const ids = cardRows.map((row) => row.id)
   const [covers, scheduleRows] = await Promise.all([
     db.venues.coversFor(ids),
     db.schedules.forEntities('venue', ids),
@@ -342,10 +350,37 @@ async function loadListing(
     const rules = readRules(row.rules)
     return rules ? [[row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }] as const] : []
   }))
+  const cards = new Map(cardRows.map((row) => {
+    const cover = covers.get(row.id)
+    return [row.slug, {
+      href: `/zavedeniya/${row.slug}`,
+      slug: row.slug,
+      name: row.name,
+      kindLabel: kindLabel(row.kind),
+      media: cover ? toPublicMedia(cover) : null,
+      schedule: scheduleById.get(row.id) ?? null,
+      stale: isStale(row.lastVerifiedAt, now),
+      meta: [row.address, cuisineLabels(row.cuisineTags).join(', '), priceMarks(row.priceLevel), formatAvgCheck(row.avgCheck)].filter(Boolean).join(' · '),
+    }] as const
+  }))
+  const modules = attachSituationCards(draftModules, cards)
+  const faq = modules.find((block) => block.type === 'faq')
+  if (faq?.type === 'faq' && !doc.robots.includes('noindex')) {
+    doc.jsonLd.push({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      'mainEntity': faq.items.map((item) => ({
+        '@type': 'Question',
+        'name': item.question,
+        'acceptedAnswer': { '@type': 'Answer', 'text': item.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() },
+      })),
+    })
+  }
   return {
     type: 'listing' as const,
     doc,
     html: intro?.body?.trim() ? renderMarkdown(intro.body) : '',
+    modules,
     heading,
     regionSlug,
     kind,
@@ -371,7 +406,7 @@ async function loadListing(
       })),
     },
     items: shown.map((row) => {
-      const cover = covers.get(row.id)
+      const card = cards.get(row.slug)
       return {
         href: `/zavedeniya/${row.slug}`,
         slug: row.slug,
@@ -384,9 +419,9 @@ async function loadListing(
         stale: isStale(row.lastVerifiedAt, now),
         latitude: row.latitude,
         longitude: row.longitude,
-        media: cover ? toPublicMedia(cover) : null,
+        media: card?.media ?? null,
         // Rules only. The card computes «открыто» in the browser (ADR 0028).
-        schedule: scheduleById.get(row.id) ?? null,
+        schedule: card?.schedule ?? null,
       }
     }),
   }
