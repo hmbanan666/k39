@@ -28,7 +28,7 @@ import { illustrationFor } from '../../../shared/illustrations'
 import { attachSituationCards, toPublicListingModules } from '../../../shared/listing-modules'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
-import { buildPublicPrices } from '../../../shared/price-compare'
+import { buildPublicPrices, priceCompareLead } from '../../../shared/price-compare'
 import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
 import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
@@ -172,13 +172,18 @@ async function loadVenue(slug: string) {
   }))
   const prices = buildPublicPrices({
     venueId: venue.id,
+    venueSlug: venue.slug,
     regionId: venue.regionId,
     regionSlug: region?.slug ?? null,
     rows: freshPrices,
     peersByItem: Object.fromEntries(peerLists),
   })
   const mediaById = new Map(photos.map((photo) => [photo.id, photo]))
-  const modules = toPublicVenueModules(venue.modules, renderMarkdown, prices, { now, mediaById })
+  const modules = toPublicVenueModules(venue.modules, renderMarkdown, prices, {
+    now,
+    mediaById,
+    priceLead: priceCompareLead(region?.slug ?? null),
+  })
   const town = region ? inTown(region.slug, regionLabel(region)) : ''
   const firstBlock = modules?.blocks.find((block) => block.type === 'text')
   const firstText = firstBlock?.type === 'text' ? firstBlock.html.replace(/<[^>]+>/g, ' ') : venue.description

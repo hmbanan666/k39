@@ -2,7 +2,7 @@ import type { PublicMedia } from './media'
 import type { PublicPriceCard, SharedPriceSource } from './price-compare'
 import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
-import { priceBlockSummary, sharedPriceSource } from './price-compare'
+import { priceBlockSummary, priceCompareLead, sharedPriceSource } from './price-compare'
 
 /** Audience card icons (Tabler line icons via shared/icons.ts `aud-*`). Default: `group`. */
 export const AUDIENCE_ICONS = ['group', 'family', 'kids', 'couple', 'solo', 'friends', 'beach', 'day-trip', 'tourist', 'local', 'pets', 'work'] as const
@@ -138,7 +138,7 @@ export type PublicVenueModule
     | { type: 'best-time', id: string, title: string, html: string }
     | { type: 'tips', id: string, title: string, items: string[] }
     | { type: 'faq', id: string, title: string, items: { question: string, html: string }[] }
-    | { type: 'prices', id: string, title: string, items: PublicPriceCard[], summary: string | null, source: SharedPriceSource | null }
+    | { type: 'prices', id: string, title: string, lead: string, items: PublicPriceCard[], summary: string | null, source: SharedPriceSource | null }
 
 export interface PublicDish {
   /** Persisted id, or a display key when a reverted snapshot has none yet. */
@@ -162,6 +162,8 @@ export interface PublicVenueModules {
 export interface VenueModuleView {
   now?: Date
   mediaById?: ReadonlyMap<string, PublicMedia>
+  /** «Сравниваем с другими заведениями Светлогорска». */
+  priceLead?: string
 }
 
 /** Validates and renders stored modules. Invalid or empty input yields null. */
@@ -216,6 +218,7 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
             id: idFor('prices'),
             title: heading,
             items: prices,
+            lead: view.priceLead || priceCompareLead(null),
             summary: priceBlockSummary(prices.map((row) => row.comparison.band)),
             source: sharedPriceSource(prices),
           })

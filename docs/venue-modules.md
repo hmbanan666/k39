@@ -83,45 +83,59 @@ tell, in one glance, whether this place is cheap or expensive.
 - Prices are never invented or taken from aggregators. Rows older than 365
   days are not shown. Without fresh rows the module is hidden.
 
-The public block is a grid of equal cards, one per catalog row. Every card
-has the same slots:
+The public block is a compact price list, two columns from 720px and one
+column below that. Every card is the same row: a 56×56 px picture box, the
+name and portion, then a large price. The picture is `price_items.image` when
+that is set, otherwise `<Sticker set="food">` when the slug is in
+`FOOD_STICKERS`, otherwise a line icon. The sticker is `decorative` because
+the card already prints the name. The box is a fixed square with
+`object-fit: contain` and `overflow: hidden`. Trimmed food stickers do not
+share an aspect ratio (a beer glass is much taller than a plate), so the card
+sizes the box, not the file width. A width-sized sticker overflows and covers
+the title. The line icon is `PRICE_ITEM_ICONS[slug]`, then
+`PRICE_CATEGORY_ICONS` (`coffee`, `bakery`, `dessert`, `breakfast`, `tea`,
+`drinks`, `beer`, `pizza`, `burger`, `street-food`, `sushi`, `salad`,
+`soup`, `pasta`, `main`, `fish`, `lunch`), then the ticket icon.
+`PRICE_ITEM_IMAGES[slug]` is the code fallback when the catalog row has no
+picture.
 
-- an icon in the audience-card style (dashed circle, amber fill) when the
-  item has no picture. `price_items.image` wins when it is set, otherwise
-  `PRICE_ITEM_IMAGES[slug]` in `apps/web-app/shared/price-compare.ts`. Without
-  a custom picture, a slug in `FOOD_STICKERS` renders `<Sticker set="food">`
-  at 56 CSS px (`sizes` matches). The card already prints the item name, so
-  the sticker is `decorative` (empty alt). The dashed circle stays for the
-  line icon only. That icon is `PRICE_ITEM_ICONS[slug]`, then
-  `PRICE_CATEGORY_ICONS` (`coffee`, `bakery`, `dessert`, `breakfast`, `tea`,
-  `drinks`, `beer`, `pizza`, `burger`, `street-food`, `sushi`, `salad`,
-  `soup`, `pasta`, `main`, `fish`, `lunch`), then the ticket icon;
-- the item name and its portion or volume;
-- a large price;
-- a comparison, computed on the server from `db.prices.forItem` (published
-  venues, checked within a year, same region). One price per venue: the same
-  portion when that venue has it, otherwise its cheapest fresh price. The
-  card itself uses its own price.
+Under the heading, one line says what the block is, for example «Сравниваем
+с другими заведениями Светлогорска». The town is the genitive from the venue.
+Without a known town it says «региона».
 
-With fewer than 3 venues the card says «пока мало данных для сравнения» and
-draws no scale. Otherwise a three-part scale (дёшево, средне, дорого) marks
-this price against the regional median: below 90% of the median is cheap,
-above 110% is expensive, the rest is medium. The line under the scale is the
-conclusion, for example «дешевле, чем в 7 из 10 мест Светлогорска». A price
-in the expensive band and among the three highest, when at least four venues
-are in the sample, says «топ-3 по цене в регионе».
+The comparison is computed on the server from `db.prices.forItem`. That query
+keeps published venues only (drafts, closed and archived are out), checked
+within a year, in the same region. One price per venue: the same portion when
+that venue has it, otherwise its cheapest fresh price. The card uses its own
+price. The same published count is what `/ceny` uses for `noindex` and the
+sitemap (`PRICE_INDEX_MIN`, five venues).
+
+- One venue in the region: «пока единственная цена в Светлогорске». No scale.
+  The town is prepositional.
+- Two venues: the real range, for example «в Светлогорске 180–220 ₽ (2 места)».
+  The parenthetical uses the nominative plural («1 место», «2 места», «5 мест»).
+  No scale.
+- Three or more: a small дёшево / средне / дорого scale marks this price
+  against the regional median (below 90% is cheap, above 110% is expensive).
+  The line is «дешевле, чем в 7 из 10 мест Светлогорска» or the dearer form.
+  After «из», 21, 31… take «места» and every other count takes «мест». A price
+  in the expensive band and among the three highest, when at least four venues
+  are in the sample, says «топ-3 по цене в регионе».
 
 A chip above the grid summarizes the cards, for example «Цены ниже среднего
 по региону». It is omitted when no card has a comparison. Source and date
-are small and muted. When every row shares one source, one footnote replaces
+are a small footnote. When every row shares one source, one footnote replaces
 the repeated links.
 
-Each card links to `/ceny/{slug}` or `/ceny/{slug}/{region}` (the catalog
-slug and the region slug, for example `/ceny/cappuccino` and
-`/ceny/cappuccino/svetlogorsk`). That page lists the venues with a fresh
-price, cheapest first, using `VenueCard`, and is server-rendered. It stays
-`noindex` and out of the sitemap until at least 5 venues are in the list.
-`ceny` is a reserved place slug.
+The whole card is one link to `/ceny/{slug}/{region}?from={venueSlug}` (or
+`/ceny/{slug}?from=` when the venue has no region), for example
+`/ceny/cappuccino/svetlogorsk?from=bochka-pab`. The listing title is
+«Капучино в Светлогорске». Venues are cheapest first. `?from=` highlights
+that venue with «Это заведение» and is server-rendered. The clean URL stays
+the canonical. A query other than paging or a tracking parameter is `noindex`,
+so the highlighted URL is not a second indexable page. The listing stays
+`noindex` and out of the sitemap until at least 5 published venues are in
+the list. `ceny` is a reserved place slug.
 
 ## Listing modules
 

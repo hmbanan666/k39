@@ -123,7 +123,7 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
   }
 }
 
-/** Indexable /ceny listings. Thin samples stay out of the sitemap. */
+/** Indexable /ceny listings. Counts are published venues from `Prices.forItem`. Thin samples stay out of the sitemap. */
 export async function priceSitemapEntries() {
   const [catalog, regions] = await Promise.all([
     db.prices.items(),

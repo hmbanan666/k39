@@ -86,7 +86,7 @@ export class Prices {
     return rows.filter((row) => row.checkedAt >= cutoff)
   }
 
-  /** One item across venues, cheapest first: the base for «Топ капучино». */
+  /** One item across published venues, cheapest first. Drafts, closed and archived stay out, so comparisons and /ceny indexing use this count. */
   static async forItem(slug: string, now = new Date()) {
     return useDatabase().select({
       venueId: venues.id,

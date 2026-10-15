@@ -62,6 +62,14 @@ describe('price catalog', () => {
       regionId: region.id,
     })
     created.push(draft.id)
+    const closed = await Venues.create({
+      name: 'Закрытое кафе цен',
+      slug: 'price-closed-cafe',
+      kind: 'cafe',
+      status: 'closed',
+      regionId: region.id,
+    })
+    created.push(closed.id)
     const stale = await Venues.create({
       name: 'Старая цена',
       slug: 'price-stale-cafe',
@@ -83,6 +91,7 @@ describe('price catalog', () => {
     await Prices.setForVenue(dear.id, [row(280, today)])
     await Prices.setForVenue(elsewhere.id, [row(90, today)])
     await Prices.setForVenue(draft.id, [row(50, today)])
+    await Prices.setForVenue(closed.id, [row(10, today)])
     await Prices.setForVenue(stale.id, [row(40, old)])
 
     const listed = (await Prices.forItem('cappuccino')).filter((item) => created.includes(item.venueId))
