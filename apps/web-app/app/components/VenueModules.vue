@@ -50,7 +50,7 @@
               <span
                 v-if="dish.priceRub"
                 class="dish-price"
-              >{{ rub(dish.priceRub) }}</span>
+              >{{ formatRub(dish.priceRub) }}</span>
             </p>
             <p
               v-if="dish.description"
@@ -142,28 +142,96 @@
       </li>
     </ul>
     <template v-else-if="block.type === 'prices'">
-      <ul class="dishes">
+      <p
+        v-if="block.summary"
+        class="price-chip"
+      >
+        {{ block.summary }}
+      </p>
+      <ul class="price-grid">
         <li
           v-for="row in block.items"
-          :key="row.title + row.variant"
+          :key="row.slug + row.variant"
         >
-          <span class="dish-name">{{ row.title }}<span
-            v-if="row.variant"
-            class="variant"
-          >, {{ row.variant }}</span></span>
-          <span class="dish-price">{{ rub(row.priceRub) }}</span>
-          <span class="dish-note">
+          <component
+            :is="row.href ? 'a' : 'div'"
+            class="price-card"
+            v-bind="row.href ? { href: row.href } : {}"
+          >
+            <span
+              class="price-icon"
+              aria-hidden="true"
+            >
+              <Icon
+                :name="tablerIcon(row.icon)"
+                size="22"
+              />
+            </span>
+            <span class="price-name">{{ row.title }}</span>
+            <span class="price-variant">{{ row.variant }}</span>
+            <span class="price-rub">{{ formatRub(row.priceRub) }}</span>
+            <span
+              v-if="row.comparison.band"
+              class="scale"
+              role="img"
+              :aria-label="priceScaleLabel(row.comparison.band)"
+            >
+              <span class="track-wrap">
+                <span class="track">
+                  <i :class="{ on: row.comparison.band === 'cheap' }" />
+                  <i :class="{ on: row.comparison.band === 'medium' }" />
+                  <i :class="{ on: row.comparison.band === 'expensive' }" />
+                </span>
+                <span
+                  class="mark"
+                  :class="row.comparison.band"
+                  :style="{ left: `${row.comparison.position ?? 0}%` }"
+                />
+              </span>
+              <span class="scale-labels">
+                <span :class="{ on: row.comparison.band === 'cheap' }">дёшево</span>
+                <span :class="{ on: row.comparison.band === 'medium' }">средне</span>
+                <span :class="{ on: row.comparison.band === 'expensive' }">дорого</span>
+              </span>
+            </span>
+            <span class="price-line">{{ row.comparison.line }}</span>
+          </component>
+          <p
+            v-if="!block.source"
+            class="price-src"
+          >
             <UiLink
               v-if="row.sourceUrl"
               :href="row.sourceUrl"
               data-track="outbound"
               data-track-name="price-source"
-            >{{ row.sourceTitle }}</UiLink>
-            <template v-else>{{ row.sourceTitle }}</template>,
-            {{ shortDate(row.checkedAt) }}
-          </span>
+            >
+              {{ row.sourceTitle }}
+            </UiLink>
+            <template v-else>
+              {{ row.sourceTitle }}
+            </template>,
+            {{ formatPriceDate(row.checkedAt) }}
+          </p>
         </li>
       </ul>
+      <p
+        v-if="block.source"
+        class="note"
+      >
+        <UiLink
+          v-if="block.source.url"
+          :href="block.source.url"
+          data-track="outbound"
+          data-track-name="price-source"
+        >
+          {{ block.source.title }}
+        </UiLink>
+        <template v-else>
+          {{ block.source.title }}
+        </template>,
+        {{ block.source.when }}
+      </p>
       <p class="note">
         Цены для сравнения заведений, не меню целиком. Могли измениться.
       </p>
@@ -190,11 +258,9 @@ import type { PublicVenueModule } from '~~/shared/venue-modules'
 import { tablerIcon } from '~~/shared/icons'
 import { externalLinkAttrs } from '~~/shared/links'
 import { licenseHref, licenseLabel } from '~~/shared/media'
+import { formatPriceDate, formatRub, priceScaleLabel } from '~~/shared/price-compare'
 
 defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
-
-const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
-const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`
 
 function dishCredit(media: PublicMedia) {
   return Boolean(media.author || licenseLabel(media.license))
@@ -252,6 +318,106 @@ function dishCredit(media: PublicMedia) {
 .dish-note { grid-column: 1 / -1; color: var(--muted); font-size: 0.92rem; }
 .variant { font-weight: 400; color: var(--muted); }
 .note { color: var(--muted); font-size: 0.92rem; }
+.note :deep(a) { font-weight: 400; }
+.price-chip {
+  display: inline-block;
+  margin: 0 0 0.9rem;
+  padding: 0.28rem 0.75rem;
+  border-radius: 99px;
+  background: var(--color-amber-soft);
+  color: var(--color-partner);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.price-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.8rem;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  list-style: none;
+}
+.price-grid > li {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.price-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.9rem 1rem 0.85rem;
+  color: inherit;
+  text-decoration: none;
+}
+.price-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.price-card:hover .price-name { color: var(--color-sea); }
+.price-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-bottom: 0.45rem;
+  border: 1.5px dashed var(--color-line);
+  border-radius: 50%;
+  background: var(--color-amber-soft);
+  color: var(--accent);
+}
+.price-name { font-weight: 700; line-height: 1.25; }
+.price-variant { min-height: 1.25em; color: var(--muted); font-size: 0.92rem; }
+.price-rub {
+  margin: 0.35rem 0 0.55rem;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.scale { display: grid; gap: 0.28rem; margin-top: 0.15rem; }
+.track-wrap { position: relative; }
+.track {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  height: 0.45rem;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--color-line);
+}
+.track i { display: block; height: 100%; }
+.track i.on:nth-child(1) { background: var(--color-pine); }
+.track i.on:nth-child(2) { background: var(--color-amber); }
+.track i.on:nth-child(3) { background: var(--color-brick); }
+.mark {
+  position: absolute;
+  top: 50%;
+  width: 0.72rem;
+  height: 0.72rem;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.mark.cheap { background: var(--color-pine); }
+.mark.medium { background: var(--color-amber); }
+.mark.expensive { background: var(--color-brick); }
+.scale-labels {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.scale-labels span:nth-child(2) { text-align: center; }
+.scale-labels span:nth-child(3) { text-align: right; }
+.scale-labels .on { color: var(--text); font-weight: 700; }
+.price-line { margin-top: 0.45rem; font-size: 0.92rem; line-height: 1.35; }
+.price-src {
+  margin: 0;
+  padding: 0 1rem 0.8rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.price-src :deep(a) { font-weight: 400; }
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));

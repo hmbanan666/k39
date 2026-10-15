@@ -45,6 +45,7 @@ export const RESERVED_SLUGS = [
   'cookies',
   'admin',
   'api',
+  'ceny',
   'eda',
   'forty',
   'health',

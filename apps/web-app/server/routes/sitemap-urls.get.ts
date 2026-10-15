@@ -4,6 +4,7 @@ import { EAT_NOW_PATH } from '../../shared/eat-now'
 import { indexableHubs, LEGAL_LINKS } from '../../shared/links'
 import { absoluteUrl } from '../../shared/seo'
 import { latestSitemapLastmod, sitemapLastmod } from '../utils/sitemap-fields'
+import { priceSitemapEntries } from '../utils/venues/price-page'
 import { loadEatNow } from '../utils/venues/public'
 
 function imageEntries(images: Array<{ loc: string, title?: string | null }>) {
@@ -52,6 +53,7 @@ export default defineEventHandler(async () => {
   ]
   const eatNow = await loadEatNow(null)
   const venueLastmod = latestSitemapLastmod(rows.venues.map((row) => row.lastmod))
+  const pricePages = await priceSitemapEntries()
   return [
     entry('/', contentLastmod),
     ...(eatNow && eatNow.towns.length ? [entry(EAT_NOW_PATH, venueLastmod), ...eatNow.towns.map((town) => entry(town.href, venueLastmod))] : []),
@@ -65,5 +67,6 @@ export default defineEventHandler(async () => {
     ...rows.quests.map((row) => entry(row.loc, row.lastmod)),
     ...rows.venues.map((row) => entry(row.loc, row.lastmod, row.images)),
     ...rows.venueListings.map((row) => entry(row.loc, row.lastmod)),
+    ...pricePages.map((row) => entry(row.loc, row.lastmod)),
   ]
 })

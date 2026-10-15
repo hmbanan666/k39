@@ -28,6 +28,7 @@ import { illustrationFor } from '../../../shared/illustrations'
 import { attachSituationCards, toPublicListingModules } from '../../../shared/listing-modules'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
+import { buildPublicPrices } from '../../../shared/price-compare'
 import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
 import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
@@ -164,14 +165,18 @@ async function loadVenue(slug: string) {
   const stale = isStale(venue.lastVerifiedAt, now)
   const closed = venue.status === 'closed'
   const missingDescription = descriptionLength(venue.description) === 0
-  const prices = (await db.prices.freshForVenue(venue.id)).map((row) => ({
-    title: row.title,
-    variant: row.variant,
-    priceRub: row.priceRub,
-    checkedAt: row.checkedAt,
-    sourceTitle: row.sourceTitle,
-    sourceUrl: row.sourceUrl,
+  const freshPrices = await db.prices.freshForVenue(venue.id)
+  const peerLists = await Promise.all([...new Set(freshPrices.map((row) => row.item))].map(async (slug) => {
+    const peers = await db.prices.forItem(slug)
+    return [slug, peers] as const
   }))
+  const prices = buildPublicPrices({
+    venueId: venue.id,
+    regionId: venue.regionId,
+    regionSlug: region?.slug ?? null,
+    rows: freshPrices,
+    peersByItem: Object.fromEntries(peerLists),
+  })
   const mediaById = new Map(photos.map((photo) => [photo.id, photo]))
   const modules = toPublicVenueModules(venue.modules, renderMarkdown, prices, { now, mediaById })
   const town = region ? inTown(region.slug, regionLabel(region)) : ''
