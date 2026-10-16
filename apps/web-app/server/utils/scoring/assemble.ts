@@ -165,6 +165,7 @@ export function scoresFromCatalog(
         latitude: place.latitude,
         longitude: place.longitude,
         sources: place.sources,
+        faq: place.faq,
         publicationStatus: place.publicationStatus,
         noindex: place.noindex,
         seoTitle: place.seoTitle,

@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
+import { contentScope } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
@@ -17,6 +18,10 @@ export default defineMcpTool({
     const media = await db.editor.mediaById(input.mediaId)
     if (!media) {
       throw createError({ statusCode: 404, statusMessage: 'Фото не найдено' })
+    }
+    const place = await db.editor.placeById(input.placeId)
+    if (contentScope() === 'draft' && place && (place.publicationStatus === 'published' || place.publicationStatus === 'archived')) {
+      throw createError({ statusCode: 409, statusMessage: 'Draft token cannot attach a photo to a published place. The live page was not changed.' })
     }
     await db.editor.attachMedia(input.placeId, input.mediaId, {
       isCover: input.isCover,

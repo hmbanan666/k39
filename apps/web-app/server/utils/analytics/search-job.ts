@@ -162,34 +162,104 @@ async function pullGoogle(from: string, to: string) {
   return { engine: 'google', skipped: false, site, from: start, rows: total }
 }
 
-async function pullYandex(from: string, to: string) {
-  const token = process.env.YANDEX_WEBMASTER_TOKEN
-  const hostId = process.env.YANDEX_WEBMASTER_HOST_ID
-  if (!token || !hostId) {
-    return { engine: 'yandex', skipped: true, rows: 0 }
+const YANDEX_LAG_DAYS = 3
+const YANDEX_PAGE = 500
+const YANDEX_MAX_ROWS = 3000
+
+export interface YandexHost {
+  host_id?: string
+  unicode_host_url?: string
+  ascii_host_url?: string
+  verified?: boolean
+}
+
+export interface YandexPopularResponse {
+  queries?: Array<{ query_text?: string, indicators?: Record<string, number> }>
+  date_to?: string
+  count?: number | string
+}
+
+/** Hostname from a URL, a Webmaster host id (`https:k39.online:443`), or a bare host. */
+export function yandexHostName(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return ''
   }
-  const userResponse = await fetch('https://api.webmaster.yandex.net/v4/user', {
-    headers: { authorization: `OAuth ${token}` },
+  if (trimmed.includes('://')) {
+    try {
+      return new URL(trimmed).hostname.replace(/^www\./, '')
+    } catch {
+      return ''
+    }
+  }
+  const parts = trimmed.split(':')
+  if (parts.length >= 2 && parts[1] && !/^\d+$/.test(parts[1])) {
+    return parts[1].replace(/^www\./, '')
+  }
+  return trimmed.replace(/^www\./, '')
+}
+
+/**
+ * Prefer the configured host id when it is one of the verified hosts.
+ * Otherwise pick the verified host for the same site name, so a URL or an
+ * http mirror does not 404 the popular-query call.
+ */
+export function pickYandexHost(configured: string, hosts: YandexHost[]) {
+  const verified = hosts.filter((host) => host.verified && host.host_id)
+  if (verified.some((host) => host.host_id === configured)) {
+    return configured
+  }
+  const wanted = yandexHostName(configured)
+  const match = verified.find((host) => {
+    return yandexHostName(host.host_id || '') === wanted
+      || yandexHostName(host.unicode_host_url || '') === wanted
+      || yandexHostName(host.ascii_host_url || '') === wanted
   })
-  if (!userResponse.ok) {
-    throw new Error(`Yandex user ${userResponse.status}`)
+  return match?.host_id || configured
+}
+
+/**
+ * Yandex popular queries lag about three days and are a weekly aggregate.
+ * A window that ends yesterday comes back empty, and the job used to mark
+ * that day done. The first import asks for 28 days; later runs ask for 7.
+ */
+export function yandexQueryWindow(now: Date, backfill: boolean) {
+  const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - YANDEX_LAG_DAYS * 86_400_000
+  const span = backfill ? 28 : 7
+  const start = end - (span - 1) * 86_400_000
+  return {
+    from: new Date(start).toISOString().slice(0, 10),
+    to: new Date(end).toISOString().slice(0, 10),
   }
-  const user = await userResponse.json() as { user_id?: number | string }
-  const url = new URL(`https://api.webmaster.yandex.net/v4/user/${user.user_id}/hosts/${encodeURIComponent(hostId)}/search-queries/popular`)
-  url.searchParams.set('order_by', 'TOTAL_CLICKS')
+}
+
+/** One week ending the day before `from`, used when the first window is empty. */
+export function yandexFallbackWindow(from: string) {
+  const end = Date.parse(`${from}T00:00:00Z`) - 86_400_000
+  const start = end - 6 * 86_400_000
+  return {
+    from: new Date(start).toISOString().slice(0, 10),
+    to: new Date(end).toISOString().slice(0, 10),
+  }
+}
+
+export function yandexPopularUrl(userId: string, hostId: string, from: string, to: string, offset: number) {
+  const url = new URL(`https://api.webmaster.yandex.net/v4/user/${userId}/hosts/${encodeURIComponent(hostId)}/search-queries/popular/`)
+  url.searchParams.set('order_by', 'TOTAL_SHOWS')
   url.searchParams.set('date_from', from)
   url.searchParams.set('date_to', to)
   url.searchParams.append('query_indicator', 'TOTAL_SHOWS')
   url.searchParams.append('query_indicator', 'TOTAL_CLICKS')
   url.searchParams.append('query_indicator', 'AVG_SHOW_POSITION')
-  url.searchParams.set('limit', '500')
-  const response = await fetch(url, { headers: { authorization: `OAuth ${token}` } })
-  if (!response.ok) {
-    throw new Error(`Yandex queries ${response.status}`)
-  }
-  const json = await response.json() as { queries?: Array<{ query_text?: string, indicators?: Record<string, number> }> }
-  const day = to
-  const rows = (json.queries ?? []).flatMap((item) => {
+  url.searchParams.set('device_type_indicator', 'ALL')
+  url.searchParams.set('limit', String(YANDEX_PAGE))
+  url.searchParams.set('offset', String(offset))
+  return url
+}
+
+export function yandexQueryRows(json: YandexPopularResponse, fallbackDay: string) {
+  const day = String(json.date_to || fallbackDay).slice(0, 10)
+  return (json.queries ?? []).flatMap((item) => {
     if (!item.query_text) {
       return []
     }
@@ -203,8 +273,59 @@ async function pullYandex(from: string, to: string) {
       position: item.indicators?.AVG_SHOW_POSITION ?? null,
     }]
   })
+}
+
+async function yandexJson<T>(token: string, url: string, label: string) {
+  const response = await fetch(url, { headers: { authorization: `OAuth ${token}` } })
+  if (!response.ok) {
+    throw new Error(`${label} ${response.status}`)
+  }
+  return await response.json() as T
+}
+
+async function pullYandexPopular(token: string, userId: string, hostId: string, from: string, to: string) {
+  const rows: ReturnType<typeof yandexQueryRows> = []
+  let offset = 0
+  let count = 0
+  while (offset < YANDEX_MAX_ROWS) {
+    const json = await yandexJson<YandexPopularResponse>(
+      token,
+      yandexPopularUrl(userId, hostId, from, to, offset).toString(),
+      'Yandex queries',
+    )
+    count = Number(json.count || 0)
+    const page = yandexQueryRows(json, to)
+    rows.push(...page)
+    if (!page.length || rows.length >= count) {
+      break
+    }
+    offset += page.length
+  }
+  return rows
+}
+
+async function pullYandex(_from: string, _to: string, now = new Date()) {
+  const token = process.env.YANDEX_WEBMASTER_TOKEN
+  const configuredHost = process.env.YANDEX_WEBMASTER_HOST_ID
+  if (!token || !configuredHost) {
+    return { engine: 'yandex', skipped: true, rows: 0 }
+  }
+  const user = await yandexJson<{ user_id?: number | string }>(token, 'https://api.webmaster.yandex.net/v4/user', 'Yandex user')
+  const hosts = await yandexJson<{ hosts?: YandexHost[] }>(
+    token,
+    `https://api.webmaster.yandex.net/v4/user/${user.user_id}/hosts`,
+    'Yandex hosts',
+  )
+  const hostId = pickYandexHost(configuredHost, hosts.hosts ?? [])
+  const backfill = !(await db.analytics.hasSearchRows('yandex'))
+  let window = yandexQueryWindow(now, backfill)
+  let rows = await pullYandexPopular(token, String(user.user_id), hostId, window.from, window.to)
+  if (!rows.length) {
+    window = yandexFallbackWindow(window.from)
+    rows = await pullYandexPopular(token, String(user.user_id), hostId, window.from, window.to)
+  }
   await db.analytics.replaceSearchRows(rows)
-  return { engine: 'yandex', skipped: false, rows: rows.length }
+  return { engine: 'yandex', skipped: false, rows: rows.length, from: window.from, to: window.to, hostId }
 }
 
 const SEARCH_DONE = 'search-done'

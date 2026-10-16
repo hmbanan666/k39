@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { deleteMediaCompletely } from '../../media/ingest'
+import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
@@ -10,6 +11,7 @@ export default defineMcpTool({
     id: z.string(),
   },
   handler: async ({ id }) => {
+    requireEditorContent('delete media')
     const removed = await deleteMediaCompletely(id)
     if (!removed) {
       throw createError({ statusCode: 404, statusMessage: 'Фото не найдено' })

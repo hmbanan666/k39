@@ -125,6 +125,28 @@ describe('page score', () => {
     expect(issueLabel('description 40 chars')).toBe('Описание 40 знаков')
   })
 
+  it('counts a structured faq when the body has no FAQ section', () => {
+    const body = [
+      'а'.repeat(4000),
+      '',
+      '## Как добраться',
+      '',
+      'Автобусом.',
+      '',
+      '## Цены',
+      '',
+      'Билет 200 рублей.',
+    ].join('\n')
+    const faqItems = Array.from({ length: 6 }, (_, index) => ({
+      question: `Вопрос ${index} о визите?`,
+      answer: `Ответ номер ${index} достаточно длинный.`,
+    }))
+    const score = scorePage(source({ body, hours: '10-18', faq: faqItems }))
+    expect(score.checks.quality).not.toContain('no FAQ')
+    expect(score.signals.faqCount).toBe(6)
+    expect(score.quality).toBe(100)
+  })
+
   it('gives a filled article a high quality score', () => {
     const body = [
       'а'.repeat(4000),
@@ -637,6 +659,7 @@ function catalogPlace(patch: Partial<ScorePlace> = {}): ScorePlace {
     seoDescription: null,
     factsCheckedAt: null,
     sources: [],
+    faq: [],
     faqCount: 0,
     categorySlug: 'forty',
     categoryTitle: 'Форты',

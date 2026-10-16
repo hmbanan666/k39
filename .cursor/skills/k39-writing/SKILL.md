@@ -101,11 +101,11 @@ Do not paste the summary again as the first paragraph. An exact repeat is stripp
 ## FAQ
 
 - Place: the `faq` field, 3 to 6 questions a visitor would ask. Each answer uses only facts already in `sources`. When `faq` is set, do not also put `## Частые вопросы` in the body (ADR 0020).
-- Hub, route, collection, quest: `## Частые вопросы` in the body. A question is a line `**…?**` or a `###` heading. The next `##` ends the section. The score wants 6 questions (`faqFromBody` in `shared/scoring.ts`).
+- Hub, route, collection, quest: `## Частые вопросы` in the body. A question is a line `**…?**` or a `###` heading. The next `##` ends the section. The score wants 6 questions. A place counts the structured `faq` field first (`pageFaq` in `shared/scoring.ts`). The body section is the fallback when that field is empty.
 - A text module with `role: faq` is not rendered (ADR 0025). Do not hide the only FAQ there.
 - Venue: the `faq` module, at most 8, answers from known facts. Venues are not scored on article FAQ.
 
-The place score counts a body heading only. A place that follows ADR 0020 can show `no FAQ`. Do not copy the questions into the body to clear that check. The reviewer notes it (`k39-publish-review`).
+The place score counts the structured `faq` field. Do not copy those questions into the body to clear the check.
 
 ## Examples
 

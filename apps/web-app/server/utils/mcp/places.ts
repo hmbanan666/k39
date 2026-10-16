@@ -2,10 +2,11 @@ import type { VisitStatus } from '@k39/database'
 import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
 import { writingCopy } from '../../../shared/writing'
+import { contentScope } from '../access'
 import { syncPageSections } from '../facts/queue'
 import { syncCoordinates, syncPlaceStatus } from '../facts/sync'
 import { auditMcp } from './audit'
-import { normalizePublication } from './draft'
+import { resolvePublication } from './draft'
 import { parseFactsCheckedAt } from './facts'
 import { writingGate } from './writing-guard'
 
@@ -94,8 +95,65 @@ async function categoryId(slug: string | undefined, fallback: string | null) {
   return category.id
 }
 
+function statusOnly(input: PlaceDraftInput) {
+  return input.title === undefined
+    && input.summary === undefined
+    && input.body === undefined
+    && input.sections === undefined
+    && input.hours === undefined
+    && input.price === undefined
+    && input.howToGet === undefined
+    && input.latitude === undefined
+    && input.longitude === undefined
+    && input.regionSlug === undefined
+    && input.categorySlug === undefined
+    && input.seoTitle === undefined
+    && input.seoDescription === undefined
+    && input.ogImage === undefined
+    && input.noindex === undefined
+    && input.sources === undefined
+    && input.visitDuration === undefined
+    && input.bestTime === undefined
+    && input.faq === undefined
+    && input.factsCheckedAt === undefined
+    && input.status === undefined
+    && input.slug === undefined
+}
+
+export function placeWriteFromBody(body: Record<string, unknown>, current: { id: string, slug: string }): PlaceDraftInput {
+  return {
+    id: current.id,
+    slug: typeof body.slug === 'string' && body.slug ? body.slug : current.slug,
+    title: body.title as string | undefined,
+    categorySlug: body.categorySlug as string | undefined,
+    status: body.status as string | undefined,
+    publicationStatus: body.publicationStatus as string | undefined,
+    summary: body.summary as string | undefined,
+    body: body.body as string | undefined,
+    sections: Array.isArray(body.sections) ? body.sections : undefined,
+    hours: body.hours as string | null | undefined,
+    price: body.price as string | null | undefined,
+    howToGet: body.howToGet as string | null | undefined,
+    latitude: body.latitude as number | null | undefined,
+    longitude: body.longitude as number | null | undefined,
+    regionSlug: body.regionSlug as string | null | undefined,
+    seoTitle: body.seoTitle as string | null | undefined,
+    seoDescription: body.seoDescription as string | null | undefined,
+    ogImage: body.ogImage as string | null | undefined,
+    noindex: body.noindex as boolean | undefined,
+    sources: Array.isArray(body.sources) ? body.sources as PlaceDraftInput['sources'] : undefined,
+    factsCheckedAt: body.factsCheckedAt as string | null | undefined,
+    visitDuration: body.visitDuration as string | null | undefined,
+    bestTime: body.bestTime as string | null | undefined,
+    faq: Array.isArray(body.faq) ? body.faq as PlaceDraftInput['faq'] : undefined,
+  }
+}
+
 export async function createPlaceDraft(input: PlaceDraftInput) {
-  const publicationStatus = normalizePublication(input.publicationStatus)
+  const publicationStatus = resolvePublication(input.publicationStatus)
+  if (publicationStatus === 'pending' || publicationStatus === 'archived') {
+    throw createError({ statusCode: 400, statusMessage: 'Неизвестный статус публикации' })
+  }
   const slug = String(input.slug || '')
   const problem = slugError(slug)
   if (problem || !input.title?.trim()) {
@@ -174,7 +232,121 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
   }
-  const publicationStatus = normalizePublication(input.publicationStatus, current.publicationStatus)
+  const scope = contentScope()
+  const pending = await db.editor.contentDraft('place', current.id)
+  const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus, scope)
+  if (scope === 'editor' && publicationStatus === 'published' && pending && statusOnly(input)) {
+    const payload = pending.payload
+    const row = await db.editor.savePlace({
+      ...(payload as Parameters<typeof db.editor.savePlace>[0]),
+      id: current.id,
+      slug: String(payload.slug || current.slug),
+      title: String(payload.title || current.title),
+      publicationStatus: 'published',
+    })
+    await syncCoordinates({
+      subjectType: 'place',
+      subjectId: current.id,
+      actor: 'mcp',
+      pageStatus: 'published',
+      latitude: row?.latitude,
+      longitude: row?.longitude,
+      previous: { latitude: current.latitude, longitude: current.longitude },
+    })
+    await syncPlaceStatus({
+      placeId: current.id,
+      actor: 'mcp',
+      pageStatus: 'published',
+      status: row?.status,
+      previous: current.status,
+    })
+    await syncPageSections('place', current.id)
+    await db.editor.deleteContentDraft('place', current.id)
+    await auditMcp(auditTool, 'place', current.id)
+    return { ...compactPlace(row!), pendingReview: false, writingWarnings: [] as string[] }
+  }
+  if (publicationStatus === 'pending') {
+    const slug = input.slug || String(pending?.payload.slug || current.slug)
+    const problem = slugError(slug)
+    if (problem) {
+      throw createError({ statusCode: 400, statusMessage: problem })
+    }
+    const base = pending?.payload ?? {}
+    const text = (key: string, value: string | null | undefined, fallback: string | null) => {
+      if (value !== undefined) {
+        return value
+      }
+      if (key in base) {
+        return (base[key] as string | null | undefined) ?? null
+      }
+      return fallback
+    }
+    const checked = parseFactsCheckedAt(
+      input.factsCheckedAt === undefined
+        ? (base.factsCheckedAt as string | null | undefined) ?? (base.lastVerifiedAt as string | null | undefined)
+        : input.factsCheckedAt,
+    )
+    const pendingStatus = input.publicationStatus === 'draft' ? 'draft' : 'review'
+    const payload = {
+      slug,
+      title: input.title ?? (base.title as string | undefined) ?? current.title,
+      summary: input.summary ?? (base.summary as string | undefined) ?? current.summary,
+      body: input.body ?? (base.body as string | undefined) ?? current.body,
+      ...(input.sections ? { sections: input.sections } : base.sections ? { sections: base.sections } : {}),
+      status: input.status && VISIT.has(input.status) ? input.status : (base.status as string | undefined) ?? current.status,
+      hours: text('hours', input.hours, current.hours),
+      price: text('price', input.price, current.price),
+      howToGet: text('howToGet', input.howToGet, current.howToGet),
+      latitude: input.latitude === undefined ? (base.latitude as number | null | undefined) ?? current.latitude : input.latitude,
+      longitude: input.longitude === undefined ? (base.longitude as number | null | undefined) ?? current.longitude : input.longitude,
+      categoryId: await categoryId(input.categorySlug, (base.categoryId as string | null | undefined) ?? current.categoryId),
+      regionId: await regionIdOf(input.regionSlug, (base.regionId as string | null | undefined) ?? current.regionId),
+      sources: input.sources ?? (base.sources as PlaceDraftInput['sources']) ?? current.sources ?? [],
+      seoTitle: text('seoTitle', input.seoTitle, current.seoTitle),
+      seoDescription: text('seoDescription', input.seoDescription, current.seoDescription),
+      ogImage: text('ogImage', input.ogImage, current.ogImage),
+      noindex: input.noindex ?? (base.noindex as boolean | undefined) ?? current.noindex,
+      visitDuration: input.visitDuration === undefined
+        ? (base.visitDuration as string | null | undefined) ?? current.visitDuration
+        : cleanText(input.visitDuration),
+      bestTime: input.bestTime === undefined
+        ? (base.bestTime as string | null | undefined) ?? current.bestTime
+        : cleanText(input.bestTime),
+      faq: input.faq === undefined
+        ? (base.faq as PlaceDraftInput['faq']) ?? current.faq
+        : cleanFaq(input.faq),
+      lastVerifiedAt: checked === undefined ? (base.lastVerifiedAt as string | null | undefined) ?? current.lastVerifiedAt : checked,
+      authorKind: current.authorKind,
+    }
+    const writingWarnings = writingGate(writingCopy([
+      payload.title,
+      payload.summary,
+      payload.body,
+      payload.sections,
+      payload.hours,
+      payload.price,
+      payload.howToGet,
+      payload.seoTitle,
+      payload.seoDescription,
+      payload.visitDuration,
+      payload.bestTime,
+      payload.faq,
+      payload.sources,
+    ]), false)
+    await db.editor.saveContentDraft({
+      entityType: 'place',
+      entityId: current.id,
+      publicationStatus: pendingStatus,
+      payload,
+    })
+    await auditMcp(auditTool, 'place', current.id)
+    return {
+      ...compactPlace(current),
+      pendingReview: true,
+      pendingPublicationStatus: pendingStatus,
+      writingWarnings,
+    }
+  }
   const slug = input.slug || current.slug
   const problem = slugError(slug)
   if (problem) {
@@ -241,8 +413,11 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
   })
   await syncPageSections('place', current.id)
+  if (scope === 'editor') {
+    await db.editor.deleteContentDraft('place', current.id)
+  }
   await auditMcp(auditTool, 'place', current.id)
-  return { ...compactPlace(row!), writingWarnings }
+  return { ...compactPlace(row!), pendingReview: false, writingWarnings }
 }
 
 export async function submitPlaceReview(input: { id?: string, slug?: string }) {
@@ -253,6 +428,9 @@ export async function submitPlaceReview(input: { id?: string, slug?: string }) {
       : null
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
+  }
+  if (contentScope() === 'draft' && (current.publicationStatus === 'published' || current.publicationStatus === 'archived')) {
+    return updatePlaceDraft({ id: current.id, publicationStatus: 'review' }, 'place_submit_review')
   }
   const row = await db.editor.savePlace({
     id: current.id,

@@ -6,7 +6,7 @@ import { useDatabase } from '../../database'
 import { applyInitialContent, INITIAL_CONTENT_IMPORT_ID } from '../../seed/apply'
 import { CASTLE_REGIONS } from '../../seed/castle-regions'
 import seed from '../../seed/initial-content.json'
-import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../../tables'
+import { categories, collectionItems, collections, contentDrafts, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../../tables'
 import { Content, Editor } from '../content'
 
 async function wipeContent() {
@@ -17,6 +17,7 @@ async function wipeContent() {
   await db.delete(questSteps)
   await db.delete(routePoints)
   await db.delete(collectionItems)
+  await db.delete(contentDrafts)
   await db.delete(revisions)
   await db.delete(quests)
   await db.delete(routes)
@@ -39,6 +40,33 @@ describe('castle regions', () => {
       expect(sql).toContain(`'${place}'`)
       expect(sql).toContain(`'${region}'`)
     }
+  })
+})
+
+describe('content drafts', () => {
+  beforeEach(async () => {
+    await wipeContent()
+  })
+
+  it('stores a pending draft beside the published row', async () => {
+    const live = await Editor.savePlace({
+      slug: 'live-place',
+      title: 'Живая страница',
+      summary: '',
+      body: 'Было',
+      publicationStatus: 'published',
+    })
+    await Editor.saveContentDraft({
+      entityType: 'place',
+      entityId: live.id,
+      publicationStatus: 'review',
+      payload: { body: 'Стало' },
+    })
+    expect((await Editor.placeById(live.id))?.body).toBe('Было')
+    expect((await Editor.placeById(live.id))?.publicationStatus).toBe('published')
+    expect((await Editor.contentDraft('place', live.id))?.payload).toMatchObject({ body: 'Стало' })
+    await Editor.deleteContentDraft('place', live.id)
+    expect(await Editor.contentDraft('place', live.id)).toBeNull()
   })
 })
 

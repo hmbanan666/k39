@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { z } from 'zod'
+import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
 import { rethrowContentWrite } from '../../utils/mcp/content-error'
 
@@ -14,6 +15,7 @@ export default defineMcpTool({
     slug: z.string().optional(),
   },
   handler: async (input) => {
+    requireEditorContent('archive content')
     if (!input.id && !input.slug) {
       throw createError({ statusCode: 400, statusMessage: 'Нужен id или slug' })
     }

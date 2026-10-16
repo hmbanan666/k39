@@ -2,6 +2,7 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { HUB_RENDERED_FIELDS } from '../../../shared/page-modules'
 import { writingCopy } from '../../../shared/writing'
+import { requireEditorContent } from '../../utils/access'
 import { syncPageSections } from '../../utils/facts/queue'
 import { auditMcp } from '../../utils/mcp/audit'
 import { writingGate } from '../../utils/mcp/writing-guard'
@@ -20,6 +21,7 @@ export default defineMcpTool({
     noindex: z.boolean().optional(),
   },
   handler: async (input) => {
+    requireEditorContent('edit a hub')
     const current = await db.content.categoryBySlug(input.slug)
     if (!current) {
       throw createError({ statusCode: 404, statusMessage: 'Раздел не найден' })

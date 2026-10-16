@@ -1,5 +1,6 @@
 import { db, VenueInputError } from '@k39/database'
 import { z } from 'zod'
+import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
@@ -13,6 +14,7 @@ export default defineMcpTool({
     seoDescription: z.string().nullable().optional(),
   },
   handler: async (input) => {
+    requireEditorContent('edit a venue listing')
     const region = input.regionSlug ? await db.venues.regionBySlug(input.regionSlug) : null
     if (input.regionSlug && !region) {
       throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
