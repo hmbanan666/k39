@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { monthName } from '../shared/month-guide'
-import { categoryTags, fitsPicker, pageModulesSchema, parsePickerQuery, pickerFit, pickerQuery, rankByPicker, toPublicModules } from '../shared/page-modules'
+import { categoryTags, COLLECTION_BODY_REJECTED, collectionArticle, collectionWritePlan, fitsPicker, HUB_RENDERED_FIELDS, modulesArticle, pageModulesSchema, parsePickerQuery, pickerFit, pickerQuery, rankByPicker, toPublicModules } from '../shared/page-modules'
 import { collectionDocument, tuneRobots } from '../shared/seo'
+import { writingHits } from '../shared/writing'
 
 describe('picker query', () => {
   it('keeps known values and one answer for single-choice questions', () => {
@@ -87,5 +88,110 @@ describe('page modules', () => {
   it('names months for chips', () => {
     expect(monthName(10)).toBe('Октябрь')
     expect(monthName(null)).toBe('')
+  })
+})
+
+describe('collection article', () => {
+  const modules = [
+    { type: 'text' as const, variant: 'lead' as const, text: 'Лид про октябрь.' },
+    { type: 'text' as const, variant: 'plain' as const, title: 'Частые вопросы', text: '**Можно ли?**\n\nДа.' },
+    {
+      type: 'month-stats' as const,
+      title: 'Октябрь',
+      verdict: 'Море холодное.',
+      tiles: [{ label: 'Днём', value: '+12 °C', note: 'среднее' }, { label: 'Море', value: '+13 °C' }],
+      rows: [{ label: 'Дождь', value: '18 дней' }],
+    },
+    { type: 'picker' as const, questions: ['interest' as const] },
+    { type: 'ideas' as const, title: 'Идеи', items: [{ title: 'Коса', text: 'Текст про косу.', tags: ['priroda' as const] }] },
+    { type: 'places' as const, title: 'Места' },
+    { type: 'months' as const, title: 'Другие месяцы' },
+  ]
+
+  it('projects module prose and skips the picker', () => {
+    const article = modulesArticle(modules)
+    expect(article).toContain('Лид про октябрь.')
+    expect(article).toContain('## Частые вопросы')
+    expect(article).toContain('**Можно ли?**')
+    expect(article).toContain('Море холодное.')
+    expect(article).toContain('Днём +12 °C среднее')
+    expect(article).toContain('Дождь: 18 дней')
+    expect(article).toContain('### Коса')
+    expect(article).toContain('Текст про косу.')
+    expect(article).toContain('## Места')
+    expect(article).toContain('## Другие месяцы')
+    expect(article).not.toContain('interest')
+    expect(article).not.toContain('priroda')
+  })
+
+  it('uses modules as the article and rejects a different body', () => {
+    const current = 'Старый гид'
+    const kept = collectionWritePlan({ sentBody: undefined, currentBody: current, modules })
+    expect(kept.article).toBe('modules')
+    expect(kept.renderedFields).not.toContain('body')
+    expect(kept.renderedFields).toContain('modules')
+    expect(kept.rejectBody).toBe(false)
+    expect(kept.body).toContain('Лид про октябрь.')
+    expect(kept.copy).toBe(kept.body)
+
+    const roundTrip = collectionWritePlan({ sentBody: current, currentBody: current, modules })
+    expect(roundTrip.rejectBody).toBe(false)
+    expect(roundTrip.body).toContain('Лид про октябрь.')
+
+    const edit = collectionWritePlan({ sentBody: 'Новый текст, которого не видно', currentBody: current, modules })
+    expect(edit.rejectBody).toBe(true)
+    expect(COLLECTION_BODY_REJECTED).toContain('modules')
+
+    const same = collectionWritePlan({ sentBody: kept.body, currentBody: current, modules })
+    expect(same.rejectBody).toBe(false)
+
+    const stale = collectionWritePlan({ sentBody: current, currentBody: kept.body, modules })
+    expect(stale.rejectBody).toBe(true)
+  })
+
+  it('keeps body when the page is an article', () => {
+    const plan = collectionWritePlan({ sentBody: 'Статья', currentBody: 'Старая', modules: [] })
+    expect(plan).toMatchObject({ article: 'body', rejectBody: false, body: 'Статья', copy: 'Статья' })
+    expect(plan.renderedFields).toContain('body')
+    const omitted = collectionWritePlan({ sentBody: undefined, currentBody: 'Старая', modules: [] })
+    expect(omitted.body).toBeUndefined()
+    expect(omitted.copy).toBe('Старая')
+    expect(collectionArticle({ body: 'Статья', modules: [{ type: 'gone' }] })).toBe('Статья')
+  })
+
+  it('stop-list reads module prose, not a stale body', () => {
+    const plan = collectionWritePlan({
+      sentBody: undefined,
+      currentBody: 'уютная атмосфера в архиве',
+      modules: [{ type: 'text', variant: 'plain', text: 'Самый тихий берег.' }],
+    })
+    expect(writingHits(plan.copy).map((hit) => hit.phrase)).toContain('empty superlatives')
+    expect(writingHits(plan.copy).map((hit) => hit.phrase)).not.toContain('уютная атмосфера')
+    expect(writingHits('уютная атмосфера в архиве').map((hit) => hit.phrase)).toContain('уютная атмосфера')
+  })
+
+  it('save paths report the fields that render', () => {
+    expect(HUB_RENDERED_FIELDS).toContain('body')
+    const root = resolve(import.meta.dirname, '..')
+    for (const file of [
+      'server/mcp/tools/collection-save.ts',
+      'server/utils/mcp/collections.ts',
+      'server/utils/mcp/publish.ts',
+      'server/api/admin/collections/[id].patch.ts',
+      'server/utils/public-pages.ts',
+      'server/utils/scoring/assemble.ts',
+    ]) {
+      const source = readFileSync(resolve(root, file), 'utf8')
+      expect(source, file).toMatch(/collectionWritePlan|collectionArticle/)
+    }
+    for (const file of [
+      'server/mcp/tools/collection-get.ts',
+      'server/mcp/tools/hub-update.ts',
+      'server/mcp/tools/hubs-list.ts',
+      'server/api/admin/categories/[id].patch.ts',
+    ]) {
+      expect(readFileSync(resolve(root, file), 'utf8'), file).toContain('renderedFields')
+    }
+    expect(readFileSync(resolve(root, 'app/pages/admin/collections.vue'), 'utf8')).toContain('Страница собрана из модулей')
   })
 })

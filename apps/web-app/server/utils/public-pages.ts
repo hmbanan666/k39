@@ -5,7 +5,7 @@ import { normalizeRoutePath } from '../../shared/map'
 import { renderMarkdown } from '../../shared/markdown'
 import { describedAlt, toPublicMedia } from '../../shared/media'
 import { monthName, splitCollections } from '../../shared/month-guide'
-import { categoryTags, toPublicModules } from '../../shared/page-modules'
+import { categoryTags, collectionArticle, toPublicModules } from '../../shared/page-modules'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
@@ -365,7 +365,7 @@ export async function loadCollection(slug: string) {
       }
     }),
     kind: 'CollectionPage',
-    body: loaded.collection.body,
+    body: collectionArticle(loaded.collection),
   })
   const monthRows = isMonth ? splitCollections(await db.content.listPublishedCollections()).months : []
   const months = monthRows.filter((row) => row.slug !== loaded.collection.slug).map((row) => ({ href: `/podborki/${row.slug}`, text: row.title }))

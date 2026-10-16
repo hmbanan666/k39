@@ -1,5 +1,6 @@
 import type { CatalogStop, ContentCatalog, PageMetric, StoredScore } from '@k39/database'
 import type { LinkCatalog, PageKind, PageScore, PassportFields, ScoreSource } from '../../../shared/scoring'
+import { collectionArticle } from '../../../shared/page-modules'
 import { emptyResults, linkStats, queriesForPath, scorePage } from '../../../shared/scoring'
 
 export function catalogPageRefs(catalog: ContentCatalog) {
@@ -67,7 +68,7 @@ export function scoresFromCatalog(
       published: collection.publicationStatus === 'published',
       noindex: collection.noindex,
       placeSlugs: stopSlugs(catalog.collectionStops, collection.id, false),
-      body: collection.body,
+      body: collectionArticle(collection),
     })),
     quests: catalog.quests.map((quest) => ({
       slug: quest.slug,
@@ -220,7 +221,7 @@ export function scoresFromCatalog(
         path,
         title: collection.title,
         summary: collection.summary,
-        body: collection.body,
+        body: collectionArticle(collection),
         howToGet: null,
         hours: null,
         price: null,

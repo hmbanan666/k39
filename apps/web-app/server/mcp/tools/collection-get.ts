@@ -4,7 +4,7 @@ import { collectionView } from '../../utils/mcp/collections'
 
 export default defineMcpTool({
   name: 'collection_get',
-  description: 'Load one collection by id or slug, including drafts, ordered places, kind, month, sources, and the other stored fields.',
+  description: 'Load one collection by id or slug, including drafts, ordered places, kind, month, sources, and the other stored fields. article is modules or body: the store the public page renders. renderedFields lists those fields. On a module page body is the stored projection, not a second article.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),

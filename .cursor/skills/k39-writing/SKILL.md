@@ -43,7 +43,7 @@ Phrases (`WRITING_STOP_LIST`):
 
 Patterns (`WRITING_STOP_PATTERNS`, real regexes in `writing.ts`):
 
-- empty superlatives: лучший, самый, уникальный, неповторимый, незабываемый, идеальный, with other endings
+- empty superlatives: лучший, самый, уникальный, неповторимый, незабываемый, идеальный, with other endings. A stem plus a closed list of endings, so «самый» does not match «самовар», «самолёт», or «самостоятельно». «лучше» stays allowed. «сам», «сама», and «сами» are not «самый»
 - настоящий as an intensifier only («настоящий борщ», «настоящая история»). Not «в настоящее время», «настоящий адрес», «настоящее имя»
 - triads of evaluative adjectives («вкусно, душевно и атмосферно»). A neutral list («хлеб, молоко и сыр») is allowed
 - «не просто X, а Y»
@@ -83,7 +83,7 @@ Place order is ADR 0020. Do not add blocks.
 4. Hours are a schedule (ADR 0028), not a guessed sentence. `howToGet` is the short address only.
 5. «Вопросы перед поездкой», then «Источники».
 
-Routes, collections, and quests: ordered stops that already exist, then the practical bits (how to get there, what it costs). A collection whose stops share one region does not need a directions heading. Module pages: ADR 0023 and `content_guide`. Reuse existing prose when moving an article into modules.
+Routes, collections, and quests: ordered stops that already exist, then the practical bits (how to get there, what it costs). A collection whose stops share one region does not need a directions heading. Module pages: ADR 0023 and `content_guide`. Reuse existing prose when moving an article into modules. Edit `modules`. `body` is derived from them and is not a second article. A different `body` is rejected. The stop-list applies to that module text.
 
 Venues: `k39-venue-page` and `docs/venue-modules.md`. The description is the archive. Modules hold the page.
 

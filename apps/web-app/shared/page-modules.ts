@@ -266,3 +266,113 @@ export function toPublicModules(stored: unknown, render: (markdown: string) => s
 export function categoryTags(kind: string) {
   return CATEGORY_TAGS[kind] ?? []
 }
+
+/** Fields a module page shows. `body` is not one of them. */
+const MODULE_PAGE_FIELDS = ['title', 'summary', 'modules', 'seoTitle', 'seoDescription', 'sources', 'items'] as const
+
+/** Fields an article collection shows. */
+const ARTICLE_PAGE_FIELDS = ['title', 'summary', 'body', 'seoTitle', 'seoDescription', 'sources', 'items'] as const
+
+/** A hub always renders its markdown body. */
+export const HUB_RENDERED_FIELDS = ['title', 'description', 'body', 'seoTitle', 'seoDescription'] as const
+
+/** Shown when a save tries to change `body` on a page that renders modules. */
+export const COLLECTION_BODY_REJECTED = 'Поле body не показывается: страница собрана из модулей. Меняйте modules.'
+
+export interface CollectionWritePlan {
+  /** Which store is the article the visitor reads. */
+  article: 'modules' | 'body'
+  /** Fields that render, including the meta title and description. */
+  renderedFields: readonly string[]
+  /**
+   * Body to store. Undefined keeps the current column (an article save that
+   * omitted body). On a module page this is the projection of the modules.
+   */
+  body: string | undefined
+  /** Prose the stop-list reads: the text that actually renders. */
+  copy: string
+  /** The client sent a body the page will not show. */
+  rejectBody: boolean
+}
+
+function moduleBlock(module: PageModule): string {
+  switch (module.type) {
+    case 'text': {
+      const text = module.text.trim()
+      const title = module.title?.trim()
+      return title ? `## ${title}\n\n${text}` : text
+    }
+    case 'month-stats': {
+      const lines = [
+        `## ${module.title.trim()}`,
+        module.verdict?.trim() ?? '',
+        ...module.tiles.map((tile) => [tile.label, tile.value, tile.note].filter(Boolean).join(' ')),
+        ...module.rows.map((row) => `${row.label}: ${row.value}`),
+      ]
+      return lines.filter(Boolean).join('\n\n')
+    }
+    case 'ideas':
+    case 'plans':
+      return [
+        `## ${module.title.trim()}`,
+        ...module.items.map((item) => `### ${item.title.trim()}\n\n${item.text.trim()}`),
+      ].join('\n\n')
+    case 'places':
+      return `## ${module.title.trim()}`
+    case 'months':
+      return module.title?.trim() ? `## ${module.title.trim()}` : ''
+    case 'picker':
+      return ''
+  }
+}
+
+/** Markdown of the modules a visitor sees. Picker chips are UI, not prose. */
+export function modulesArticle(modules: readonly PageModule[]): string {
+  return modules.map((module) => moduleBlock(module)).filter(Boolean).join('\n\n')
+}
+
+/**
+ * Article text for the public page, JSON-LD, and the score.
+ * A valid non-empty module list wins. Anything else stays the stored body,
+ * including a list that no longer validates: the page falls back to it.
+ */
+export function collectionArticle(row: { body?: string | null, modules?: unknown }): string {
+  const parsed = pageModulesSchema.safeParse(row.modules ?? [])
+  if (parsed.success && parsed.data.length > 0) {
+    return modulesArticle(parsed.data)
+  }
+  return row.body ?? ''
+}
+
+/**
+ * What a collection save may store.
+ * When modules render they are the only article. `body` becomes their
+ * projection so search, which reads that column, stays on the same text.
+ * A body that is neither the current column nor that projection is rejected.
+ */
+export function collectionWritePlan(input: {
+  sentBody: string | undefined
+  currentBody: string | null | undefined
+  modules: unknown
+}): CollectionWritePlan {
+  const parsed = pageModulesSchema.safeParse(input.modules ?? [])
+  if (!parsed.success || parsed.data.length === 0) {
+    return {
+      article: 'body',
+      renderedFields: ARTICLE_PAGE_FIELDS,
+      body: input.sentBody,
+      copy: input.sentBody ?? input.currentBody ?? '',
+      rejectBody: false,
+    }
+  }
+  const derived = modulesArticle(parsed.data)
+  const sent = input.sentBody
+  const current = input.currentBody ?? ''
+  return {
+    article: 'modules',
+    renderedFields: MODULE_PAGE_FIELDS,
+    body: derived,
+    copy: derived,
+    rejectBody: sent !== undefined && sent.trim() !== derived.trim() && sent.trim() !== current.trim(),
+  }
+}

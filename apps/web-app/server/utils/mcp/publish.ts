@@ -1,4 +1,5 @@
 import { db } from '@k39/database'
+import { collectionWritePlan } from '../../../shared/page-modules'
 import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from './audit'
 import { normalizePublication } from './draft'
@@ -49,13 +50,17 @@ export async function setPublication(input: {
     if (!current) {
       throw createError({ statusCode: 404, statusMessage: 'Подборка не найдена' })
     }
+    const plan = collectionWritePlan({
+      sentBody: undefined,
+      currentBody: current.body,
+      modules: current.modules,
+    })
     const writingWarnings = writingGate(writingCopy([
       current.title,
       current.summary,
-      current.body,
+      plan.copy,
       current.seoTitle,
       current.seoDescription,
-      current.modules,
       current.sources,
     ]), publicationStatus === 'published')
     const row = await db.editor.saveCollection({
@@ -63,7 +68,7 @@ export async function setPublication(input: {
       slug: current.slug,
       title: current.title,
       summary: current.summary,
-      body: current.body,
+      body: plan.body,
       publicationStatus,
       seoTitle: current.seoTitle,
       seoDescription: current.seoDescription,
@@ -71,7 +76,14 @@ export async function setPublication(input: {
       noindex: current.noindex,
     })
     await auditMcp('content_set_publication', 'collection', current.id)
-    return { id: row?.id, slug: row?.slug, publicationStatus: row?.publicationStatus, writingWarnings }
+    return {
+      id: row?.id,
+      slug: row?.slug,
+      publicationStatus: row?.publicationStatus,
+      article: plan.article,
+      renderedFields: plan.renderedFields,
+      writingWarnings,
+    }
   }
   const current = input.id
     ? await db.editor.questById(input.id)

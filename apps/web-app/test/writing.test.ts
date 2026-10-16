@@ -23,6 +23,35 @@ describe('writing stop-list', () => {
     }
   })
 
+  it('matches inflected forms and skips lookalike words', () => {
+    for (const word of ['идеальный', 'идеальны', 'идеальное', 'идеальная', 'идеального', 'идеально', 'идеален', 'уникального', 'неповторимый', 'лучший']) {
+      expect(writingHits(word).map((hit) => hit.phrase), word).toContain('empty superlatives')
+    }
+    for (const word of ['самый', 'самая', 'самое', 'самые', 'самого', 'самой', 'самому', 'самым', 'самыми', 'самую', 'самых', 'самом']) {
+      expect(writingHits(`Это ${word} день.`).map((hit) => hit.phrase), word).toContain('empty superlatives')
+    }
+    for (const word of ['самовар', 'самолёт', 'самолет', 'самостоятельно', 'самодеятельность', 'самокат', 'сам', 'сама', 'само', 'сами', 'самим', 'самих', 'лучше', 'улучшить']) {
+      expect(writingHits(word).map((hit) => hit.phrase), word).not.toContain('empty superlatives')
+    }
+    expect(writingHits('Он сам пришёл к самовару и поехал самостоятельно.').map((hit) => hit.phrase)).not.toContain('empty superlatives')
+    expect(writingHits('лучше ехать утром').map((hit) => hit.phrase)).not.toContain('empty superlatives')
+    expect(writingHits('Атмосферное место').map((hit) => hit.phrase)).toContain('атмосферн')
+    expect(writingHits('тут атмосферно и гостеприимным залом').map((hit) => hit.phrase)).toEqual(expect.arrayContaining(['атмосферн', 'гостеприимн']))
+    expect(writingHits('атмосфера зала').map((hit) => hit.phrase)).not.toContain('атмосферн')
+    expect(writingHits('гостеприимство хозяина').map((hit) => hit.phrase)).not.toContain('гостеприимн')
+    expect(writingHits('не оставит равнодушным').map((hit) => hit.phrase)).toContain('не оставит равнодушн')
+    expect(writingHits('не оставят равнодушными').map((hit) => hit.phrase)).toContain('не оставит равнодушн')
+    expect(writingHits('равнодушным тоном').map((hit) => hit.phrase)).not.toContain('не оставит равнодушн')
+    expect(writingHits('окунулся в историю').map((hit) => hit.phrase)).toContain('окунуться')
+    expect(writingHits('окунь на рынке').map((hit) => hit.phrase)).not.toContain('окунуться')
+    expect(writingHits('меню порадует гостей').map((hit) => hit.phrase)).toContain('порадует')
+    expect(writingHits('меню порадуют гостей').map((hit) => hit.phrase)).toContain('порадует')
+    expect(writingHits('приятно удивят детей').map((hit) => hit.phrase)).toContain('приятно удивит')
+    for (const item of WRITING_STOP_LIST) {
+      expect(writingHits(item.phrase).map((hit) => hit.phrase), item.phrase).toContain(item.phrase)
+    }
+  })
+
   it('matches stems, intensifiers, evaluative triads, and the em dash', () => {
     expect(writingHits('Атмосферное место').map((hit) => hit.phrase)).toContain('атмосферн')
     expect(writingHits('настоящий борщ').map((hit) => hit.phrase)).toContain('настоящий')
