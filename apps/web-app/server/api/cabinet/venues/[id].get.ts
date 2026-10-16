@@ -2,6 +2,7 @@ import { db } from '@k39/database'
 import { toPublicMedia } from '../../../../shared/media'
 import { requireAccount } from '../../../utils/cabinet/account'
 import { requireVenueMember } from '../../../utils/cabinet/flow'
+import { readShownFacts, shownText } from '../../../utils/facts/read'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAccount(event)
@@ -27,7 +28,12 @@ export default defineEventHandler(async (event) => {
       description: venue.description,
       cuisineTags: venue.cuisineTags,
       address: venue.address,
-      phone: venue.phone,
+      phone: shownText((await readShownFacts('venue', [{
+        id: venue.id,
+        phone: venue.phone,
+        address: venue.address,
+        status: venue.status,
+      }])).get(venue.id)?.phone, venue.phone),
       website: venue.website,
       socials: venue.socials,
       bookingUrl: venue.bookingUrl,

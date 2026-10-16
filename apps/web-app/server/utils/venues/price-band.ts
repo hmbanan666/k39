@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { buildPublicPrices, priceBandFromBands } from '../../../shared/price-compare'
+import { projectMenuPrices } from './menu-prices'
 
 /**
  * Recompute the stored price band for every venue in one town.
@@ -18,14 +19,27 @@ export async function recomputeTownPriceBands(regionId: string | null, now = new
       slugs.add(row.item)
     }
   }
-  const peersByItem: Record<string, Awaited<ReturnType<typeof db.prices.forItem>>> = {}
-  for (const slug of slugs) {
-    peersByItem[slug] = await db.prices.forItem(slug, now)
+  const peerRows = (await Promise.all([...slugs].map((slug) => db.prices.forItem(slug, now)))).flat()
+  const peersByItem: Record<string, typeof peerRows> = {}
+  for (const item of await projectMenuPrices(peerRows, now)) {
+    if (!item.comparable) {
+      continue
+    }
+    const list = peersByItem[item.row.item] ?? []
+    list.push(item.row)
+    peersByItem[item.row.item] = list
+  }
+  const ownRows = town.flatMap((venue) => (freshByVenue.get(venue.id) ?? []).map((row) => ({ ...row, venueId: venue.id })))
+  const ownByVenue = new Map<string, typeof ownRows>()
+  for (const item of await projectMenuPrices(ownRows, now)) {
+    const list = ownByVenue.get(item.row.venueId) ?? []
+    list.push(item.row)
+    ownByVenue.set(item.row.venueId, list)
   }
   const computedAt = now.toISOString()
   const saved = []
   for (const venue of town) {
-    const rows = freshByVenue.get(venue.id) ?? []
+    const rows = ownByVenue.get(venue.id) ?? []
     const cards = buildPublicPrices({
       venueId: venue.id,
       venueSlug: venue.slug,

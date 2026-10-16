@@ -519,6 +519,10 @@ export class Facts {
       confidence: facts.confidence,
       subjectType: facts.subjectType,
       subjectId: facts.subjectId,
+      sourceUrl: facts.sourceUrl,
+      sourceTitle: facts.sourceTitle,
+      sourceKind: facts.sourceKind,
+      checkedAt: facts.checkedAt,
     }).from(factRefs).innerJoin(facts, eq(facts.id, factRefs.factId)).where(and(
       eq(factRefs.consumerType, consumerType),
       inArray(factRefs.consumerId, consumerIds),

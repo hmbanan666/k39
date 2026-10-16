@@ -43,6 +43,18 @@ export interface ShownFacts {
   statusGap: boolean
 }
 
+/**
+ * Text an editor should load. A cited fact wins. A gap keeps the column so
+ * the form does not save the word «уточняйте» over a stored number.
+ */
+export function shownText(shown: string | null | undefined, column: string | null | undefined) {
+  const text = shown?.trim() || ''
+  if (!text || text === FACT_UNKNOWN) {
+    return column?.trim() || null
+  }
+  return text
+}
+
 /** Drop the gap word from JSON-LD and meta text. */
 export function omitFactGap(value: string | null | undefined) {
   const text = value?.trim() || ''

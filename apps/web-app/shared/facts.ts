@@ -46,7 +46,13 @@ export const SEASON_HORIZON_DAYS = 30
 
 const DAY_MS = 86_400_000
 
-export const phoneValueSchema = z.object({ text: z.string().trim().min(1).max(80) })
+/**
+ * Displayed phone. Three numbers fit. The venues.phone copy uses the same
+ * max (`PHONE_TEXT_MAX` in `@k39/database`). A test keeps the two in step.
+ */
+export const PHONE_TEXT_MAX = 200
+
+export const phoneValueSchema = z.object({ text: z.string().trim().min(1).max(PHONE_TEXT_MAX) })
 export const addressValueSchema = z.object({ text: z.string().trim().min(1).max(300) })
 export const coordinatesValueSchema = z.object({
   latitude: z.number().gte(-90).lte(90),

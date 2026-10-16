@@ -1,41 +1,115 @@
+import type { CheaperSample } from '../../../shared/price-compare'
 import { db, isStale, kindLabel } from '@k39/database'
 import { toPublicMedia } from '../../../shared/media'
-import { formatRub, indexablePriceLocs, onePricePerVenue, priceItemImage, priceItemPath, priceItemSticker, priceListingMeta } from '../../../shared/price-compare'
+import {
+  CHEAPER_PATH,
+  cheaperCityMeta,
+  cheaperCityPath,
+  cheaperIndexMeta,
+  formatRub,
+  groupCheaperSamples,
+  indexablePriceLocs,
+  isPriceIndexable,
+  knownPortion,
+  onePricePerVenue,
+  placesLabel,
+  priceFreshnessText,
+  priceItemImage,
+  priceItemPath,
+  priceItemSticker,
+  priceListingMeta,
+  priceSampleStats,
+  sharedPriceSource,
+  showsPriceSample,
+} from '../../../shared/price-compare'
 import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
 import { collectionDocument } from '../../../shared/seo'
-import { readShownFacts } from '../facts/read'
+import { omitFactGap, readShownFacts } from '../facts/read'
+import { projectMenuPrices } from './menu-prices'
 
-/** One catalog item across venues, cheapest first. Reuses `db.prices.forItem`. */
+/** Official fresh menu prices, one per venue and item, with closed venues removed. */
+async function loadCheaperSamples(now = new Date()) {
+  const [rows, regions, catalog] = await Promise.all([
+    db.prices.freshPublished(now),
+    db.editor.listRegions(),
+    db.prices.items(),
+  ])
+  const projected = await projectMenuPrices(rows, now)
+  const comparable = projected.filter((item) => item.comparable).map((item) => item.row)
+  const catalogBySlug = new Map(catalog.map((item) => [item.slug, item]))
+  const regionById = new Map(regions.map((row) => [row.id, row]))
+  const byItem = new Map<string, typeof comparable>()
+  for (const row of comparable) {
+    const list = byItem.get(row.item) ?? []
+    list.push(row)
+    byItem.set(row.item, list)
+  }
+  const samples: CheaperSample[] = []
+  for (const [slug, list] of byItem) {
+    const item = catalogBySlug.get(slug)
+    for (const point of onePricePerVenue(list)) {
+      const region = point.regionId ? regionById.get(point.regionId) : null
+      samples.push({
+        regionSlug: region?.slug ?? null,
+        itemSlug: slug,
+        itemTitle: item?.title ?? point.title,
+        itemSort: item?.sortOrder ?? point.sortOrder,
+        itemImage: item?.image ?? point.image,
+        venueId: point.venueId,
+        priceRub: point.priceRub,
+        checkedAt: point.checkedAt,
+        variant: point.variant,
+        sourceTitle: point.sourceTitle,
+        sourceUrl: point.sourceUrl,
+      })
+    }
+  }
+  const ids = [...new Set(samples.map((sample) => sample.venueId))]
+  const facts = await readShownFacts('venue', ids.map((id) => ({ id, status: 'published' })))
+  const open = samples.filter((sample) => facts.get(sample.venueId)?.status !== 'closed')
+  return { samples: open, regions, catalog }
+}
+
+function listingStats(points: CheaperSample[]) {
+  const stats = priceSampleStats(points.map((point) => point.priceRub))
+  return {
+    ...stats,
+    places: points.length,
+    freshness: priceFreshnessText(points.map((point) => point.checkedAt)),
+    source: sharedPriceSource(points.map((point) => ({
+      sourceTitle: point.sourceTitle,
+      sourceUrl: point.sourceUrl,
+      checkedAt: point.checkedAt,
+    }))),
+  }
+}
+
+/** One catalog item across venues, cheapest first. Reuses the official menu sample. */
 export async function loadPriceListing(itemSlug: string, regionSlug: string | null) {
   const slug = itemSlug.trim().toLowerCase()
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
     return null
   }
-  const catalog = await db.prices.items()
+  const { samples, regions, catalog } = await loadCheaperSamples()
   const item = catalog.find((row) => row.slug === slug)
   if (!item) {
     return null
   }
-  const [rows, regions] = await Promise.all([
-    db.prices.forItem(slug),
-    db.editor.listRegions(),
-  ])
   const wanted = regionSlug?.trim().toLowerCase() || null
   const region = wanted ? regions.find((row) => row.slug === wanted) ?? null : null
   if (wanted && !region) {
     return null
   }
-  const regionById = new Map(regions.map((row) => [row.id, row]))
-  const points = onePricePerVenue(rows).map((row) => ({
-    ...row,
-    regionSlug: row.regionId ? regionById.get(row.regionId)?.slug ?? null : null,
-  })).sort((a, b) => a.priceRub - b.priceRub || (b.checkedAt ?? '').localeCompare(a.checkedAt ?? ''))
-  const shown = region ? points.filter((row) => row.regionId === region.id) : points
-  if (!shown.length) {
+  const grouped = groupCheaperSamples(samples.filter((sample) => sample.itemSlug === slug))
+  const group = grouped.items.find((entry) => entry.slug === slug)
+  const points = (region
+    ? grouped.cities.find((city) => city.slug === region.slug)?.items.find((entry) => entry.slug === slug)?.points
+    : group?.points) ?? []
+  if (!showsPriceSample(points.length)) {
     return null
   }
-  const ids = shown.map((row) => row.venueId)
+  const ids = points.map((point) => point.venueId)
   const venues = (await db.venues.list({ status: 'published' })).filter((row) => ids.includes(row.id))
   const byId = new Map(venues.map((row) => [row.id, row]))
   const [covers, scheduleRows] = await Promise.all([
@@ -55,12 +129,14 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
     phone: venue.phone,
     status: venue.status,
   })))
-  const items = shown.flatMap((point) => {
+  const shownIds = new Set<string>()
+  const items = points.flatMap((point) => {
     const venue = byId.get(point.venueId)
     const shownFacts = venue ? facts.get(venue.id) : undefined
     if (!venue || shownFacts?.status === 'closed') {
       return []
     }
+    shownIds.add(venue.id)
     const cover = covers.get(venue.id)
     return [{
       href: `/zavedeniya/${venue.slug}`,
@@ -70,30 +146,30 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
       media: cover ? toPublicMedia(cover) : null,
       schedule: scheduleById.get(venue.id) ?? null,
       stale: isStale(venue.lastVerifiedAt, now),
-      meta: shownFacts?.address?.trim() || '',
-      phone: shownFacts?.phone ?? null,
+      meta: shownFacts?.address?.trim() && shownFacts.address !== 'уточняйте' ? shownFacts.address.trim() : '',
+      phone: omitFactGap(shownFacts?.phone),
       priceLabel: formatRub(point.priceRub),
-      variant: point.variant,
+      variant: knownPortion(point.variant) ?? '',
     }]
   })
-  if (!items.length) {
+  if (!showsPriceSample(items.length)) {
     return null
   }
-  const counts = new Map<string, number>()
-  for (const point of points) {
-    if (point.regionSlug) {
-      counts.set(point.regionSlug, (counts.get(point.regionSlug) ?? 0) + 1)
-    }
-  }
-  const towns = [...counts.entries()].map(([townSlug, count]) => {
-    const row = regions.find((entry) => entry.slug === townSlug)
-    return {
-      slug: townSlug,
-      title: regionLabel(row) || townSlug,
-      href: priceItemPath(slug, townSlug),
-      count,
-    }
-  }).sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'ru'))
+  const towns = grouped.cities
+    .flatMap((city) => {
+      const match = city.items.find((entry) => entry.slug === slug)
+      if (!match) {
+        return []
+      }
+      const row = regions.find((entry) => entry.slug === city.slug)
+      return [{
+        slug: city.slug,
+        title: regionLabel(row) || city.slug,
+        href: priceItemPath(slug, city.slug),
+        count: match.count,
+      }]
+    })
+    .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'ru'))
   const meta = priceListingMeta({
     title: item.title,
     slug: item.slug,
@@ -110,8 +186,8 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
     noindex: meta.noindex,
     crumbName: 'список',
     parent: region
-      ? { name: item.title, href: priceItemPath(item.slug) }
-      : { name: 'Заведения', href: '/zavedeniya' },
+      ? { name: regionLabel(region) || region.slug, href: cheaperCityPath(region.slug) }
+      : { name: 'Где дешевле', href: CHEAPER_PATH },
     items: items.map((row) => ({
       name: row.name,
       url: row.href,
@@ -130,27 +206,116 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
     regionSlug: region?.slug ?? null,
     towns,
     oblastHref: priceItemPath(item.slug),
+    stats: listingStats(points.filter((point) => shownIds.has(point.venueId))),
     items,
   }
 }
 
-/** Indexable /ceny listings. Counts are published venues from `Prices.forItem`. Thin samples stay out of the sitemap. */
-export async function priceSitemapEntries() {
-  const [catalog, regions] = await Promise.all([
-    db.prices.items(),
-    db.editor.listRegions(),
-  ])
-  const regionSlug = new Map(regions.map((row) => [row.id, row.slug]))
-  const items = []
-  for (const item of catalog) {
-    const rows = await db.prices.forItem(item.slug)
-    items.push({
-      slug: item.slug,
-      points: onePricePerVenue(rows).map((row) => ({
-        regionSlug: row.regionId ? regionSlug.get(row.regionId) ?? null : null,
-        checkedAt: row.checkedAt ?? '',
-      })),
-    })
+function cityCards(cities: ReturnType<typeof groupCheaperSamples>['cities'], regions: Array<{ slug: string, title: string, shortTitle?: string | null }>) {
+  return cities.map((city) => {
+    const row = regions.find((entry) => entry.slug === city.slug)
+    return {
+      slug: city.slug,
+      title: regionLabel(row) || city.slug,
+      href: cheaperCityPath(city.slug),
+      places: placesLabel(city.venueCount),
+      venueCount: city.venueCount,
+    }
+  }).sort((a, b) => b.venueCount - a.venueCount || a.title.localeCompare(b.title, 'ru'))
+}
+
+/** Cities that have at least one comparable item. */
+export async function loadCheaperIndex() {
+  const { samples, regions } = await loadCheaperSamples()
+  const grouped = groupCheaperSamples(samples)
+  const cities = cityCards(grouped.cities, regions)
+  const indexable = cities.some((city) => isPriceIndexable(city.venueCount))
+  const meta = cheaperIndexMeta(indexable)
+  const doc = collectionDocument({
+    path: meta.path,
+    h1: meta.h1,
+    summary: meta.description,
+    seoTitle: meta.seoTitle,
+    seoDescription: meta.description,
+    noindex: meta.noindex,
+    crumbName: 'список',
+    items: cities.map((city) => ({ name: city.title, url: city.href })),
+    kind: 'CollectionPage',
+  })
+  return { doc, cities }
+}
+
+/** One city: items with at least three comparable official prices. */
+export async function loadCheaperCity(regionSlug: string) {
+  const slug = regionSlug.trim().toLowerCase()
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    return null
   }
-  return indexablePriceLocs(items)
+  const { samples, regions } = await loadCheaperSamples()
+  const region = regions.find((row) => row.slug === slug)
+  if (!region) {
+    return null
+  }
+  const grouped = groupCheaperSamples(samples)
+  const city = grouped.cities.find((entry) => entry.slug === slug)
+  if (!city) {
+    return null
+  }
+  const meta = cheaperCityMeta({
+    regionSlug: region.slug,
+    regionName: regionLabel(region),
+    venueCount: city.venueCount,
+  })
+  const items = city.items.map((item) => ({
+    slug: item.slug,
+    title: item.title,
+    href: priceItemPath(item.slug, region.slug),
+    image: priceItemImage(item.slug, item.image),
+    sticker: priceItemSticker(item.slug, item.image),
+    medianRub: item.medianRub,
+    minRub: item.minRub,
+    maxRub: item.maxRub,
+    places: placesLabel(item.count),
+  }))
+  const doc = collectionDocument({
+    path: meta.path,
+    h1: meta.h1,
+    summary: meta.description,
+    seoTitle: meta.seoTitle,
+    seoDescription: meta.description,
+    noindex: meta.noindex,
+    crumbName: 'список',
+    parent: { name: 'Где дешевле', href: CHEAPER_PATH },
+    items: items.map((item) => ({
+      name: item.title,
+      url: item.href,
+      note: `${formatRub(item.medianRub)}, ${item.places}`,
+    })),
+    kind: 'CollectionPage',
+  })
+  return {
+    doc,
+    regionSlug: region.slug,
+    cities: cityCards(grouped.cities, regions),
+    items,
+  }
+}
+
+/** Indexable price and city listings. Thin samples stay out of the sitemap. */
+export async function priceSitemapEntries() {
+  const { samples } = await loadCheaperSamples()
+  const grouped = groupCheaperSamples(samples)
+  const itemLocs = indexablePriceLocs(grouped.items.filter((item) => showsPriceSample(item.count)).map((item) => ({
+    slug: item.slug,
+    points: item.points.map((point) => ({
+      regionSlug: point.regionSlug,
+      checkedAt: point.checkedAt,
+    })),
+  })))
+  const indexableCities = grouped.cities.filter((city) => isPriceIndexable(city.venueCount))
+  const cityLocs = indexableCities.map((city) => ({ loc: cheaperCityPath(city.slug), lastmod: city.lastmod }))
+  const indexLoc = indexableCities.length
+    ? [{ loc: CHEAPER_PATH, lastmod: indexableCities.map((city) => city.lastmod).sort().at(-1) ?? null }]
+    : []
+  return [...indexLoc, ...cityLocs, ...itemLocs]
 }

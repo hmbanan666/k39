@@ -48,6 +48,7 @@ export const RESERVED_SLUGS = [
   'api',
   'ceny',
   'eda',
+  'gde-deshevle',
   'forty',
   'health',
   'kvesty',

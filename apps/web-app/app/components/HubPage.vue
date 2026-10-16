@@ -76,6 +76,20 @@
               </p>
             </div>
           </div>
+          <div
+            v-if="slug === 'eda'"
+            class="fact"
+          >
+            <Icon :name="tablerIcon('menu')" size="22" />
+            <div>
+              <p class="label">
+                Меню
+              </p>
+              <p>
+                <a :href="CHEAPER_PATH">Где дешевле: цены из меню по городам</a>
+              </p>
+            </div>
+          </div>
         </section>
       </template>
     </ReaderLayout>
@@ -128,6 +142,7 @@ import type { SeoDocument } from '~~/shared/seo'
 import { EAT_NOW_PATH } from '~~/shared/eat-now'
 import { tablerIcon } from '~~/shared/icons'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
+import { CHEAPER_PATH } from '~~/shared/price-compare'
 
 const props = defineProps<{ slug: string }>()
 const page = await fetchPublic<{

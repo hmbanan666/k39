@@ -1,11 +1,24 @@
 import { Buffer } from 'node:buffer'
+import { PHONE_TEXT_MAX as storedPhoneMax } from '@k39/database'
 import { describe, expect, it } from 'vitest'
 import { extractPdfText } from '../server/utils/facts/fetch'
-import { FACT_UNKNOWN, omitFactGap, projectShownFacts } from '../server/utils/facts/read'
+import { FACT_UNKNOWN, omitFactGap, projectShownFacts, shownText } from '../server/utils/facts/read'
 import { phoneNumbers, publicProse, publicVenueModules, repeatedKinds } from '../shared/fact-prose'
-import { classifySourceUrl, decideWatch, defaultTtl, isBlockedAddress, isBlockedHostname, isUnwatchedUrl, mapSourceAllowed, normalizeSourceText, ownerBlocksToken, pageTraffic, pastTtl, priorityFor, proseHash, reviewUpdate, seasonBoundaryWithin, shouldWriteContact, trustOf, trustText, valueHash, watchableSource } from '../shared/facts'
+import { classifySourceUrl, decideWatch, defaultTtl, isBlockedAddress, isBlockedHostname, isUnwatchedUrl, mapSourceAllowed, normalizeSourceText, ownerBlocksToken, pageTraffic, pastTtl, PHONE_TEXT_MAX, phoneValueSchema, priorityFor, proseHash, reviewUpdate, seasonBoundaryWithin, shouldWriteContact, trustOf, trustText, valueHash, watchableSource } from '../shared/facts'
 
 describe('fact values', () => {
+  it('stores three phone numbers in the fact and the column copy', () => {
+    const phones = '+7 4012 30-30-40; +7 4012 38-94-66; +7 911 851-68-55'
+    expect(phones.length).toBeGreaterThan(40)
+    expect(phones.length).toBeLessThanOrEqual(PHONE_TEXT_MAX)
+    expect(PHONE_TEXT_MAX).toBe(storedPhoneMax)
+    expect(phoneValueSchema.safeParse({ text: phones }).success).toBe(true)
+    expect(phoneValueSchema.safeParse({ text: '1'.repeat(PHONE_TEXT_MAX + 1) }).success).toBe(false)
+    expect(shownText(phones, phones.slice(0, 40))).toBe(phones)
+    expect(shownText(FACT_UNKNOWN, '+7 4012 30-30-40')).toBe('+7 4012 30-30-40')
+    expect(shownText(null, '+7 4012 30-30-40')).toBe('+7 4012 30-30-40')
+  })
+
   it('keeps a map phone on the 180-day kind TTL', () => {
     expect(defaultTtl('phone')).toBe(180)
     expect(defaultTtl('hours')).toBe(30)

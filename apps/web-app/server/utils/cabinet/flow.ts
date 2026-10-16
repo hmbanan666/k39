@@ -5,6 +5,7 @@ import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } f
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
 import { syncPageSections } from '../facts/queue'
+import { readShownFacts, shownText } from '../facts/read'
 import { setVenuePrices, syncVenueContact } from '../facts/sync'
 import { normalizeDishModules } from '../venues/dishes'
 import { recomputeTownPriceBands } from '../venues/price-band'
@@ -12,6 +13,11 @@ import { asOwnerPrices, venuePricesWriteSchema } from '../venues/prices'
 import { syncVenueSchedule } from '../venues/write'
 import { ClaimDeliveryError, claimTransportConfig, postClaimCode } from './deliver'
 import { limitClaimStart, limitCodeCheck, limitCodeSend, limitEdit } from './rate'
+
+async function venuePhone(venue: { id: string, phone: string | null, address: string | null, status: string }) {
+  const shown = (await readShownFacts('venue', [venue])).get(venue.id)
+  return shownText(shown?.phone, venue.phone)
+}
 
 function fail(statusCode: number, statusMessage: string): never {
   throw createError({ statusCode, statusMessage })
@@ -51,8 +57,9 @@ export async function claimPreview(userId: string, slug: string) {
   const member = await db.venueClaims.member(venue.id, userId)
   const claim = await db.venueClaims.pending(venue.id, userId)
   const { emailTransport, phoneTransport } = transports()
+  const phone = await venuePhone(venue)
   const plan = claimChannelPlan({
-    phone: venue.phone,
+    phone,
     contactEmail: venue.contactEmail,
     emailTransport,
     phoneTransport,
@@ -94,8 +101,9 @@ export async function startClaim(userId: string, input: { slug: string, channel:
     fail(409, 'У этой страницы уже есть владелец')
   }
   const { emailTransport, phoneTransport, config } = transports()
+  const phone = await venuePhone(venue)
   const plan = claimChannelPlan({
-    phone: venue.phone,
+    phone,
     contactEmail: venue.contactEmail,
     emailTransport,
     phoneTransport,
@@ -135,7 +143,7 @@ export async function startClaim(userId: string, input: { slug: string, channel:
   let destination: string | null = null
   if (input.channel === 'email' || input.channel === 'phone') {
     limitCodeSend(userId, deps?.now?.getTime())
-    destination = input.channel === 'email' ? venue.contactEmail : venue.phone
+    destination = input.channel === 'email' ? venue.contactEmail : phone
     const code = newClaimCode()
     codeHash = hashClaimCode({ pepper: pepper(), venueId: venue.id, userId, code })
     codeExpiresAt = new Date((deps?.now?.getTime() ?? Date.now()) + CLAIM_CODE_TTL_MS).toISOString()
@@ -188,7 +196,7 @@ export async function resendClaimCode(userId: string, claimId: string, deps?: { 
   }
   const { config } = transports()
   const url = claim.channel === 'email' ? config.emailUrl : config.phoneUrl
-  const destination = claim.channel === 'email' ? venue.contactEmail : venue.phone
+  const destination = claim.channel === 'email' ? venue.contactEmail : await venuePhone(venue)
   if (!url || !destination) {
     fail(409, 'Отправка кода пока не подключена. Оставьте заявку на проверку редакцией.')
   }

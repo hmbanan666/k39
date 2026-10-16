@@ -1,4 +1,5 @@
 import type { SourceLink } from './types/entities'
+import { PHONE_TEXT_MAX } from './phone'
 
 export const FOOD_KINDS = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other'] as const
 
@@ -601,7 +602,7 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
     address: address ? address.slice(0, 300) : null,
     town,
     district,
-    phone: (tags.phone || tags['contact:phone'] || '').trim().slice(0, 40) || null,
+    phone: (tags.phone || tags['contact:phone'] || '').trim().slice(0, PHONE_TEXT_MAX) || null,
     website: (tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null,
     contactEmail: osmEmail(tags.email || tags['contact:email']),
     socials: osmSocials(tags),

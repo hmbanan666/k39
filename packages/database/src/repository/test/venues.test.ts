@@ -93,6 +93,15 @@ describe('venue policy', () => {
     expect(draft?.slug).toBe('kofeynya-u-forta')
     expect(draft?.town).toBeNull()
     expect(draft?.contactEmail).toBeNull()
+    const phones = '+7 4012 30-30-40; +7 4012 38-94-66; +7 911 851-68-55'
+    expect(phones.length).toBeGreaterThan(40)
+    expect(osmElementToDraft({
+      type: 'node',
+      id: 44,
+      lat: FORT.latitude,
+      lon: FORT.longitude,
+      tags: { amenity: 'cafe', name: 'Порто', phone: phones },
+    })?.phone).toBe(phones)
     expect(osmElementToDraft({
       type: 'node',
       id: 43,
@@ -145,6 +154,20 @@ describe('venue repository', () => {
     expect(row?.status).toBe('draft')
     expect(row?.osmId).toBe('way/7')
     await expect(Venues.update(row!.id, { status: 'published', description: 'Коротко' })).rejects.toBeInstanceOf(VenueInputError)
+  })
+
+  it('keeps three phone numbers that used to be cut at 40 characters', async () => {
+    const phones = '+7 4012 30-30-40; +7 4012 38-94-66; +7 911 851-68-55'
+    const created = await Venues.create({
+      name: 'Порто на променаде',
+      kind: 'restaurant',
+      status: 'published',
+      description: description(),
+      phone: phones,
+    })
+    expect(created.phone).toBe(phones)
+    const updated = await Venues.update(created.id, { phone: phones })
+    expect(updated?.phone).toBe(phones)
   })
 
   it('orders nearby food venues and hides rows older than a year', async () => {

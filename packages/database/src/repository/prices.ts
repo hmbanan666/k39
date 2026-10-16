@@ -86,17 +86,48 @@ export class Prices {
     return rows.filter((row) => row.checkedAt >= cutoff)
   }
 
-  /** One item across published venues, cheapest first. Drafts, closed and archived stay out, so comparisons and /ceny indexing use this count. */
+  /** One item across published venues, cheapest first. Drafts, closed and archived stay out. */
   static async forItem(slug: string, now = new Date()) {
     return useDatabase().select({
       venueId: venues.id,
       venueSlug: venues.slug,
       venueName: venues.name,
       regionId: venues.regionId,
+      itemId: priceItems.id,
+      item: priceItems.slug,
+      title: priceItems.title,
       variant: venuePrices.variant,
       priceRub: venuePrices.priceRub,
       checkedAt: venuePrices.checkedAt,
+      sourceKind: venuePrices.sourceKind,
+      sourceTitle: venuePrices.sourceTitle,
+      sourceUrl: venuePrices.sourceUrl,
     }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).innerJoin(venues, eq(venuePrices.venueId, venues.id)).where(and(eq(priceItems.slug, slug), eq(venues.status, 'published'), gte(venuePrices.checkedAt, freshCutoff(now)))).orderBy(asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
+  }
+
+  /**
+   * Every fresh price on a published venue. «Где дешевле» keeps the official
+   * menu rows after the fact overlay. Drafts, closed and archived stay out.
+   */
+  static async freshPublished(now = new Date()) {
+    return useDatabase().select({
+      venueId: venues.id,
+      venueSlug: venues.slug,
+      venueName: venues.name,
+      regionId: venues.regionId,
+      itemId: priceItems.id,
+      item: priceItems.slug,
+      title: priceItems.title,
+      category: priceItems.category,
+      image: priceItems.image,
+      sortOrder: priceItems.sortOrder,
+      variant: venuePrices.variant,
+      priceRub: venuePrices.priceRub,
+      checkedAt: venuePrices.checkedAt,
+      sourceKind: venuePrices.sourceKind,
+      sourceTitle: venuePrices.sourceTitle,
+      sourceUrl: venuePrices.sourceUrl,
+    }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).innerJoin(venues, eq(venuePrices.venueId, venues.id)).where(and(eq(venues.status, 'published'), gte(venuePrices.checkedAt, freshCutoff(now)))).orderBy(asc(priceItems.sortOrder), asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
   }
 
   /** Replaces a venue's prices. Unknown catalog items fail the whole write. */
