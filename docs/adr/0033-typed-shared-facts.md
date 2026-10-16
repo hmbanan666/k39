@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
-This record does not add tables or change pages. Phase 1 is the first build. Later phases are named and are not part of that build. Defaults in the decision stand until an answer under Open questions changes them.
+This record does not add tables or change pages. Phase 1 is the first build. Later phases are named and are not part of that build. Open questions were resolved on 2026-10-16; the answers are under Resolved.
 
 ## Context
 
@@ -272,10 +272,12 @@ Until phase 2, the live site still reads the tables it reads today. A fact write
 
 Phase 1 does not hide prices at 90 days, does not drop venues from «Где поесть рядом» any sooner, and does not fetch map cards.
 
-## Open questions
+## Resolved
 
-1. Auto-renew when an official source hash is unchanged is the default, including past TTL. Confirm, or say that a person must re-read even when the hash matches. The second choice puts TTL expiries back on the agent bill.
-2. Map and OSM facts queue on TTL because those hosts are not fetched. Should a venue phone taken from a map card live 180 days, or match hours at 30?
-3. The prose backfill marks today's sections reviewed without an agent pass. Confirm that the existing archive does not need a one-time sweep.
-4. May the content token `fact_update` a published hours fact the owner set last, or does an owner conflict wait for an editor in `/admin`?
-5. Shared bus lines (one route, many forts) are a phase 2 subject. Is any transport fact required in phase 1 for places that already publish `how_to_get`?
+Owner answers, 2026-10-16:
+
+1. Auto-renew when an official source hash is unchanged, including past TTL. Yes. No agent re-read when the hash matches.
+2. A venue phone taken from a map or OSM lives 180 days, same TTL as a phone from an official site. Maps and OSM stay unfetched; those facts still queue on TTL.
+3. The prose backfill marks today's sections reviewed without an agent pass. No one-time sweep of the existing archive. Only a later edit opens `section_changed`.
+4. The content token must not overwrite a published fact the owner set last. An owner conflict waits for an editor in `/admin`.
+5. Transport stays in phase 2. No transport fact is required in phase 1 for places that already publish `how_to_get`.
