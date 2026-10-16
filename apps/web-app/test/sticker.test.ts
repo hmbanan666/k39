@@ -1,10 +1,13 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import process from 'node:process'
 import { renderToString } from '@vue/server-renderer'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { createSSRApp, h } from 'vue'
 import Sticker from '../app/components/Sticker.vue'
 import { FOOD_STICKERS, foodStickerSrc, foodStickerSrcset, isFoodStickerSlug } from '../shared/food-stickers'
-import { STICKERS, stickerSrc, stickerSrcset } from '../shared/stickers'
+import { STICKER_CATEGORY, STICKERS, stickerSrc, stickerSrcset } from '../shared/stickers'
 
 describe('sticker picture', () => {
   it('renders a moose sticker with the catalog picture and leaves food paths unused', () => {
@@ -76,5 +79,14 @@ describe('sticker picture', () => {
     expect(isFoodStickerSlug('with-map')).toBe(false)
     expect(Object.keys(FOOD_STICKERS).every((slug) => isFoodStickerSlug(slug))).toBe(true)
     expect(() => mount(Sticker, { props: { set: 'food', slug: 'with-map' as 'borscht' } })).toThrow(/Unknown food sticker/)
+  })
+
+  it('lists every moose sticker once in the catalog, with its category', () => {
+    const catalog = readFileSync(join(process.cwd(), 'docs/stickers.md'), 'utf8')
+    for (const slug of Object.keys(STICKERS) as Array<keyof typeof STICKERS>) {
+      const row = catalog.split('\n').find((line) => line.startsWith(`| \`${slug}\` |`))
+      expect(row, slug).toBeDefined()
+      expect(row).toContain(`| ${STICKER_CATEGORY[slug]} |`)
+    }
   })
 })

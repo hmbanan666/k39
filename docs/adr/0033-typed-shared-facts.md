@@ -87,6 +87,8 @@ The existing `revisions` table remains the snapshot of a place, venue, or route 
 
 ### Kinds, schemas, freshness
 
+The claim, the column, the source kind, and the freshness window are one table in `docs/facts.md`. This section is the fact schema. Do not copy that table into another doc.
+
 Schemas live in one module beside `shared/schedule.ts`. The hours value is the schedule `rules` object. There is no second hours shape. `venues.hours` (the old weekday JSON) is not a source for new facts. ADR 0028 already moved recognized hours into `schedules`.
 
 TTL is how often the server re-fetches a watchable source. It is not how often an agent re-reads the catalog.
@@ -151,9 +153,11 @@ After a success, `next_fetch_at` is the fetch time plus the shortest TTL on that
 
 `verification_queue` is the only work list. Agents do not scan `places_list` to re-check fresh facts.
 
-Columns: `target` (`fact` or `section`), `fact_id`, `page_type`, `entity_id`, `path`, `reason`, `priority`, `enqueued_at`, `locked_by`, `locked_until`.
+Columns: `target` (`fact` or `section`), `fact_id`, `page_type`, `entity_id`, `path`, `reason`, `priority`, `enqueued_at`, `locked_by`, `locked_until`, `resolved_at`, `proposal`.
 
-Reasons: `source_changed`, `ttl_expired`, `fetch_failed`, `source_gone`, `season_boundary`, `section_changed`, `unseeded`.
+Reasons: `source_changed`, `ttl_expired`, `fetch_failed`, `source_gone`, `season_boundary`, `section_changed`, `unseeded`, `owner_conflict`, `fact_repeated`.
+
+`owner_conflict` is the row an editor decides in `/admin` when the content token must not overwrite a fact whose latest revision actor is `owner`. The proposed value sits in `proposal`. `fact_repeated` is a review warning when prose repeats a phone or hours. It does not block publish. A new reason is added to `QUEUE_REASONS`, the `verification_queue_reason_check` constraint, and this list in the same change.
 
 One open row per target and reason. The watcher, the save path, and the nightly score job upsert it. An agent does not insert rows.
 
@@ -207,7 +211,7 @@ Publish review stays two passes. The reviewer loads the queue rows for that page
 
 Phase 1. Tables, the six phase-1 kinds, the seed below, the watcher, the queue, the five MCP tools, the trust column, and the score and weekly hooks. Dual write from schedule, price, and venue phone, address, and status saves. Readers stay on `schedules`, `places`, `venues`, `venue_prices`, and `schedule_intervals`.
 
-Phase 2. Place pages, venue cards, and JSON-LD read phase-1 facts. The public reader is `readShownFacts` in `apps/web-app/server/utils/facts/read.ts`. The phone fact is the displayed number. `venues.phone` copies that text up to `PHONE_TEXT_MAX` (ADR 0035). Transport facts come off `how_to_get` and stop notes through the queue, not a bulk extract. Routes and collections reference place facts. A prose section that repeats a fact value is a review warning, not a publish block.
+Phase 2. Place pages, venue cards, and JSON-LD read phase-1 facts. The public reader is `readShownFacts` in `apps/web-app/server/utils/facts/read.ts`. The phone fact is the displayed number. `venues.phone` copies that text up to `PHONE_TEXT_MAX` (ADR 0039). Transport facts come off `how_to_get` and stop notes through the queue, not a bulk extract. Routes and collections reference place facts. A prose section that repeats a fact value is a review warning, not a publish block.
 
 Phase 3. Seasonality, events, and history, and only when a section is already queued. «Where cheaper» and a trip plan read price and hours facts. Open now stays on intervals built from the hours fact. Retire `venues.hours` and free-text place hours once nothing reads them. Then drop the page-level freshness stamp in favor of the oldest fresh fact.
 

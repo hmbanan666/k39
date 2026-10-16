@@ -49,7 +49,7 @@ Tools: `places_list`, `place_get`, `place_draft_create`, `place_update`, `place_
 
 Phase 1 of ADR 0033 writes `facts` beside the columns that already exist. Public venue pages, venue cards, and their JSON-LD read phone, address, coordinates, and operating status from `facts` through `fact_refs`, and fall back to the column only when that fact is missing. A gap renders «уточняйте». Place pages do the same for coordinates and status. Hours on venue pages, cards, and JSON-LD come from `schedules` and `schedule_intervals`, not from `venues.hours` or a copy in the description. Prose that repeats those hours or a phone is a `fact_repeated` review warning and does not block publish. Verification starts at `queue_list`. A fact whose latest revision actor is `owner` is not overwritten by the content token. That conflict waits in `/admin`. The nightly source watcher claims `analytics_runs` kind `source-watch` and fetches official URLs only. Map sources are `map_yandex`, `map_2gis`, `map_google`, and `osm`, venues only. The public reader is `readShownFacts` in `apps/web-app/server/utils/facts/read.ts`.
 
-`@k39/map` is the map core (ADR 0019): basemap choice, the `paper` style, and layers for points, lines, numbered stops, and sponsored pins. The visitor map is `/map`: MapLibre GL draws one scene from that API. The server resolves the basemap at runtime. When the file at `NUXT_BASEMAP_FILE` exists and its sha256 matches `BASEMAP_SHA256`, the client receives `/basemap/kaliningrad.pmtiles` (Range). Otherwise the map uses OpenFreeMap, including when the file is missing. A background task on boot downloads `BASEMAP_SOURCE_URL` when the file is missing or the hash does not match. Those defaults are baked into the image. An https `NUXT_PUBLIC_PMTILES_URL` is an optional object-storage override. Glyphs and the sprite are on this origin. Rebuild steps are in `docs/basemap.md`. It is in the header, the footer, and the sitemap. Embedded venue and route maps use the same library, loaded lazily. A route draws a solid line only from `routes.path`. Otherwise the selected route shows numbered stops and a dashed connector. Direction links on the route page stay in ADR 0015. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` does not choose a basemap.
+`@k39/map` is the map core (ADR 0019, visitor map page ADR 0037): basemap choice, the `paper` style, and layers for points, lines, numbered stops, and sponsored pins. The visitor map is `/map`: MapLibre GL draws one scene from that API. The server resolves the basemap at runtime. When the file at `NUXT_BASEMAP_FILE` exists and its sha256 matches `BASEMAP_SHA256`, the client receives `/basemap/kaliningrad.pmtiles` (Range). Otherwise the map uses OpenFreeMap, including when the file is missing. A background task on boot downloads `BASEMAP_SOURCE_URL` when the file is missing or the hash does not match. Those defaults are baked into the image. An https `NUXT_PUBLIC_PMTILES_URL` is an optional object-storage override. Glyphs and the sprite are on this origin. Rebuild steps are in `docs/basemap.md`. It is in the header, the footer, and the sitemap. Embedded venue and route maps use the same library, loaded lazily. A route draws a solid line only from `routes.path`. Otherwise the selected route shows numbered stops and a dashed connector. Direction links on the route page stay in ADR 0015. `NUXT_PUBLIC_YANDEX_MAPS_API_KEY` does not choose a basemap.
 
 Auth is `nuxt-auth-utils`: Yandex and VK use `defineOAuthYandexEventHandler` and `defineOAuthVKEventHandler`, and the admin session is `requireUserSession` / `setUserSession`. Empty client id or secret disables that provider. `ADMIN_EMAILS` promotes those accounts to `admin` on login. Editors and admins can open `/admin`. Anonymous visitors go to `/sign-in?redirectTo=/admin`. The session cookie is sealed with `NUXT_SESSION_PASSWORD` (32+ characters). `nuxt-auth-utils` does not read `NUXT_APP_SECRET`; switch to that when the library supports `appSecret` natively. See ADR 0005.
 
@@ -66,8 +66,12 @@ Site search (ADR 0030) is Postgres full-text (`russian`) plus `pg_trgm` over the
 - UI copy and place, quest, and legal content: Russian. Docs, ADRs, this file, the README, and code comments: English. Do not use em dashes in UI chrome or in the HTML title. The title pattern is `{title} | K39`, or `{seoTitle} | K39` when that field is set. Do not append a second type word.
 - No hacks. Prefer a long-term solution in the existing architecture.
 - The public site is simple server-rendered HTML for bots and people.
-- Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). Husky runs lint-staged and commitlint.
-- Architecture decisions: `docs/adr/NNNN-title.md`.
+- Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). Husky runs lint-staged and commitlint. The body line limit is 100 characters. Do not add a `Co-authored-by` trailer. `scripts/git/strip-coauthor.sh` removes one that a cloud VM appends after the commit-msg hook, and CI rejects a commit that still has it.
+- Architecture decisions: `docs/adr/NNNN-title.md`. The index and the heading template are `docs/adr/README.md`. Numbers are unique. Fetch `origin/main` and take the next number from that index. Land the ADR on `main` before the implementation PR. A new `verification_queue` reason is added to `QUEUE_REASONS`, the check constraint, and ADR 0033 in the same change.
+- Migrations: `packages/database/migrations/REGISTRY.md`. Fetch `origin/main` and take the next prefix. Drizzle snapshots stop at `0003`, so `db:generate` does not choose the number. CI rejects a duplicate prefix.
+- Admin fetch: pages that load or save during setup use `useRequestFetch()`, as `PlaceForm.vue` does. That forwards the session cookie and the request host during server render. Do not import `ofetch` for an admin URL. A relative `ofetch('/api/admin/...')` has no base URL on the server and does not send the incoming cookie. A button handler after hydration may use `$fetch`.
+- Unhead dedupes `<link>` on `rel` and `href` unless each tag has its own `key`. `brandHeadLinks` in `shared/seo.ts` keeps distinct keys for the two `favicon.ico` links.
+- Facts: the claim, the column, the source kind, and the freshness window are `docs/facts.md`. Do not copy that table.
 - Vue files: template, then script, then style. ESLint is `@antfu/eslint-config` with the local overrides in `eslint.config.mjs`.
 
 ## UI
@@ -88,6 +92,19 @@ Read the skill before the matching task. Files are `.cursor/skills/<name>/SKILL.
 | `k39-ui` | Any UI change. Read it before `frontend-design`. |
 | `frontend-design` | Craft and anti-generic taste during a UI change, after `k39-ui`. |
 
+## Cloud agents
+
+Start from a fresh `origin/main`. The environment build and the boot script fetch it. Before the first edit:
+
+```bash
+git fetch origin main
+git checkout -B <branch> origin/main
+```
+
+Fetch again and rebase onto `origin/main` before opening the pull request. Node is 24.21.0 (`.nvmrc`, the same version as the web image). Postgres 18 is local. `DATABASE_URL` is the dev database `k39`. `DATABASE_URL_TEST` is `k39_test`. Playwright Chromium is installed during the environment build. `pnpm dev` binds `0.0.0.0:3000` with telemetry off, so `curl http://127.0.0.1:3000` reaches it and the process does not wait on a prompt.
+
+The task prompt that launches an agent is not a file in this repo. The fetch above is what this repo can enforce.
+
 ## Run
 
 ```bash
@@ -99,9 +116,9 @@ pnpm media:rebuild
 
 `pnpm media:rebuild` regenerates photo variants from masters already on disk. It needs `DATABASE_URL` and `MEDIA_DIR`.
 
-Dev server: http://localhost:3000. Public pages need `DATABASE_URL`. The plugin migrates and seeds before serving traffic.
+Dev server: http://127.0.0.1:3000. `nuxt dev` listens on `0.0.0.0` and sets `telemetry: false`, so it does not prompt and it answers IPv4 localhost. Public pages need `DATABASE_URL`. The plugin migrates and seeds before serving traffic.
 
-Generate a new migration after a schema change:
+Generate a new migration after a schema change, then take the next prefix from `packages/database/migrations/REGISTRY.md` on `origin/main` and add the row:
 
 ```bash
 pnpm --filter @k39/database db:generate
@@ -116,13 +133,13 @@ pnpm test
 pnpm --filter @k39/web-app build
 ```
 
-`pnpm test` runs the database suite and web-app checks for titles, canonicals, JSON-LD, redirects, robots.txt and orphan links. Point `DATABASE_URL` at a local database to skip Docker. The suite drops the `public` and `drizzle` schemas of that database when the host is localhost. Do not point it at a shared database.
+`pnpm test` runs the database suite and web-app checks for titles, canonicals, JSON-LD, redirects, robots.txt and orphan links. Set `DATABASE_URL_TEST` to a local database whose name ends with `_test`. If only `DATABASE_URL` is set and it is local, the suite creates and resets the sibling `<name>_test` database and does not drop the dev database. With no URL, tests start Postgres 18 in Testcontainers. A remote URL is refused. `pnpm run check:repo` checks ADR numbers, migration prefixes, and `Co-authored-by` trailers.
 
 ## Deploy
 
 Target: Dokploy.
 
-- Dockerfile: `docker/web-app/Dockerfile`
+- Dockerfile: `docker/web-app/Dockerfile`. `nuxt build` copies `apps/web-app/public` into `.output/public`, and that directory is what the image serves. Brand URLs cache for a week. `site.webmanifest` caches for a day.
 - Build context: repository root
 - The image enables pnpm with Corepack at the version in `packageManager` (`pnpm@10.25.0`). Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`.
 - The container runs as the image's `node` user (uid 1000). `node:24-alpine` already owns that uid, so the Dockerfile does not create another user. Mount a volume at `MEDIA_DIR` (`/app/media`) or uploads disappear on redeploy.
@@ -148,7 +165,7 @@ Do not add Kubernetes manifests or GitHub Actions deploy workflows.
 - Hubs: `/forty`, `/zamki`, `/plyazhi`, `/kurorty`, `/muzei`, `/eda`. A hub stores a markdown `body`, rendered with the place article renderer. A `## Частые вопросы` section adds FAQPage. `hub_update` writes the body and the SEO fields and is audit-logged. `/admin` edits the same fields.
 - `/map`: full-bleed visitor map. Filter query is `noindex`; the canonical is `/map`. `/map/forty` is a normal 404 and is not in the sitemap.
 - `/marshruty`, `/podborki`, `/kvesty` and their slugs. A collection with `modules` renders as a module page (ADR 0023): month chips, lead, month stats, a chip picker that reorders and marks cards (URL params `i`, `c`, `t`, canonical to the clean page, `noindex`), ideas, day plans, place cards, and text sections. Such a page has no map of mentioned places. The modules are the article: a save derives `body` from them, rejects a different `body`, and returns `renderedFields`. Module shapes are `apps/web-app/shared/page-modules.ts`.
-- `/gde-deshevle` and `/gde-deshevle/{region}` list cities and benchmark items with at least three fresh official menu prices (ADR 0035). `/ceny/{item}` and `/ceny/{item}/{region}` list the venues, cheapest first. A page is in the sitemap only at five venues. Packaged juice is not the orange-juice row.
+- `/gde-deshevle` and `/gde-deshevle/{region}` list cities and benchmark items with at least three fresh official menu prices (ADR 0039). `/ceny/{item}` and `/ceny/{item}/{region}` list the venues, cheapest first. A page is in the sitemap only at five venues. Packaged juice is not the orange-juice row.
 - `/zavedeniya` and `/zavedeniya/{slug}`. Listings are a card grid of `VenueCard` (cover, kind, live status), with optional modules around the grid (`venue_listing_modules_set`: «Как выбрать», «По ситуации», «Районы и улицы», «Сезонность», «Вопросы»). Above the grid, towns and kinds are separate link groups: town cards (the town hub photo or illustration, plus a count) and kind chips. A town listing also embeds `MapEmbed` for those venues. Filter URLs such as `/zavedeniya/svetlogorsk/kofe` are indexable when a listing intro is set. Place and route pages list nearby food venues.
 - `/admin`: editors and admins. `/preview/{slug}` shows a draft to those users and is `noindex`. A place with a `content_drafts` row shows that pending draft on its edit form: each changed field, live beside draft. Apply publishes through the same writer as `content_set_publication`. Discard deletes the row. A save is refused until the editor chooses to drop the draft. Venues are not stored in `content_drafts`.
 - `/sign-in`, `/about`, `/privacy`, `/terms`. `/cookies` redirects to `/privacy#cookies`. `/legal/privacy-policy` redirects to `/privacy`.

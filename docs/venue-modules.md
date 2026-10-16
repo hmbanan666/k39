@@ -5,6 +5,15 @@ idea as module pages (ADR 0023). Editors store an ordered list in
 `venues.modules` (jsonb) through the content MCP (`venue_update.modules`,
 `venue_get` returns it). The schema lives in `apps/web-app/shared/venue-modules.ts`.
 
+A collection module page stores the article in `collections.modules`. A save
+derives `body` from that prose, rejects a different `body`, and returns
+`renderedFields`. The modules are the article. Do not keep a second article
+in `body`.
+
+The owner cabinet and `venue_update` both validate `venues.modules` with
+`venueModulesSchema`. Prices use the same object as `venue_prices_set`. The
+cabinet forces `sourceKind` to `owner`. Do not invent a parallel shape.
+
 Rules:
 
 - Every module renders only when it has data. An empty or invalid list falls
@@ -213,7 +222,7 @@ the list. `ceny` is a reserved place slug.
 `/gde-deshevle/{region}` lists those items with the median, the range, and
 the number of places. A city page is indexable when the city has at least
 5 venues with a fresh official menu price, including venues whose item does
-not yet have three prices. ADR 0035.
+not yet have three prices. ADR 0039.
 
 ## Listing modules
 

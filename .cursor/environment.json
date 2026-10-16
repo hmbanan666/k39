@@ -1,0 +1,15 @@
+{
+  "name": "k39",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "ports": [
+    {
+      "name": "web",
+      "port": 3000
+    }
+  ]
+}

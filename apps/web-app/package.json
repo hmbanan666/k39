@@ -5,12 +5,12 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev --port 3000",
+    "dev": "nuxt dev --host 0.0.0.0 --port 3000",
     "preview": "nuxt preview",
     "generate": "nuxt generate",
     "clean": "rm -rf .output",
     "clean:modules": "rm -rf .nuxt .output .data node_modules",
-    "typecheck": "nuxt typecheck",
+    "typecheck": "nuxt typecheck && node ../../scripts/typecheck-writer.mjs",
     "media:rebuild": "jiti ./scripts/media-rebuild.ts",
     "db:seed:fixtures": "jiti ./scripts/seed-fixtures.ts",
     "postinstall": "nuxt prepare"

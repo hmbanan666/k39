@@ -17,6 +17,8 @@ packages:
   - apps/*
   - packages/*
 
+overrides:
+  baseline-browser-mapping: 2.11.29
 catalogs:
   dev:
     '@antfu/eslint-config': ^6.6.1
