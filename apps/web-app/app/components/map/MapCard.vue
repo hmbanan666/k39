@@ -40,6 +40,18 @@
       >
         {{ point.summary }}
       </p>
+      <p
+        v-if="phones.length"
+        class="phones"
+      >
+        <a
+          v-for="item in phones"
+          :key="item.e164"
+          :href="`tel:${item.e164}`"
+          data-track="outbound"
+          data-track-name="phone"
+        >{{ item.display }}</a>
+      </p>
       <UiButton
         class="open"
         :href="point.href"
@@ -52,15 +64,19 @@
 
 <script setup lang="ts">
 import type { MapCard } from '@k39/map'
+import { computed } from 'vue'
 import { tablerIcon } from '~~/shared/icons'
 import { markerArt } from '~~/shared/map'
+import { parsePhones } from '~~/shared/phone'
 
-defineProps<{
+const props = defineProps<{
   point: MapCard | null
   sheet: boolean
 }>()
 
 const emit = defineEmits<{ close: [] }>()
+
+const phones = computed(() => parsePhones(props.point?.phone).filter((item) => item.e164))
 
 let startY = 0
 
@@ -155,6 +171,16 @@ function onEnd(event: TouchEvent) {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
+.phones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+.phones a { text-decoration: none; }
 .open { margin-top: 0.55rem; }
 .partner {
   display: inline-block;

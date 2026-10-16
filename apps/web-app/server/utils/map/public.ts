@@ -34,6 +34,7 @@ export async function loadMap() {
     readShownFacts('venue', venueRows.map((row) => ({
       id: row.id,
       address: row.address,
+      phone: row.phone,
       latitude: row.latitude,
       longitude: row.longitude,
       status: row.status,
@@ -127,6 +128,7 @@ export async function loadMap() {
       stale,
       address: shown?.address?.trim() && shown.address !== FACT_UNKNOWN ? shown.address : null,
       hours: scheduleByVenue.get(row.id)?.join(', ') || null,
+      phone: shown?.phone?.trim() && shown.phone !== FACT_UNKNOWN ? shown.phone : null,
     })
   }
 

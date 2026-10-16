@@ -70,6 +70,18 @@
             >
               {{ card.hours }}
             </p>
+            <p
+              v-if="cardPhones.length"
+              class="fact phones"
+            >
+              <a
+                v-for="item in cardPhones"
+                :key="item.e164"
+                :href="`tel:${item.e164}`"
+                data-track="outbound"
+                data-track-name="phone"
+              >{{ item.display }}</a>
+            </p>
             <UiButton
               class="open"
               :href="card.href"
@@ -400,6 +412,7 @@ import {
   SIGHT_BROWSE,
   stopsLabel,
 } from '~~/shared/map'
+import { formatPhoneDisplay, parsePhones } from '~~/shared/phone'
 
 const props = defineProps<{
   points: MapPoint[]
@@ -481,7 +494,7 @@ const results = computed(() => {
   }
   const query = props.state.q.trim().toLocaleLowerCase('ru')
   if (query) {
-    pool = pool.filter((point) => `${point.title} ${point.kindLabel} ${point.address || ''}`.toLocaleLowerCase('ru').includes(query))
+    pool = pool.filter((point) => `${point.title} ${point.kindLabel} ${point.address || ''} ${point.phone || ''} ${formatPhoneDisplay(point.phone)}`.toLocaleLowerCase('ru').includes(query))
   }
   return browseList(pool, props.bounds, focus.value, props.state.q)
 })
@@ -527,9 +540,12 @@ const card = computed(() => {
     stale: false,
     address: null,
     hours: null,
+    phone: null,
     distance: away(stop),
   }
 })
+
+const cardPhones = computed(() => parsePhones(card.value && 'phone' in card.value ? card.value.phone : null).filter((item) => item.e164))
 
 const mode = computed(() => {
   if (card.value) {
@@ -790,6 +806,14 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
 }
 .meta, .sum, .fact { color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
 .fact { color: var(--color-ink); }
+.phones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  font-variant-numeric: tabular-nums;
+}
+.phones a { text-decoration: none; }
 .open { margin-top: 0.7rem; }
 .partner {
   display: inline-block;

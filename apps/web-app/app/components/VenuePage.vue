@@ -176,7 +176,25 @@
                   {{ row.label }}
                 </p>
                 <p
+                  v-if="row.key === 'phone'"
+                  class="phones"
+                >
+                  <template
+                    v-for="(item, index) in phones"
+                    :key="`${item.e164}-${index}`"
+                  >
+                    <a
+                      v-if="item.e164"
+                      :href="`tel:${item.e164}`"
+                      data-track="outbound"
+                      data-track-name="phone"
+                    >{{ item.display }}</a>
+                    <span v-else>{{ item.display }}</span>
+                  </template>
+                </p>
+                <p
                   v-for="line in row.lines"
+                  v-else
                   :key="line"
                 >
                   {{ line }}
@@ -401,6 +419,7 @@ import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
 import { operator } from '~~/shared/operator'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
+import { parsePhones } from '~~/shared/phone'
 import { russianDay } from '~~/shared/place-guide'
 import { socialLabel, venueActions, venueServiceNotes } from '~~/shared/venue-actions'
 import { presentVenueBlocks } from '~~/shared/venue-modules'
@@ -489,6 +508,7 @@ const kickerParts = [venue.kindLabel, venue.regionTitle].filter(Boolean)
 const showStreet = Boolean(venue.address) && !htmlContainsAddress(howToGetHtml, venue.address)
 const caption = venue.address ? venue.address.replace(/^[^,]+,\s*/, '') : venue.name
 const actions = venueActions(venue)
+const phones = parsePhones(venue.phone)
 const chips = [...venue.cuisine.slice(0, 3), ...venueServiceNotes(venue)]
 const checkedLabel = russianDay(venue.checkedAt)
 const rub = (value: number) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`
@@ -639,6 +659,12 @@ function openPhoto(id: string) {
 }
 .fact svg { width: 22px; height: 22px; margin-top: 0.15rem; color: var(--color-brick); }
 .fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
+.phones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
 .fact .label {
   margin-bottom: 0.2rem;
   color: var(--muted);

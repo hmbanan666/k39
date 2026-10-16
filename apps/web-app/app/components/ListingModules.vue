@@ -25,6 +25,7 @@
           :kind-label="item.card.kindLabel"
           :media="item.card.media"
           :meta="item.card.meta"
+          :phone="item.card.phone"
           :stale="item.card.stale"
           :schedule="item.card.schedule"
           :lean="index % 2 === 0 ? 'left' : 'right'"

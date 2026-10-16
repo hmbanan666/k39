@@ -28,6 +28,7 @@
           :partner="item.partner"
           :stale="item.stale"
           :schedule="item.schedule"
+          :phone="item.phone"
           :lean="index % 2 === 0 ? 'left' : 'right'"
           track
         />
@@ -60,6 +61,7 @@ interface EatItem {
   stale: boolean
   media?: PublicMedia | null
   schedule?: ScheduleRecord | null
+  phone?: string | null
 }
 
 const props = withDefaults(defineProps<{

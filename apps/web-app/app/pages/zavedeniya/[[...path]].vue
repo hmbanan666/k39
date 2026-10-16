@@ -142,6 +142,7 @@
           :kind-label="item.kindLabel"
           :media="item.media"
           :meta="cardMeta(item)"
+          :phone="item.phone"
           :stale="item.stale"
           :schedule="item.schedule"
           :lean="index % 2 === 0 ? 'left' : 'right'"
@@ -185,6 +186,7 @@ interface ListingItem {
   cuisine: string[]
   price: string
   avgCheck: string
+  phone: string | null
   stale: boolean
   latitude: number | null
   longitude: number | null
