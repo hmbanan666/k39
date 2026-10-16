@@ -25,6 +25,52 @@ function syncedBody(data: { body?: string, sections?: unknown }): { body?: strin
   return {}
 }
 
+type ContentTx = Parameters<Parameters<ReturnType<typeof useDatabase>['transaction']>[0]>[0]
+
+function kept<T>(payload: Record<string, unknown>, key: string, fallback: T): T {
+  if (!Object.hasOwn(payload, key)) {
+    return fallback
+  }
+  return payload[key] as T
+}
+
+/**
+ * Live columns plus the pending payload. Sections are included only when the
+ * draft stored them, so a body-only draft is split on save instead of being
+ * overwritten by the live sections.
+ */
+function placeFromPending(existing: typeof places.$inferSelect, payload: Record<string, unknown>) {
+  const slug = typeof payload.slug === 'string' && payload.slug ? payload.slug : existing.slug
+  const title = typeof payload.title === 'string' && payload.title ? payload.title : existing.title
+  const next = {
+    slug,
+    title,
+    summary: kept(payload, 'summary', existing.summary),
+    body: kept(payload, 'body', existing.body),
+    status: kept(payload, 'status', existing.status),
+    hours: kept(payload, 'hours', existing.hours),
+    price: kept(payload, 'price', existing.price),
+    howToGet: kept(payload, 'howToGet', existing.howToGet),
+    latitude: kept(payload, 'latitude', existing.latitude),
+    longitude: kept(payload, 'longitude', existing.longitude),
+    categoryId: kept(payload, 'categoryId', existing.categoryId),
+    regionId: kept(payload, 'regionId', existing.regionId),
+    sources: kept(payload, 'sources', existing.sources),
+    seoTitle: kept(payload, 'seoTitle', existing.seoTitle),
+    seoDescription: kept(payload, 'seoDescription', existing.seoDescription),
+    ogImage: kept(payload, 'ogImage', existing.ogImage),
+    noindex: kept(payload, 'noindex', existing.noindex),
+    visitDuration: kept(payload, 'visitDuration', existing.visitDuration),
+    bestTime: kept(payload, 'bestTime', existing.bestTime),
+    faq: kept(payload, 'faq', existing.faq),
+    lastVerifiedAt: kept(payload, 'lastVerifiedAt', existing.lastVerifiedAt),
+    authorKind: kept(payload, 'authorKind', existing.authorKind),
+    publicationStatus: 'published' as const,
+  }
+  const sections = Object.hasOwn(payload, 'sections') ? { sections: payload.sections } : {}
+  return { ...next, ...syncedBody({ ...next, ...sections }) }
+}
+
 export class Content {
   static async redirects() {
     return useDatabase().select().from(slugRedirects)
@@ -480,6 +526,43 @@ export class Editor {
       eq(contentDrafts.entityType, entityType),
       eq(contentDrafts.entityId, entityId),
     ))
+  }
+
+  /**
+   * Writes a pending place draft onto the live row and removes the draft
+   * in one transaction (ADR 0035). Null when that draft is already gone.
+   */
+  static async applyPendingPlace(id: string) {
+    return useDatabase().transaction(async (tx) => {
+      const [draft] = await tx.select().from(contentDrafts).where(and(
+        eq(contentDrafts.entityType, 'place'),
+        eq(contentDrafts.entityId, id),
+      )).limit(1).for('update')
+      if (!draft) {
+        return null
+      }
+      const [existing] = await tx.select().from(places).where(eq(places.id, id)).limit(1)
+      if (!existing) {
+        return null
+      }
+      const next = placeFromPending(existing, draft.payload)
+      await tx.insert(revisions).values({
+        entityType: 'place',
+        entityId: existing.id,
+        snapshot: existing,
+        updatedBy: null,
+      })
+      if (existing.slug !== next.slug) {
+        await upsertRedirect(`/${existing.slug}`, `/${next.slug}`, tx)
+      }
+      const [updated] = await tx.update(places).set({
+        ...next,
+        updatedBy: null,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(places.id, existing.id)).returning()
+      await tx.delete(contentDrafts).where(eq(contentDrafts.id, draft.id))
+      return updated ?? null
+    })
   }
 
   static async recordMcpAudit(data: { tool: string, entityType?: string | null, entityId?: string | null }) {
@@ -1145,8 +1228,8 @@ async function syncGonePath(path: string, status: PublicationStatus) {
   }
 }
 
-async function upsertRedirect(fromPath: string, toPath: string) {
-  const db = useDatabase()
+async function upsertRedirect(fromPath: string, toPath: string, tx?: ContentTx) {
+  const db = tx ?? useDatabase()
   const [existing] = await db.select().from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
   if (!existing) {
     await db.insert(slugRedirects).values({ fromPath, toPath, statusCode: 301 })

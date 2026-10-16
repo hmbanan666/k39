@@ -3,7 +3,7 @@ import { setPublication } from '../../utils/mcp/publish'
 
 export default defineMcpTool({
   name: 'content_set_publication',
-  description: 'Publish, unpublish, or return to review a place, route, collection, or quest. draft is unpublished. published is live and enters the sitemap unless noindex. Same statuses as the admin form.',
+  description: 'Publish, unpublish, or return to review a place, route, collection, or quest. draft is unpublished. published is live and enters the sitemap unless noindex. Same statuses as the admin form. Publishing a place that has a pending draft, with no other fields, applies that payload to the live row and then deletes the draft. The same writer serves PATCH /api/content/places.',
   inputSchema: {
     entity: z.enum(['place', 'route', 'collection', 'quest']),
     id: z.string().optional(),
