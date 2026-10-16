@@ -18,6 +18,9 @@ export default antfu(
         multiline: 1,
       }],
       'ts/no-use-before-define': 'off',
+      // pnpm rewrites flow sequences with a space inside the brackets.
+      'yml/flow-sequence-bracket-spacing': ['error', 'always'],
+      'yml/flow-mapping-curly-spacing': ['error', 'always'],
     },
   },
   {
