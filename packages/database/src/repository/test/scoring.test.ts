@@ -79,6 +79,50 @@ describe('content scores', () => {
     expect(again?.audience).toBe('семьи')
     const reloaded = await Scoring.loadCatalog()
     expect(reloaded.passports[0]?.targetQueries).toEqual(['форт 11'])
+    expect(reloaded.passports[0]?.lengthOverride).toBeNull()
+  })
+
+  it('keeps a length override until it is cleared and sums search impressions', async () => {
+    await applyInitialContent()
+    const fort = (await Scoring.loadCatalog()).places.find((place) => place.slug === 'fort-11-denhoff')
+    const lengthOverride = {
+      ceiling: 12_000,
+      queries: ['форт 11'],
+      search: { impressions: 40, position: 8 },
+      competitors: [] as Array<{ query: string, chars: number }>,
+      sections: ['История', 'Как добраться'],
+      setAt: '2026-08-01T00:00:00.000Z',
+    }
+    await Scoring.upsertPassport({
+      pageType: 'place',
+      entityId: fort!.id,
+      path: '/fort-11-denhoff',
+      targetQueries: ['форт 11'],
+      lengthOverride,
+    })
+    const kept = await Scoring.upsertPassport({
+      pageType: 'place',
+      entityId: fort!.id,
+      path: '/fort-11-denhoff',
+      notes: 'заметка',
+    })
+    expect(kept?.lengthOverride).toEqual(lengthOverride)
+    expect(kept?.notes).toBe('заметка')
+    const cleared = await Scoring.upsertPassport({
+      pageType: 'place',
+      entityId: fort!.id,
+      path: '/fort-11-denhoff',
+      lengthOverride: null,
+    })
+    expect(cleared?.lengthOverride).toBeNull()
+    expect(cleared?.notes).toBe('заметка')
+
+    await useDatabase().insert(analyticsSearchQueries).values([
+      { day: '2026-10-01', engine: 'google', page: '/fort-11-denhoff', query: 'форт 11', impressions: 4, clicks: 1, position: 3 },
+      { day: '2026-10-02', engine: 'yandex', page: '/fort-11-denhoff', query: 'форт 11', impressions: 6, clicks: 2, position: 4 },
+    ])
+    const rows = await Scoring.searchQueriesSince('2026-09-01')
+    expect(rows.find((row) => row.query === 'форт 11')).toMatchObject({ impressions: 10, clicks: 3 })
   })
 
   it('stores lastVerifiedAt without rewriting the article', async () => {

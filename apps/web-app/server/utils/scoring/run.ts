@@ -1,6 +1,8 @@
+import type { LengthOverrideInput } from '../../../shared/length-override'
 import type { PageKind, PrimaryAction } from '../../../shared/scoring'
 import { db } from '@k39/database'
-import { buildWeeklyReport, filterScores, pageKindLabel, topIssue } from '../../../shared/scoring'
+import { lengthOverrideRejection, stampLengthOverride } from '../../../shared/length-override'
+import { buildWeeklyReport, filterScores, lengthNorm, pageKindLabel, topIssue } from '../../../shared/scoring'
 import { auditMcp } from '../mcp/audit'
 import { catalogPageRefs, scoresFromCatalog, toStored } from './assemble'
 
@@ -88,6 +90,7 @@ export interface ResolvedPage {
   path: string
   title: string
   slug: string
+  categorySlug: string | null
 }
 
 export async function readPassport(page: ResolvedPage) {
@@ -105,6 +108,7 @@ export async function readPassport(page: ResolvedPage) {
     goal30d: row?.goal30d ?? null,
     goal90d: row?.goal90d ?? null,
     notes: row?.notes ?? null,
+    lengthOverride: row?.lengthOverride ?? null,
   }
 }
 
@@ -115,7 +119,23 @@ export async function writePassport(page: ResolvedPage, input: {
   goal30d?: number | null
   goal90d?: number | null
   notes?: string | null
+  lengthOverride?: LengthOverrideInput | null
 }) {
+  let lengthOverride: Awaited<ReturnType<typeof stampLengthOverride>> | undefined
+  if (input.lengthOverride !== undefined) {
+    if (input.lengthOverride) {
+      const reason = page.pageType === 'venue'
+        ? 'Для заведения потолок длины не расширяется'
+        : lengthOverrideRejection(lengthNorm(page.pageType, page.categorySlug).max, input.lengthOverride)
+      if (reason) {
+        throw createError({ statusCode: 400, statusMessage: reason })
+      }
+    }
+    const previous = input.lengthOverride
+      ? (await db.scoring.findPassport(page.pageType, page.entityId))?.lengthOverride ?? null
+      : null
+    lengthOverride = stampLengthOverride(input.lengthOverride, previous)
+  }
   await db.scoring.upsertPassport({
     pageType: page.pageType,
     entityId: page.entityId,
@@ -126,6 +146,7 @@ export async function writePassport(page: ResolvedPage, input: {
     goal30d: input.goal30d,
     goal90d: input.goal90d,
     notes: input.notes,
+    ...(lengthOverride !== undefined ? { lengthOverride } : {}),
   })
   return readPassport(page)
 }
@@ -133,12 +154,12 @@ export async function writePassport(page: ResolvedPage, input: {
 export async function resolveScoredPage(input: { path?: string, pageType?: PageKind, slug?: string }): Promise<ResolvedPage | null> {
   const catalog = await db.scoring.loadCatalog()
   const pages: ResolvedPage[] = [
-    ...catalog.places.map((row) => ({ pageType: 'place' as const, entityId: row.id, path: `/${row.slug}`, title: row.title, slug: row.slug })),
-    ...catalog.routes.map((row) => ({ pageType: 'route' as const, entityId: row.id, path: `/marshruty/${row.slug}`, title: row.title, slug: row.slug })),
-    ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}`, title: row.title, slug: row.slug })),
-    ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}`, title: row.title, slug: row.slug })),
-    ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}`, title: row.title, slug: row.slug })),
-    ...catalog.venues.map((row) => ({ pageType: 'venue' as const, entityId: row.id, path: `/zavedeniya/${row.slug}`, title: row.name, slug: row.slug })),
+    ...catalog.places.map((row) => ({ pageType: 'place' as const, entityId: row.id, path: `/${row.slug}`, title: row.title, slug: row.slug, categorySlug: row.categorySlug })),
+    ...catalog.routes.map((row) => ({ pageType: 'route' as const, entityId: row.id, path: `/marshruty/${row.slug}`, title: row.title, slug: row.slug, categorySlug: null })),
+    ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}`, title: row.title, slug: row.slug, categorySlug: null })),
+    ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}`, title: row.title, slug: row.slug, categorySlug: null })),
+    ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}`, title: row.title, slug: row.slug, categorySlug: row.slug })),
+    ...catalog.venues.map((row) => ({ pageType: 'venue' as const, entityId: row.id, path: `/zavedeniya/${row.slug}`, title: row.name, slug: row.slug, categorySlug: row.kind })),
   ]
   if (input.path) {
     const path = normalizePath(input.path)

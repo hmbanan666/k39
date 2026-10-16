@@ -3,7 +3,7 @@ import { auditedScore, refreshContentScores, weeklyContentReport } from '../../u
 
 export default defineMcpTool({
   name: 'content_report_weekly',
-  description: 'Weekly content report: average score versus the snapshot from seven days ago, top and bottom pages, pages under their organic goal, and the largest drops. refresh true recomputes today first.',
+  description: 'Weekly content report: average score versus the snapshot from seven days ago, top and bottom pages, pages under their organic goal, the largest drops, and pages with a length override plus their organic visits and search impressions. refresh true recomputes today first.',
   inputSchema: {
     refresh: z.boolean().optional(),
   },

@@ -266,6 +266,7 @@ export class Scoring {
         goal30d: row.goal30d,
         goal90d: row.goal90d,
         notes: row.notes,
+        lengthOverride: row.lengthOverride ?? null,
       })),
     }
   }
@@ -334,9 +335,27 @@ export class Scoring {
 
   static async searchQueriesSince(day: string) {
     const result = await useDatabase().execute(sql`
-      select page, query from analytics_search_queries where day >= ${day}::date
+      select page, query,
+        sum(impressions)::int as impressions,
+        sum(clicks)::int as clicks
+      from analytics_search_queries
+      where day >= ${day}::date
+      group by page, query
     `)
-    return rowsOf<{ page: string, query: string }>(result)
+    return rowsOf<{ page: string, query: string, impressions: number, clicks: number }>(result).map((row) => ({
+      page: row.page,
+      query: row.query,
+      impressions: num(row.impressions),
+      clicks: num(row.clicks),
+    }))
+  }
+
+  static async findPassport(pageType: PageKind, entityId: string) {
+    const [row] = await useDatabase().select().from(pagePassports).where(and(
+      eq(pagePassports.pageType, pageType),
+      eq(pagePassports.entityId, entityId),
+    )).limit(1)
+    return row ?? null
   }
 
   static async upsertPassport(input: PassportWrite) {
@@ -357,6 +376,7 @@ export class Scoring {
         goal30d: input.goal30d ?? null,
         goal90d: input.goal90d ?? null,
         notes: blank(input.notes),
+        lengthOverride: input.lengthOverride ?? null,
       }).returning()
       return row!
     }
@@ -368,6 +388,7 @@ export class Scoring {
       goal30d: input.goal30d === undefined ? existing.goal30d : input.goal30d,
       goal90d: input.goal90d === undefined ? existing.goal90d : input.goal90d,
       notes: input.notes === undefined ? existing.notes : blank(input.notes),
+      lengthOverride: input.lengthOverride === undefined ? existing.lengthOverride : input.lengthOverride,
       updatedAt: sql`now()`,
     }).where(eq(pagePassports.id, existing.id)).returning()
     return row!
