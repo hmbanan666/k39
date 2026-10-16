@@ -28,7 +28,8 @@ RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-l
     && corepack prepare pnpm@10.25.0 --activate
 
 # /exec-daemon/node is the platform Node 22 and precedes /usr/local/bin.
-# Login shells source this file, so `node` is 24 before that path.
+# Login shells source this file. Agent shells do not, so scripts/env/node-path.sh
+# also links Node 24 into the PATH directory ahead of /exec-daemon on boot.
 RUN printf '%s\n' \
       'export PATH="/usr/local/bin:${PATH}"' \
       'export NUXT_TELEMETRY_DISABLED=1' \

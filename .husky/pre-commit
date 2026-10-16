@@ -1,1 +1,4 @@
-lint-staged
+#!/bin/sh
+root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+node "$root/scripts/check-repo.mjs"
+"$root/node_modules/.bin/lint-staged"

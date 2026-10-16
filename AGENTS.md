@@ -68,9 +68,9 @@ Site search (ADR 0030) is Postgres full-text (`russian`) plus `pg_trgm` over the
 - UI copy and place, quest, and legal content: Russian. Docs, ADRs, this file, the README, and code comments: English. Do not use em dashes in UI chrome or in the HTML title. The title pattern is `{title} | K39`, or `{seoTitle} | K39` when that field is set. Do not append a second type word.
 - No hacks. Prefer a long-term solution in the existing architecture.
 - The public site is simple server-rendered HTML for bots and people.
-- Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). Husky runs lint-staged and commitlint. The body line limit is 100 characters. Do not add a `Co-authored-by` trailer. `scripts/git/strip-coauthor.sh` removes one that a cloud VM appends after the commit-msg hook, and CI rejects a commit that still has it.
+- Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). The pre-commit hook runs `check:repo` and lint-staged. commitlint rejects a body line over 100 characters and prints a wrap example. Do not add a `Co-authored-by` trailer. `pnpm install` runs `scripts/git/chain-hooks.mjs`, which keeps `core.hooksPath` on the cloud commit-msg dispatcher and points that dispatcher at `.husky`, so the secrets scanner still runs. The cloud hook set has no `post-commit` name, so the script adds one. The dispatcher appends the trailer after the repository `commit-msg` hook, and that `post-commit` runs `scripts/git/strip-coauthor.sh`. CI rejects a commit that still has the trailer.
 - Architecture decisions: `docs/adr/NNNN-title.md`. The index and the heading template are `docs/adr/README.md`. Numbers are unique. Fetch `origin/main` and take the next number from that index. Land the ADR on `main` before the implementation PR. A new `verification_queue` reason is added to `QUEUE_REASONS`, the check constraint, and ADR 0033 in the same change.
-- Migrations: `packages/database/migrations/REGISTRY.md`. Fetch `origin/main` and take the next prefix. Drizzle snapshots stop at `0003`, so `db:generate` does not choose the number. CI rejects a duplicate prefix.
+- Migrations: `packages/database/migrations/REGISTRY.md`. Fetch `origin/main` and take the next prefix. Drizzle snapshots stop at `0003`, so `db:generate` does not choose the number. CI and the pre-commit hook run `check:repo`, so a missing registry row fails before the commit.
 - Admin fetch: pages that load or save during setup use `useRequestFetch()`, as `PlaceForm.vue` does. That forwards the session cookie and the request host during server render. Do not import `ofetch` for an admin URL. A relative `ofetch('/api/admin/...')` has no base URL on the server and does not send the incoming cookie. A button handler after hydration may use `$fetch`.
 - Unhead dedupes `<link>` on `rel` and `href` unless each tag has its own `key`. `brandHeadLinks` in `shared/seo.ts` keeps distinct keys for the two `favicon.ico` links.
 - Facts: the claim, the column, the source kind, and the freshness window are `docs/facts.md`. Do not copy that table.
@@ -103,7 +103,11 @@ git fetch origin main
 git checkout -B <branch> origin/main
 ```
 
-Fetch again and rebase onto `origin/main` before opening the pull request. Node is 24.21.0 (`.nvmrc`, the same version as the web image). Postgres 18 is local. `DATABASE_URL` is the dev database `k39`. `DATABASE_URL_TEST` is `k39_test`. Playwright Chromium is installed during the environment build. `pnpm dev` binds `0.0.0.0:3000` with telemetry off, so `curl http://127.0.0.1:3000` reaches it and the process does not wait on a prompt.
+Before the first edit, and again when a follow-up says the branch was updated, run `bash scripts/git/sync-branch.sh`. It fetches `origin` and fast-forwards the current branch when that is a fast-forward. Local commits stay. Boot runs the same script (`.cursor/start.sh`). The platform does not wait for that script, so the command above is what an agent can rely on. Fetch again and rebase onto `origin/main` before opening the pull request.
+
+Node is 24.21.0 (`.nvmrc`, the same version as the web image). `scripts/env/node-path.sh` runs on install and on boot. It puts that Node ahead of `/exec-daemon/node` for shells that do not source `/etc/profile.d`. Postgres 18 is local. `DATABASE_URL` is the dev database `k39`. `DATABASE_URL_TEST` is `k39_test`. Playwright Chromium is installed during the environment build. `pnpm dev` binds `0.0.0.0:3000` with telemetry off, so `curl http://127.0.0.1:3000` reaches it and the process does not wait on a prompt.
+
+An editor session without OAuth exists only for local `nuxt dev`. Start the server with `DEV_EDITOR_SESSION=1`. It writes a token file under the temp directory, mode 0600. `pnpm dev:editor-session` prints `http://127.0.0.1:3000/api/dev/editor-session?token=...`. Open that URL. The route returns 404 unless every guard holds: the process is `nuxt dev` (`import.meta.dev`), `NODE_ENV` is not `production`, `DEV_EDITOR_SESSION` is exactly `1`, the token matches the file, `Host` is loopback, and a socket address, when the dev proxy provides one, is loopback. A production build does not write the token and cannot mint the session. The seeded user is `dev-editor@localhost` with the editor role.
 
 The task prompt that launches an agent is not a file in this repo. The fetch above is what this repo can enforce.
 
@@ -118,7 +122,7 @@ pnpm media:rebuild
 
 `pnpm media:rebuild` regenerates photo variants from masters already on disk. It needs `DATABASE_URL` and `MEDIA_DIR`.
 
-Dev server: http://127.0.0.1:3000. `nuxt dev` listens on `0.0.0.0` and sets `telemetry: false`, so it does not prompt and it answers IPv4 localhost. Public pages need `DATABASE_URL`. The plugin migrates and seeds before serving traffic.
+Dev server: http://127.0.0.1:3000. `nuxt dev` listens on `0.0.0.0` and sets `telemetry: false`, so it does not prompt and it answers IPv4 localhost. Public pages need `DATABASE_URL`. The plugin migrates and seeds before serving traffic. With `DEV_EDITOR_SESSION=1`, `pnpm dev:editor-session` prints a loopback URL that signs in a local editor and redirects to `/admin`. A production build does not serve that session.
 
 Generate a new migration after a schema change, then take the next prefix from `packages/database/migrations/REGISTRY.md` on `origin/main` and add the row:
 
@@ -143,12 +147,12 @@ Target: Dokploy.
 
 - Dockerfile: `docker/web-app/Dockerfile`. `nuxt build` copies `apps/web-app/public` into `.output/public`, and that directory is what the image serves. Brand URLs cache for a week. `site.webmanifest` caches for a day.
 - Build context: repository root
-- The image enables pnpm with Corepack at the version in `packageManager` (`pnpm@10.25.0`). Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`.
+- The image enables pnpm with Corepack at the version in `packageManager` (`pnpm@10.25.0`). Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`. The builder copies `scripts/git/chain-hooks.mjs` before `pnpm install`, because `prepare` runs it and the image context has no `.git`.
 - The container runs as the image's `node` user (uid 1000). `node:24-alpine` already owns that uid, so the Dockerfile does not create another user. Mount a volume at `MEDIA_DIR` (`/app/media`) or uploads disappear on redeploy.
 - CI job `docker` in `.github/workflows/ci.yml` runs that image build on pull requests.
 - Port: 3000
 - Auto-deploy: push to `main`
-- Required env: `DATABASE_URL`, `NUXT_SESSION_PASSWORD` (32+ characters), `NODE_ENV=production`
+- Required env: `DATABASE_URL`, `NUXT_SESSION_PASSWORD` (32+ characters), `NODE_ENV=production`. `DEV_EDITOR_SESSION` is local `nuxt dev` only. A production build ignores it.
 - Optional env: OAuth client id/secret pairs, `ADMIN_EMAILS`, `CONTENT_API_TOKEN`, `CONTENT_DRAFT_TOKEN`, `NUXT_PUBLIC_YANDEX_MAPS_API_KEY`, `NUXT_PUBLIC_PMTILES_URL` (https override only), `NUXT_BASEMAP_FILE`, `BASEMAP_SOURCE_URL`, `BASEMAP_SHA256`, `NUXT_PUBLIC_YANDEX_VERIFICATION`, `NUXT_PUBLIC_GOOGLE_VERIFICATION`, `CLAIM_EMAIL_URL`, `CLAIM_SMS_URL`, `CLAIM_DELIVERY_TOKEN`. The basemap source and hash have defaults in the image. Claim code delivery stays off until those URLs are set. The draft token is the one cloud agents use. See ADR 0035.
 - Volume: mount a writable directory at `/app/basemap` so the downloaded PMTiles file survives a redeploy. The file is not in the image. The map still loads from OpenFreeMap when the file is absent.
 - Volume: mount a writable directory at `MEDIA_DIR` (image default `/app/media`, process uid 1000). Without the volume, uploads vanish on redeploy.

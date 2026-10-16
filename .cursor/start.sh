@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Runs on every agent boot. Postgres and a fresh origin/main, then exit.
+# Runs on every agent boot. Node on PATH, a fetched branch, then Postgres.
+# The platform does not wait for this script. Agents also run
+# scripts/git/sync-branch.sh before editing. See AGENTS.md.
 set -euo pipefail
-export PATH="/usr/local/bin:${PATH}"
 cd "$(git rev-parse --show-toplevel)"
+
+bash scripts/env/node-path.sh
+bash scripts/git/sync-branch.sh
 
 if command -v pg_lsclusters >/dev/null 2>&1; then
   if ! pg_lsclusters --no-header | awk '{print $1,$2}' | grep -qx '18 main'; then
@@ -33,7 +37,5 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 -tc "select 1 from pg_database where da
 sudo -u postgres psql -v ON_ERROR_STOP=1 -tc "select 1 from pg_database where datname='k39_test'" | grep -q 1 \
   || sudo -u postgres psql -v ON_ERROR_STOP=1 -c "create database k39_test owner k39"
 
-# Best effort: a missing credential must not block the rest of boot.
-git fetch origin main || echo 'git fetch origin main failed; fetch again before branching' >&2
-
 install -m 0755 scripts/git/post-commit .git/hooks/post-commit
+node scripts/git/chain-hooks.mjs
