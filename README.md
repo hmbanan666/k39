@@ -23,7 +23,7 @@ pnpm test
 pnpm run build
 ```
 
-Database tests use `DATABASE_URL` when it points at localhost. Otherwise they start Postgres with Testcontainers (Docker).
+Database tests use `DATABASE_URL_TEST` when it is set. A local `DATABASE_URL` is rewritten to a sibling database whose name ends with `_test`, so the dev database is not dropped. With no URL, tests start Postgres with Testcontainers (Docker).
 
 ## Deploy
 

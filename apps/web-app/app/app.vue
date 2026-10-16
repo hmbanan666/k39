@@ -4,7 +4,7 @@
       <NuxtPage />
     </NuxtLayout>
     <ClientOnly>
-      <CookieNotice />
+      <CookieNotice v-if="showCookieNotice(route.path)" />
       <UiToast />
     </ClientOnly>
   </TooltipProvider>
@@ -12,8 +12,10 @@
 
 <script setup lang="ts">
 import { TooltipProvider } from 'reka-ui'
+import { showCookieNotice } from '~~/shared/cookie-notice'
 import { verificationMeta } from '~~/shared/seo'
 
+const route = useRoute()
 const config = useRuntimeConfig()
 const meta = verificationMeta(
   String(config.public.yandexVerification || ''),

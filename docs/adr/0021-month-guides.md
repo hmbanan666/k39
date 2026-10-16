@@ -1,4 +1,4 @@
-# 0021. Month guides as a collection kind
+# ADR 0021: Month guides as a collection kind
 
 ## Status
 

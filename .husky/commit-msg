@@ -1,1 +1,6 @@
-commitlint --edit ${1}
+#!/bin/sh
+# Drop a trailer that is already in the message, then lint.
+# The cloud VM appends Co-authored-by after this hook. post-commit removes that copy.
+sed -i '/^[Cc]o-authored-by:/d' "$1"
+sed -i -e :a -e '/^[[:space:]]*$/{$d;N;ba' -e '}' "$1"
+commitlint --edit "$1"

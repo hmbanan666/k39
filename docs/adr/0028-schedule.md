@@ -1,4 +1,4 @@
-# 0028. One schedule primitive for every entity
+# ADR 0028: One schedule primitive for every entity
 
 Status: accepted
 

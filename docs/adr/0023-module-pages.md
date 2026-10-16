@@ -1,4 +1,4 @@
-# 0023. Pages built from modules, with a chip picker
+# ADR 0023: Pages built from modules, with a chip picker
 
 ## Status
 

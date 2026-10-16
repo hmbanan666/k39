@@ -3,7 +3,11 @@ import { tablerIconList } from './shared/icons'
 import { brandHeadLinks } from './shared/seo'
 
 export default defineNuxtConfig({
+  // Opt out in config so `nuxt dev` does not wait on the telemetry prompt.
+  telemetry: false,
   devServer: {
+    // 0.0.0.0 answers 127.0.0.1. The default host is localhost, which binds ::1 only.
+    host: '0.0.0.0',
     port: 3000,
   },
   css: ['~/assets/css/tokens.css', '~/assets/css/base.css', '~/assets/css/styles.css'],
