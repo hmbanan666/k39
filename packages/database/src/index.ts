@@ -1,6 +1,7 @@
 export * from './body-sections'
 export * from './claims'
 export * from './database'
+export { PHONE_TEXT_MAX } from './phone'
 export { repository as db } from './repository'
 export type { FactRefWrite, FactWrite, QueueWrite } from './repository/facts'
 export { normalizePriceItemImage, PRICE_FRESH_DAYS } from './repository/prices'

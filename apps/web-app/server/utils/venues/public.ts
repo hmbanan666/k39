@@ -37,6 +37,7 @@ import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../
 import { dishMenuNode, toPublicVenueModules } from '../../../shared/venue-modules'
 import { FACT_UNKNOWN, omitFactGap, readShownFacts } from '../facts/read'
 import { loadSchedule } from '../schedule'
+import { projectMenuPrices } from './menu-prices'
 
 export function sponsoredVenuesEnabled() {
   return process.env.FEATURE_SPONSORED_VENUES === 'true'
@@ -200,17 +201,24 @@ async function loadVenue(slug: string) {
   const closed = Boolean(closedNote)
   const missingDescription = descriptionLength(venue.description) === 0
   const freshPrices = await db.prices.freshForVenue(venue.id)
-  const peerLists = await Promise.all([...new Set(freshPrices.map((row) => row.item))].map(async (slug) => {
-    const peers = await db.prices.forItem(slug)
-    return [slug, peers] as const
-  }))
+  const ownPrices = (await projectMenuPrices(freshPrices.map((row) => ({ ...row, venueId: venue.id })))).map((item) => item.row)
+  const peerRows = (await Promise.all([...new Set(ownPrices.map((row) => row.item))].map((slug) => db.prices.forItem(slug)))).flat()
+  const peersByItem: Record<string, typeof peerRows> = {}
+  for (const item of await projectMenuPrices(peerRows)) {
+    if (!item.comparable) {
+      continue
+    }
+    const list = peersByItem[item.row.item] ?? []
+    list.push(item.row)
+    peersByItem[item.row.item] = list
+  }
   const prices = buildPublicPrices({
     venueId: venue.id,
     venueSlug: venue.slug,
     regionId: venue.regionId,
     regionSlug: region?.slug ?? null,
-    rows: freshPrices,
-    peersByItem: Object.fromEntries(peerLists),
+    rows: ownPrices,
+    peersByItem,
   })
   const mediaById = new Map(photos.map((photo) => [photo.id, photo]))
   const modules = toPublicVenueModules(moduleSource, renderMarkdown, prices, {

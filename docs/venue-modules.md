@@ -122,12 +122,16 @@ Under the heading, one line says what the block is, for example «Сравнив
 с другими заведениями Светлогорска». The town is the genitive from the venue.
 Without a known town it says «региона».
 
-The comparison is computed on the server from `db.prices.forItem`. That query
-keeps published venues only (drafts, closed and archived are out), checked
-within a year, in the same region. One price per venue: the same portion when
-that venue has it, otherwise its cheapest fresh price. The card uses its own
-price. The same published count is what `/ceny` uses for `noindex` and the
-sitemap (`PRICE_INDEX_MIN`, five venues).
+The comparison is computed on the server from `db.prices.forItem`, then the
+price fact when that row is cited (ADR 0033). Published venues only (drafts,
+closed and archived are out), checked within a year, in the same region.
+Peers are official menu rows: `sourceKind` official and a menu URL on the
+venue's site. An owner price stays on this card and is not a peer. Packaged
+or bottled orange juice is not the catalog row. One price per venue: the
+same portion when that venue has it, otherwise its cheapest fresh official
+price. The card uses its own price. `/ceny` and `/gde-deshevle` use that
+sample. A listing is omitted below three venues (`PRICE_COMPARE_MIN`) and
+stays `noindex` and out of the sitemap below five (`PRICE_INDEX_MIN`).
 
 The row that is visible at rest is the picture, the name, the portion, the
 price, and the comparison scale. The detail sits in the HTML and opens as a
@@ -194,12 +198,22 @@ under the grid.
 The whole card is one link to `/ceny/{slug}/{region}?from={venueSlug}` (or
 `/ceny/{slug}?from=` when the venue has no region), for example
 `/ceny/cappuccino/svetlogorsk?from=bochka-pab`. The listing title is
-«Капучино в Светлогорске». Venues are cheapest first. `?from=` highlights
-that venue with «Это заведение» and is server-rendered. The clean URL stays
-the canonical. A query other than paging or a tracking parameter is `noindex`,
-so the highlighted URL is not a second indexable page. The listing stays
-`noindex` and out of the sitemap until at least 5 published venues are in
+«Капучино в Светлогорске». Venues are cheapest first, each with its portion.
+The page shows the median, the range, and when the prices were checked.
+One source line under the list names the menu URL used by the most prices
+on that page, then the latest day among those prices, then «Цены могли
+измениться». `?from=` highlights that venue with «Это заведение» and is
+server-rendered. The clean URL stays the canonical. A query other than
+paging or a tracking parameter is `noindex`, so the highlighted URL is not
+a second indexable page. The page is not rendered below 3 comparable
+venues. It stays `noindex` and out of the sitemap until at least 5 are in
 the list. `ceny` is a reserved place slug.
+
+`/gde-deshevle` lists cities that have at least one such item.
+`/gde-deshevle/{region}` lists those items with the median, the range, and
+the number of places. A city page is indexable when the city has at least
+5 venues with a fresh official menu price, including venues whose item does
+not yet have three prices. ADR 0035.
 
 ## Listing modules
 

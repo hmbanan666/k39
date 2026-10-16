@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import CheaperPage from '../app/components/CheaperPage.vue'
 import PriceListing from '../app/components/PriceListing.vue'
 import Sticker from '../app/components/Sticker.vue'
 import VenueModules from '../app/components/VenueModules.vue'
@@ -7,10 +8,14 @@ import { TABLER_ICONS } from '../shared/icons'
 import {
   buildPublicPrices,
   byTown,
+  cheaperCityMeta,
   compareVenuePrice,
   formatTownRange,
+  groupCheaperSamples,
   indexablePriceLocs,
   inPlace,
+  isMenuUrl,
+  isPackagedJuice,
   isPriceIndexable,
   knownPortion,
   ofTown,
@@ -27,13 +32,17 @@ import {
   priceBlockSummary,
   priceCardTap,
   priceCompareLead,
+  priceFreshnessText,
   priceItemIcon,
   priceItemImage,
   priceItemSticker,
   priceListingMeta,
   priceListNode,
+  priceSampleStats,
+  resolveMenuPrice,
   safePriceImage,
   sharedPriceSource,
+  showsPriceSample,
 } from '../shared/price-compare'
 import { collectionDocument, schemaProblems } from '../shared/seo'
 import { presentVenueBlocks, toPublicVenueModules } from '../shared/venue-modules'
@@ -734,5 +743,205 @@ describe('price cards', () => {
     expect(rows[1]?.classes()).toContain('current')
     expect(rows[1]?.text()).toContain('Бочка')
     expect(rows[1]?.text()).toContain('Это заведение')
+  })
+
+  it('prints the median, the range, one menu link, and the check dates', () => {
+    const doc = collectionDocument({
+      path: '/ceny/cappuccino/svetlogorsk',
+      h1: 'Капучино в Светлогорске',
+      summary: 'Капучино в Светлогорске: свежие цены.',
+      seoTitle: 'Капучино в Светлогорске: цены',
+      crumbName: 'список',
+      parent: { name: 'Светлогорск', href: '/gde-deshevle/svetlogorsk' },
+      items: [],
+      kind: 'CollectionPage',
+    })
+    const venue = {
+      kindLabel: 'Кафе',
+      media: null,
+      schedule: null,
+      stale: false,
+      meta: '',
+      phone: null,
+      variant: '300 мл',
+    }
+    const wrapper = mount(PriceListing, {
+      props: {
+        page: {
+          doc,
+          item: { slug: 'cappuccino', title: 'Капучино', image: null, sticker: 'cappuccino' },
+          regionSlug: 'svetlogorsk',
+          towns: [],
+          oblastHref: '/ceny/cappuccino',
+          stats: {
+            medianRub: 220,
+            minRub: 180,
+            maxRub: 260,
+            places: 3,
+            freshness: 'Проверено с 2 октября 2026 г. по 15 октября 2026 г.',
+            source: { title: 'Меню на сайте заведения', url: 'https://cafe.example/menu', date: '2026-10-15' },
+          },
+          items: [
+            { ...venue, href: '/zavedeniya/a', slug: 'a', name: 'Первое', priceLabel: '180 ₽' },
+            { ...venue, href: '/zavedeniya/b', slug: 'b', name: 'Второе', priceLabel: '220 ₽' },
+            { ...venue, href: '/zavedeniya/c', slug: 'c', name: 'Третье', priceLabel: '260 ₽' },
+          ],
+        },
+      },
+      global: {
+        components: { Sticker },
+        stubs: {
+          PageHeader: { template: '<header><h1>{{ h1 }}</h1></header>', props: ['h1'] },
+          VenueCard: { props: ['name'], template: '<a class="card"><span>{{ name }}</span><slot /></a>' },
+          UiLink: { props: ['href'], template: '<a class="menu" :href="href"><slot /></a>' },
+        },
+      },
+    })
+    expect(wrapper.text()).toContain('Медиана')
+    expect(wrapper.text()).toContain('220 ₽')
+    expect(wrapper.text()).toContain('180–260 ₽')
+    expect(wrapper.text()).toContain('Проверено с 2 октября 2026 г. по 15 октября 2026 г.')
+    const menus = wrapper.findAll('a.menu')
+    expect(menus).toHaveLength(1)
+    expect(menus[0]?.attributes('href')).toBe('https://cafe.example/menu')
+    expect(wrapper.text()).toContain('Цены могли измениться.')
+    expect(wrapper.text()).not.toContain('—')
+  })
+})
+
+describe('where cheaper samples', () => {
+  const column = {
+    venueId: 'v',
+    item: 'cappuccino',
+    variant: '300 мл',
+    priceRub: 200,
+    checkedAt: '2026-10-01',
+    sourceKind: 'official',
+    sourceTitle: 'Меню на сайте заведения',
+    sourceUrl: 'https://cafe.example/menu',
+  }
+
+  it('keeps an official menu price and drops juice from a carton, a gap, and a social url', () => {
+    expect(showsPriceSample(2)).toBe(false)
+    expect(showsPriceSample(3)).toBe(true)
+    expect(isPackagedJuice('orange-juice', 'из пакета')).toBe(true)
+    expect(isPackagedJuice('orange-juice', 'бутылка, 0,2 л')).toBe(true)
+    expect(isPackagedJuice('orange-juice', 'свежевыжатый, 250 мл')).toBe(false)
+    expect(isPackagedJuice('beer', 'бутылка, 0,33 л')).toBe(false)
+    expect(isMenuUrl('https://cafe.example/menu.pdf')).toBe(true)
+    expect(isMenuUrl('https://vk.com/cafe')).toBe(false)
+    expect(isMenuUrl('https://yandex.ru/maps/org/1')).toBe(false)
+    const kept = resolveMenuPrice(column, null, '2025-10-01')
+    expect(kept?.comparable).toBe(true)
+    expect(kept?.row.priceRub).toBe(200)
+    const fact = resolveMenuPrice(column, {
+      confidence: 'stated',
+      sourceKind: 'official',
+      sourceUrl: 'https://cafe.example/menu',
+      sourceTitle: 'Меню на сайте заведения',
+      checkedAt: '2026-10-12',
+      value: { itemSlug: 'cappuccino', variant: '300 мл', priceRub: 240 },
+    }, '2025-10-01')
+    expect(fact?.row.priceRub).toBe(240)
+    expect(fact?.row.checkedAt).toBe('2026-10-12')
+    expect(resolveMenuPrice(column, {
+      confidence: 'gap',
+      sourceKind: 'none',
+      sourceUrl: null,
+      sourceTitle: null,
+      checkedAt: null,
+      value: { itemSlug: 'cappuccino', variant: '300 мл', priceRub: 240 },
+    }, '2025-10-01')).toBeNull()
+    expect(resolveMenuPrice({ ...column, item: 'orange-juice', variant: 'из пакета' }, null, '2025-10-01')).toBeNull()
+    expect(resolveMenuPrice(column, {
+      confidence: 'stated',
+      sourceKind: 'official_social',
+      sourceUrl: 'https://vk.com/cafe',
+      sourceTitle: 'Пост',
+      checkedAt: '2026-10-01',
+      value: { priceRub: 210, variant: '300 мл' },
+    }, '2025-10-01')).toBeNull()
+    const owner = resolveMenuPrice({ ...column, sourceKind: 'owner', sourceUrl: null }, null, '2025-10-01')
+    expect(owner?.comparable).toBe(false)
+    expect(owner?.row.priceRub).toBe(200)
+    expect(resolveMenuPrice({ ...column, checkedAt: '2024-01-01' }, null, '2025-10-01')).toBeNull()
+    expect(priceFreshnessText(['2026-10-02', '2026-10-15', '2026-10-02'])).toContain('по')
+    expect(priceSampleStats([180, 220, 260])).toMatchObject({ medianRub: 220, minRub: 180, maxRub: 260 })
+  })
+
+  it('shows a city from three venues and indexes it from five', () => {
+    const point = (regionSlug: string, itemSlug: string, venueId: string, priceRub: number) => ({
+      regionSlug,
+      itemSlug,
+      itemTitle: itemSlug,
+      itemSort: 1,
+      itemImage: null,
+      venueId,
+      priceRub,
+      checkedAt: '2026-10-01',
+      variant: '300 мл',
+      sourceTitle: 'Меню',
+      sourceUrl: 'https://cafe.example/menu',
+    })
+    const svetlogorsk = [
+      ...['a', 'b', 'c', 'd', 'e'].map((id, index) => point('svetlogorsk', 'cappuccino', id, 180 + index)),
+      ...['f', 'g', 'h'].map((id, index) => point('svetlogorsk', 'borscht', id, 300 + index)),
+      point('svetlogorsk', 'tea', 'i', 100),
+      point('svetlogorsk', 'tea', 'j', 120),
+    ]
+    const zelenogradsk = ['k', 'l', 'm', 'n'].map((id, index) => point('zelenogradsk', 'cappuccino', id, 200 + index))
+    const yantarny = [point('yantarnyy', 'latte', 'p', 220), point('yantarnyy', 'latte', 'q', 240)]
+    const grouped = groupCheaperSamples([...svetlogorsk, ...zelenogradsk, ...yantarny])
+    const svet = grouped.cities.find((city) => city.slug === 'svetlogorsk')
+    expect(svet?.items.map((item) => item.slug).sort()).toEqual(['borscht', 'cappuccino'])
+    expect(svet?.venueCount).toBe(10)
+    expect(isPriceIndexable(svet?.venueCount ?? 0)).toBe(true)
+    const zelen = grouped.cities.find((city) => city.slug === 'zelenogradsk')
+    expect(zelen?.items).toHaveLength(1)
+    expect(zelen?.items[0]?.count).toBe(4)
+    expect(isPriceIndexable(zelen?.venueCount ?? 0)).toBe(false)
+    expect(grouped.cities.some((city) => city.slug === 'yantarnyy')).toBe(false)
+    expect(cheaperCityMeta({ regionSlug: 'zelenogradsk', regionName: 'Зеленоградск', venueCount: 4 }).noindex).toBe(true)
+    expect(cheaperCityMeta({ regionSlug: 'svetlogorsk', regionName: 'Светлогорск', venueCount: 10 }).noindex).toBe(false)
+    expect(cheaperCityMeta({ regionSlug: 'svetlogorsk', regionName: 'Светлогорск', venueCount: 10 }).h1).toBe('Где дешевле в Светлогорске')
+    expect(cheaperCityMeta({ regionSlug: 'svetlogorsk', regionName: 'Светлогорск', venueCount: 10 }).h1).not.toContain('—')
+    const page = mount(CheaperPage, {
+      props: {
+        page: {
+          doc: collectionDocument({
+            path: '/gde-deshevle/svetlogorsk',
+            h1: 'Где дешевле в Светлогорске',
+            summary: 'Где дешевле в Светлогорске. Позиции из официальных меню.',
+            seoTitle: 'Где дешевле в Светлогорске',
+            crumbName: 'список',
+            parent: { name: 'Где дешевле', href: '/gde-deshevle' },
+            items: [],
+            kind: 'CollectionPage',
+          }),
+          regionSlug: 'svetlogorsk',
+          cities: [{ slug: 'svetlogorsk', title: 'Светлогорск', href: '/gde-deshevle/svetlogorsk', places: '6 мест', venueCount: 6 }],
+          items: [{
+            slug: 'cappuccino',
+            title: 'Капучино',
+            href: '/ceny/cappuccino/svetlogorsk',
+            image: null,
+            sticker: 'cappuccino',
+            medianRub: 250,
+            minRub: 180,
+            maxRub: 320,
+            places: '6 мест',
+          }],
+        },
+      },
+      global: {
+        components: { Sticker },
+        stubs: { PageHeader: { template: '<header><h1>{{ h1 }}</h1><p>{{ lede }}</p></header>', props: ['h1', 'lede'] } },
+      },
+    })
+    expect(page.text()).toContain('Капучино')
+    expect(page.text()).toContain('250 ₽')
+    expect(page.text()).toContain('180–320 ₽, 6 мест')
+    expect(page.get('a[href="/ceny/cappuccino/svetlogorsk"]').exists()).toBe(true)
+    expect(page.text()).not.toContain('—')
   })
 })

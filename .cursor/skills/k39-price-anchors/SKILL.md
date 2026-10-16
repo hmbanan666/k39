@@ -55,7 +55,7 @@ Constants in `shared/price-compare.ts`. Do not change a badge by hand. `venue_up
 | Constant | Value | Effect |
 | --- | --- | --- |
 | `PRICE_COMPARE_MIN` | 3 | Colored scale needs this many published venues in the town sample. Below that the verdict is «Пока единственная цена» or «Пока мало данных для сравнения». |
-| `PRICE_INDEX_MIN` | 5 | `/ceny/{slug}/{region}` stays `noindex` until this many published venues have a fresh price. Drafts do not count. |
+| `PRICE_INDEX_MIN` | 5 | `/ceny/{slug}/{region}` and a `/gde-deshevle/{region}` city page stay `noindex` until this many published venues have a fresh official price. Drafts do not count. A listing is omitted below `PRICE_COMPARE_MIN`. |
 | `PRICE_BAND_MIN` | 3 | The venue badge stays hidden until at least 3 of this venue's prices each have a town sample of 3 or more. `price_band` is null below that. `price_band_basis` is still stored. |
 
 `venue_prices_set` recomputes every venue in that town and returns `priceBands`. Publishing, unpublishing, or moving a venue to another town recomputes the affected towns. After a change that did not go through `venue_prices_set`, call `venue_price_bands_recompute` with the town `regionSlug`.

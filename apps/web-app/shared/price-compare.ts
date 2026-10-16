@@ -302,6 +302,285 @@ export function isPriceIndexable(sampleSize: number) {
   return sampleSize >= PRICE_INDEX_MIN
 }
 
+/** A city or item page exists from this many comparable venues. Same floor as the scale. */
+export function showsPriceSample(count: number) {
+  return count >= PRICE_COMPARE_MIN
+}
+
+/** City index of «Где дешевле». Item pages stay `/ceny/{item}` and `/ceny/{item}/{region}`. */
+export const CHEAPER_PATH = '/gde-deshevle'
+
+export function cheaperCityPath(regionSlug: string) {
+  return `${CHEAPER_PATH}/${regionSlug}`
+}
+
+/**
+ * Packaged or bottled orange juice is not the catalog row «Апельсиновый сок».
+ * Beer may be bottled. That slug is left alone.
+ */
+export function isPackagedJuice(slug: string, variant: string | null | undefined) {
+  if (slug !== 'orange-juice') {
+    return false
+  }
+  const text = (variant ?? '').toLowerCase().replaceAll('ё', 'е')
+  return /пакет|бутыл|тетра[\s-]*пак|упаков/.test(text)
+}
+
+const NOT_A_MENU_HOST = /(?:^|\.)(?:vk\.com|t\.me|telegram\.me|ok\.ru|instagram\.com|facebook\.com|fb\.com|threads\.net|youtube\.com|youtu\.be|dzen\.ru|tiktok\.com|2gis\.(?:ru|com|kz|uz)|yandex\.(?:ru|com|by|kz|uz)|ya\.ru|openstreetmap\.org|osm\.org|google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)|maps\.google\.com|goo\.gl|maps\.app\.goo\.gl)$/
+
+/** A page on the venue's own site, including a PDF. Maps and social posts are not a menu. */
+export function isMenuUrl(url: string | null | undefined) {
+  const text = url?.trim() ?? ''
+  if (!text) {
+    return false
+  }
+  try {
+    const parsed = new URL(text)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false
+    }
+    const host = parsed.hostname.replace(/^www\./, '')
+    if (NOT_A_MENU_HOST.test(host) || host.startsWith('maps.')) {
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** A stored menu row before the fact overlay. */
+export interface MenuColumn {
+  venueId: string
+  item: string
+  variant: string
+  priceRub: number
+  checkedAt: string
+  sourceKind: string
+  sourceTitle: string
+  sourceUrl: string | null
+}
+
+/** A cited price fact. Missing means the column is still the claim. */
+export interface MenuFact {
+  confidence: string
+  sourceKind: string
+  sourceUrl: string | null
+  sourceTitle: string | null
+  checkedAt: string | null
+  value: unknown
+}
+
+function readFactPrice(value: unknown) {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+  const record = value as { priceRub?: unknown, variant?: unknown }
+  const priceRub = typeof record.priceRub === 'number' && record.priceRub > 0 ? Math.round(record.priceRub) : null
+  if (priceRub == null) {
+    return null
+  }
+  const variant = typeof record.variant === 'string' ? record.variant : null
+  return { priceRub, variant }
+}
+
+/**
+ * The fact wins when it is cited. A gap hides the price. An owner price stays
+ * on the venue card and is not comparable. Only a fresh official menu row
+ * is comparable. `cutoff` is `YYYY-MM-DD` from `PRICE_FRESH_DAYS`.
+ */
+export function resolveMenuPrice<T extends MenuColumn>(row: T, fact: MenuFact | null | undefined, cutoff: string): { row: T, comparable: boolean } | null {
+  if (fact?.confidence === 'gap') {
+    return null
+  }
+  let priceRub = row.priceRub
+  let variant = row.variant
+  let checkedAt = row.checkedAt.slice(0, 10)
+  let sourceKind = row.sourceKind
+  let sourceUrl = row.sourceUrl
+  let sourceTitle = row.sourceTitle
+  const parsed = fact ? readFactPrice(fact.value) : null
+  if (fact && parsed) {
+    priceRub = parsed.priceRub
+    if (parsed.variant != null) {
+      variant = parsed.variant
+    }
+    if (fact.checkedAt) {
+      checkedAt = fact.checkedAt.slice(0, 10)
+    }
+    sourceKind = fact.sourceKind
+    sourceUrl = fact.sourceUrl
+    if (fact.sourceTitle?.trim()) {
+      sourceTitle = fact.sourceTitle.trim()
+    }
+  }
+  if (isPackagedJuice(row.item, variant) || !checkedAt || checkedAt < cutoff) {
+    return null
+  }
+  const next = { ...row, priceRub, variant, checkedAt, sourceKind, sourceTitle, sourceUrl }
+  if (sourceKind === 'owner') {
+    return { row: next, comparable: false }
+  }
+  if (sourceKind === 'official' && isMenuUrl(sourceUrl)) {
+    return { row: next, comparable: true }
+  }
+  return null
+}
+
+export function priceSampleStats(prices: number[]) {
+  if (!prices.length) {
+    return { medianRub: 0, minRub: 0, maxRub: 0 }
+  }
+  return {
+    medianRub: median(prices),
+    minRub: Math.min(...prices),
+    maxRub: Math.max(...prices),
+  }
+}
+
+/** Oldest and newest check on the page. One day is a single phrase. */
+export function priceFreshnessText(dates: string[]) {
+  const days = [...new Set(dates.map((date) => date.slice(0, 10)).filter(Boolean))].sort()
+  const first = days[0]
+  const last = days.at(-1)
+  if (!first || !last) {
+    return ''
+  }
+  if (first === last) {
+    return `Проверено ${formatPriceDate(first)}`
+  }
+  return `Проверено с ${formatPriceDate(first)} по ${formatPriceDate(last)}`
+}
+
+export interface CheaperSample {
+  regionSlug: string | null
+  itemSlug: string
+  itemTitle: string
+  itemSort: number
+  itemImage: string | null
+  venueId: string
+  priceRub: number
+  checkedAt: string
+  variant: string
+  sourceTitle: string
+  sourceUrl: string | null
+}
+
+export interface CheaperItemGroup {
+  slug: string
+  title: string
+  sort: number
+  image: string | null
+  count: number
+  medianRub: number
+  minRub: number
+  maxRub: number
+  lastmod: string | null
+  points: CheaperSample[]
+}
+
+export interface CheaperCityGroup {
+  slug: string
+  venueCount: number
+  lastmod: string | null
+  items: CheaperItemGroup[]
+}
+
+function byCheaperPrice(a: CheaperSample, b: CheaperSample) {
+  return a.priceRub - b.priceRub || b.checkedAt.localeCompare(a.checkedAt)
+}
+
+function latestCheck(points: Array<{ checkedAt: string }>) {
+  return points.map((point) => point.checkedAt.slice(0, 10)).sort().at(-1) ?? null
+}
+
+function itemGroup(slug: string, points: CheaperSample[]): CheaperItemGroup {
+  const ordered = [...points].sort(byCheaperPrice)
+  const stats = priceSampleStats(ordered.map((point) => point.priceRub))
+  return {
+    slug,
+    title: ordered[0]?.itemTitle ?? slug,
+    sort: ordered[0]?.itemSort ?? 0,
+    image: ordered[0]?.itemImage ?? null,
+    count: ordered.length,
+    ...stats,
+    lastmod: latestCheck(ordered),
+    points: ordered,
+  }
+}
+
+/**
+ * One price per venue is already applied. A city is shown when one item has
+ * at least `PRICE_COMPARE_MIN` venues. `venueCount` still counts every venue
+ * in the city with a comparable price, including items that stay hidden.
+ */
+export function groupCheaperSamples(samples: CheaperSample[]) {
+  const byItem = new Map<string, CheaperSample[]>()
+  for (const sample of samples) {
+    const list = byItem.get(sample.itemSlug) ?? []
+    list.push(sample)
+    byItem.set(sample.itemSlug, list)
+  }
+  const items = [...byItem.entries()]
+    .map(([slug, points]) => itemGroup(slug, points))
+    .sort((a, b) => a.sort - b.sort || a.title.localeCompare(b.title, 'ru'))
+
+  const byCity = new Map<string, CheaperSample[]>()
+  for (const sample of samples) {
+    if (!sample.regionSlug) {
+      continue
+    }
+    const list = byCity.get(sample.regionSlug) ?? []
+    list.push(sample)
+    byCity.set(sample.regionSlug, list)
+  }
+  const cities = [...byCity.entries()].flatMap(([slug, points]) => {
+    const venueCount = new Set(points.map((point) => point.venueId)).size
+    const perItem = new Map<string, CheaperSample[]>()
+    for (const point of points) {
+      const list = perItem.get(point.itemSlug) ?? []
+      list.push(point)
+      perItem.set(point.itemSlug, list)
+    }
+    const cityItems = [...perItem.entries()]
+      .flatMap(([itemSlug, itemPoints]) => showsPriceSample(itemPoints.length) ? [itemGroup(itemSlug, itemPoints)] : [])
+      .sort((a, b) => a.sort - b.sort || a.title.localeCompare(b.title, 'ru'))
+    if (!cityItems.length) {
+      return []
+    }
+    return [{
+      slug,
+      venueCount,
+      lastmod: latestCheck(cityItems.flatMap((item) => item.points)),
+      items: cityItems,
+    } satisfies CheaperCityGroup]
+  })
+  return { items, cities }
+}
+
+export function cheaperCityMeta(input: { regionSlug: string, regionName: string, venueCount: number }) {
+  const known = inTown(input.regionSlug, input.regionName)
+  const h1 = known.startsWith('в ') ? `Где дешевле ${known}` : `Где дешевле: ${input.regionName}`
+  return {
+    h1,
+    path: cheaperCityPath(input.regionSlug),
+    description: 'Позиции из официальных меню, для которых есть цены хотя бы трёх заведений.',
+    seoTitle: h1,
+    noindex: !isPriceIndexable(input.venueCount),
+  }
+}
+
+export function cheaperIndexMeta(indexable: boolean) {
+  const h1 = 'Где дешевле'
+  return {
+    h1,
+    path: CHEAPER_PATH,
+    description: 'Города, где хотя бы одну позицию можно сравнить в трёх заведениях по официальному меню.',
+    seoTitle: h1,
+    noindex: !indexable,
+  }
+}
+
 /** One price per venue. Prefer `variant` when a venue has it, otherwise the cheapest. */
 export function onePricePerVenue<T extends CatalogPricePoint>(rows: T[], variant?: string) {
   const byVenue = new Map<string, T>()
@@ -353,7 +632,7 @@ export function formatTownRange(town: PriceTownFacts) {
   return formatPriceSpan(town.minRub, town.maxRub)
 }
 
-function formatPriceSpan(min: number, max: number) {
+export function formatPriceSpan(min: number, max: number) {
   if (min === max) {
     return formatRub(min)
   }

@@ -2,6 +2,7 @@ import type { SourceLink } from '../types/entities'
 import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
+import { PHONE_TEXT_MAX } from '../phone'
 import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import {
   assertKind,
@@ -351,7 +352,7 @@ export class Venues {
         priceLevel: input.priceLevel ?? null,
         avgCheck: input.avgCheck ?? null,
         hours,
-        phone: cleanText(input.phone, 40),
+        phone: cleanText(input.phone, PHONE_TEXT_MAX),
         website: cleanText(input.website, 300),
         socials: cleanSocials(input.socials) ?? [],
         bookingUrl: cleanUrl(input.bookingUrl),
@@ -436,7 +437,7 @@ export class Venues {
         priceLevel,
         avgCheck,
         hours,
-        phone: input.phone === undefined ? current.phone : cleanText(input.phone, 40),
+        phone: input.phone === undefined ? current.phone : cleanText(input.phone, PHONE_TEXT_MAX),
         website: input.website === undefined ? current.website : cleanText(input.website, 300),
         socials: cleanSocials(input.socials) ?? current.socials,
         bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : cleanUrl(input.bookingUrl),

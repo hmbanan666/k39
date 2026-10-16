@@ -1,6 +1,7 @@
 import { db, isStale, kindLabel } from '@k39/database'
 import { z } from 'zod'
 import { toPublicMedia } from '../../../shared/media'
+import { readShownFacts, shownText } from '../../utils/facts/read'
 import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
@@ -37,7 +38,14 @@ export default defineMcpTool({
       priceBandBasis: venue.priceBandBasis,
       avgCheck: venue.avgCheck,
       hours: venue.hours,
-      phone: venue.phone,
+      phone: shownText((await readShownFacts('venue', [{
+        id: venue.id,
+        phone: venue.phone,
+        address: venue.address,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
+        status: venue.status,
+      }])).get(venue.id)?.phone, venue.phone),
       website: venue.website,
       socials: venue.socials,
       bookingUrl: venue.bookingUrl,
