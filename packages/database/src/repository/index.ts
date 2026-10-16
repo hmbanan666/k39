@@ -5,6 +5,7 @@ import { VenueClaims } from './claims'
 import { Consent } from './consent'
 import { Content, Editor } from './content'
 import { EventLog } from './event-log'
+import { Facts } from './facts'
 import { MapCatalog } from './map'
 import { Prices } from './prices'
 import { Schedules } from './schedules'
@@ -16,6 +17,7 @@ import { Venues } from './venues'
 class Repository {
   readonly analytics = Analytics
   readonly consent = Consent
+  readonly facts = Facts
   readonly content = Content
   readonly editor = Editor
   readonly eventLog = EventLog

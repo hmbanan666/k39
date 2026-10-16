@@ -666,6 +666,110 @@ export const schedules = pgTable('schedules', {
   uniqueIndex('schedules_entity').on(table.entityType, table.entityId),
 ])
 
+// Typed claims (ADR 0033). One live row per kind, subject, and slot.
+export const facts = pgTable('facts', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  kind: varchar('kind').notNull(),
+  subjectType: varchar('subject_type').notNull(),
+  subjectId: varchar('subject_id').notNull(),
+  slot: varchar('slot').notNull(),
+  value: jsonb('value').notNull(),
+  valueHash: varchar('value_hash').notNull(),
+  sourceUrl: varchar('source_url'),
+  sourceTitle: varchar('source_title'),
+  sourceKind: varchar('source_kind').notNull(),
+  checkedAt: timestamp('checked_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  ttlDays: integer('ttl_days').notNull(),
+  confidence: varchar('confidence').notNull(),
+  retiredAt: timestamp('retired_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  updatedAt: updatedAt(),
+}, (table) => [
+  uniqueIndex('facts_live_key_idx').on(table.kind, table.subjectType, table.subjectId, table.slot).where(sql`${table.retiredAt} is null`),
+  index('facts_kind_checked_idx').on(table.kind, table.checkedAt),
+  check('facts_kind_check', sql`${table.kind} in ('hours', 'price', 'phone', 'address', 'coordinates', 'status')`),
+  check('facts_subject_check', sql`${table.subjectType} in ('place', 'venue', 'route', 'route_stop', 'region')`),
+  check('facts_source_check', sql`${table.sourceKind} in ('official', 'official_social', 'map_yandex', 'map_2gis', 'osm', 'owner', 'none')`),
+  check('facts_confidence_check', sql`${table.confidence} in ('stated', 'owner', 'gap')`),
+  check('facts_ttl_check', sql`${table.ttlDays} > 0`),
+])
+
+export const factRevisions = pgTable('fact_revisions', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  factId: cuid2('fact_id').notNull().references(() => facts.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  recordedAt: timestamp('recorded_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  value: jsonb('value').notNull(),
+  valueHash: varchar('value_hash').notNull(),
+  sourceUrl: varchar('source_url'),
+  sourceTitle: varchar('source_title'),
+  sourceKind: varchar('source_kind').notNull(),
+  checkedAt: timestamp('checked_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  confidence: varchar('confidence').notNull(),
+  actor: varchar('actor').notNull(),
+}, (table) => [
+  index('fact_revisions_fact_recorded_idx').on(table.factId, table.recordedAt),
+  check('fact_revisions_actor_check', sql`${table.actor} in ('migration', 'editor', 'owner', 'mcp')`),
+  check('fact_revisions_confidence_check', sql`${table.confidence} in ('stated', 'owner', 'gap')`),
+])
+
+export const factRefs = pgTable('fact_refs', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  factId: cuid2('fact_id').notNull().references(() => facts.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  consumerType: varchar('consumer_type').notNull(),
+  consumerId: varchar('consumer_id').notNull(),
+  path: varchar('path').notNull(),
+}, (table) => [
+  uniqueIndex('fact_refs_unique').on(table.factId, table.consumerType, table.consumerId, table.path),
+  index('fact_refs_consumer_idx').on(table.consumerType, table.consumerId),
+  index('fact_refs_fact_idx').on(table.factId),
+])
+
+export const sourceDocuments = pgTable('source_documents', {
+  url: varchar('url').primaryKey(),
+  contentHash: varchar('content_hash'),
+  etag: varchar('etag'),
+  lastModified: varchar('last_modified'),
+  httpStatus: integer('http_status'),
+  fetchedAt: timestamp('fetched_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  nextFetchAt: timestamp('next_fetch_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  failCount: integer('fail_count').notNull().default(0),
+}, (table) => [
+  index('source_documents_next_fetch_idx').on(table.nextFetchAt),
+])
+
+export const pageReviews = pgTable('page_reviews', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  pageType: varchar('page_type').notNull(),
+  entityId: varchar('entity_id').notNull(),
+  reviewedAt: timestamp('reviewed_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  reviewer: varchar('reviewer').notNull(),
+  sections: jsonb('sections').$type<Array<{ path: string, hash: string }>>().notNull().default(sql`'[]'::jsonb`),
+}, (table) => [
+  uniqueIndex('page_reviews_page_idx').on(table.pageType, table.entityId),
+])
+
+export const verificationQueue = pgTable('verification_queue', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  target: varchar('target').notNull(),
+  factId: cuid2('fact_id').references(() => facts.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  pageType: varchar('page_type'),
+  entityId: varchar('entity_id'),
+  path: varchar('path'),
+  reason: varchar('reason').notNull(),
+  priority: integer('priority').notNull().default(0),
+  enqueuedAt: timestamp('enqueued_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  lockedBy: varchar('locked_by'),
+  lockedUntil: timestamp('locked_until', { precision: 3, withTimezone: true, mode: 'string' }),
+  resolvedAt: timestamp('resolved_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  // Proposed value when the content token must not overwrite an owner fact.
+  proposal: jsonb('proposal').$type<Record<string, unknown> | null>(),
+}, (table) => [
+  index('verification_queue_open_idx').on(table.priority, table.enqueuedAt).where(sql`${table.resolvedAt} is null`),
+  uniqueIndex('verification_queue_fact_open_idx').on(table.factId, table.reason).where(sql`${table.resolvedAt} is null and ${table.target} = 'fact'`),
+  uniqueIndex('verification_queue_section_open_idx').on(table.pageType, table.entityId, table.path, table.reason).where(sql`${table.resolvedAt} is null and ${table.target} = 'section'`),
+  check('verification_queue_target_check', sql`${table.target} in ('fact', 'section')`),
+  check('verification_queue_reason_check', sql`${table.reason} in ('source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict')`),
+])
+
 // Concrete open intervals for a rolling window, rebuilt on write and daily.
 export const scheduleIntervals = pgTable('schedule_intervals', {
   entityType: varchar('entity_type').notNull(),

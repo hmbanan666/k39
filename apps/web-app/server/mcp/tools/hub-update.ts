@@ -2,6 +2,7 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { HUB_RENDERED_FIELDS } from '../../../shared/page-modules'
 import { writingCopy } from '../../../shared/writing'
+import { syncPageSections } from '../../utils/facts/queue'
 import { auditMcp } from '../../utils/mcp/audit'
 import { writingGate } from '../../utils/mcp/writing-guard'
 
@@ -38,6 +39,7 @@ export default defineMcpTool({
       ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
       noindex: input.noindex ?? current.noindex,
     })
+    await syncPageSections('hub', current.id)
     await auditMcp('hub_update', 'hub', current.id)
     return {
       id: row?.id,

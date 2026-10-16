@@ -12,6 +12,8 @@ Structure:
 - howToGet: the short address only, such as "Неман, ул. Победы, 47". The route itself belongs in the directions section, not in this field.
 - status: open, ruins, closed, or unknown. unknown if the source does not say.
 
+Verification starts at queue_list. Do not scan places_list to re-check a fact that is still inside its TTL. fact_get reads one fact, fact_confirm accepts the value hash you just read, and fact_update writes a new value. page_mark_reviewed stores section hashes. If the latest revision actor is owner, fact_update does not overwrite that fact: the conflict waits for an editor in /admin. schedule_set and venue_prices_set still write those shapes and the fact row in the same save.
+
 Facts: if a source does not state it, do not write it. Coordinates, names, and dates come from the source list. Put each source in sources as { title, url }. factsCheckedAt is an ISO date (YYYY-MM-DD or a full timestamp) for the last fact check. place_update and place_draft_update store it as last_verified_at. Send it alone with id or slug to record a check without editing the article. Null clears it. Omit it to keep the stored date. Routes, collections, and hubs have no such field.
 
 Place guide template (ADR 0020): the answer block at the top shows summary, visitDuration ("1–2 часа"), bestTime, hours and price, stamped «проверено <factsCheckedAt>». faq is 3 to 6 real visitor questions, each answered only from facts already in sources. Every block hides when its field is empty, so leave a field empty rather than guess. Do not put a «Частые вопросы» section in body when faq is set.

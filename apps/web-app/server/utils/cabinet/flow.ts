@@ -4,6 +4,8 @@ import process from 'node:process'
 import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
+import { syncPageSections } from '../facts/queue'
+import { setVenuePrices, syncVenueContact } from '../facts/sync'
 import { normalizeDishModules } from '../venues/dishes'
 import { recomputeTownPriceBands } from '../venues/price-band'
 import { asOwnerPrices, venuePricesWriteSchema } from '../venues/prices'
@@ -274,6 +276,10 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     write.modules = await normalizeDishModules(venueId, write.modules as VenueModule[], 'owner')
   }
   try {
+    const current = await db.venues.byId(venueId)
+    if (!current) {
+      fail(404, 'Заведение не найдено')
+    }
     const saved = await db.venues.update(venueId, {
       ...write,
       lastVerifiedAt: touchHours ? new Date().toISOString() : undefined,
@@ -281,11 +287,20 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     if (!saved) {
       fail(404, 'Заведение не найдено')
     }
-    await syncVenueSchedule(saved, { hours: touchHours ? saved.hours : undefined, lastVerifiedAt: touchHours ? saved.lastVerifiedAt : undefined })
+    await syncVenueSchedule(saved, { hours: touchHours ? saved.hours : undefined, lastVerifiedAt: touchHours ? saved.lastVerifiedAt : undefined }, 'owner')
+    await syncVenueContact({
+      venueId,
+      actor: 'owner',
+      pageStatus: saved.status,
+      phone: write.phone,
+      address: write.address,
+      previous: { phone: current.phone, address: current.address, status: current.status },
+    })
     if (ownerPrices) {
-      await db.prices.setForVenue(venueId, ownerPrices)
+      await setVenuePrices(venueId, ownerPrices, 'owner', saved.status)
       await recomputeTownPriceBands(saved.regionId)
     }
+    await syncPageSections('venue', venueId)
     const fields = [...Object.keys(write), ...(ownerPrices ? ['prices'] : [])]
     await db.venueClaims.audit(venueId, userId, 'owner_update', { fields })
     return { id: saved.id, slug: saved.slug }

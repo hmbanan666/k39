@@ -1,9 +1,12 @@
 import type { VenueDish, VenueReservation, VenueWrite } from '@k39/database'
+import type { FactActor } from '../../../shared/facts'
 import type { VenueModule } from '../../../shared/venue-modules'
 import { db, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
 import { writingCopy } from '../../../shared/writing'
+import { syncPageSections } from '../facts/queue'
+import { hoursConflict, syncVenueContact } from '../facts/sync'
 import { auditMcp } from '../mcp/audit'
 import { parseFactsCheckedAt } from '../mcp/facts'
 import { writingGate } from '../mcp/writing-guard'
@@ -87,11 +90,22 @@ export async function createVenue(input: Parameters<typeof venueWriteFromInput>[
       modules,
       input.sources,
     ]), input.status === 'published', true)
+    const actor: FactActor = userId ? 'editor' : 'mcp'
     const row = await db.venues.create({
       ...venueWriteFromInput({ ...input, modules }),
       regionId: regionId === undefined ? input.regionId : regionId,
     }, userId)
-    await syncVenueSchedule(row, input)
+    await syncVenueSchedule(row, input, actor)
+    await syncVenueContact({
+      venueId: row.id,
+      actor,
+      pageStatus: row.status,
+      phone: input.phone,
+      address: input.address,
+      status: input.status,
+      previous: { phone: null, address: null, status: 'draft' },
+    })
+    await syncPageSections('venue', row.id)
     await auditMcp('venue_create', 'venue', row.id)
     return { ...row, writingWarnings }
   } catch (error) {
@@ -123,21 +137,53 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
       modules === undefined ? current.modules : modules,
       input.sources === undefined ? current.sources : input.sources,
     ]), status === 'published', true)
+    const actor: FactActor = userId ? 'editor' : 'mcp'
+    let hoursQueue: string | null = null
+    if (input.hours !== undefined) {
+      const rules = rulesFromVenueHours(input.hours as Parameters<typeof rulesFromVenueHours>[0])
+      if (rules) {
+        const blocked = await hoursConflict('venue', current.id, {
+          rules,
+          sourceUrl: null,
+          verifiedAt: verifiedDate(input.lastVerifiedAt === undefined ? current.lastVerifiedAt : input.lastVerifiedAt),
+        }, actor)
+        if (blocked) {
+          hoursQueue = blocked.queueId
+        }
+      }
+    }
+    const contact = await syncVenueContact({
+      venueId: current.id,
+      actor,
+      pageStatus: status,
+      phone: input.phone,
+      address: input.address,
+      status: input.status,
+      previous: { phone: current.phone, address: current.address, status: current.status },
+    })
     const saved = await db.venues.update(current.id, {
-      ...venueWriteFromInput({ ...input, modules }),
+      ...venueWriteFromInput({
+        ...input,
+        modules,
+        phone: contact.skipped.phone ? undefined : input.phone,
+        address: contact.skipped.address ? undefined : input.address,
+        status: contact.skipped.status ? undefined : input.status,
+        hours: hoursQueue ? undefined : input.hours,
+      }),
       regionId: regionId === undefined ? undefined : regionId,
       slug: input.slug && input.id ? input.slug : input.id ? undefined : current.slug,
     }, userId)
     if (!saved) {
       throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
     }
-    await syncVenueSchedule(saved, input)
+    const hoursBlocked = hoursQueue || await syncVenueSchedule(saved, { hours: input.hours, lastVerifiedAt: input.lastVerifiedAt }, actor)
+    await syncPageSections('venue', saved.id)
     await recomputePriceBandsAfterStatus(
       { regionId: current.regionId, status: current.status },
       { regionId: saved.regionId, status: saved.status },
     )
     await auditMcp('venue_update', 'venue', saved.id)
-    return { ...saved, writingWarnings }
+    return { ...saved, writingWarnings, ownerConflicts: [...contact.conflicts, ...(hoursBlocked ? [hoursBlocked] : [])] }
   } catch (error) {
     venueError(error)
   }
@@ -149,22 +195,24 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
  * touches neither leaves the schedule alone, so schedule_set edits survive.
  */
 export async function syncVenueSchedule(
-  venue: { id: string, hours: unknown, lastVerifiedAt: Date | string | null },
+  venue: { id: string, hours: unknown, lastVerifiedAt: Date | string | null, status?: string },
   input: { hours?: unknown, lastVerifiedAt?: string | null },
+  actor: FactActor = 'mcp',
 ) {
   if (input.hours === undefined && input.lastVerifiedAt === undefined) {
-    return
+    return null
   }
   const current = await loadSchedule('venue', venue.id)
   const rules = input.hours === undefined && current
     ? current.rules
     : rulesFromVenueHours(venue.hours as Parameters<typeof rulesFromVenueHours>[0])
   if (!rules) {
-    return
+    return null
   }
-  await saveSchedule('venue', venue.id, {
+  const saved = await saveSchedule('venue', venue.id, {
     rules,
     sourceUrl: current?.sourceUrl ?? null,
     verifiedAt: rules.needsCheck ? null : verifiedDate(venue.lastVerifiedAt),
-  })
+  }, { actor, pageStatus: venue.status })
+  return saved.conflict ? saved.queueId : null
 }

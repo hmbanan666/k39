@@ -2,6 +2,7 @@ import { db } from '@k39/database'
 import { createError } from 'h3'
 import { slugError } from '../../../shared/seo'
 import { writingCopy } from '../../../shared/writing'
+import { syncPageSections } from '../facts/queue'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
 import { normalizePublication } from './draft'
@@ -72,6 +73,7 @@ export async function createRouteDraft(input: {
       points: input.points,
       path: input.path,
     })
+    await syncPageSections('route', row.id)
     await auditMcp('route_draft_create', 'route', row.id)
     return {
       id: row.id,
@@ -123,6 +125,7 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       points: input.points,
       path: input.path,
     })
+    await syncPageSections('route', row.id)
     await auditMcp(auditTool, 'route', current.id)
     return {
       id: row.id,
