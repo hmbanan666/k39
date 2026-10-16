@@ -1,72 +1,9 @@
-import { db } from '@k39/database'
-import { slugError } from '../../../../shared/seo'
-import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
-import { syncCoordinates, syncPlaceStatus } from '../../../utils/facts/sync'
-import { writingGate } from '../../../utils/mcp/writing-guard'
+import { saveAdminPlace } from '../../../utils/admin/place-draft'
 
 export default defineEventHandler(async (event) => {
   const user = await requireEditor(event)
   const id = String(getRouterParam(event, 'id'))
-  const current = await db.editor.placeById(id)
-  if (!current) {
-    throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
-  }
   const body = await readBody(event)
-  const slug = String(body.slug || current.slug)
-  const problem = slugError(slug)
-  if (problem) {
-    throw createError({ statusCode: 400, statusMessage: problem })
-  }
-  const category = body.categorySlug ? await db.content.categoryBySlug(String(body.categorySlug)) : null
-  const publicationStatus = body.publicationStatus ?? current.publicationStatus
-  const writingWarnings = writingGate(writingCopy([
-    body.title ?? current.title,
-    body.summary ?? current.summary,
-    body.body ?? current.body,
-    body.hours ?? current.hours,
-    body.price ?? current.price,
-    body.howToGet ?? current.howToGet,
-    body.seoTitle ?? current.seoTitle,
-    body.seoDescription ?? current.seoDescription,
-  ]), publicationStatus === 'published')
-  const point = await syncCoordinates({
-    subjectType: 'place',
-    subjectId: id,
-    actor: 'editor',
-    pageStatus: publicationStatus,
-    latitude: body.latitude,
-    longitude: body.longitude,
-    previous: { latitude: current.latitude, longitude: current.longitude },
-  })
-  const visit = await syncPlaceStatus({
-    placeId: id,
-    actor: 'editor',
-    pageStatus: publicationStatus,
-    status: ['open', 'ruins', 'closed', 'unknown'].includes(body.status) ? body.status : undefined,
-    previous: current.status,
-  })
-  const row = await db.editor.savePlace({
-    id,
-    slug,
-    title: String(body.title ?? current.title),
-    summary: String(body.summary ?? current.summary),
-    body: String(body.body ?? current.body),
-    status: visit.skipped || body.status == null ? current.status : body.status,
-    hours: body.hours ?? current.hours,
-    price: body.price ?? current.price,
-    howToGet: body.howToGet ?? current.howToGet,
-    latitude: point.skipped || body.latitude == null ? current.latitude : body.latitude,
-    longitude: point.skipped || body.longitude == null ? current.longitude : body.longitude,
-    categoryId: category?.id ?? current.categoryId,
-    regionId: body.regionId ?? current.regionId,
-    sources: Array.isArray(body.sources) ? body.sources : current.sources,
-    seoTitle: body.seoTitle ?? current.seoTitle,
-    seoDescription: body.seoDescription ?? current.seoDescription,
-    ogImage: body.ogImage ?? current.ogImage,
-    publicationStatus,
-    noindex: body.noindex ?? current.noindex,
-    authorKind: body.authorKind ?? current.authorKind,
-  }, user.id)
-  return { ...row, writingWarnings }
+  return saveAdminPlace(id, body ?? {}, user.id)
 })

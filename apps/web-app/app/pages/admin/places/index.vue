@@ -8,21 +8,26 @@
         :key="place.id"
       >
         <a :href="`/admin/places/${place.id}`">{{ place.title }}</a>
-        <span>{{ place.publicationStatus }} / {{ place.slug }}</span>
+        <span>{{ place.publicationStatus }} / {{ place.slug }}<template v-if="place.pendingDraft"> / есть черновик</template></span>
       </li>
     </ul>
   </main>
 </template>
 
 <script setup lang="ts">
-import { ofetch } from 'ofetch'
-
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
-const places = await ofetch('/api/admin/places')
+const requestFetch = useRequestFetch()
+const places = await requestFetch<Array<{
+  id: string
+  title: string
+  slug: string
+  publicationStatus: string
+  pendingDraft?: boolean
+}>>('/api/admin/places')
 useHead({ title: 'Места | Админка' })
 </script>
 
 <style scoped>
 .admin { max-width: 46rem; margin: 0 auto; padding: 1.5rem; }
-li { display: flex; justify-content: space-between; gap: 1rem; margin: 0.4rem 0; }
+li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; margin: 0.4rem 0; }
 </style>
