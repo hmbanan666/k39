@@ -13,6 +13,7 @@
       <a href="/admin/content-scores">Оценки</a>
       <a href="/admin/consents">Согласия</a>
       <a href="/admin/claims">Заявки</a>
+      <a href="/admin/guests">Гости</a>
       <a href="/">На сайт</a>
     </header>
     <slot />

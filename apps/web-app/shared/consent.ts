@@ -1,6 +1,12 @@
 export const CONSENT_VERSION = '2026-10-12'
 export const CONSENT_DATE = '12 октября 2026 года'
 
+/** Guest-content consent. Distinct from the sign-in version so the active key does not collide. */
+export const GUEST_CONSENT_VERSION = 'ugc-2026-10-16'
+export const GUEST_CONSENT_DATE = '16 октября 2026 года'
+export const GUEST_CONSENT_METHOD = 'ugc-submit'
+export const GUEST_CONSENT_PATH = '/gostevye-materialy'
+
 /**
  * Legal map. The sign-in button is the consent. There is no checkbox.
  *

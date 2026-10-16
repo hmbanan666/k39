@@ -50,6 +50,7 @@ const LICENSE_LABELS: Record<string, string> = {
   'cc0': 'CC0 1.0',
   'pd': 'общественное достояние',
   'permission': 'с разрешения автора',
+  'guest': 'фото гостя',
 }
 
 export interface AuthorBadgeData {

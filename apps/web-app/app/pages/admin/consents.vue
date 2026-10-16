@@ -79,6 +79,7 @@ const errorText = ref('')
 
 const methods: Record<string, string> = {
   'sign-in-button': 'кнопка входа',
+  'ugc-submit': 'кнопка отправки материала',
 }
 
 function methodLabel(method: string) {

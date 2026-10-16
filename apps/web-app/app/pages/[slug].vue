@@ -227,6 +227,12 @@
               Факты сверены с источниками {{ checkedLabel }}.
             </p>
           </details>
+          <GuestBlock
+            subject-type="place"
+            :subject-slug="slug"
+            :subject-path="`/${slug}`"
+            :items="page.guests || []"
+          />
         </template>
       </ReaderLayout>
     </div>
@@ -258,6 +264,7 @@
 </template>
 
 <script setup lang="ts">
+import type { GuestPublicItem } from '~~/shared/guest'
 import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
@@ -304,6 +311,7 @@ interface PlacePage {
   cover: PublicMedia | null
   groups: Array<{ title: string, links: PlaceLink[] }>
   sources: Array<{ title: string, url: string }>
+  guests?: GuestPublicItem[]
   offers: Array<{ title: string, terms: string }>
 
   eatNearby: Array<{

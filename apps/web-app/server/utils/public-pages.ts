@@ -10,6 +10,7 @@ import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
 import { readShownFacts } from './facts/read'
+import { attachGuestReviews, loadGuestItems } from './guests/moderate'
 import { loadSchedule } from './schedule'
 import { eatNearby, TOWN_EAT_LIMIT } from './venues/public'
 
@@ -208,6 +209,8 @@ export async function loadPlace(slug: string, page = 1) {
     updatedAt: loaded.place.updatedAt,
     checkedAt: loaded.place.lastVerifiedAt,
   })
+  const guests = await loadGuestItems('place', loaded.place.id)
+  attachGuestReviews(`${absoluteUrl(`/${loaded.place.slug}`)}#place`, guests, doc.jsonLd)
   const nearCovers = await db.content.coversFor(loaded.nearest.map((item) => item.place_id))
   const groups = [
     { title: loaded.category.title, links: [{ href: `/${loaded.category.slug}`, text: loaded.category.title }] },
@@ -266,6 +269,7 @@ export async function loadPlace(slug: string, page = 1) {
     groups,
     routeBand,
     sources: loaded.place.sources ?? [],
+    guests,
     // A town page lists more of its venues, so each one gets a link from it.
     eatNearby: await eatNearby(
       [{ latitude, longitude }],

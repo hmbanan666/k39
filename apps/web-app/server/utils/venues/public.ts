@@ -36,6 +36,7 @@ import { isVerified, readRules, scheduleDetails, scheduleMarkup } from '../../..
 import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
 import { dishMenuNode, toPublicVenueModules } from '../../../shared/venue-modules'
 import { FACT_UNKNOWN, omitFactGap, readShownFacts } from '../facts/read'
+import { attachGuestReviews, loadGuestItems } from '../guests/moderate'
 import { loadSchedule } from '../schedule'
 import { loadComparablePrices, peersByItem } from './comparable-prices'
 import { projectMenuPrices } from './menu-prices'
@@ -293,6 +294,8 @@ async function loadVenue(slug: string) {
       })),
     })
   }
+  const guests = await loadGuestItems('venue', venue.id)
+  attachGuestReviews(`${absoluteUrl(`/zavedeniya/${venue.slug}`)}#venue`, guests, doc.jsonLd)
   const sponsored = await db.venues.sponsoredIds([venue.id])
   const places = shown.latitude != null && shown.longitude != null
     ? (await db.content.nearest(shown.latitude, shown.longitude, '', 6))
@@ -358,6 +361,7 @@ async function loadVenue(slug: string) {
       text: place.title,
       distanceKm: Number(place.distance_km),
     })),
+    guests,
   }
 }
 

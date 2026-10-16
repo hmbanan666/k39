@@ -155,9 +155,9 @@ After a success, `next_fetch_at` is the fetch time plus the shortest TTL on that
 
 Columns: `target` (`fact` or `section`), `fact_id`, `page_type`, `entity_id`, `path`, `reason`, `priority`, `enqueued_at`, `locked_by`, `locked_until`, `resolved_at`, `proposal`.
 
-Reasons: `source_changed`, `ttl_expired`, `fetch_failed`, `source_gone`, `season_boundary`, `section_changed`, `unseeded`, `owner_conflict`, `fact_repeated`.
+Reasons: `source_changed`, `ttl_expired`, `fetch_failed`, `source_gone`, `season_boundary`, `section_changed`, `unseeded`, `owner_conflict`, `fact_repeated`, `guest_report`.
 
-`owner_conflict` is the row an editor decides in `/admin` when the content token must not overwrite a fact whose latest revision actor is `owner`. The proposed value sits in `proposal`. `fact_repeated` is a review warning when prose repeats a phone or hours. It does not block publish. A new reason is added to `QUEUE_REASONS`, the `verification_queue_reason_check` constraint, and this list in the same change.
+`owner_conflict` is the row an editor decides in `/admin` when the content token must not overwrite a fact whose latest revision actor is `owner`. The proposed value sits in `proposal`. `fact_repeated` is a review warning when prose repeats a phone or hours. It does not block publish. `guest_report` is a visitor correction signal (ADR 0036). Accepting it does not write the fact. Priority uses prose risk 1, so a pile of reports does not outrank `source_changed` on hours. A new reason is added to `QUEUE_REASONS`, the `verification_queue_reason_check` constraint, and this list in the same change.
 
 One open row per target and reason. The watcher, the save path, and the nightly score job upsert it. An agent does not insert rows.
 
