@@ -1,9 +1,8 @@
 import { db } from '@k39/database'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../../shared/page-modules'
 import { slugError } from '../../../../shared/seo'
-import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
-import { writingGate } from '../../../utils/mcp/writing-guard'
+import { saveCollectionContent } from '../../../utils/content/save'
 
 export default defineEventHandler(async (event) => {
   const user = await requireEditor(event)
@@ -23,13 +22,9 @@ export default defineEventHandler(async (event) => {
   if (plan.rejectBody) {
     throw createError({ statusCode: 400, statusMessage: COLLECTION_BODY_REJECTED })
   }
-  const writingWarnings = writingGate(writingCopy([
-    body.title,
-    body.summary,
-    plan.copy,
-    body.seoTitle,
-    body.seoDescription,
-  ]), body.publicationStatus === 'published')
-  const row = await db.editor.saveCollection({ ...body, body: plan.body, modules, id }, user.id)
+  const { row, writingWarnings } = await saveCollectionContent({ ...body, body: plan.body, modules, id }, user.id, {
+    parts: [body.title, body.summary, plan.copy, body.seoTitle, body.seoDescription],
+    publishing: body.publicationStatus === 'published',
+  })
   return { ...row, writingWarnings, article: plan.article, renderedFields: plan.renderedFields }
 })

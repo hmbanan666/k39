@@ -223,14 +223,16 @@ One SQL migration, then an idempotent seed recorded like `content_imports`, so a
 
 1. Hours from `schedules`. Value is `rules`. Source is `schedules.source_url`. `checked_at` is `verified_at`. Empty `verified_at` or `needsCheck` is unchecked, or `gap` when the value is empty, and queues `unseeded`. Ref on the place or venue at `short.hours`.
 2. Prices from `venue_prices`, one fact per row. `official` and `owner` map across. `checked_at` maps across. Ref at `modules.prices`. Do not copy `price_items`.
-3. Venue phone, address, and coordinates from `venues`, with `last_verified_at`. Attach a URL from `venues.sources` only when that URL is already the schedule or price source for the same venue, or the venue `website`. Otherwise leave `source_kind` `none` and queue `unseeded`. Do not guess which citation proves which field. OSM coordinates with no `last_verified_at` stay unchecked. OSM import still does not set `last_verified_at`.
+3. Venue phone, address, and coordinates from `venues`, with `last_verified_at`. Attach a URL from `venues.sources` only when that URL is already the schedule or price source for the same venue, or the venue `website`. Otherwise do not write a fact. Do not guess which citation proves which field. OSM coordinates with no `last_verified_at` stay on the column. OSM import still does not set `last_verified_at`.
 4. Venue operating status: seed `closed` when `venues.status` is `closed`. Do not treat `published` as a sourced `open`.
-5. Place `status` and coordinates, unchecked when `last_verified_at` is null. Do not seed free-text `places.price`. A number there becomes a price fact only when `fact_update` has a real URL. Place hour strings that never became schedule rules stay out of the hours fact.
+5. Place `status` when it is `unknown` is a gap (the explicit unknown). A known place status is still seeded without a URL, unchecked when `last_verified_at` is null. Place coordinates are not seeded: the column remains until a sourced fact exists. Do not seed free-text `places.price`. A number there becomes a price fact only when `fact_update` has a real URL. Place hour strings that never became schedule rules stay out of the hours fact. A non-empty schedule with no source URL is not a fact. Empty hours are a gap.
 6. Page-level `sources` arrays stay the «Источники» list. The seed does not spray one URL onto every claim.
 
 Routes, route stops, collection modules, and hub bodies are not turned into facts in this seed.
 
 Section hashes are backfilled once. Every current rendered section is stored as already reviewed, reviewer `migration`, so day one does not queue the archive. Only a later edit opens `section_changed`. The first queue is structured facts that are unchecked or past TTL.
+
+The first seed wrote unsourced phone, address, coordinates, and non-empty hours as `gap` facts whose value was the column. A gap is the explicit unknown («уточняйте»), never a copied column. Migration `0036_unsourced_gap_facts` deletes those rows. A missing fact is not a gap: the public reader falls back to the column. A real gap still renders «уточняйте» and does not fall back.
 
 ### Indexes and storage
 

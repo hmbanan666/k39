@@ -327,6 +327,24 @@ export function hoursLookEmpty(rules: ScheduleRules) {
     && !rules.note
 }
 
+export type SeedDisposition = 'skip' | 'gap' | 'stated'
+
+/**
+ * What the fact seed stores.
+ * A filled column with no URL is skipped: it is not a gap and not a sourced fact.
+ * A gap is only the explicit unknown (empty hours), and that row does not copy a filled column.
+ * A stated fact needs a source kind other than `none`.
+ */
+export function seedFactDisposition(input: { sourceKind: string, empty: boolean }): SeedDisposition {
+  if (input.empty) {
+    return 'gap'
+  }
+  if (input.sourceKind === 'none') {
+    return 'skip'
+  }
+  return 'stated'
+}
+
 export function seasonBoundaryWithin(rules: { seasons?: Array<{ from?: string, to?: string }> }, now = new Date(), horizon = SEASON_HORIZON_DAYS) {
   const marks = new Set<string>()
   for (const season of rules.seasons ?? []) {

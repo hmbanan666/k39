@@ -1,9 +1,8 @@
 import { db } from '@k39/database'
 import { slugError } from '../../../../shared/seo'
-import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
+import { savePlaceContent } from '../../../utils/content/save'
 import { syncCoordinates, syncPlaceStatus } from '../../../utils/facts/sync'
-import { writingGate } from '../../../utils/mcp/writing-guard'
 
 export default defineEventHandler(async (event) => {
   const user = await requireEditor(event)
@@ -15,17 +14,7 @@ export default defineEventHandler(async (event) => {
   }
   const category = await db.content.categoryBySlug(String(body.categorySlug || 'forty'))
   const publicationStatus = body.publicationStatus || 'draft'
-  const writingWarnings = writingGate(writingCopy([
-    body.title,
-    body.summary,
-    body.body,
-    body.hours,
-    body.price,
-    body.howToGet,
-    body.seoTitle,
-    body.seoDescription,
-  ]), publicationStatus === 'published')
-  const row = await db.editor.savePlace({
+  const { row, writingWarnings } = await savePlaceContent({
     slug,
     title: String(body.title || ''),
     summary: String(body.summary || ''),
@@ -45,11 +34,14 @@ export default defineEventHandler(async (event) => {
     publicationStatus,
     noindex: Boolean(body.noindex),
     authorKind: body.authorKind || 'human',
-  }, user.id)
+  }, user.id, {
+    parts: [body.title, body.summary, body.body, body.hours, body.price, body.howToGet, body.seoTitle, body.seoDescription],
+    publishing: publicationStatus === 'published',
+  })
   const status = body.status || 'unknown'
   await syncCoordinates({
     subjectType: 'place',
-    subjectId: row!.id,
+    subjectId: row.id,
     actor: 'editor',
     pageStatus: publicationStatus,
     latitude: body.latitude,

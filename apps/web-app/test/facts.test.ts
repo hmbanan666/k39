@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { extractPdfText } from '../server/utils/facts/fetch'
 import { FACT_UNKNOWN, omitFactGap, projectShownFacts, shownText } from '../server/utils/facts/read'
 import { phoneNumbers, publicProse, publicVenueModules, repeatedKinds } from '../shared/fact-prose'
-import { classifySourceUrl, decideWatch, defaultTtl, isBlockedAddress, isBlockedHostname, isUnwatchedUrl, mapSourceAllowed, normalizeSourceText, ownerBlocksToken, pageTraffic, pastTtl, PHONE_TEXT_MAX, phoneValueSchema, priorityFor, proseHash, reviewUpdate, seasonBoundaryWithin, shouldWriteContact, trustOf, trustText, valueHash, watchableSource } from '../shared/facts'
+import { classifySourceUrl, decideWatch, defaultTtl, isBlockedAddress, isBlockedHostname, isUnwatchedUrl, mapSourceAllowed, normalizeSourceText, ownerBlocksToken, pageTraffic, pastTtl, PHONE_TEXT_MAX, phoneValueSchema, priorityFor, proseHash, reviewUpdate, seasonBoundaryWithin, seedFactDisposition, shouldWriteContact, trustOf, trustText, valueHash, watchableSource } from '../shared/facts'
 
 describe('fact values', () => {
   it('stores three phone numbers in the fact and the column copy', () => {
@@ -217,5 +217,14 @@ describe('public fact reader', () => {
       { type: 'practical', items: [{ key: 'other', label: 'Телефон', value: '+7 4012 61-64-12' }] },
     ], hours)
     expect(JSON.stringify(modules)).not.toContain('4012')
+  })
+})
+
+describe('fact seed disposition', () => {
+  it('skips an unsourced column and keeps a gap only for an empty value', () => {
+    expect(seedFactDisposition({ sourceKind: 'none', empty: false })).toBe('skip')
+    expect(seedFactDisposition({ sourceKind: 'none', empty: true })).toBe('gap')
+    expect(seedFactDisposition({ sourceKind: 'official', empty: false })).toBe('stated')
+    expect(seedFactDisposition({ sourceKind: 'official_social', empty: false })).toBe('stated')
   })
 })

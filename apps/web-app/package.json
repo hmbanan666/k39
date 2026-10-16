@@ -12,6 +12,7 @@
     "clean:modules": "rm -rf .nuxt .output .data node_modules",
     "typecheck": "nuxt typecheck && node ../../scripts/typecheck-writer.mjs",
     "media:rebuild": "jiti ./scripts/media-rebuild.ts",
+    "db:seed:fixtures": "jiti ./scripts/seed-fixtures.ts",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {

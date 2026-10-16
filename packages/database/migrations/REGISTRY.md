@@ -42,3 +42,5 @@ Add the row in the same commit as the SQL file. A `reserved` row holds a number 
 | 0033 | 0033_typed_facts.sql | applied |
 | 0034 | 0034_map_google_source.sql | applied |
 | 0035 | 0035_content_drafts.sql | applied |
+| 0036 | 0036_unsourced_gap_facts.sql | applied |
+| 0037 | 0037_consent_method.sql | applied |

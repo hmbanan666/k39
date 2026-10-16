@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { buildPublicPrices, priceBandFromBands } from '../../../shared/price-compare'
+import { loadComparablePrices, peersByItem } from './comparable-prices'
 import { projectMenuPrices } from './menu-prices'
 
 /**
@@ -19,16 +20,9 @@ export async function recomputeTownPriceBands(regionId: string | null, now = new
       slugs.add(row.item)
     }
   }
-  const peerRows = (await Promise.all([...slugs].map((slug) => db.prices.forItem(slug, now)))).flat()
-  const peersByItem: Record<string, typeof peerRows> = {}
-  for (const item of await projectMenuPrices(peerRows, now)) {
-    if (!item.comparable) {
-      continue
-    }
-    const list = peersByItem[item.row.item] ?? []
-    list.push(item.row)
-    peersByItem[item.row.item] = list
-  }
+  const comparable = await loadComparablePrices(now)
+  const peerRows = comparable.filter((row) => slugs.has(row.item))
+  const peers = peersByItem(peerRows)
   const ownRows = town.flatMap((venue) => (freshByVenue.get(venue.id) ?? []).map((row) => ({ ...row, venueId: venue.id })))
   const ownByVenue = new Map<string, typeof ownRows>()
   for (const item of await projectMenuPrices(ownRows, now)) {
@@ -46,7 +40,7 @@ export async function recomputeTownPriceBands(regionId: string | null, now = new
       regionId,
       regionSlug: null,
       rows,
-      peersByItem,
+      peersByItem: peers,
     })
     const band = priceBandFromBands(cards.map((card) => card.comparison.band))
     await db.venues.setPriceBand(venue.id, { level: band.level, basis: band.basis, computedAt })

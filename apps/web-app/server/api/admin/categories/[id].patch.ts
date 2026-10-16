@@ -1,20 +1,11 @@
-import { db } from '@k39/database'
 import { HUB_RENDERED_FIELDS } from '../../../../shared/page-modules'
-import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
-import { writingGate } from '../../../utils/mcp/writing-guard'
+import { saveHubContent } from '../../../utils/content/save'
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
   const body = await readBody(event)
-  const writingWarnings = writingGate(writingCopy([
-    body.title,
-    body.description,
-    body.body,
-    body.seoTitle,
-    body.seoDescription,
-  ]), true)
-  const row = await db.editor.saveCategory(String(getRouterParam(event, 'id')), {
+  const { row, writingWarnings } = await saveHubContent(String(getRouterParam(event, 'id')), {
     title: String(body.title || ''),
     description: String(body.description || ''),
     body: body.body == null ? undefined : String(body.body),
@@ -22,6 +13,9 @@ export default defineEventHandler(async (event) => {
     seoDescription: body.seoDescription || null,
     ogImage: body.ogImage || null,
     noindex: Boolean(body.noindex),
+  }, {
+    parts: [body.title, body.description, body.body, body.seoTitle, body.seoDescription],
+    publishing: true,
   })
   return { ...row, writingWarnings, article: 'body' as const, renderedFields: HUB_RENDERED_FIELDS }
 })

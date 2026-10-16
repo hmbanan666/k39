@@ -189,6 +189,7 @@ export async function syncPageSections(pageType: string, entityId: string) {
   if (!page) {
     return
   }
+  await db.facts.retainReviewSections(page.pageType, page.entityId, page.sections.map((section) => section.hash))
   const review = await db.facts.review(page.pageType, page.entityId)
   const missing = unreviewedSections(page.sections, review?.sections ?? [])
   for (const section of page.sections) {

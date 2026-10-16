@@ -2,7 +2,7 @@
   <main class="admin">
     <h1>Согласия</h1>
     <p class="muted">
-      Запись появляется, когда человек отмечает согласие при входе. Отзыв не удаляет строку.
+      Запись появляется, когда человек нажимает кнопку входа. Эта кнопка и есть согласие, отдельной галочки нет. Отзыв не удаляет строку.
     </p>
     <p v-if="pending">
       Загружаю…
@@ -78,7 +78,7 @@ const busyId = ref('')
 const errorText = ref('')
 
 const methods: Record<string, string> = {
-  'sign-in-checkbox': 'кнопка входа',
+  'sign-in-button': 'кнопка входа',
 }
 
 function methodLabel(method: string) {

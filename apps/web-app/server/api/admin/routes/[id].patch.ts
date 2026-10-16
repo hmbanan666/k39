@@ -1,8 +1,6 @@
-import { db } from '@k39/database'
 import { slugError } from '../../../../shared/seo'
-import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
-import { writingGate } from '../../../utils/mcp/writing-guard'
+import { saveRouteContent } from '../../../utils/content/save'
 
 export default defineEventHandler(async (event) => {
   const user = await requireEditor(event)
@@ -11,13 +9,9 @@ export default defineEventHandler(async (event) => {
   if (problem) {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
-  const writingWarnings = writingGate(writingCopy([
-    body.title,
-    body.summary,
-    body.body,
-    body.seoTitle,
-    body.seoDescription,
-  ]), body.publicationStatus === 'published')
-  const row = await db.editor.saveRoute({ ...body, id: String(getRouterParam(event, 'id')) }, user.id)
+  const { row, writingWarnings } = await saveRouteContent({ ...body, id: String(getRouterParam(event, 'id')) }, user.id, {
+    parts: [body.title, body.summary, body.body, body.seoTitle, body.seoDescription],
+    publishing: body.publicationStatus === 'published',
+  })
   return { ...row, writingWarnings }
 })

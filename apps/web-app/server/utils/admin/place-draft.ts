@@ -4,11 +4,10 @@ import { db } from '@k39/database'
 import { createError } from 'h3'
 import { formatDraftUpdated, placeDraftChanges } from '../../../shared/place-draft-diff'
 import { slugError } from '../../../shared/seo'
-import { writingCopy } from '../../../shared/writing'
 import { withContentScope } from '../access'
+import { savePlaceContent } from '../content/save'
 import { syncCoordinates, syncPlaceStatus } from '../facts/sync'
 import { setPublication } from '../mcp/publish'
-import { writingGate } from '../mcp/writing-guard'
 
 const VISIT = new Set<VisitStatus>(['open', 'ruins', 'closed', 'unknown'])
 const PUBLICATION = new Set<PublicationStatus>(['draft', 'review', 'published', 'archived'])
@@ -144,16 +143,6 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
   }
   const category = body.categorySlug ? await db.content.categoryBySlug(String(body.categorySlug)) : null
   const publicationStatus = asPublication(body.publicationStatus, current.publicationStatus)
-  const writingWarnings = writingGate(writingCopy([
-    body.title ?? current.title,
-    body.summary ?? current.summary,
-    body.body ?? current.body,
-    body.hours ?? current.hours,
-    body.price ?? current.price,
-    body.howToGet ?? current.howToGet,
-    body.seoTitle ?? current.seoTitle,
-    body.seoDescription ?? current.seoDescription,
-  ]), publicationStatus === 'published')
   const visitStatus = asVisit(body.status)
   const point = await syncCoordinates({
     subjectType: 'place',
@@ -171,7 +160,7 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
     status: visitStatus,
     previous: current.status,
   })
-  const row = await db.editor.savePlace({
+  const { row, writingWarnings } = await savePlaceContent({
     id,
     slug,
     title: String(body.title ?? current.title),
@@ -192,7 +181,19 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
     publicationStatus,
     noindex: body.noindex ?? current.noindex,
     authorKind: asAuthor(body.authorKind, current.authorKind),
-  }, userId)
+  }, userId, {
+    parts: [
+      body.title ?? current.title,
+      body.summary ?? current.summary,
+      body.body ?? current.body,
+      body.hours ?? current.hours,
+      body.price ?? current.price,
+      body.howToGet ?? current.howToGet,
+      body.seoTitle ?? current.seoTitle,
+      body.seoDescription ?? current.seoDescription,
+    ],
+    publishing: publicationStatus === 'published',
+  })
   if (pending) {
     await db.editor.deleteContentDraft('place', id)
   }

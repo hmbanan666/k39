@@ -23,6 +23,7 @@
     "check:repo": "node scripts/check-repo.mjs",
     "test": "vitest run",
     "media:rebuild": "pnpm --filter @k39/web-app media:rebuild",
+    "db:seed:fixtures": "pnpm --filter @k39/web-app db:seed:fixtures",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check:full": "pnpm run check:repo && pnpm run lint:fix && pnpm run typecheck && pnpm vitest run",
