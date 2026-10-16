@@ -1,10 +1,31 @@
 import { Buffer } from 'node:buffer'
 import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
+
+/** Git only runs hook names that exist in core.hooksPath. The cloud set has no post-commit, so the trailer would stay. */
+export function linkMissingHooks(huskyDir, dispatcherDir) {
+  const linked = []
+  for (const name of readdirSync(huskyDir)) {
+    if (name.startsWith('.') || name.startsWith('_')) {
+      continue
+    }
+    const source = join(huskyDir, name)
+    if (!lstatSync(source).isFile()) {
+      continue
+    }
+    const dest = join(dispatcherDir, name)
+    if (existsSync(dest)) {
+      continue
+    }
+    symlinkSync('.dispatcher', dest)
+    linked.push(name)
+  }
+  return linked
+}
 
 export function findDispatcher(home, workspace, currentHooksPath) {
   const encoded = Buffer.from(workspace).toString('base64').replace(/=+$/g, '')
@@ -62,8 +83,10 @@ function main() {
   }
 
   writeFileSync(join(dispatcher, '.cursor-original-hooks-path'), `${huskyDir}\n`)
+  const linked = linkMissingHooks(huskyDir, dispatcher)
   git(['config', 'core.hooksPath', dispatcher])
-  console.log(`husky hooks chained from ${dispatcher}`)
+  const extra = linked.length ? ` (linked ${linked.join(', ')})` : ''
+  console.log(`husky hooks chained from ${dispatcher}${extra}`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

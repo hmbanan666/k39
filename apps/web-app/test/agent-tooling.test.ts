@@ -1,11 +1,11 @@
 import { Buffer } from 'node:buffer'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { planNodePath } from '../../../scripts/env/node-path-plan.mjs'
-import { findDispatcher } from '../../../scripts/git/chain-hooks.mjs'
+import { findDispatcher, linkMissingHooks } from '../../../scripts/git/chain-hooks.mjs'
 
 function repoRoot() {
   const candidates = [process.cwd(), resolve(process.cwd(), '../..')]
@@ -92,6 +92,24 @@ describe('hook dispatcher', () => {
     expect(findDispatcher(home, workspace, other)).toBe(other)
     rmSync(join(other, '.dispatcher'))
     expect(findDispatcher(home, workspace, other)).toBeNull()
+  })
+})
+
+describe('hook links', () => {
+  it('adds a post-commit name the cloud dispatcher does not ship', () => {
+    const root = scratch()
+    const husky = join(root, '.husky')
+    const dispatcher = join(root, 'dispatcher')
+    mkdirSync(husky)
+    mkdirSync(dispatcher)
+    writeFileSync(join(husky, 'post-commit'), '#!/bin/sh\n')
+    writeFileSync(join(husky, 'pre-commit'), '#!/bin/sh\n')
+    writeFileSync(join(dispatcher, '.dispatcher'), '')
+    symlinkSync('.dispatcher', join(dispatcher, 'commit-msg'))
+    expect(linkMissingHooks(husky, dispatcher).sort()).toEqual(['post-commit', 'pre-commit'])
+    expect(readlinkSync(join(dispatcher, 'post-commit'))).toBe('.dispatcher')
+    expect(linkMissingHooks(husky, dispatcher)).toEqual([])
+    expect(lstatSync(join(dispatcher, 'commit-msg')).isSymbolicLink()).toBe(true)
   })
 })
 
