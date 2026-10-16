@@ -1,4 +1,5 @@
 import { db } from '@k39/database'
+import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../../shared/page-modules'
 import { slugError } from '../../../../shared/seo'
 import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
@@ -11,14 +12,24 @@ export default defineEventHandler(async (event) => {
   if (problem) {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
+  const id = String(getRouterParam(event, 'id'))
+  const current = (await db.editor.listCollections()).find((item) => item.id === id)
+  const modules = body.modules === undefined ? current?.modules : body.modules
+  const plan = collectionWritePlan({
+    sentBody: typeof body.body === 'string' ? body.body : undefined,
+    currentBody: current?.body,
+    modules,
+  })
+  if (plan.rejectBody) {
+    throw createError({ statusCode: 400, statusMessage: COLLECTION_BODY_REJECTED })
+  }
   const writingWarnings = writingGate(writingCopy([
     body.title,
     body.summary,
-    body.body,
+    plan.copy,
     body.seoTitle,
     body.seoDescription,
-    body.modules,
   ]), body.publicationStatus === 'published')
-  const row = await db.editor.saveCollection({ ...body, id: String(getRouterParam(event, 'id')) }, user.id)
-  return { ...row, writingWarnings }
+  const row = await db.editor.saveCollection({ ...body, body: plan.body, modules, id }, user.id)
+  return { ...row, writingWarnings, article: plan.article, renderedFields: plan.renderedFields }
 })

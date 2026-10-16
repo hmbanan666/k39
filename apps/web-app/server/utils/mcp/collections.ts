@@ -1,10 +1,16 @@
 import type { Collection } from '@k39/database'
+import { collectionWritePlan } from '../../../shared/page-modules'
 import { orderedStopView } from './routes'
 
 type CollectionStop = Parameters<typeof orderedStopView>[0][number]
 
-/** Every stored collection column, plus the ordered places. */
+/** Every stored collection column, plus the ordered places and what renders. */
 export function collectionView(row: Collection, items: CollectionStop[]) {
+  const plan = collectionWritePlan({
+    sentBody: undefined,
+    currentBody: row.body,
+    modules: row.modules,
+  })
   return {
     id: row.id,
     createdAt: row.createdAt,
@@ -24,5 +30,11 @@ export function collectionView(row: Collection, items: CollectionStop[]) {
     sources: row.sources,
     modules: row.modules,
     items: orderedStopView(items),
-  } satisfies Collection & { items: ReturnType<typeof orderedStopView> }
+    article: plan.article,
+    renderedFields: plan.renderedFields,
+  } satisfies Collection & {
+    items: ReturnType<typeof orderedStopView>
+    article: 'modules' | 'body'
+    renderedFields: readonly string[]
+  }
 }

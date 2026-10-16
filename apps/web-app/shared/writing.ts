@@ -4,6 +4,10 @@
  * `apps/web-app/test/writing.test.ts` fails when the two diverge.
  * Saves call `writingHits`. A draft keeps the row and returns the hits.
  * Publishing throws.
+ *
+ * Inflected forms are a stem plus a closed list of endings, with a letter
+ * boundary on each side. That is not a substring: «сам» matches «самый» and
+ * «самого», and does not match «самовар», «самолёт», or «самостоятельно».
  */
 
 export interface WritingStop {
@@ -42,7 +46,144 @@ const EVALUATIVE_STEMS = [
   'романтичн',
 ] as const
 
-const EVALUATIVE_WORD = `(?:${EVALUATIVE_STEMS.map((stem) => `${stem}\\p{L}*`).join('|')})`
+const EVALUATIVE_WORD = `(?<!\\p{L})(?:${EVALUATIVE_STEMS.map((stem) => `${stem}\\p{L}*`).join('|')})(?!\\p{L})`
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Hard-stem adjective endings, short forms, and the -ость noun.
+ * Longer endings come first. The match still has to end on a letter boundary,
+ * so a short ending cannot take the start of a different word.
+ */
+const HARD_ADJECTIVE_ENDINGS = [
+  'остями',
+  'остью',
+  'остей',
+  'остям',
+  'остях',
+  'ость',
+  'ости',
+  'ыми',
+  'ого',
+  'ому',
+  'ою',
+  'ый',
+  'ая',
+  'ое',
+  'ые',
+  'ую',
+  'ых',
+  'ой',
+  'ым',
+  'ом',
+  'ы',
+  'а',
+  'о',
+] as const
+
+/** After ш (лучш). No bare «е», so the comparative «лучше» stays allowed. */
+const SIBILANT_ADJECTIVE_ENDINGS = [
+  'ими',
+  'его',
+  'ему',
+  'ею',
+  'ий',
+  'ая',
+  'ее',
+  'ие',
+  'ую',
+  'их',
+  'ей',
+  'им',
+  'ем',
+] as const
+
+/**
+ * «самый» only. Not the pronoun «сам / сама / сами» and not compounds
+ * (самовар, самолёт, самостоятельно).
+ */
+const SAM_ENDINGS = [
+  'ыми',
+  'ого',
+  'ому',
+  'ою',
+  'ый',
+  'ая',
+  'ое',
+  'ые',
+  'ую',
+  'ых',
+  'ой',
+  'ым',
+  'ом',
+] as const
+
+function endingsGroup(endings: readonly string[], bare = false) {
+  const group = `(?:${endings.map((ending) => escapeRegExp(ending)).join('|')})`
+  return bare ? `${group}?` : group
+}
+
+/** One letter boundary on each side of the alternatives. */
+function bounded(alternatives: string) {
+  return new RegExp(`(?<!\\p{L})(?:${alternatives})(?!\\p{L})`, 'iu')
+}
+
+function wordPattern(phrase: string) {
+  return new RegExp(`(?<!\\p{L})${escapeRegExp(phrase)}(?!\\p{L})`, 'iu')
+}
+
+const hard = endingsGroup(HARD_ADJECTIVE_ENDINGS)
+const hardBare = endingsGroup(HARD_ADJECTIVE_ENDINGS, true)
+
+const EMPTY_SUPERLATIVE = bounded([
+  `идеальн${hard}`,
+  'идеален',
+  `уникальн${hard}`,
+  'уникален',
+  `неповторим${hardBare}`,
+  `незабываем${hardBare}`,
+  `лучш${endingsGroup(SIBILANT_ADJECTIVE_ENDINGS)}`,
+  `сам${endingsGroup(SAM_ENDINGS)}`,
+].join('|'))
+
+const DIP_VERB = bounded(`окун${endingsGroup([
+  'увшись',
+  'ёшься',
+  'ешься',
+  'ётесь',
+  'етесь',
+  'ёмся',
+  'емся',
+  'ётся',
+  'ется',
+  'уться',
+  'улась',
+  'улось',
+  'улись',
+  'улся',
+  'утся',
+  'усь',
+])}`)
+
+const PLEASE_VERB = bounded(`порад${endingsGroup([
+  'уйтесь',
+  'овала',
+  'овало',
+  'овали',
+  'уется',
+  'уются',
+  'овать',
+  'уешь',
+  'уете',
+  'уйся',
+  'овал',
+  'ует',
+  'уют',
+  'ую',
+  'уем',
+])}`)
 
 export const WRITING_STOP_LIST = [
   { phrase: 'уютная атмосфера', note: 'Names a mood. Name the room, the hour, or the dish.' },
@@ -51,16 +192,16 @@ export const WRITING_STOP_LIST = [
   { phrase: 'каждый найдет', note: 'The same slogan without ё.' },
   { phrase: 'гастрономическое путешествие', note: 'Menu-speak. Name the dish and the price in the price block, not in prose.' },
   { phrase: 'в самом сердце', note: 'A location slogan. Name the street or the district.' },
-  { phrase: 'порадует', note: 'A promise. State the fact.' },
-  { phrase: 'приятно удивит', note: 'A promise. State the fact.' },
+  { phrase: 'порадует', note: 'A promise. State the fact. Also порадуют, порадовать, and the other forms.', pattern: PLEASE_VERB },
+  { phrase: 'приятно удивит', note: 'A promise. State the fact. Also удивят and the other forms.', pattern: bounded(`приятно\\s+удив${endingsGroup(['ить', 'ишь', 'ите', 'ила', 'ило', 'или', 'ит', 'ят', 'ил', 'лю', 'им'])}`) },
   { phrase: 'на любой вкус', note: 'Empty range. Name who it is for only from a source.' },
   { phrase: 'по-домашнему', note: 'A mood. Name the dish or the room.' },
-  { phrase: 'атмосферн', note: 'Stem: атмосферный, атмосферно, and the rest.' },
-  { phrase: 'гостеприимн', note: 'Stem: гостеприимный and the rest.' },
+  { phrase: 'атмосферн', note: 'Stem: атмосферный, атмосферно, and the rest. Not the noun атмосфера.', pattern: bounded(`(?:атмосферн${hardBare}|атмосферен)`) },
+  { phrase: 'гостеприимн', note: 'Stem: гостеприимный and the rest. Not гостеприимство.', pattern: bounded(`(?:гостеприимн${hardBare}|гостеприимен)`) },
   { phrase: 'отличный выбор', note: 'A verdict with no fact.' },
   { phrase: 'стоит посетить', note: 'A slogan. Say what the visitor does there.' },
-  { phrase: 'не оставит равнодушн', note: 'Stem: равнодушным, равнодушными.' },
-  { phrase: 'окунуться', note: 'Brochure verb. Name the action.' },
+  { phrase: 'не оставит равнодушн', note: 'Stem: равнодушным, равнодушными. The verb may be оставит or оставят.', pattern: bounded(`не\\s+оста(?:вит|вят)\\s+равнодушн${hardBare}`) },
+  { phrase: 'окунуться', note: 'Brochure verb. Name the action. Also окунулся and the other forms. Not the fish окунь.', pattern: DIP_VERB },
   { phrase: 'для ценителей', note: 'A fake audience.' },
   { phrase: 'вкусно и недорого', note: 'A slogan. The price block carries the prices.' },
 ] as const satisfies readonly WritingStop[]
@@ -68,8 +209,8 @@ export const WRITING_STOP_LIST = [
 export const WRITING_STOP_PATTERNS = [
   {
     phrase: 'empty superlatives',
-    note: 'лучший, самый, уникальный, неповторимый, незабываемый, идеальный, and the same words with other endings.',
-    pattern: /(?<!\p{L})(?:лучш(?:ий|ая|ее|ие)|сам(?:ый|ая|ое|ые)|уникальн(?:ый|ая|ое|ые|о)|неповторим(?:ый|ая|ое|ые|о)|незабываем(?:ый|ая|ое|ые|о)|идеальн(?:ый|ая|ое|ые|о))(?!\p{L})/iu,
+    note: 'лучший, самый, уникальный, неповторимый, незабываемый, идеальный, and the same words with other endings. A closed ending list, so самый does not match самовар, самолёт, or самостоятельно, and лучше stays allowed.',
+    pattern: EMPTY_SUPERLATIVE,
   },
   {
     phrase: 'настоящий',
@@ -113,12 +254,8 @@ export const VENUE_COPY_RULES = [
 /** Sites we do not name, link, or use as a source. */
 export const WRITING_BANNED_SITES = ['kgdmore.ru'] as const
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 function matchRule(text: string, rule: WritingStop) {
-  const pattern = rule.pattern ?? new RegExp(escapeRegExp(rule.phrase), 'iu')
+  const pattern = rule.pattern ?? wordPattern(rule.phrase)
   const found = text.match(pattern)
   return found?.[0] ?? null
 }
@@ -166,6 +303,7 @@ export function writingGuideSection() {
     venue,
     `Never name ${sites}. Never paste another site's sentences, photos, or structure. Write from the sources, in our words.`,
     'Do not pad a page to reach a length minimum. Length ceilings and floors: .cursor/skills/k39-writing/SKILL.md.',
-    'A draft save returns writingWarnings and still stores the row. Publishing rejects when writingHits is not empty.',
+    'Inflected forms are a stem plus a closed list of endings, with a letter boundary on each side. A short stem does not match a longer word: самый does not match самовар, самолёт, or самостоятельно. The comparative лучше is not banned.',
+    'A draft save returns writingWarnings and still stores the row. Publishing rejects when writingHits is not empty. The check reads the prose that renders, including collection module text.',
   ].join('\n')
 }

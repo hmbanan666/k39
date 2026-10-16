@@ -23,7 +23,7 @@ A different agent, in a separate session. The author does not review their own d
 
 Reject, with the failing lines, when any of these fail:
 
-- Stop-list. Search `WRITING_STOP_LIST` and `WRITING_STOP_PATTERNS` in `apps/web-app/shared/writing.ts`, including «каждый найдет» without ё, triads, «не просто X, а Y», and an em dash.
+- Stop-list. Search `WRITING_STOP_LIST` and `WRITING_STOP_PATTERNS` in `apps/web-app/shared/writing.ts`, including inflected forms («идеальный», «идеальны», «самого»), «каждый найдет» without ё, triads, «не просто X, а Y», and an em dash. On a collection that renders modules, search the module text. `body` there is the projection of the modules, not a second article. `renderedFields` on the save says which fields show.
 - Facts. Every number, date, hour, and price has an allowed source. For a venue that exists and operates, address, hours, phone, operating status, and coordinates follow `k39-sources-and-facts`: official site, then Yandex Maps, 2GIS, and OSM for a fact the site does not state, then «уточняйте». A map URL is in `sources`. No text, description, photo, review, rating, average check, or price comes from a map. Prices stay the official menu. `kgdmore.ru` is absent. No sentence is copied from another guide or from another K39 page.
 - Duplicates. The summary is not repeated as the opening. Place `faq` is not also a body `## Частые вопросы`. A price row is not duplicated. A venue dish list is not the full menu.
 - Photos. A missing photo is a note, not a blocker. A photo that is attached still needs `alt`, `author`, `license`, and `sourceUrl`.

@@ -14,7 +14,7 @@ Different visitors want different parts of the same page first, but search engin
 
 1. A page can be an ordered list of typed modules. For collections this is the `collections.modules` jsonb column. An empty list keeps the article layout, so every page moves over on its own.
 2. Module types and their shapes are one zod schema in `apps/web-app/shared/page-modules.ts`: `text` (lead or plain markdown), `month-stats` (tiles plus the full table), `picker`, `ideas` and `plans` (cards with markdown and tags), `places` (the ordered items as place cards), `months` (chips for the twelve guides). New types are added to that schema and to `PageModuleList`.
-3. Modules are edited through the content MCP: `collection_save` takes `modules` and validates it with the same schema, `collection_get` returns it. Moving an article into modules reuses its prose verbatim. `body` stays stored as the archive and as the source for JSON-LD.
+3. Modules are edited through the content MCP: `collection_save` takes `modules` and validates it with the same schema, `collection_get` returns it. Moving an article into modules reuses its prose verbatim. A non-empty valid list is the only article. The save stores `body` as the markdown projection of that prose, so site search (ADR 0030), the score, and JSON-LD read the same text the page shows. `collection_save`, `collection_get`, and `content_set_publication` return `article: "modules"` and `renderedFields` (no `body`). A `body` that is neither the stored column nor that projection is a 400: the edit would not appear. Omitting `body` keeps the projection in step. An empty list, or a list that no longer validates, returns the page to the article layout and `body` is that article again. The stop-list reads the prose that renders, including module text. Hub saves return `renderedFields` as well; a hub article is still `body`.
 4. The server renders every module in full and in its stored order. A stored list that stops validating falls back to the article body rather than half a frame.
 5. The picker asks at most three chip questions (`interest`, `company`, `transport`). Answers live only in the URL (`?i=more,istoriya&c=deti&t=bez-mashiny`), so a link can be shared and the server renders the same order. Nothing is stored without consent.
 6. The picker never hides content. A card that matches an answer and misses none moves up and is marked «Под ваш выбор». A card with no tag for a question is neutral on it. Cards that miss move down but stay. Place cards get interest tags from their category.
@@ -24,6 +24,7 @@ Different visitors want different parts of the same page first, but search engin
 ## Consequences
 
 The default page is complete for search engines; the picker changes only order and hints, so it cannot conflict with indexing.
+A module page has one article. Editing `body` beside a live module list cannot drift away from what visitors, search, and the score read. Pages already stored with both a module list and an older body stay on the modules for the public HTML immediately. The `body` column catches up on the next save, which is what search indexes until then.
 Editors tag cards with a fixed vocabulary, and a wrong tag only moves a card.
 Each page type still needs its own default frame. October is the first page that uses it; other months and collections follow as their content is moved.
 

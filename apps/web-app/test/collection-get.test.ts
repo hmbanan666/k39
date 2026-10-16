@@ -42,6 +42,8 @@ describe('collection_get', () => {
       note: 'Сначала сюда',
       position: 0,
     }])
+    expect(view.article).toBe('body')
+    expect(view.renderedFields).toContain('body')
 
     const theme = {
       ...row,

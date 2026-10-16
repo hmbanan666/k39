@@ -9,7 +9,16 @@
       <label>Название <input v-model="item.title"></label>
       <label>Slug <input v-model="item.slug"></label>
       <label>Кратко <textarea v-model="item.summary" rows="2" /></label>
-      <label>Текст <textarea v-model="item.body" rows="6" /></label>
+      <label>Текст
+        <textarea
+          v-model="item.body"
+          rows="6"
+          :disabled="hasModules(item)"
+        />
+      </label>
+      <p v-if="hasModules(item)">
+        Страница собрана из модулей. Этот текст на сайте не показывается.
+      </p>
       <label>Статус
         <select v-model="item.publicationStatus">
           <option value="draft">черновик</option>
@@ -42,8 +51,15 @@ import { ofetch } from 'ofetch'
 
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
 const items = ref(await ofetch('/api/admin/collections'))
-async function save(item: { id: string }) {
-  await ofetch(`/api/admin/collections/${item.id}`, { method: 'PATCH', body: item })
+function hasModules(item: { modules?: unknown }) {
+  return Array.isArray(item.modules) && item.modules.length > 0
+}
+async function save(item: { id: string, modules?: unknown, body?: string }) {
+  const payload: Record<string, unknown> = { ...item }
+  if (hasModules(item)) {
+    delete payload.body
+  }
+  await ofetch(`/api/admin/collections/${item.id}`, { method: 'PATCH', body: payload })
 }
 </script>
 

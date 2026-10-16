@@ -1,6 +1,6 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
-import { pageModulesSchema } from '../../../shared/page-modules'
+import { COLLECTION_BODY_REJECTED, collectionWritePlan, pageModulesSchema } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
 import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from '../../utils/mcp/audit'
@@ -12,7 +12,7 @@ import { writingGate } from '../../utils/mcp/writing-guard'
 
 export default defineMcpTool({
   name: 'collection_save',
-  description: 'Create or update a collection in place, including one that is already published. Omitting publicationStatus leaves a published collection published. Optional items replace the ordered places; omit them to keep the current list. An empty array clears it. Each placeSlug must exist. A slug rename writes a 301 from /podborki/old. kind \'month\' with month 1..12 makes a month guide; sources render in a separate Sources block, so keep external links out of body. modules replaces the ordered page modules (ADR 0023, see content_guide); omit to keep them, an empty array returns the page to the plain article layout.',
+  description: 'Create or update a collection in place, including one that is already published. Omitting publicationStatus leaves a published collection published. Optional items replace the ordered places; omit them to keep the current list. An empty array clears it. Each placeSlug must exist. A slug rename writes a 301 from /podborki/old. kind \'month\' with month 1..12 makes a month guide; sources render in a separate Sources block, so keep external links out of body. modules replaces the ordered page modules (ADR 0023, see content_guide); omit to keep them, an empty array returns the page to the plain article layout. When modules render, they are the article: body is stored as their projection, the response lists renderedFields, and a different body is a 400. The stop-list reads that projection.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string(),
@@ -40,13 +40,21 @@ export default defineMcpTool({
       ? rows.find((item) => item.id === input.id)
       : rows.find((item) => item.slug === input.slug)
     const publicationStatus = normalizePublication(input.publicationStatus, current?.publicationStatus)
+    const modules = input.modules === undefined ? current?.modules : input.modules
+    const plan = collectionWritePlan({
+      sentBody: input.body,
+      currentBody: current?.body,
+      modules,
+    })
+    if (plan.rejectBody) {
+      throw createError({ statusCode: 400, statusMessage: COLLECTION_BODY_REJECTED })
+    }
     const writingWarnings = writingGate(writingCopy([
       input.title,
       input.summary === undefined ? current?.summary : input.summary,
-      input.body === undefined ? current?.body : input.body,
+      plan.copy,
       input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
       input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
-      input.modules === undefined ? current?.modules : input.modules,
       input.items,
       input.sources === undefined ? current?.sources : input.sources,
     ]), publicationStatus === 'published')
@@ -56,7 +64,7 @@ export default defineMcpTool({
         slug: input.slug,
         title: input.title,
         summary: input.summary,
-        body: input.body,
+        body: plan.body,
         publicationStatus,
         seoTitle: input.seoTitle,
         seoDescription: input.seoDescription,
@@ -77,7 +85,10 @@ export default defineMcpTool({
         kind: row.kind,
         month: row.month,
         sources: row.sources,
+        body: row.body,
         modules: row.modules,
+        article: plan.article,
+        renderedFields: plan.renderedFields,
         items: orderedStopView(await db.editor.collectionItems(row.id)),
         writingWarnings,
       }

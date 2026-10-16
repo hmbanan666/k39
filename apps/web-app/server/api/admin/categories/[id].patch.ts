@@ -1,4 +1,5 @@
 import { db } from '@k39/database'
+import { HUB_RENDERED_FIELDS } from '../../../../shared/page-modules'
 import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
 import { writingGate } from '../../../utils/mcp/writing-guard'
@@ -22,5 +23,5 @@ export default defineEventHandler(async (event) => {
     ogImage: body.ogImage || null,
     noindex: Boolean(body.noindex),
   })
-  return { ...row, writingWarnings }
+  return { ...row, writingWarnings, article: 'body' as const, renderedFields: HUB_RENDERED_FIELDS }
 })
