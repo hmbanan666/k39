@@ -57,19 +57,28 @@ Never paste another site's sentences, and do not keep their sentence order with 
 
 ## Length
 
-Character counts are `lengthNorm` in `apps/web-app/shared/scoring.ts` and ADR 0016. Venue length is `venueQuality` in the same file. Do not invent a new target.
+Character counts are `lengthNorm` in `apps/web-app/shared/scoring.ts` and ADR 0016. Venue length is `venueQuality` in the same file. Do not invent a new target. ADR 0034 is the only way past a ceiling.
 
-| Page | Body |
-| --- | --- |
-| Major place (`forty`, `zamki`) | 3000–6000 |
-| Other place | 2000–6000 |
-| Route | 8000–12000 |
-| Collection | 5000–8000 |
-| Quest | 2000–4000 |
-| Hub | 2000–8000 |
-| Venue `description` | 300–600 |
+| Page | Body | Extended ceiling |
+| --- | --- | --- |
+| Major place (`forty`, `zamki`) | 3000–6000 | up to 20000 |
+| Other place | 2000–6000 | up to 20000 |
+| Route | 8000–12000 | up to 20000 |
+| Collection | 5000–8000 | up to 20000 |
+| Quest | 2000–4000 | up to 20000 |
+| Hub | 2000–8000 | up to 20000 |
+| Venue `description` | 300–600 | none |
 
 Do not pad a page to reach the minimum. A short sourced page stays short. The score may flag it. Padding is a failure, and so is stuffing past the ceiling.
+
+A longer page is earned by search demand plus facts. `page_passport_set` stores `lengthOverride` only when all of these are present:
+
+- `ceiling`: above that page's default, at most 20000
+- `queries`: the searches the extra length should rank for
+- evidence: `search` with observed impressions and position from `analytics_search_queries` (Webmaster or Search Console), or `competitors` with the length of the top page for each query
+- `sections`: the extra sections that length covers
+
+Without that justification the default ceiling applies. Each added section needs its own sourced facts. Do not reuse a paragraph, and do not paste a near-copy under a new heading. The score flags a page above the default ceiling when an H2 repeats, a paragraph is a near-duplicate, or the stop-list matches. An override with no search impressions after 60 days is a reason to cut the page back. The weekly report lists those pages with their traffic.
 
 The rendered title (with `| K39`) is 30–65 characters. The description is 110–160. Outside that, the score flags the page. `content_guide` still caps stored `seoTitle` at 70 and `seoDescription` at 170. Do not keyword-stuff. The H1 is the page title.
 
@@ -117,7 +126,7 @@ Good: «Во внутреннем дворе есть стол и две ска�
 - Every sentence is a fact a source states, or it is absent.
 - Stop-list phrases, empty superlatives, triads, «не просто X, а Y», and em dashes are gone.
 - `kgdmore.ru` is not named. No sentence is copied from another site.
-- Length is inside the table for this page type.
+- Length is inside the table, or inside a justified passport override (at most 20000) whose extra sections each have their own sourced facts.
 - Place FAQ is the `faq` field (3 to 6), not a second body section. Other articles use `## Частые вопросы` with 6 questions.
 - Summary is not repeated as the opening paragraph.
 - `seoTitle` and `seoDescription` sit in the score window.

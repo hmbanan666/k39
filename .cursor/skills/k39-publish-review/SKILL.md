@@ -25,7 +25,8 @@ Reject, with the failing lines, when any of these fail:
 
 - Stop-list. Search `WRITING_STOP_LIST` and `WRITING_STOP_PATTERNS` in `apps/web-app/shared/writing.ts`, including inflected forms («идеальный», «идеальны», «самого»), «каждый найдет» without ё, triads, «не просто X, а Y», and an em dash. On a collection that renders modules, search the module text. `body` there is the projection of the modules, not a second article. `renderedFields` on the save says which fields show.
 - Facts. Every number, date, hour, and price has an allowed source. For a venue that exists and operates, address, hours, phone, operating status, and coordinates follow `k39-sources-and-facts`: official site, then Yandex Maps, 2GIS, and OSM for a fact the site does not state, then «уточняйте». A map URL is in `sources`. No text, description, photo, review, rating, average check, or price comes from a map. Prices stay the official menu. `kgdmore.ru` is absent. No sentence is copied from another guide or from another K39 page.
-- Duplicates. The summary is not repeated as the opening. Place `faq` is not also a body `## Частые вопросы`. A price row is not duplicated. A venue dish list is not the full menu.
+- Duplicates. The summary is not repeated as the opening. Place `faq` is not also a body `## Частые вопросы`. A price row is not duplicated. A venue dish list is not the full menu. On a page above the default length ceiling, an H2 is not a near-copy of another H2, and a paragraph is not a near-copy of another paragraph.
+- Length. The default ceiling in `k39-writing` still applies. A longer body needs a justified `lengthOverride` from `page_passport_get`: ceiling at most 20000, target queries, observed impressions and position or competitor lengths, and the extra sections. Each added section has its own sourced facts. Stop-list filler and padding to fill the extra room fail. An override with no search impressions after 60 days is a reason to cut the page back.
 - Photos. A missing photo is a note, not a blocker. A photo that is attached still needs `alt`, `author`, `license`, and `sourceUrl`.
 - Score. `content_score_get` with `refresh: true`. `passport empty`, `facts not checked`, a venue description outside 300–600, and `no Как добраться` on a page that needs it block publish. `0 photos` is a note.
 
@@ -57,7 +58,7 @@ Good: the review says `PASS`, and notes `no FAQ` because `faq` is set and the bo
 
 - Author checklist of the page-type skill is done on the stored row.
 - Reviewer is a second pass and started from `*_get`.
-- Stop-list, sources, duplicates, and photos were checked.
+- Stop-list, sources, duplicates, length, and photos were checked.
 - Score failures are fixed, except the structured-FAQ gap, which is noted.
 - The review says `PASS`.
 - Publish happens only after that.

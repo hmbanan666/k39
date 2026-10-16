@@ -1,4 +1,6 @@
+import type { LengthOverride } from './length-override'
 import { articleBody } from './address'
+import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, lengthOverrideApplies, lengthOverrideIsStale, longPageFiller } from './length-override'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
 import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
 import { statusContradictions } from './status-consistency'
@@ -26,6 +28,7 @@ export interface PassportFields {
   goal30d: number | null
   goal90d: number | null
   notes: string | null
+  lengthOverride?: LengthOverride | null
 }
 
 export interface ResultInput {
@@ -40,6 +43,9 @@ export interface ResultInput {
   engagedTracked: boolean
   scrollTracked: boolean
   nextClicks: number
+  /** Impressions in the score window for this page and its target queries. */
+  searchImpressions: number
+  searchClicks: number
 }
 
 export interface ScoreSource {
@@ -156,6 +162,8 @@ export function emptyResults(): ResultInput {
     engagedTracked: false,
     scrollTracked: false,
     nextClicks: 0,
+    searchImpressions: 0,
+    searchClicks: 0,
   }
 }
 
@@ -932,6 +940,16 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
         avgEngagedSec: page.results.avgEngagedSec,
         nextClicks: page.results.nextClicks,
         pageviews30d: page.results.pageviews30d,
+        searchImpressions: page.results.searchImpressions,
+        searchClicks: page.results.searchClicks,
+        lengthOverride: page.passport?.lengthOverride
+          ? {
+              ceiling: page.passport.lengthOverride.ceiling,
+              setAt: page.passport.lengthOverride.setAt ?? null,
+              applied: false,
+              stale: false,
+            }
+          : null,
       },
       organic30d: page.results.organic30d,
       organic90d: page.results.organic90d,
@@ -940,18 +958,27 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
     }
   }
   const text = articleText(page)
-  const length = lengthPoints(text.length, lengthNorm(page.kind, page.categorySlug))
+  const norm = lengthNorm(page.kind, page.categorySlug)
+  const applied = lengthOverrideApplies(page.passport?.lengthOverride, norm.max)
+  const length = lengthPoints(text.length, { min: norm.min, max: applied?.ceiling ?? norm.max })
+  const filler = norm.max != null && text.length > norm.max ? longPageFiller(text) : { points: 0, checks: [] as string[] }
+  const ignored = page.passport?.lengthOverride && !applied ? [LENGTH_OVERRIDE_IGNORED] : []
+  const stale = applied && lengthOverrideIsStale(applied, now, page.results.searchImported, page.results.searchImpressions)
   const sections = sectionPoints(page, text)
   const photos = photoPoints(page)
   const fresh = freshPoints(page, now)
   const passport = passportPoints(page.passport)
   const status = statusPoints(page, text)
-  const quality = clamp(length.points + sections.points + photos.points + fresh.points + passport.points + status.points)
+  const quality = clamp(length.points + sections.points + photos.points + fresh.points + passport.points + status.points + filler.points)
   const linking = linkingPoints(page)
   const indexing = indexingPoints(page)
   const results = resultsPoints(page)
+  if (stale) {
+    results.checks.push(LENGTH_OVERRIDE_STALE)
+    results.points = clamp(results.points - 10)
+  }
   const checks: ScoreChecks = {
-    quality: [...length.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks, ...status.checks],
+    quality: [...length.checks, ...ignored, ...filler.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks, ...status.checks],
     linking: linking.checks,
     indexing: indexing.checks,
     results: results.checks,
@@ -995,6 +1022,16 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
       avgEngagedSec: page.results.avgEngagedSec,
       nextClicks: page.results.nextClicks,
       pageviews30d: page.results.pageviews30d,
+      searchImpressions: page.results.searchImpressions,
+      searchClicks: page.results.searchClicks,
+      lengthOverride: page.passport?.lengthOverride
+        ? {
+            ceiling: page.passport.lengthOverride.ceiling,
+            setAt: page.passport.lengthOverride.setAt ?? null,
+            applied: Boolean(applied),
+            stale: Boolean(stale),
+          }
+        : null,
     },
     organic30d: page.results.organic30d,
     organic90d: page.results.organic90d,
@@ -1068,6 +1105,11 @@ export function issueLabel(check: string) {
     [/^no clicks to the next page$/, () => 'Нет переходов дальше'],
     [/^body (\d+) chars, need (.+)$/, (match) => `Текст ${match[1]} знаков, нужно ${match[2]}`],
     [/^body (\d+) chars, above (\d+)$/, (match) => `Текст ${match[1]} знаков, больше ${match[2]}`],
+    [/^length override ignored$/, () => 'Расширение длины не засчитано'],
+    [/^length override: no impressions after 60 days$/, () => 'Расширенный текст без показов 60 дней'],
+    [/^repeated section: (.+)$/, (match) => `Повтор раздела: ${match[1]}`],
+    [/^repeated paragraph$/, () => 'Повтор абзаца'],
+    [/^stop-list: (.+)$/, (match) => `Стоп-лист: ${match[1]}`],
   ]
   for (const [pattern, label] of rules) {
     const match = check.match(pattern)
@@ -1091,6 +1133,56 @@ export interface WeeklyScore {
   organic90d: number
   goal30d: number | null
   goal90d: number | null
+  signals?: Record<string, unknown>
+}
+
+export interface LengthOverrideReportRow {
+  path: string
+  title: string
+  pageType: PageKind
+  ceiling: number
+  bodyChars: number
+  organic30d: number
+  organic90d: number
+  impressions: number
+  clicks: number
+  applied: boolean
+  stale: boolean
+  setAt: string | null
+}
+
+function numberSignal(signals: Record<string, unknown> | undefined, key: string) {
+  const value = signals?.[key]
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+function lengthOverrideRows(current: WeeklyScore[]): LengthOverrideReportRow[] {
+  const rows: LengthOverrideReportRow[] = []
+  for (const row of current) {
+    const raw = row.signals?.lengthOverride
+    if (!raw || typeof raw !== 'object') {
+      continue
+    }
+    const item = raw as Record<string, unknown>
+    if (typeof item.ceiling !== 'number') {
+      continue
+    }
+    rows.push({
+      path: row.path,
+      title: row.title,
+      pageType: row.pageType,
+      ceiling: item.ceiling,
+      bodyChars: numberSignal(row.signals, 'bodyChars'),
+      organic30d: row.organic30d,
+      organic90d: row.organic90d,
+      impressions: numberSignal(row.signals, 'searchImpressions'),
+      clicks: numberSignal(row.signals, 'searchClicks'),
+      applied: item.applied === true,
+      stale: item.stale === true,
+      setAt: typeof item.setAt === 'string' ? item.setAt : null,
+    })
+  }
+  return rows.sort((a, b) => Number(b.stale) - Number(a.stale) || Number(a.applied) - Number(b.applied) || a.path.localeCompare(b.path))
 }
 
 function average(rows: WeeklyScore[]) {
@@ -1163,6 +1255,7 @@ export function buildWeeklyReport(current: WeeklyScore[], previous: WeeklyScore[
     bottom,
     missingGoals,
     drops,
+    lengthOverrides: lengthOverrideRows(current),
   }
 }
 
@@ -1195,29 +1288,53 @@ export function filterScores<T extends WeeklyScore & { title: string }>(rows: T[
   })
 }
 
-export function queriesForPath(path: string, rows: Array<{ page: string, query: string }>, targets: string[]) {
+export interface SearchQueryRow {
+  page: string
+  query: string
+  impressions?: number
+  clicks?: number
+}
+
+function searchPathname(page: string) {
+  const trimmed = page.trim()
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return trimmed
+  }
+  try {
+    return new URL(trimmed).pathname
+  } catch {
+    return trimmed
+  }
+}
+
+export function matchingSearchRows(path: string, rows: SearchQueryRow[], targets: string[]) {
   const wanted = new Set(targets.map((query) => query.trim().toLowerCase()).filter(Boolean))
-  const found = new Set<string>()
-  for (const row of rows) {
-    const page = row.page.trim()
-    let pathname = page
-    if (page.startsWith('http://') || page.startsWith('https://')) {
-      try {
-        pathname = new URL(page).pathname
-      } catch {
-        pathname = page
-      }
-    }
+  return rows.filter((row) => {
+    let pathname = searchPathname(row.page)
     if (pathname.length > 1 && pathname.endsWith('/')) {
       pathname = pathname.slice(0, -1)
     }
-    const named = page === path || pathname === path
-    const sitewide = page === '' && wanted.has(row.query.trim().toLowerCase())
-    if (named || sitewide) {
-      found.add(row.query)
-    }
+    const named = row.page.trim() === path || pathname === path
+    const sitewide = row.page.trim() === '' && wanted.has(row.query.trim().toLowerCase())
+    return named || sitewide
+  })
+}
+
+export function queriesForPath(path: string, rows: SearchQueryRow[], targets: string[]) {
+  const found = new Set<string>()
+  for (const row of matchingSearchRows(path, rows, targets)) {
+    found.add(row.query)
   }
   return [...found]
+}
+
+export function searchTotalsForPath(path: string, rows: SearchQueryRow[], targets: string[]) {
+  const matched = matchingSearchRows(path, rows, targets)
+  return {
+    queries: queriesForPath(path, rows, targets),
+    impressions: matched.reduce((sum, row) => sum + (row.impressions ?? 0), 0),
+    clicks: matched.reduce((sum, row) => sum + (row.clicks ?? 0), 0),
+  }
 }
 
 const PAGE_TITLE: Record<PageKind, string> = {

@@ -4,7 +4,7 @@ import { pageKindSchema } from '../../utils/scoring/schemas'
 
 export default defineMcpTool({
   name: 'page_passport_get',
-  description: 'Read the page passport for a place, route, collection, hub, or quest. Pass a path, or pageType plus slug. Returns empty fields when the passport has not been filled in.',
+  description: 'Read the page passport for a place, route, collection, hub, quest, or venue. Pass a path, or pageType plus slug. Returns empty fields when the passport has not been filled in, including lengthOverride.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     path: z.string().optional(),

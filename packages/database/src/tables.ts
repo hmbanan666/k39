@@ -1,7 +1,7 @@
 import type { BodySection } from './body-sections'
 import type { ClaimChannel, ClaimStatus, VenueMemberRole } from './claims'
 import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
-import type { ScoreChecks } from './types/scoring'
+import type { LengthOverride, ScoreChecks } from './types/scoring'
 import type { VenueDish, VenueHours, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from './venues'
 import { cuid2 } from 'drizzle-cuid2/postgres'
 import { sql } from 'drizzle-orm'
@@ -587,6 +587,7 @@ export const pagePassports = pgTable('page_passports', {
   goal30d: integer('goal_30d'),
   goal90d: integer('goal_90d'),
   notes: text('notes'),
+  lengthOverride: jsonb('length_override').$type<LengthOverride | null>(),
 }, (table) => [
   uniqueIndex('page_passports_page_idx').on(table.pageType, table.entityId),
   uniqueIndex('page_passports_path_idx').on(table.path),

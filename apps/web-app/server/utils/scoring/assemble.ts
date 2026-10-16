@@ -1,7 +1,7 @@
 import type { CatalogStop, ContentCatalog, PageMetric, StoredScore } from '@k39/database'
 import type { LinkCatalog, PageKind, PageScore, PassportFields, ScoreSource } from '../../../shared/scoring'
 import { collectionArticle } from '../../../shared/page-modules'
-import { emptyResults, linkStats, queriesForPath, scorePage } from '../../../shared/scoring'
+import { emptyResults, linkStats, scorePage, searchTotalsForPath } from '../../../shared/scoring'
 
 export function catalogPageRefs(catalog: ContentCatalog) {
   return [
@@ -32,7 +32,15 @@ function passportOf(catalog: ContentCatalog, kind: PageKind, id: string): Passpo
     goal30d: row.goal30d,
     goal90d: row.goal90d,
     notes: row.notes,
+    lengthOverride: row.lengthOverride,
   }
+}
+
+function demandTargets(passport: PassportFields | null) {
+  return [
+    ...(passport?.targetQueries ?? []),
+    ...(passport?.lengthOverride?.queries ?? []),
+  ]
 }
 
 export function scoresFromCatalog(
@@ -112,13 +120,16 @@ export function scoresFromCatalog(
 
   function resultsFor(path: string, passport: PassportFields | null): ScoreSource['results'] {
     const metric = metricByPath.get(path)
+    const search = searchTotalsForPath(path, queries, demandTargets(passport))
     return {
       ...emptyResults(),
       organic7d: metric?.organic7d ?? 0,
       organic30d: metric?.organic30d ?? 0,
       organic90d: metric?.organic90d ?? 0,
       searchImported,
-      queries: queriesForPath(path, queries, passport?.targetQueries ?? []),
+      queries: search.queries,
+      searchImpressions: search.impressions,
+      searchClicks: search.clicks,
       pageviews30d: metric?.pageviews30d ?? 0,
       scrollMax: metric?.scrollEvents ? metric.scrollMax : null,
       avgEngagedSec: metric?.engageEvents ? (metric.avgEngagedMs ?? 0) / 1000 : null,

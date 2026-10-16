@@ -71,6 +71,16 @@ export interface CatalogHub {
   updatedAt: string
 }
 
+/** Stored passport override. Scoring rules: apps/web-app/shared/length-override.ts. */
+export interface LengthOverride {
+  ceiling: number
+  queries: string[]
+  search: { impressions: number, position: number } | null
+  competitors: Array<{ query: string, chars: number }>
+  sections: string[]
+  setAt: string
+}
+
 export interface CatalogPassport {
   id: string
   pageType: PageKind
@@ -82,6 +92,7 @@ export interface CatalogPassport {
   goal30d: number | null
   goal90d: number | null
   notes: string | null
+  lengthOverride: LengthOverride | null
 }
 
 export interface CatalogVenue {
@@ -161,4 +172,5 @@ export interface PassportWrite {
   goal30d?: number | null
   goal90d?: number | null
   notes?: string | null
+  lengthOverride?: LengthOverride | null
 }

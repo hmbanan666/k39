@@ -1,8 +1,10 @@
 import type { CatalogArticle, CatalogHub, ContentCatalog, ScorePlace } from '@k39/database'
+import type { LengthOverride } from '../shared/length-override'
 import type { LinkCatalog, ScoreSource } from '../shared/scoring'
 import { describe, expect, it } from 'vitest'
 import { catalogPageRefs, scoresFromCatalog } from '../server/utils/scoring/assemble'
 import { personaCoverageReport } from '../server/utils/scoring/coverage'
+import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, REPEATED_PARAGRAPH } from '../shared/length-override'
 import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage } from '../shared/scoring'
 
 const TITLE = `Форт на окраине города K39 ${'а'.repeat(10)}`
@@ -50,6 +52,28 @@ function source(patch: Partial<ScoreSource> = {}): ScoreSource {
       organic30d: 10,
       organic90d: 40,
     },
+    ...patch,
+  }
+}
+
+function uniqueArticle(chars: number, noun: string) {
+  const parts: string[] = []
+  let index = 0
+  while (parts.join('\n\n').length < chars) {
+    parts.push(`${noun} ${index} описан отдельно: год ${1800 + (index % 50)}, признак ${noun}-${index}, и это не повтор соседнего абзаца.`)
+    index += 1
+  }
+  return parts.join('\n\n').slice(0, chars)
+}
+
+function lengthOverride(patch: Partial<LengthOverride> = {}): LengthOverride {
+  return {
+    ceiling: 12_000,
+    queries: ['форт а'],
+    search: { impressions: 20, position: 6 },
+    competitors: [],
+    sections: ['История стен'],
+    setAt: '2026-10-01T00:00:00.000Z',
     ...patch,
   }
 }
@@ -319,6 +343,89 @@ describe('page score', () => {
       memberCount: 2,
     }))
     expect(score.checks.quality.filter((check) => check.startsWith('body ') || check.includes('FAQ') || check === 'no FAQ')).toEqual([])
+  })
+
+  it('uses an extended ceiling only when the passport justification is valid', () => {
+    const now = new Date('2026-10-16T00:00:00.000Z')
+    const body = uniqueArticle(9000, 'ров')
+    const passport = {
+      ...source().passport!,
+      lengthOverride: lengthOverride({ ceiling: 12_000, setAt: '2026-10-01T00:00:00.000Z' }),
+    }
+    const extended = scorePage(source({
+      categorySlug: 'eda',
+      categoryTitle: 'Еда',
+      body,
+      photoCount: 1,
+      passport,
+      results: { ...emptyResults(), searchImported: true, searchImpressions: 12, organic30d: 10, organic90d: 40 },
+    }), now)
+    expect(extended.checks.quality.some((check) => check.includes('above'))).toBe(false)
+    expect(extended.checks.quality).not.toContain(LENGTH_OVERRIDE_IGNORED)
+    expect(extended.checks.results).not.toContain(LENGTH_OVERRIDE_STALE)
+    expect(extended.signals.lengthOverride).toMatchObject({ applied: true, stale: false, ceiling: 12_000 })
+
+    const over = scorePage(source({
+      categorySlug: 'eda',
+      body: uniqueArticle(13_000, 'ров'),
+      photoCount: 1,
+      passport,
+    }), now)
+    expect(over.checks.quality.some((check) => check.includes('above 12000'))).toBe(true)
+
+    const ignored = scorePage(source({
+      categorySlug: 'eda',
+      body,
+      photoCount: 1,
+      passport: { ...passport, lengthOverride: lengthOverride({ ceiling: 5000 }) },
+    }), now)
+    expect(ignored.checks.quality).toContain(LENGTH_OVERRIDE_IGNORED)
+    expect(ignored.checks.quality.some((check) => check.includes('above 6000'))).toBe(true)
+  })
+
+  it('flags filler on a long page and a stale override after 60 days', () => {
+    const now = new Date('2026-10-16T00:00:00.000Z')
+    const copied = 'Во дворе слышно шоссе круглый год, билет покупают у кассы у ворот, а стены сложены из красного кирпича в конце девятнадцатого века и стоят на своём месте до сих пор без новой облицовки.'
+    const repeated = scorePage(source({
+      categorySlug: 'eda',
+      body: `${'к'.repeat(6200)}\n\n## Двор\n\n${copied}\n\n## Двор снова\n\n${copied}`,
+      photoCount: 1,
+      passport: { ...source().passport!, lengthOverride: lengthOverride({ ceiling: 20_000 }) },
+    }))
+    expect(repeated.checks.quality).toContain('repeated section: Двор снова')
+    expect(repeated.checks.quality).toContain(REPEATED_PARAGRAPH)
+    expect(repeated.quality).toBeLessThan(scorePage(source({
+      categorySlug: 'eda',
+      body: `${uniqueArticle(4000, 'ров')}\n\n${uniqueArticle(4000, 'маяк')}`,
+      photoCount: 1,
+      passport: { ...source().passport!, lengthOverride: lengthOverride({ ceiling: 20_000 }) },
+    })).quality)
+
+    const slogan = scorePage(source({
+      categorySlug: 'eda',
+      body: `${uniqueArticle(7000, 'ров')}\n\nЭто уютная атмосфера у форта.`,
+      photoCount: 1,
+    }))
+    expect(slogan.checks.quality).toContain('stop-list: уютная атмосфера')
+    const short = scorePage(source({ body: 'Это уютная атмосфера у форта.' }))
+    expect(short.checks.quality.some((check) => check.startsWith('stop-list:'))).toBe(false)
+
+    const stale = scorePage(source({
+      categorySlug: 'eda',
+      body: uniqueArticle(8000, 'ров'),
+      photoCount: 1,
+      passport: {
+        ...source().passport!,
+        lengthOverride: lengthOverride({ setAt: new Date(now.getTime() - 60 * 86_400_000).toISOString() }),
+      },
+      results: { ...emptyResults(), searchImported: true, searchImpressions: 0, organic30d: 10, organic90d: 40 },
+    }), now)
+    expect(stale.checks.results).toContain(LENGTH_OVERRIDE_STALE)
+    expect(issueLabel(LENGTH_OVERRIDE_STALE)).toBe('Расширенный текст без показов 60 дней')
+    expect(issueLabel('repeated section: Двор')).toBe('Повтор раздела: Двор')
+    expect(issueLabel(REPEATED_PARAGRAPH)).toBe('Повтор абзаца')
+    expect(issueLabel('stop-list: уютная атмосфера')).toBe('Стоп-лист: уютная атмосфера')
+    expect(issueLabel(LENGTH_OVERRIDE_IGNORED)).toBe('Расширение длины не засчитано')
   })
 
   it('flags a minor place above 6000 characters and a hub above 8000', () => {
@@ -648,6 +755,43 @@ describe('weekly report', () => {
     expect(report.top[0]?.path).toBe('/fort-b')
     expect(report.missingGoals.map((row) => row.path)).toEqual(['/fort-a'])
     expect(report.drops[0]).toMatchObject({ path: '/fort-a', delta: -15 })
+    expect(report.lengthOverrides).toEqual([])
+  })
+
+  it('lists a length override with its traffic, stale rows first', () => {
+    const report = buildWeeklyReport([
+      {
+        ...current[1]!,
+        signals: {
+          bodyChars: 4000,
+          searchImpressions: 10,
+          searchClicks: 2,
+          lengthOverride: { ceiling: 9000, setAt: '2026-09-01T00:00:00.000Z', applied: true, stale: false },
+        },
+      },
+      {
+        ...current[0]!,
+        organic30d: 0,
+        organic90d: 1,
+        signals: {
+          bodyChars: 9000,
+          searchImpressions: 0,
+          searchClicks: 0,
+          lengthOverride: { ceiling: 12_000, setAt: '2026-01-01T00:00:00.000Z', applied: true, stale: true },
+        },
+      },
+    ], null, { current: '2026-10-16', previous: null })
+    expect(report.lengthOverrides.map((row) => row.path)).toEqual(['/fort-a', '/fort-b'])
+    expect(report.lengthOverrides[0]).toMatchObject({
+      ceiling: 12_000,
+      bodyChars: 9000,
+      organic30d: 0,
+      organic90d: 1,
+      impressions: 0,
+      clicks: 0,
+      stale: true,
+      applied: true,
+    })
   })
 
   it('filters by block threshold and sorts the worst quality first', () => {
