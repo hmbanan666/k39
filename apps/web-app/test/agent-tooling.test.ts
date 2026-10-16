@@ -1,0 +1,129 @@
+import { Buffer } from 'node:buffer'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
+import { planNodePath } from '../../../scripts/env/node-path-plan.mjs'
+import { findDispatcher } from '../../../scripts/git/chain-hooks.mjs'
+
+function repoRoot() {
+  const candidates = [process.cwd(), resolve(process.cwd(), '../..')]
+  return candidates.find((dir) => existsSync(resolve(dir, 'pnpm-workspace.yaml'))) ?? process.cwd()
+}
+
+const syncScript = resolve(repoRoot(), 'scripts/git/sync-branch.sh')
+const dirs: string[] = []
+
+function scratch() {
+  const dir = mkdtempSync(join(tmpdir(), 'k39-tooling-'))
+  dirs.push(dir)
+  return dir
+}
+
+afterEach(() => {
+  for (const dir of dirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+const gitEnv = {
+  ...process.env,
+  GIT_AUTHOR_NAME: 'K39',
+  GIT_AUTHOR_EMAIL: 'dev@localhost',
+  GIT_COMMITTER_NAME: 'K39',
+  GIT_COMMITTER_EMAIL: 'dev@localhost',
+}
+
+function git(cwd: string, args: string[]) {
+  return execFileSync('git', args, { cwd, env: gitEnv, encoding: 'utf8' }).trim()
+}
+
+function seedPair() {
+  const root = scratch()
+  const origin = join(root, 'origin.git')
+  const seed = join(root, 'seed')
+  const work = join(root, 'work')
+  git(root, ['init', '--bare', '-b', 'main', origin])
+  git(root, ['init', '-b', 'main', seed])
+  git(seed, ['config', 'core.hooksPath', join(seed, '.git/hooks')])
+  writeFileSync(join(seed, 'readme.txt'), 'one\n')
+  git(seed, ['add', 'readme.txt'])
+  git(seed, ['commit', '-m', 'feat: one'])
+  git(seed, ['remote', 'add', 'origin', origin])
+  git(seed, ['push', '-u', 'origin', 'main'])
+  git(root, ['clone', origin, work])
+  git(work, ['config', 'user.email', 'dev@localhost'])
+  git(work, ['config', 'user.name', 'K39'])
+  git(work, ['config', 'core.hooksPath', join(work, '.git/hooks')])
+  return { origin, seed, work }
+}
+
+describe('node path plan', () => {
+  it('links only the directories before the platform node', () => {
+    expect(planNodePath('/usr/local/cargo/bin:/exec-daemon:/usr/local/bin')).toEqual({
+      link: ['/usr/local/cargo/bin'],
+      platform: true,
+    })
+    expect(planNodePath('/exec-daemon:/usr/local/bin')).toEqual({
+      link: [],
+      platform: true,
+    })
+    expect(planNodePath('/usr/local/bin:/usr/bin')).toEqual({
+      link: [],
+      platform: false,
+    })
+  })
+})
+
+describe('hook dispatcher', () => {
+  it('prefers the workspace dispatcher over another hooks directory', () => {
+    const home = scratch()
+    const workspace = '/workspace'
+    const encoded = Buffer.from(workspace).toString('base64').replace(/=+$/g, '')
+    const preferred = join(home, '.cursor', 'agent-hooks', encoded)
+    const other = join(home, '.cursor', 'agent-hooks', 'other')
+    mkdirSync(preferred, { recursive: true })
+    mkdirSync(other, { recursive: true })
+    writeFileSync(join(other, '.dispatcher'), '')
+    writeFileSync(join(preferred, '.dispatcher'), '')
+    expect(findDispatcher(home, workspace, other)).toBe(preferred)
+    rmSync(join(preferred, '.dispatcher'))
+    expect(findDispatcher(home, workspace, other)).toBe(other)
+    rmSync(join(other, '.dispatcher'))
+    expect(findDispatcher(home, workspace, other)).toBeNull()
+  })
+})
+
+describe('sync branch', () => {
+  it('fast-forwards when origin is ahead', () => {
+    const { seed, work } = seedPair()
+    writeFileSync(join(seed, 'readme.txt'), 'two\n')
+    git(seed, ['commit', '-am', 'feat: two'])
+    git(seed, ['push', 'origin', 'main'])
+    const before = git(work, ['rev-parse', 'HEAD'])
+    execFileSync('bash', [syncScript], { cwd: work, env: gitEnv, encoding: 'utf8' })
+    const after = git(work, ['rev-parse', 'HEAD'])
+    expect(after).not.toBe(before)
+    expect(after).toBe(git(seed, ['rev-parse', 'HEAD']))
+  })
+
+  it('leaves a branch that has local commits', () => {
+    const { work } = seedPair()
+    writeFileSync(join(work, 'local.txt'), 'local\n')
+    git(work, ['add', 'local.txt'])
+    git(work, ['commit', '-m', 'feat: local'])
+    const before = git(work, ['rev-parse', 'HEAD'])
+    execFileSync('bash', [syncScript], { cwd: work, env: gitEnv, encoding: 'utf8' })
+    expect(git(work, ['rev-parse', 'HEAD'])).toBe(before)
+  })
+
+  it('fetches and stays when the current branch has no remote', () => {
+    const { work } = seedPair()
+    git(work, ['checkout', '-b', 'cursor/local-only'])
+    const before = git(work, ['rev-parse', 'HEAD'])
+    execFileSync('bash', [syncScript], { cwd: work, env: gitEnv, encoding: 'utf8' })
+    expect(git(work, ['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('cursor/local-only')
+    expect(git(work, ['rev-parse', 'HEAD'])).toBe(before)
+  })
+})

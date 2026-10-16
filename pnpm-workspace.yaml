@@ -4,8 +4,8 @@ nodeLinker: hoisted
 shamefullyHoist: true
 shellEmulator: true
 supportedArchitectures:
-  cpu: [x64, arm64]
-  os: [linux, darwin, win32]
+  cpu: [ x64, arm64 ]
+  os: [ linux, darwin, win32 ]
 trustPolicy: no-downgrade
 # These releases predate provenance but sit after a later-published build that has it.
 # pnpm treats that as a trust downgrade. They are already in the lockfile.
