@@ -55,6 +55,7 @@
           :kind-label="item.kindLabel"
           :media="item.media"
           :meta="item.meta"
+          :phone="item.phone"
           :stale="item.stale"
           :schedule="item.schedule"
           lean="none"
@@ -102,6 +103,7 @@ export interface PriceListingData {
     schedule: ScheduleRecord | null
     stale: boolean
     meta: string
+    phone?: string | null
     priceLabel: string
     variant: string
   }>

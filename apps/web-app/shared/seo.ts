@@ -2,6 +2,7 @@ import type { PublicMedia } from './media'
 import type { ScheduleRecord } from './schedule'
 import { licenseHref, licenseLabel, openGraphFile } from './media'
 import { openingHoursSchema, parsePlaceHours } from './opening-hours'
+import { phoneE164List } from './phone'
 import { scheduleMarkup } from './schedule'
 
 export const SITE_ORIGIN = 'https://k39.online'
@@ -605,9 +606,11 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
   if (address) {
     node.address = address
   }
-  const phone = input.phone?.trim()
-  if (phone) {
-    node.telephone = phone
+  const phones = phoneE164List(input.phone)
+  if (phones.length === 1) {
+    node.telephone = phones[0]
+  } else if (phones.length > 1) {
+    node.telephone = phones
   }
   const website = input.website?.trim()
   if (website?.startsWith('http://') || website?.startsWith('https://')) {

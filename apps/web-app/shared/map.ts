@@ -53,6 +53,8 @@ export interface MapPoint {
   stale: boolean
   address?: string | null
   hours?: string | null
+  /** Stored venue phone. Empty for a place. */
+  phone?: string | null
 }
 
 export interface MapRouteStop {
@@ -380,6 +382,7 @@ function placeCard(point: MapPoint): MapCard {
     partner: point.partner,
     stale: point.stale,
     marker: point.marker,
+    phone: point.phone || null,
   }
 }
 

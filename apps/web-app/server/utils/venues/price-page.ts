@@ -71,6 +71,7 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
       schedule: scheduleById.get(venue.id) ?? null,
       stale: isStale(venue.lastVerifiedAt, now),
       meta: shownFacts?.address?.trim() || '',
+      phone: shownFacts?.phone ?? null,
       priceLabel: formatRub(point.priceRub),
       variant: point.variant,
     }]

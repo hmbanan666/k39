@@ -108,6 +108,7 @@ export interface ListingVenueCard {
   schedule: ScheduleRecord | null
   stale: boolean
   meta: string
+  phone?: string | null
 }
 
 export type PublicListingModule

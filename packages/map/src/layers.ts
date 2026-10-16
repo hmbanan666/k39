@@ -15,6 +15,8 @@ export interface MapCard {
   stale: boolean
   /** Icon key used when the card has no photo. */
   marker: string
+  /** Stored venue phone. The host formats it for display. */
+  phone?: string | null
 }
 
 export interface MapPointInput {

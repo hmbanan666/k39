@@ -1,6 +1,11 @@
 // Venue page actions (ADR 0018). The first available one is the primary
 // button: booking, then online order, then delivery, then a call. A link is
 // shown only when the venue has it; nothing is guessed.
+// The call button dials the first complete number. Other numbers stay as links.
+
+import { telHref } from './phone'
+
+export { telHref }
 
 export interface VenueActionInput {
   bookingUrl?: string | null
@@ -16,11 +21,6 @@ export interface VenueAction {
   label: string
   href: string
   external: boolean
-}
-
-export function telHref(phone: string) {
-  const digits = phone.replace(/[^\d+]/g, '')
-  return digits ? `tel:${digits}` : ''
 }
 
 export function venueActions(input: VenueActionInput): { primary: VenueAction | null, secondary: VenueAction[] } {

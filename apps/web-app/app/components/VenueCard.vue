@@ -40,6 +40,10 @@
         v-if="line"
         class="meta"
       >{{ line }}</span>
+      <span
+        v-if="phoneLabel"
+        class="phone"
+      >{{ phoneLabel }}</span>
       <slot name="meta" />
       <OpeningLive
         :schedule="schedule ?? null"
@@ -59,7 +63,9 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
+import { computed } from 'vue'
 import { illustrationFor } from '~~/shared/illustrations'
+import { formatPhoneDisplay, parsePhones } from '~~/shared/phone'
 
 const props = withDefaults(defineProps<{
   href: string
@@ -82,6 +88,8 @@ const props = withDefaults(defineProps<{
   priority?: boolean
   /** Cookieless click beacon used by the nearby block. */
   track?: boolean
+  /** Stored phone. The card prints the display grouping. The card itself is the link. */
+  phone?: string | null
 }>(), {
   media: null,
   distance: '',
@@ -97,9 +105,17 @@ const props = withDefaults(defineProps<{
   sizes: '(min-width: 900px) 240px, 70vw',
   priority: false,
   track: false,
+  phone: '',
 })
 
 const leanClass = computed(() => props.lean === 'none' ? undefined : `lean-${props.lean}`)
+
+const phoneLabel = computed(() => {
+  if (!parsePhones(props.phone).some((item) => item.e164)) {
+    return ''
+  }
+  return formatPhoneDisplay(props.phone)
+})
 
 const line = computed(() => {
   const custom = props.meta.trim()
@@ -208,6 +224,11 @@ const trackAttrs = computed(() => props.track
 .meta {
   color: var(--muted);
   font-size: var(--step--1);
+}
+.phone {
+  color: var(--color-ink);
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
 }
 .body :deep(.live) { margin: 0.2rem 0 0; }
 .partner {

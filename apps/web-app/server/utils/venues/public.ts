@@ -58,6 +58,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
   const facts = await readShownFacts('venue', found.map((row) => ({
     id: row.id,
     address: row.address,
+    phone: row.phone,
     latitude: row.latitude,
     longitude: row.longitude,
   })))
@@ -70,7 +71,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
     if (distanceKm > NEARBY_RADIUS_KM) {
       return []
     }
-    return [{ ...row, address: shown.address, latitude: shown.latitude, longitude: shown.longitude, distanceKm }]
+    return [{ ...row, address: shown.address, phone: shown.phone, latitude: shown.latitude, longitude: shown.longitude, distanceKm }]
   })
   const ranked = rankNearby(located, { sponsoredSlot: sponsoredVenuesEnabled(), limit: options.limit ?? NEARBY_LIMIT })
   const covers = await db.venues.coversFor(ranked.map((row) => row.id))
@@ -94,6 +95,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
       partner: row.partner,
       stale: isStale(row.lastVerifiedAt, now),
       address: row.address,
+      phone: row.phone,
       price: priceMarks(row.priceLevel),
       avgCheck: formatAvgCheck(row.avgCheck),
       media: cover ? toPublicMedia(cover) : null,
@@ -442,6 +444,7 @@ async function loadListing(
       media: cover ? toPublicMedia(cover) : null,
       schedule: scheduleById.get(row.id) ?? null,
       stale: isStale(row.lastVerifiedAt, now),
+      phone: facts.get(row.id)?.phone ?? null,
       meta: [facts.get(row.id)?.address, cuisineLabels(row.cuisineTags).join(', '), priceMarks(row.priceLevel), formatAvgCheck(row.avgCheck)].filter(Boolean).join(' · '),
     }] as const
   }))
@@ -498,6 +501,7 @@ async function loadListing(
         cuisine: cuisineLabels(row.cuisineTags),
         price: priceMarks(row.priceLevel),
         avgCheck: formatAvgCheck(row.avgCheck),
+        phone: facts.get(row.id)?.phone ?? null,
         stale: isStale(row.lastVerifiedAt, now),
         latitude: facts.get(row.id)?.latitude ?? null,
         longitude: facts.get(row.id)?.longitude ?? null,
@@ -612,6 +616,7 @@ export async function loadEatNow(regionSlug: string | null) {
       price: priceMarks(row.priceLevel),
       check: row.avgCheck != null ? `~${new Intl.NumberFormat('ru-RU').format(row.avgCheck)} ₽` : '',
       address: shown.address,
+      phone: shown.phone,
       latitude: shown.latitude,
       longitude: shown.longitude,
       distanceKm,
