@@ -781,7 +781,7 @@ export const verificationQueue = pgTable('verification_queue', {
   uniqueIndex('verification_queue_fact_open_idx').on(table.factId, table.reason).where(sql`${table.resolvedAt} is null and ${table.target} = 'fact'`),
   uniqueIndex('verification_queue_section_open_idx').on(table.pageType, table.entityId, table.path, table.reason).where(sql`${table.resolvedAt} is null and ${table.target} = 'section'`),
   check('verification_queue_target_check', sql`${table.target} in ('fact', 'section')`),
-  check('verification_queue_reason_check', sql`${table.reason} in ('source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict', 'fact_repeated')`),
+  check('verification_queue_reason_check', sql`${table.reason} in ('source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict', 'fact_repeated', 'guest_report')`),
 ])
 
 // Concrete open intervals for a rolling window, rebuilt on write and daily.
@@ -819,4 +819,48 @@ export const searchEvents = pgTable('search_events', {
   index('search_events_session_idx').on(table.sessionKey, table.occurredAt),
   index('search_events_normalized_idx').on(table.normalized, table.occurredAt),
   check('search_events_type_check', sql`${table.eventType} in ('search', 'click')`),
+])
+
+export const guestSubmissions = pgTable('guest_submissions', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  userId: cuid2('user_id').notNull().references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  subjectType: varchar('subject_type').notNull().$type<'place' | 'venue'>(),
+  subjectId: varchar('subject_id').notNull(),
+  kind: varchar('kind').notNull().$type<'review' | 'tip' | 'photo' | 'correction'>(),
+  status: varchar('status').notNull().default('pending').$type<'pending' | 'accepted' | 'rejected' | 'removed'>(),
+  body: text('body'),
+  alt: varchar('alt'),
+  correctionKind: varchar('correction_kind').$type<'hours' | 'phone' | 'address' | 'status' | 'price' | 'other' | null>(),
+  correctionValue: varchar('correction_value'),
+  sourceUrl: varchar('source_url'),
+  mediaId: cuid2('media_id').references(() => media.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+  decidedBy: cuid2('decided_by').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+  decidedAt: timestamp('decided_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  decisionNote: text('decision_note'),
+  disputed: boolean('disputed').notNull().default(false),
+  bodyKey: varchar('body_key'),
+}, (table) => [
+  uniqueIndex('guest_submissions_pending_idx').on(table.userId, table.subjectType, table.subjectId, table.kind).where(sql`${table.status} = 'pending'`),
+  uniqueIndex('guest_submissions_accepted_review_idx').on(table.userId, table.subjectType, table.subjectId).where(sql`${table.status} = 'accepted' and ${table.kind} = 'review'`),
+  uniqueIndex('guest_submissions_accepted_tip_idx').on(table.userId, table.subjectType, table.subjectId).where(sql`${table.status} = 'accepted' and ${table.kind} = 'tip'`),
+  uniqueIndex('guest_submissions_body_idx').on(table.subjectType, table.subjectId, table.kind, table.bodyKey).where(sql`${table.status} in ('pending', 'accepted') and ${table.bodyKey} is not null`),
+  index('guest_submissions_public_idx').on(table.subjectType, table.subjectId, table.decidedAt).where(sql`${table.status} = 'accepted'`),
+  index('guest_submissions_queue_idx').on(table.createdAt).where(sql`${table.status} = 'pending'`),
+  check('guest_submissions_subject_check', sql`${table.subjectType} in ('place', 'venue')`),
+  check('guest_submissions_kind_check', sql`${table.kind} in ('review', 'tip', 'photo', 'correction')`),
+  check('guest_submissions_status_check', sql`${table.status} in ('pending', 'accepted', 'rejected', 'removed')`),
+  check('guest_submissions_correction_check', sql`${table.correctionKind} is null or ${table.correctionKind} in ('hours', 'phone', 'address', 'status', 'price', 'other')`),
+])
+
+/** Action, submission id, actor, and time. No body, email, or file. */
+export const guestAudits = pgTable('guest_audits', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  submissionId: varchar('submission_id').notNull(),
+  actorUserId: cuid2('actor_user_id').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+  action: varchar('action').notNull(),
+}, (table) => [
+  index('guest_audits_submission_idx').on(table.submissionId, table.createdAt),
 ])

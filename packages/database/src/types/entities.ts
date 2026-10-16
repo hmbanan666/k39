@@ -41,7 +41,7 @@ export interface PlaceFaqItem {
 
 export type MediaStatus = 'processing' | 'ready' | 'failed'
 
-export type MediaLicense = 'own' | 'cc-by' | 'cc-by-sa' | 'cc0' | 'pd' | 'permission'
+export type MediaLicense = 'own' | 'cc-by' | 'cc-by-sa' | 'cc0' | 'pd' | 'permission' | 'guest'
 
 export interface MediaVariant {
   format: 'avif' | 'webp' | 'jpeg'

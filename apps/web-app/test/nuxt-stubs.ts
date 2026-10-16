@@ -30,7 +30,40 @@ export function useState<T>(key: string, init?: () => T) {
   return ref(init ? init() : undefined)
 }
 
-export function useFetch() {
+export function useUserSession() {
+  return {
+    loggedIn: ref(false),
+    user: ref<{ role?: string } | null>(null),
+    ready: ref(true),
+  }
+}
+
+export function useFetch(url?: string) {
+  const path = typeof url === 'string' ? url : ''
+  if (path.includes('/api/admin/guests')) {
+    return {
+      data: ref({
+        submissions: [{
+          id: 'fixture-guest',
+          createdAt: '2026-10-16T09:00:00.000Z',
+          kind: 'review',
+          body: 'Фикстура: отзыв гостя для проверки очереди модерации.',
+          alt: '',
+          correctionKind: null,
+          correctionValue: '',
+          sourceUrl: null,
+          disputed: true,
+          mediaId: null,
+          byline: 'Анна К.',
+          subjectTitle: 'Фикстура: кафе с фото',
+          subjectPath: '/zavedeniya/fixture-cafe-photo',
+        }],
+        signals: [],
+      }),
+      pending: ref(false),
+      refresh: async () => {},
+    }
+  }
   return {
     data: ref({
       consents: [{

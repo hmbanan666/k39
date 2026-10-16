@@ -267,6 +267,13 @@
       "when": 1792150000000,
       "tag": "0037_consent_method",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792160000000,
+      "tag": "0038_guest_submissions",
+      "breakpoints": true
     }
   ]
 }

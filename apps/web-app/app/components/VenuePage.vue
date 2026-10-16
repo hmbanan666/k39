@@ -395,6 +395,12 @@
             </li>
           </ul>
         </details>
+        <GuestBlock
+          subject-type="venue"
+          :subject-slug="venue.slug"
+          :subject-path="`/zavedeniya/${venue.slug}`"
+          :items="page.guests || []"
+        />
       </div>
     </div>
     <PhotoViewer
@@ -407,6 +413,7 @@
 </template>
 
 <script setup lang="ts">
+import type { GuestPublicItem } from '~~/shared/guest'
 import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
@@ -427,6 +434,7 @@ import { presentVenueBlocks } from '~~/shared/venue-modules'
 export interface VenuePageData {
   type: 'venue'
   doc: SeoDocument
+  guests?: GuestPublicItem[]
   venue: {
     name: string
     kind: string

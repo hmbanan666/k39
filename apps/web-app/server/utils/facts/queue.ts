@@ -138,7 +138,8 @@ export async function syncVerificationQueue(now = new Date()) {
     const traffic = related.length
       ? related.reduce((sum, item) => sum + pageLoad(item.path, item.status), 0)
       : page ? pageLoad(page.path, page.status) : 1
-    return { id: row.id, priority: priorityFor(row.kind ?? 'prose', row.reason, traffic || 1) }
+    const weightKind = row.reason === 'guest_report' ? 'prose' : (row.kind ?? 'prose')
+    return { id: row.id, priority: priorityFor(weightKind, row.reason, traffic || 1) }
   })
   await db.facts.setPriorities(priorities)
   await syncRepeatedProse(pages, await venueRules())

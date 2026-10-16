@@ -6,6 +6,7 @@ import { Consent } from './consent'
 import { Content, Editor } from './content'
 import { EventLog } from './event-log'
 import { Facts } from './facts'
+import { Guests } from './guests'
 import { MapCatalog } from './map'
 import { Prices } from './prices'
 import { Schedules } from './schedules'
@@ -18,6 +19,7 @@ class Repository {
   readonly analytics = Analytics
   readonly consent = Consent
   readonly facts = Facts
+  readonly guests = Guests
   readonly content = Content
   readonly editor = Editor
   readonly eventLog = EventLog

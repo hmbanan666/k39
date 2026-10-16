@@ -49,6 +49,7 @@ export const RESERVED_SLUGS = [
   'ceny',
   'eda',
   'gde-deshevle',
+  'gostevye-materialy',
   'forty',
   'health',
   'kvesty',
@@ -590,6 +591,7 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
   const image = input.image ?? DEFAULT_OG_IMAGE
   const node: Record<string, unknown> = {
     '@type': venueSchemaType(input.kind),
+    '@id': `${absoluteUrl(path)}#venue`,
     'name': input.name,
     'description': description,
     'url': absoluteUrl(path),
@@ -1166,6 +1168,7 @@ const SCHEMA_TYPES = new Set([
   'GeoCoordinates',
   'PostalAddress',
   'Person',
+  'Review',
   'CreativeWork',
   'WebPage',
   'Menu',

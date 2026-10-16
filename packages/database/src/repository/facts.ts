@@ -107,7 +107,11 @@ export class Facts {
         await db.insert(factRevisions).values(revisionOf(row ?? current, input.actor))
       }
       await Facts.replaceRefs(current.id, refs, db)
-      return { fact: row ?? current, revised: current.sourceTitle !== input.sourceTitle }
+      const revised = current.sourceTitle !== input.sourceTitle
+      if (revised) {
+        await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind)
+      }
+      return { fact: row ?? current, revised }
     }
     const now = new Date().toISOString()
     if (!current) {
@@ -131,6 +135,7 @@ export class Facts {
       }
       await db.insert(factRevisions).values(revisionOf(created, input.actor))
       await Facts.replaceRefs(created.id, refs, db)
+      await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind)
       return { fact: created, revised: true }
     }
     const [row] = await db.update(facts).set({
@@ -148,6 +153,7 @@ export class Facts {
     const fact = row ?? current
     await db.insert(factRevisions).values(revisionOf(fact, input.actor))
     await Facts.replaceRefs(fact.id, refs, db)
+    await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind)
     return { fact, revised: true }
   }
 
@@ -487,6 +493,34 @@ export class Facts {
       reason: verificationQueue.reason,
       kind: facts.kind,
     }).from(verificationQueue).leftJoin(facts, eq(facts.id, verificationQueue.factId)).where(isNull(verificationQueue.resolvedAt))
+  }
+
+  static async closeGuestReportSections(subjectType: string, subjectId: string, kind: string) {
+    if (subjectType !== 'place' && subjectType !== 'venue') {
+      return
+    }
+    await useDatabase().update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(
+      eq(verificationQueue.target, 'section'),
+      eq(verificationQueue.pageType, subjectType),
+      eq(verificationQueue.entityId, subjectId),
+      eq(verificationQueue.path, `guest:${kind}`),
+      eq(verificationQueue.reason, 'guest_report'),
+      isNull(verificationQueue.resolvedAt),
+    ))
+  }
+
+  static async trafficForPath(path: string) {
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
+    const views = await useDatabase().select({
+      pageviews: sql<number>`coalesce(sum(${analyticsDaily.pageviews}), 0)::int`,
+    }).from(analyticsDaily).where(and(eq(analyticsDaily.path, path), sql`${analyticsDaily.day} >= ${since}`))
+    const impressions = await useDatabase().select({
+      impressions: sql<number>`coalesce(sum(${analyticsSearchQueries.impressions}), 0)::int`,
+    }).from(analyticsSearchQueries).where(and(eq(analyticsSearchQueries.page, path), sql`${analyticsSearchQueries.day} >= ${since}`))
+    return {
+      pageviews: Number(views[0]?.pageviews ?? 0),
+      impressions: Number(impressions[0]?.impressions ?? 0),
+    }
   }
 
   static async closeSection(pageType: string, entityId: string, path: string, reason = 'section_changed') {

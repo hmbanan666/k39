@@ -43,3 +43,12 @@ export function limitEdit(userId: string, now = Date.now()) {
 export function limitUpload(userId: string, now = Date.now()) {
   takeCabinetSlot(`media:${userId}`, 10, HOUR, now)
 }
+
+/** Guest text: five submits an hour. Photos use the separate upload ceiling. */
+export function limitGuestSubmit(userId: string, now = Date.now()) {
+  return takeCabinetSlot(`guest:${userId}`, 5, HOUR, now)
+}
+
+export function limitGuestPhoto(userId: string, now = Date.now()) {
+  return takeCabinetSlot(`guest-photo:${userId}`, 10, HOUR, now)
+}

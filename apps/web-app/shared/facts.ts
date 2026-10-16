@@ -25,7 +25,7 @@ export type FactConfidence = (typeof CONFIDENCE)[number]
 export const FACT_ACTORS = ['migration', 'editor', 'owner', 'mcp'] as const
 export type FactActor = (typeof FACT_ACTORS)[number]
 
-export const QUEUE_REASONS = ['source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict', 'fact_repeated'] as const
+export const QUEUE_REASONS = ['source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict', 'fact_repeated', 'guest_report'] as const
 export type QueueReason = (typeof QUEUE_REASONS)[number]
 
 /** Conflict reasons that make a fact stale for the score and the trust column. */

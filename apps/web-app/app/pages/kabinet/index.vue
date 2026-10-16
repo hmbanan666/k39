@@ -81,6 +81,52 @@
       </section>
 
       <section class="card">
+        <h2>Мои сообщения</h2>
+        <p
+          v-if="!guestRows.length"
+          class="muted"
+        >
+          Пока пусто. Отзыв, совет, фото или поправка отправляются со страницы места или заведения.
+        </p>
+        <ul
+          v-else
+          class="list"
+        >
+          <li
+            v-for="item in guestRows"
+            :key="item.id"
+          >
+            <span>
+              <a
+                v-if="item.subjectPath"
+                :href="item.subjectPath"
+              >{{ item.subjectTitle }}</a>
+              <template v-else>{{ item.subjectTitle }}</template>
+              · {{ guestKind(item.kind) }} · {{ guestStatus(item.status) }}
+            </span>
+            <button
+              type="button"
+              @click="removeGuest(item.id)"
+            >
+              Убрать
+            </button>
+            <p
+              v-if="item.status === 'rejected' && item.decisionNote"
+              class="muted"
+            >
+              {{ item.decisionNote }}
+            </p>
+          </li>
+        </ul>
+        <p
+          v-if="guestError"
+          class="error"
+        >
+          {{ guestError }}
+        </p>
+      </section>
+
+      <section class="card">
         <h2>Найти страницу</h2>
         <form
           class="search"
@@ -132,6 +178,17 @@ interface Me {
 }
 
 const { data: me, pending } = await useFetch<Me>('/api/cabinet/me')
+interface GuestRow {
+  id: string
+  kind: string
+  status: string
+  decisionNote: string | null
+  subjectTitle: string
+  subjectPath: string
+}
+const { data: guestData, refresh: refreshGuests } = await useFetch<{ submissions: GuestRow[] }>('/api/cabinet/guests')
+const guestRows = computed(() => guestData.value?.submissions ?? [])
+const guestError = ref('')
 const name = ref(me.value?.user.name ?? '')
 watch(me, (value) => {
   if (value) {
@@ -162,6 +219,39 @@ async function saveName() {
     await $fetch('/api/cabinet/profile', { method: 'PATCH', body: { name: name.value } })
   } catch (reason) {
     profileError.value = problem(reason, 'Не удалось сохранить имя')
+  }
+}
+
+function guestKind(kind: string) {
+  if (kind === 'review') {
+    return 'отзыв'
+  }
+  if (kind === 'tip') {
+    return 'совет'
+  }
+  if (kind === 'photo') {
+    return 'фото'
+  }
+  return 'поправка'
+}
+
+function guestStatus(status: string) {
+  if (status === 'accepted') {
+    return 'опубликовано'
+  }
+  if (status === 'rejected') {
+    return 'отклонено'
+  }
+  return 'ждёт решения'
+}
+
+async function removeGuest(id: string) {
+  guestError.value = ''
+  try {
+    await $fetch(`/api/cabinet/guests/${id}/remove`, { method: 'POST' })
+    await refreshGuests()
+  } catch (reason) {
+    guestError.value = problem(reason, 'Не удалось убрать сообщение')
   }
 }
 
