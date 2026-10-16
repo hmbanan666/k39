@@ -3,6 +3,7 @@
 import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
+import { adminPlaceDraftView, applyAdminPlaceDraft, discardAdminPlaceDraft, saveAdminPlace } from '../../../../../apps/web-app/server/utils/admin/place-draft'
 import { placeWriteFromBody, updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/places'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { useDatabase } from '../../database'
@@ -114,5 +115,98 @@ describe('pending place publish', () => {
     const row = await Editor.placeById(live.id)
     expect(row?.body).toBe(editorBody)
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
+  })
+
+  it('shows a pending draft as field changes and refuses an admin save until the editor chooses', async () => {
+    const live = await publishedPlace('admin-choice')
+    enterContentScope('draft')
+    await updatePlaceDraft({
+      id: live.id,
+      title: 'Новый заголовок',
+      body: draftBody,
+    }, 'place_update')
+    enterContentScope('editor')
+
+    const view = await adminPlaceDraftView(live.id)
+    expect(view.pending?.changes.map((item) => item.field)).toEqual(['title', 'body'])
+    expect(view.pending?.changes[0]).toMatchObject({ live: 'Старый заголовок', draft: 'Новый заголовок' })
+    expect(view.pending?.publicationStatus).toBe('review')
+
+    await expect(saveAdminPlace(live.id, {
+      title: 'Правка редактора',
+      body: 'Текст формы редактора на живой странице.',
+      publicationStatus: 'published',
+    }, null)).rejects.toMatchObject({ statusCode: 409 })
+
+    const row = await Editor.placeById(live.id)
+    expect(row?.title).toBe('Старый заголовок')
+    expect(row?.body).toBe('Старый текст страницы.')
+    expect((await Editor.contentDraft('place', live.id))?.payload).toMatchObject({ body: draftBody })
+  })
+
+  it('writes the admin form and deletes the draft only when discard is explicit', async () => {
+    const live = await publishedPlace('admin-discard-save')
+    enterContentScope('draft')
+    await updatePlaceDraft({ id: live.id, body: draftBody }, 'place_update')
+    enterContentScope('editor')
+    const editorBody = 'Текст формы редактора на живой странице.'
+    await saveAdminPlace(live.id, {
+      body: editorBody,
+      publicationStatus: 'published',
+      pendingDraft: 'discard',
+    }, null)
+    const row = await Editor.placeById(live.id)
+    expect(row?.body).toBe(editorBody)
+    expect(row?.title).toBe('Старый заголовок')
+    expect(await Editor.contentDraft('place', live.id)).toBeNull()
+  })
+
+  it('keeps the draft when the admin save is rejected', async () => {
+    const live = await publishedPlace('admin-save-rejected')
+    enterContentScope('draft')
+    await updatePlaceDraft({ id: live.id, body: draftBody }, 'place_update')
+    enterContentScope('editor')
+    await expect(saveAdminPlace(live.id, {
+      body: 'Это уютная атмосфера у вокзала.',
+      publicationStatus: 'published',
+      pendingDraft: 'discard',
+    }, null)).rejects.toMatchObject({ statusCode: 400 })
+    expect((await Editor.placeById(live.id))?.body).toBe('Старый текст страницы.')
+    expect(await Editor.contentDraft('place', live.id)).not.toBeNull()
+  })
+
+  it('discards a pending draft without changing the live row', async () => {
+    const live = await publishedPlace('admin-discard')
+    enterContentScope('draft')
+    await updatePlaceDraft({ id: live.id, title: 'Новый заголовок', body: draftBody }, 'place_update')
+    enterContentScope('editor')
+    await discardAdminPlaceDraft(live.id)
+    const row = await Editor.placeById(live.id)
+    expect(row?.title).toBe('Старый заголовок')
+    expect(row?.body).toBe('Старый текст страницы.')
+    expect(await Editor.contentDraft('place', live.id)).toBeNull()
+    expect(await adminPlaceDraftView(live.id)).toEqual({ pending: null })
+  })
+
+  it('applies a pending draft from the admin action through the publication writer', async () => {
+    const live = await publishedPlace('admin-apply')
+    enterContentScope('draft')
+    await updatePlaceDraft({
+      id: live.id,
+      title: 'Новый заголовок',
+      summary: 'Новое описание',
+      body: draftBody,
+    }, 'place_update')
+    enterContentScope('draft')
+    const published = await applyAdminPlaceDraft(live.id)
+    const row = await Editor.placeById(live.id)
+    expect(row?.title).toBe('Новый заголовок')
+    expect(row?.summary).toBe('Новое описание')
+    expect(row?.body).toBe(draftBody)
+    expect(row?.publicationStatus).toBe('published')
+    expect(await Editor.contentDraft('place', live.id)).toBeNull()
+    expect(published.pendingReview).toBe(false)
+    expect(published.bodyLength).toBe(draftBody.length)
+    await expect(applyAdminPlaceDraft(live.id)).rejects.toMatchObject({ statusCode: 409 })
   })
 })

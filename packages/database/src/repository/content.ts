@@ -528,6 +528,16 @@ export class Editor {
     ))
   }
 
+  static async contentDraftEntityIds(entityType: string) {
+    const rows = await useDatabase().select({ entityId: contentDrafts.entityId }).from(contentDrafts).where(eq(contentDrafts.entityType, entityType))
+    return rows.map((row) => row.entityId)
+  }
+
+  /** The live row after `applyPendingPlace` would write this payload. */
+  static pendingPlaceNext(existing: typeof places.$inferSelect, payload: Record<string, unknown>) {
+    return placeFromPending(existing, payload)
+  }
+
   /**
    * Writes a pending place draft onto the live row and removes the draft
    * in one transaction (ADR 0035). Null when that draft is already gone.

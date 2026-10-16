@@ -98,6 +98,11 @@ export function enterContentScope(scope: ContentScope) {
   contentScopeStore.enterWith(scope)
 }
 
+/** Runs `fn` as editor or draft without changing the caller's ambient scope. */
+export function withContentScope<T>(scope: ContentScope, fn: () => Promise<T>): Promise<T> {
+  return contentScopeStore.run(scope, fn)
+}
+
 export function contentRateKey(authorization: string | undefined) {
   const secret = bearerSecret(authorization)
   return createHash('sha256').update(secret).digest('hex')

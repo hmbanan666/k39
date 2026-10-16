@@ -41,4 +41,6 @@ A cloud agent with the draft token can list and write. It cannot publish. Until 
 
 A pending draft is invisible on the public page. The score still reads the live `faq` column.
 
-`place_update` with the draft token returns the stored draft: `pendingReview`, `bodyLength`, and `renderedFields`. `publicationStatus` in that response stays the live status. An editor publish applies the pending payload and deletes the draft in one transaction. An editor write that changes any other field discards the pending payload.
+`place_update` with the draft token returns the stored draft: `pendingReview`, `bodyLength`, and `renderedFields`. `publicationStatus` in that response stays the live status. An editor publish applies the pending payload and deletes the draft in one transaction. An editor write through MCP that changes any other field discards the pending payload.
+
+The `/admin` place form does not discard that draft on its own. It shows each field the pending payload would change, live value beside draft value. Apply calls `setPublication` with `published` and no other fields, the same writer as `content_set_publication`. Discard deletes the draft and leaves the live row. `PATCH /api/admin/places/[id]` returns 409 while a draft exists, and writes nothing, unless the body sets `pendingDraft` to `discard`. That choice writes the form and then deletes the draft. Venues are not stored in `content_drafts`: a draft token cannot edit a published venue, and the venue form has no pending row to apply.
