@@ -302,7 +302,7 @@ export function writingGuideSection() {
     'Venue prose (description, modules, FAQ, tips). Prices stay in the price blocks:',
     venue,
     `Never name ${sites}. Never paste another site's sentences, photos, or structure. Write from the sources, in our words.`,
-    'Do not pad a page to reach a length minimum. A longer ceiling is only the passport length override in .cursor/skills/k39-writing/SKILL.md (ADR 0033).',
+    'Do not pad a page to reach a length minimum. A longer ceiling is only the passport length override in .cursor/skills/k39-writing/SKILL.md (ADR 0034).',
     'Inflected forms are a stem plus a closed list of endings, with a letter boundary on each side. A short stem does not match a longer word: самый does not match самовар, самолёт, or самостоятельно. The comparative лучше is not banned.',
     'A draft save returns writingWarnings and still stores the row. Publishing rejects when writingHits is not empty. The check reads the prose that renders, including collection module text.',
   ].join('\n')

@@ -1,4 +1,4 @@
-# ADR 0033: Earned length ceilings
+# ADR 0034: Earned length ceilings
 
 ## Status
 

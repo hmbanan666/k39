@@ -57,7 +57,7 @@ Never paste another site's sentences, and do not keep their sentence order with 
 
 ## Length
 
-Character counts are `lengthNorm` in `apps/web-app/shared/scoring.ts` and ADR 0016. Venue length is `venueQuality` in the same file. Do not invent a new target. ADR 0033 is the only way past a ceiling.
+Character counts are `lengthNorm` in `apps/web-app/shared/scoring.ts` and ADR 0016. Venue length is `venueQuality` in the same file. Do not invent a new target. ADR 0034 is the only way past a ceiling.
 
 | Page | Body | Extended ceiling |
 | --- | --- | --- |
