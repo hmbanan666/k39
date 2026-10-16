@@ -24,6 +24,7 @@
   },
   "exclude": [
     "./dist",
-    "./node_modules"
+    "./node_modules",
+    "./src/repository/test/pending-publish.test.ts"
   ]
 }

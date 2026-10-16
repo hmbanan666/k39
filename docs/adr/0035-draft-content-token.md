@@ -40,3 +40,5 @@ Article text stays in Postgres. Do not commit drafts, seeds, or page files. `app
 A cloud agent with the draft token can list and write. It cannot publish. Until the owner sets the token on the host and in the Cloud Agents MCP settings, discovery still has no credential to send. The code change is what makes that credential work.
 
 A pending draft is invisible on the public page. The score still reads the live `faq` column.
+
+`place_update` with the draft token returns the stored draft: `pendingReview`, `bodyLength`, and `renderedFields`. `publicationStatus` in that response stays the live status. An editor publish applies the pending payload and deletes the draft in one transaction. An editor write that changes any other field discards the pending payload.

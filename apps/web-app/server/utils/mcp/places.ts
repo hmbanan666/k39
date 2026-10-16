@@ -95,8 +95,31 @@ async function categoryId(slug: string | undefined, fallback: string | null) {
   return category.id
 }
 
-function statusOnly(input: PlaceDraftInput) {
-  return input.title === undefined
+/** Fields the public place page shows. `body` is the article. */
+const PLACE_RENDERED_FIELDS = [
+  'title',
+  'summary',
+  'body',
+  'visitDuration',
+  'bestTime',
+  'hours',
+  'price',
+  'howToGet',
+  'faq',
+  'seoTitle',
+  'seoDescription',
+  'sources',
+] as const
+
+/**
+ * A publish with no content edits. `id`, and a slug that still names this
+ * row, are how MCP and PATCH /api/content/places address the place. A
+ * different slug is a rename and counts as an edit.
+ */
+function publicationOnly(input: PlaceDraftInput, currentSlug: string) {
+  const slugUnchanged = input.slug === undefined || input.slug === currentSlug
+  return slugUnchanged
+    && input.title === undefined
     && input.summary === undefined
     && input.body === undefined
     && input.sections === undefined
@@ -117,7 +140,37 @@ function statusOnly(input: PlaceDraftInput) {
     && input.faq === undefined
     && input.factsCheckedAt === undefined
     && input.status === undefined
-    && input.slug === undefined
+}
+
+function storedDraftResponse(
+  current: {
+    id: string
+    slug: string
+    title: string
+    publicationStatus: string
+    status: string
+    updatedAt?: string
+    lastVerifiedAt?: string | null
+  },
+  payload: Record<string, unknown>,
+  pendingStatus: 'draft' | 'review',
+  writingWarnings: string[],
+) {
+  const body = typeof payload.body === 'string' ? payload.body : ''
+  const slug = typeof payload.slug === 'string' && payload.slug ? payload.slug : current.slug
+  const title = typeof payload.title === 'string' && payload.title ? payload.title : current.title
+  const status = typeof payload.status === 'string' ? payload.status : current.status
+  const factsCheckedAt = Object.hasOwn(payload, 'lastVerifiedAt')
+    ? (payload.lastVerifiedAt as string | null)
+    : current.lastVerifiedAt
+  return {
+    ...compactPlace({ ...current, slug, title, status, lastVerifiedAt: factsCheckedAt }),
+    pendingReview: true as const,
+    pendingPublicationStatus: pendingStatus,
+    bodyLength: body.length,
+    renderedFields: PLACE_RENDERED_FIELDS,
+    writingWarnings,
+  }
 }
 
 export function placeWriteFromBody(body: Record<string, unknown>, current: { id: string, slug: string }): PlaceDraftInput {
@@ -235,35 +288,45 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   const scope = contentScope()
   const pending = await db.editor.contentDraft('place', current.id)
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus, scope)
-  if (scope === 'editor' && publicationStatus === 'published' && pending && statusOnly(input)) {
+  if (scope === 'editor' && publicationStatus === 'published' && pending && publicationOnly(input, current.slug)) {
     const payload = pending.payload
-    const row = await db.editor.savePlace({
-      ...(payload as Parameters<typeof db.editor.savePlace>[0]),
-      id: current.id,
-      slug: String(payload.slug || current.slug),
-      title: String(payload.title || current.title),
-      publicationStatus: 'published',
-    })
-    await syncCoordinates({
-      subjectType: 'place',
-      subjectId: current.id,
-      actor: 'mcp',
-      pageStatus: 'published',
-      latitude: row?.latitude,
-      longitude: row?.longitude,
-      previous: { latitude: current.latitude, longitude: current.longitude },
-    })
-    await syncPlaceStatus({
-      placeId: current.id,
-      actor: 'mcp',
-      pageStatus: 'published',
-      status: row?.status,
-      previous: current.status,
-    })
-    await syncPageSections('place', current.id)
-    await db.editor.deleteContentDraft('place', current.id)
-    await auditMcp(auditTool, 'place', current.id)
-    return { ...compactPlace(row!), pendingReview: false, writingWarnings: [] as string[] }
+    writingGate(writingCopy([
+      payload.title,
+      payload.summary,
+      payload.body,
+      payload.sections,
+      payload.hours,
+      payload.price,
+      payload.howToGet,
+      payload.seoTitle,
+      payload.seoDescription,
+      payload.visitDuration,
+      payload.bestTime,
+      payload.faq,
+      payload.sources,
+    ]), true)
+    const row = await db.editor.applyPendingPlace(current.id)
+    if (row) {
+      await syncCoordinates({
+        subjectType: 'place',
+        subjectId: current.id,
+        actor: 'mcp',
+        pageStatus: 'published',
+        latitude: row.latitude,
+        longitude: row.longitude,
+        previous: { latitude: current.latitude, longitude: current.longitude },
+      })
+      await syncPlaceStatus({
+        placeId: current.id,
+        actor: 'mcp',
+        pageStatus: 'published',
+        status: row.status,
+        previous: current.status,
+      })
+      await syncPageSections('place', current.id)
+      await auditMcp(auditTool, 'place', current.id)
+      return { ...compactPlace(row), pendingReview: false, bodyLength: row.body.length, writingWarnings: [] as string[] }
+    }
   }
   if (publicationStatus === 'pending') {
     const slug = input.slug || String(pending?.payload.slug || current.slug)
@@ -333,19 +396,14 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       payload.faq,
       payload.sources,
     ]), false)
-    await db.editor.saveContentDraft({
+    const stored = await db.editor.saveContentDraft({
       entityType: 'place',
       entityId: current.id,
       publicationStatus: pendingStatus,
       payload,
     })
     await auditMcp(auditTool, 'place', current.id)
-    return {
-      ...compactPlace(current),
-      pendingReview: true,
-      pendingPublicationStatus: pendingStatus,
-      writingWarnings,
-    }
+    return storedDraftResponse(current, stored.payload, pendingStatus, writingWarnings)
   }
   const slug = input.slug || current.slug
   const problem = slugError(slug)
