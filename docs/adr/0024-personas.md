@@ -1,4 +1,4 @@
-# 0024. Visitor personas as an editorial tool
+# ADR 0024: Visitor personas as an editorial tool
 
 ## Status
 

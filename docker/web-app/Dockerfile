@@ -24,6 +24,9 @@ WORKDIR /app
 
 # Copy built artifacts from builder. Migrations stay beside the server so
 # the Nitro plugin can apply them on boot (Dokploy has no separate migrate step).
+# `nuxt build` copies apps/web-app/public into .output/public, so brand files
+# reach the image through that copy. Brand URLs cache for a week and
+# site.webmanifest for a day (routeRules in nuxt.config.ts).
 COPY --from=builder /app/apps/web-app/.output .
 COPY --from=builder /app/packages/database/migrations /app/migrations
 COPY docker/web-app/health-check.sh ./

@@ -1,4 +1,4 @@
-# 0027. Place and route bodies as typed sections
+# ADR 0027: Place and route bodies as typed sections
 
 Status: accepted (amends ADR 0023)
 

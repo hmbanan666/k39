@@ -1,4 +1,4 @@
-# 0025. Static persona coverage
+# ADR 0025: Static persona coverage
 
 ## Status
 

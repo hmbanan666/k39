@@ -20,11 +20,12 @@
     "clean": "pnpm -r run clean",
     "clean:modules": "pnpm -r run clean:modules && rm -rf node_modules",
     "typecheck": "pnpm -r run typecheck",
+    "check:repo": "node scripts/check-repo.mjs",
     "test": "vitest run",
     "media:rebuild": "pnpm --filter @k39/web-app media:rebuild",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "check:full": "pnpm run lint:fix && pnpm run typecheck && pnpm vitest run",
+    "check:full": "pnpm run check:repo && pnpm run lint:fix && pnpm run typecheck && pnpm vitest run",
     "prepare": "husky",
     "prepare:cert": "mkdir -p .cert && mkcert -key-file ./.cert/localhost-key.pem -cert-file ./.cert/localhost.pem 'app.local'"
   },

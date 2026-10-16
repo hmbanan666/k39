@@ -1,5 +1,6 @@
-// Lives in the database suite so it uses that Postgres. Excluded from this
-// package's tsc: the writer is Nuxt code with auto-imports.
+// Lives in the database suite so it uses that Postgres.
+// Typechecked from apps/web-app/tsconfig.writer-test.json, where Nuxt
+// auto-imports exist. This package's tsc excludes the file.
 import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
@@ -42,18 +43,31 @@ async function publishedPlace(slug: string) {
 
 const draftBody = 'Новый текст страницы про вокзал и площадь.'
 
+function withDraftLengths(value: object) {
+  if (!('pendingReview' in value) || !('bodyLength' in value) || typeof value.bodyLength !== 'number') {
+    throw new Error('expected pendingReview and bodyLength')
+  }
+  return value as typeof value & {
+    pendingReview: boolean
+    bodyLength: number
+    renderedFields?: readonly string[]
+    publicationStatus: string
+    title: string
+  }
+}
+
 describe('pending place publish', () => {
   it('stores a draft-token write, then an editor publish applies it', async () => {
     const live = await publishedPlace('pending-mcp')
     enterContentScope('draft')
-    const written = await updatePlaceDraft({
+    const written = withDraftLengths(await updatePlaceDraft({
       slug: live.slug,
       title: 'Новый заголовок',
       summary: 'Новое описание',
       body: draftBody,
       faq: [{ question: 'Где вокзал?', answer: 'У площади, в двух минутах от реки.' }],
       visitDuration: '1–2 часа',
-    }, 'place_update')
+    }, 'place_update'))
 
     expect(written.pendingReview).toBe(true)
     expect(written.bodyLength).toBe(draftBody.length)
@@ -65,11 +79,11 @@ describe('pending place publish', () => {
     expect(still?.title).toBe('Старый заголовок')
 
     enterContentScope('editor')
-    const published = await setPublication({
+    const published = withDraftLengths(await setPublication({
       entity: 'place',
       slug: live.slug,
       publicationStatus: 'published',
-    })
+    }))
     const row = await Editor.placeById(live.id)
     expect(row?.title).toBe('Новый заголовок')
     expect(row?.summary).toBe('Новое описание')
@@ -85,11 +99,11 @@ describe('pending place publish', () => {
   it('applies the same pending payload through the REST place writer', async () => {
     const live = await publishedPlace('pending-rest')
     enterContentScope('draft')
-    const written = await updatePlaceDraft(placeWriteFromBody({
+    const written = withDraftLengths(await updatePlaceDraft(placeWriteFromBody({
       body: draftBody,
       title: 'Заголовок из REST',
       summary: 'Описание из REST',
-    }, { id: live.id, slug: live.slug }), 'place_update')
+    }, { id: live.id, slug: live.slug }), 'place_update'))
     expect(written.pendingReview).toBe(true)
     expect(written.bodyLength).toBe(draftBody.length)
     expect(written.renderedFields).toContain('body')
@@ -198,7 +212,7 @@ describe('pending place publish', () => {
       body: draftBody,
     }, 'place_update')
     enterContentScope('draft')
-    const published = await applyAdminPlaceDraft(live.id)
+    const published = withDraftLengths(await applyAdminPlaceDraft(live.id))
     const row = await Editor.placeById(live.id)
     expect(row?.title).toBe('Новый заголовок')
     expect(row?.summary).toBe('Новое описание')

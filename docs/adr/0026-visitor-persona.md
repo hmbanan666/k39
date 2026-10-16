@@ -1,4 +1,4 @@
-# 0026. Visitor persona on the client
+# ADR 0026: Visitor persona on the client
 
 ## Status
 

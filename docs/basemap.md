@@ -1,6 +1,6 @@
 # Basemap archive
 
-The visitor map (ADR 0019) uses a PMTiles extract of Kaliningrad oblast when the file on disk matches the expected sha256. Otherwise it uses OpenFreeMap. A missing or corrupt file does not break the map.
+The visitor map (ADR 0019, the page in ADR 0037) uses a PMTiles extract of Kaliningrad oblast when the file on disk matches the expected sha256. Otherwise it uses OpenFreeMap. A missing or corrupt file does not break the map.
 
 `GET /api/public/basemap` is the runtime choice. It is not a build-time `NUXT_PUBLIC_PMTILES_URL`. An empty `pmtilesUrl` is OpenFreeMap. `/basemap/kaliningrad.pmtiles` means the local archive verified. The response is `Cache-Control: no-store`, so a download that finishes after boot shows up on the next map load.
 
