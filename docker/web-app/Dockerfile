@@ -6,6 +6,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages ./packages
 COPY apps/web-app ./apps/web-app
+# prepare runs chain-hooks. The image context has no .git, so the script exits.
+COPY scripts/git/chain-hooks.mjs ./scripts/git/chain-hooks.mjs
 
 # `npm install -g pnpm` installs current pnpm (12.x). That binary then
 # re-execs the packageManager pin (10.25.0). The old build line was
