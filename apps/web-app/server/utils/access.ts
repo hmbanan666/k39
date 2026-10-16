@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import process from 'node:process'
 import { db } from '@k39/database'
-import { getRequestHeader, setResponseHeader } from 'h3'
+import { createError, getRequestHeader, setResponseHeader } from 'h3'
 import { useEvent } from 'nitropack/runtime/internal/context'
 import { adminRedirect } from '../../shared/auth'
 

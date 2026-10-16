@@ -98,7 +98,7 @@ Once a day the K39 Grok Bot assistant works the pending rows, oldest first. It a
 
 A disputed row stays `pending`. The bot escalates only those to the owner, who decides them in `/admin/guests`. Disputed means the bot cannot tell whether the text is a real visit note or spam, or whether a photo is this place, or a rights complaint is already attached to the row. A clear price report is not a dispute. Accepting it only puts the signal on the fact queue. The menu check is that later step, and the bot does not write `venue_prices`.
 
-The editorial publish checklist (`k39-publish-review`) is a different pass and does not run on guest rows. Guests do not submit through the content MCP. The draft token and the editor token do not accept guest rows. They stay on editorial content.
+The editorial publish checklist (`k39-publish-review`) is a different pass and does not run on guest rows. Guests do not submit through the content MCP. The draft token cannot moderate a guest row. The editor token moderates pending rows with the tools in ADR 0040. Those tools call the same writer as `/admin/guests`.
 
 A rejected or removed row can be replaced by a new submit. There is no in-place edit of an accepted row. The author removes it and sends another, which waits again.
 
@@ -196,7 +196,7 @@ What grows with success is the pending queue, not the schema. The caps and the d
 - Showing a correction, including a price report, on the public page.
 - Publishing the full account name. The public line is the byline.
 - Treating a guest's statement of someone else's consent as a reason to publish a face.
-- MCP submit or approve tools.
+- MCP submit tools. Editor-token moderation is ADR 0040. The draft token still cannot approve, reject, or flag a guest row.
 - An agent that turns `proposal` into `fact_update` without an allowed source.
 - Paying for a submission, badges, or points.
 - Rewriting guest text with a model.

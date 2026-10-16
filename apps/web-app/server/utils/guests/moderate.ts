@@ -2,7 +2,7 @@ import type { MediaLicense, MediaVariant } from '@k39/database'
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { pageTraffic, priorityFor } from '../../../shared/facts'
-import { guestByline, guestDateLabel, guestParts, guestReviewNodes } from '../../../shared/guest'
+import { guestByline, guestDateLabel, guestParts, guestReviewNodes, routeGuestDecision } from '../../../shared/guest'
 import { toPublicMedia } from '../../../shared/media'
 import { deleteMediaCompletely } from '../../media/ingest'
 
@@ -85,7 +85,7 @@ async function subjectPath(subjectType: 'place' | 'venue', subjectId: string) {
   return venue ? `/zavedeniya/${venue.slug}` : ''
 }
 
-export async function acceptGuest(id: string, actorId: string) {
+export async function acceptGuest(id: string, actorId: string | null) {
   const row = await db.guests.byId(id)
   if (!row || row.status !== 'pending') {
     throw createError({ statusCode: 404, statusMessage: 'Запись уже решена.' })
@@ -112,7 +112,7 @@ export async function acceptGuest(id: string, actorId: string) {
   return { id: updated.id, status: updated.status }
 }
 
-export async function rejectGuest(id: string, actorId: string, note: string) {
+export async function rejectGuest(id: string, actorId: string | null, note: string) {
   const reason = note.trim()
   if (!reason || reason.length > 500) {
     throw createError({ statusCode: 400, statusMessage: 'Напишите причину для автора, до 500 знаков.' })
@@ -132,7 +132,30 @@ export async function rejectGuest(id: string, actorId: string, note: string) {
   return { id: updated.id, status: updated.status }
 }
 
-export async function disputeGuest(id: string, actorId: string) {
+export async function moderateGuest(input: {
+  id: string
+  actorId: string | null
+  decision: 'accept' | 'reject' | 'dispute'
+  note?: string
+  recognizableFace?: boolean
+}) {
+  const current = input.decision === 'accept' ? await db.guests.byId(input.id) : null
+  const routed = routeGuestDecision({
+    kind: current?.kind ?? null,
+    decision: input.decision,
+    recognizableFace: input.recognizableFace,
+    note: input.note,
+  })
+  if (routed.decision === 'dispute') {
+    return disputeGuest(input.id, input.actorId)
+  }
+  if (routed.decision === 'reject') {
+    return rejectGuest(input.id, input.actorId, routed.note ?? '')
+  }
+  return acceptGuest(input.id, input.actorId)
+}
+
+export async function disputeGuest(id: string, actorId: string | null) {
   const row = await db.guests.flagDispute(id, actorId)
   if (!row) {
     throw createError({ statusCode: 404, statusMessage: 'Запись уже решена.' })
@@ -155,6 +178,19 @@ export async function removeGuestMedia(mediaIds: Array<string | null>) {
       await deleteMediaCompletely(id)
     }
   }
+}
+
+export async function listPendingGuestRows() {
+  const rows = presentPending(await db.guests.pendingQueue())
+  const mediaRows = await db.content.mediaByIds(rows.flatMap((row) => row.mediaId ? [row.mediaId] : []))
+  const mediaById = new Map(mediaRows.map((row) => [row.id, row]))
+  return rows.map((row) => {
+    const media = row.mediaId ? mediaById.get(row.mediaId) : undefined
+    return {
+      ...row,
+      mediaSrc: media ? toPublicMedia(media).src : null,
+    }
+  })
 }
 
 export function presentPending(rows: Awaited<ReturnType<typeof db.guests.pendingQueue>>) {

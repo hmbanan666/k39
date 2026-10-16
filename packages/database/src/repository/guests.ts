@@ -110,7 +110,7 @@ export class Guests {
     return row ?? null
   }
 
-  static async decide(id: string, actorUserId: string, status: 'accepted' | 'rejected', note: string | null) {
+  static async decide(id: string, actorUserId: string | null, status: 'accepted' | 'rejected', note: string | null) {
     const now = new Date().toISOString()
     const [row] = await useDatabase().update(guestSubmissions).set({
       status,
@@ -126,7 +126,7 @@ export class Guests {
     return row ?? null
   }
 
-  static async flagDispute(id: string, actorUserId: string) {
+  static async flagDispute(id: string, actorUserId: string | null) {
     const now = new Date().toISOString()
     const [row] = await useDatabase().update(guestSubmissions).set({
       disputed: true,
