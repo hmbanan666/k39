@@ -16,7 +16,7 @@ export type FactKind = (typeof PHASE1_KINDS)[number]
 export const FACT_SUBJECTS = ['place', 'venue', 'route', 'route_stop', 'region'] as const
 export type FactSubject = (typeof FACT_SUBJECTS)[number]
 
-export const SOURCE_KINDS = ['official', 'official_social', 'map_yandex', 'map_2gis', 'osm', 'owner', 'none'] as const
+export const SOURCE_KINDS = ['official', 'official_social', 'map_yandex', 'map_2gis', 'map_google', 'osm', 'owner', 'none'] as const
 export type SourceKind = (typeof SOURCE_KINDS)[number]
 
 export const CONFIDENCE = ['stated', 'owner', 'gap'] as const
@@ -25,7 +25,7 @@ export type FactConfidence = (typeof CONFIDENCE)[number]
 export const FACT_ACTORS = ['migration', 'editor', 'owner', 'mcp'] as const
 export type FactActor = (typeof FACT_ACTORS)[number]
 
-export const QUEUE_REASONS = ['source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict'] as const
+export const QUEUE_REASONS = ['source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict', 'fact_repeated'] as const
 export type QueueReason = (typeof QUEUE_REASONS)[number]
 
 /** Conflict reasons that make a fact stale for the score and the trust column. */
@@ -174,7 +174,7 @@ function bareHost(host: string) {
   return host.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
 }
 
-/** Yandex Maps, 2GIS, and OSM are never fetched. They queue on TTL instead. */
+/** Map cards are never fetched. They queue on TTL instead. */
 export function isUnwatchedUrl(url: string) {
   let parsed: URL
   try {
@@ -188,9 +188,20 @@ export function isUnwatchedUrl(url: string) {
     return true
   }
   return /(?:^|\.)2gis\.(?:ru|com|kz|uz)$/.test(host)
+    || isGoogleMaps(host, parsed.pathname)
     || /(?:^|\.)openstreetmap\.org$/.test(host)
     || host === 'osm.org'
     || host.endsWith('.osm.org')
+}
+
+function isGoogleMaps(host: string, pathname: string) {
+  if (host === 'maps.app.goo.gl' || host.endsWith('.maps.app.goo.gl') || host === 'maps.google.com' || host.endsWith('.maps.google.com')) {
+    return true
+  }
+  if (host === 'goo.gl' && (pathname === '/maps' || pathname.startsWith('/maps/'))) {
+    return true
+  }
+  return /^google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)$/.test(host) && (pathname === '/maps' || pathname.startsWith('/maps/'))
 }
 
 export function classifySourceUrl(url: string | null | undefined): Exclude<SourceKind, 'owner'> {
@@ -209,6 +220,9 @@ export function classifySourceUrl(url: string | null | undefined): Exclude<Sourc
   const host = bareHost(parsed.hostname)
   if (/(?:^|\.)2gis\.(?:ru|com|kz|uz)$/.test(host)) {
     return 'map_2gis'
+  }
+  if (isGoogleMaps(host, parsed.pathname)) {
+    return 'map_google'
   }
   if (host.includes('openstreetmap') || host === 'osm.org' || host.endsWith('.osm.org')) {
     return 'osm'
@@ -278,6 +292,25 @@ export function priorityFor(kind: string, reason: string, traffic: number) {
 /** The token may confirm the same value. A different value waits for an editor. */
 export function ownerBlocksToken(latestActor: string | null, sameClaim: boolean) {
   return latestActor === 'owner' && !sameClaim
+}
+
+const MAP_SOURCES = new Set(['map_yandex', 'map_2gis', 'map_google', 'osm'])
+const MAP_FIELDS = new Set(['hours', 'phone', 'address', 'coordinates', 'status'])
+
+/** Map cards are venue facts only, and only the fields a map is allowed to fill. */
+export function mapSourceAllowed(subjectType: string, kind: string, sourceKind: string) {
+  if (!MAP_SOURCES.has(sourceKind)) {
+    return true
+  }
+  return subjectType === 'venue' && MAP_FIELDS.has(kind)
+}
+
+/** Write the contact fact when the value changed, or when the column was saved before a fact row existed. */
+export function shouldWriteContact(changed: boolean, hasFact: boolean, next: string | null) {
+  if (changed) {
+    return true
+  }
+  return !hasFact && Boolean(next)
 }
 
 export function hoursLookEmpty(rules: ScheduleRules) {

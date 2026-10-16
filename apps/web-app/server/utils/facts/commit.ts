@@ -1,7 +1,7 @@
 import type { FactRefWrite } from '@k39/database'
 import type { FactActor, FactConfidence, FactKind, FactProposal, FactSubject, SourceKind } from '../../../shared/facts'
 import { db } from '@k39/database'
-import { defaultTtl, ownerBlocksToken, parseFactValue, priorityFor, queueMayOpen, valueHash, watchableSource } from '../../../shared/facts'
+import { defaultTtl, mapSourceAllowed, ownerBlocksToken, parseFactValue, priorityFor, queueMayOpen, valueHash, watchableSource } from '../../../shared/facts'
 
 export interface CommitFactInput {
   kind: FactKind
@@ -25,6 +25,9 @@ export interface CommitFactInput {
 }
 
 export async function commitFact(input: CommitFactInput) {
+  if (!mapSourceAllowed(input.subjectType, input.kind, input.sourceKind)) {
+    throw createError({ statusCode: 400, statusMessage: 'Карта подходит только заведению и только для адреса, часов, телефона, статуса и координат' })
+  }
   const value = parseFactValue(input.kind, input.value)
   if (!value) {
     throw createError({ statusCode: 400, statusMessage: 'Значение факта не подходит к его типу' })

@@ -239,6 +239,13 @@
       "when": 1792110000000,
       "tag": "0033_typed_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792120000000,
+      "tag": "0034_map_google_source",
+      "breakpoints": true
     }
   ]
 }

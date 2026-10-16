@@ -71,7 +71,7 @@ Confidence is that enum, not a percentage. A number would look sharper than the 
 
 1. `official`. Site of the place, museum, administration, or venue, including a menu page or a PDF on that site.
 2. `official_social`. The venue's own official social account, for a fact that page states.
-3. `map_yandex`, `map_2gis`, `osm`. Venues only. Only address, hours, phone, operating status, and coordinates. Only when the official site does not state that fact. Places still do not take those fields from Yandex Maps or 2GIS.
+3. `map_yandex`, `map_2gis`, `map_google`, `osm`. Venues only. Only address, hours, phone, operating status, and coordinates. Only when the official site does not state that fact. Places still do not take those fields from a map. Google Maps follows the same rule as Yandex Maps and 2GIS.
 4. `owner`. Cabinet.
 5. `none`. A gap, or a seed that has no URL yet.
 

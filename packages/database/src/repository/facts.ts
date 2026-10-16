@@ -471,13 +471,13 @@ export class Facts {
     }).from(verificationQueue).leftJoin(facts, eq(facts.id, verificationQueue.factId)).where(isNull(verificationQueue.resolvedAt))
   }
 
-  static async closeSection(pageType: string, entityId: string, path: string) {
+  static async closeSection(pageType: string, entityId: string, path: string, reason = 'section_changed') {
     await useDatabase().update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(
       eq(verificationQueue.target, 'section'),
       eq(verificationQueue.pageType, pageType),
       eq(verificationQueue.entityId, entityId),
       eq(verificationQueue.path, path),
-      eq(verificationQueue.reason, 'section_changed'),
+      eq(verificationQueue.reason, reason),
       isNull(verificationQueue.resolvedAt),
     ))
   }
@@ -500,6 +500,31 @@ export class Facts {
 
   static async refs() {
     return useDatabase().select().from(factRefs)
+  }
+
+  /**
+   * Live facts a page cites. One query for the whole batch.
+   * A fact with no ref, or a retired fact, is not returned.
+   */
+  static async forConsumers(consumerType: string, consumerIds: string[], kinds: readonly string[]) {
+    if (!consumerIds.length || !kinds.length) {
+      return []
+    }
+    return useDatabase().select({
+      consumerId: factRefs.consumerId,
+      path: factRefs.path,
+      kind: facts.kind,
+      slot: facts.slot,
+      value: facts.value,
+      confidence: facts.confidence,
+      subjectType: facts.subjectType,
+      subjectId: facts.subjectId,
+    }).from(factRefs).innerJoin(facts, eq(facts.id, factRefs.factId)).where(and(
+      eq(factRefs.consumerType, consumerType),
+      inArray(factRefs.consumerId, consumerIds),
+      inArray(facts.kind, [...kinds]),
+      isNull(facts.retiredAt),
+    ))
   }
 }
 

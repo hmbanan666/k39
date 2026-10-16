@@ -6,9 +6,9 @@ import {
   descriptionLength,
   FOOD_KINDS,
   formatAvgCheck,
-  formatHoursLines,
   formatVenueDistance,
   formatWalk,
+  HOURS_UNKNOWN,
   hoursAreSet,
   isStale,
   KIND_HEADING,
@@ -17,6 +17,7 @@ import {
   LISTING_INTRO_MIN,
   listingPath,
   NEARBY_LIMIT,
+  NEARBY_RADIUS_KM,
   normalizeHours,
   priceMarks,
   rankNearby,
@@ -24,15 +25,17 @@ import {
   STALE_NOTE,
 } from '@k39/database'
 import { EAT_NOW_PATH, eatNowPath, haversineKm, inTown } from '../../../shared/eat-now'
+import { publicProse, publicVenueModules } from '../../../shared/fact-prose'
 import { illustrationFor } from '../../../shared/illustrations'
 import { attachSituationCards, toPublicListingModules } from '../../../shared/listing-modules'
 import { renderMarkdown } from '../../../shared/markdown'
 import { toPublicMedia } from '../../../shared/media'
 import { buildPublicPrices, priceCompareLead, priceListNode } from '../../../shared/price-compare'
 import { regionLabel } from '../../../shared/region'
-import { readRules } from '../../../shared/schedule'
+import { isVerified, readRules, scheduleDetails, scheduleMarkup } from '../../../shared/schedule'
 import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../../../shared/seo'
 import { dishMenuNode, toPublicVenueModules } from '../../../shared/venue-modules'
+import { FACT_UNKNOWN, omitFactGap, readShownFacts } from '../facts/read'
 import { loadSchedule } from '../schedule'
 
 export function sponsoredVenuesEnabled() {
@@ -52,7 +55,24 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
     return [{ latitude: point.latitude, longitude: point.longitude }]
   })
   const found = await db.venues.nearby(points)
-  const ranked = rankNearby(found, { sponsoredSlot: sponsoredVenuesEnabled(), limit: options.limit ?? NEARBY_LIMIT })
+  const facts = await readShownFacts('venue', found.map((row) => ({
+    id: row.id,
+    address: row.address,
+    latitude: row.latitude,
+    longitude: row.longitude,
+  })))
+  const located = found.flatMap((row) => {
+    const shown = facts.get(row.id)
+    if (!shown || shown.status === 'closed' || shown.latitude == null || shown.longitude == null) {
+      return []
+    }
+    const distanceKm = Math.min(...points.map((origin) => haversineKm(origin, { latitude: shown.latitude!, longitude: shown.longitude! })))
+    if (distanceKm > NEARBY_RADIUS_KM) {
+      return []
+    }
+    return [{ ...row, address: shown.address, latitude: shown.latitude, longitude: shown.longitude, distanceKm }]
+  })
+  const ranked = rankNearby(located, { sponsoredSlot: sponsoredVenuesEnabled(), limit: options.limit ?? NEARBY_LIMIT })
   const covers = await db.venues.coversFor(ranked.map((row) => row.id))
   // Rules only: the browser computes «открыто сейчас» from them (ADR 0028).
   const schedules = await Promise.all(ranked.map((row) => loadSchedule('venue', row.id)))
@@ -159,11 +179,23 @@ async function loadVenue(slug: string) {
   const gallery = await db.venues.gallery(venue.id)
   const photos = gallery.map((item) => toPublicMedia(item.media))
   const cover = photos.find((item, index) => gallery[index]?.isCover) ?? photos[0] ?? null
-  const hours = normalizeHours(venue.hours)
-  const openDays = hours.days.filter((day) => !day.closed && day.opens && day.closes)
+  const schedule = await loadSchedule('venue', venue.id)
+  const hourLines = scheduleDetails(schedule?.rules ?? null)
+  const body = publicProse(venue.description, hourLines)
+  const moduleSource = publicVenueModules(venue.modules, hourLines)
   const now = new Date()
   const stale = isStale(venue.lastVerifiedAt, now)
-  const closed = venue.status === 'closed'
+  const shown = (await readShownFacts('venue', [{
+    id: venue.id,
+    phone: venue.phone,
+    address: venue.address,
+    latitude: venue.latitude,
+    longitude: venue.longitude,
+    status: venue.status,
+  }])).get(venue.id)!
+  const operatingClosed = shown.status === 'closed'
+  const closedNote = operatingClosed ? CLOSED_NOTE : shown.statusGap ? FACT_UNKNOWN : ''
+  const closed = Boolean(closedNote)
   const missingDescription = descriptionLength(venue.description) === 0
   const freshPrices = await db.prices.freshForVenue(venue.id)
   const peerLists = await Promise.all([...new Set(freshPrices.map((row) => row.item))].map(async (slug) => {
@@ -179,7 +211,7 @@ async function loadVenue(slug: string) {
     peersByItem: Object.fromEntries(peerLists),
   })
   const mediaById = new Map(photos.map((photo) => [photo.id, photo]))
-  const modules = toPublicVenueModules(venue.modules, renderMarkdown, prices, {
+  const modules = toPublicVenueModules(moduleSource, renderMarkdown, prices, {
     now,
     mediaById,
     priceLead: priceCompareLead(region?.slug ?? null),
@@ -188,24 +220,23 @@ async function loadVenue(slug: string) {
   })
   const town = region ? inTown(region.slug, regionLabel(region)) : ''
   const firstBlock = modules?.blocks.find((block) => block.type === 'text')
-  const firstText = firstBlock?.type === 'text' ? firstBlock.html.replace(/<[^>]+>/g, ' ') : venue.description
+  const firstText = firstBlock?.type === 'text' ? firstBlock.html.replace(/<[^>]+>/g, ' ') : body
   const doc = venueDocument({
     slug: venue.slug,
     name: venue.name,
     kind: venue.kind,
-    description: venue.description,
+    description: body || venue.name,
     regionTitle: region ? regionLabel(region) : null,
-    address: venue.address,
-    latitude: venue.latitude,
-    longitude: venue.longitude,
-    phone: venue.phone,
+    address: omitFactGap(shown.address),
+    latitude: shown.latitude,
+    longitude: shown.longitude,
+    phone: omitFactGap(shown.phone),
     website: venue.website,
     priceLevel: venue.priceLevel,
     cuisine: venue.cuisineTags,
-    hours: openDays.length ? hours.days : undefined,
     seoTitle: venue.seoTitle,
     seoDescription: venue.seoDescription,
-    noindex: venue.noindex || closed || missingDescription,
+    noindex: venue.noindex || venue.status === 'closed' || operatingClosed || missingDescription,
     image: cover ? socialImage(cover, cover.alt || venue.name) : null,
     kindLabel: kindLabel(venue.kind),
     inTown: town.startsWith('в ') ? town : null,
@@ -214,6 +245,17 @@ async function loadVenue(slug: string) {
     menuUrl: venue.menuUrl,
     reservation: venue.reservation,
   })
+  const markup = scheduleMarkup(schedule, now)
+  const business = doc.jsonLd.find((node) => {
+    const type = node['@type']
+    return type && type !== 'BreadcrumbList' && type !== 'FAQPage'
+  })
+  if (markup?.regular.length && business) {
+    business.openingHoursSpecification = markup.regular
+    if (markup.special.length) {
+      business.specialOpeningHoursSpecification = markup.special
+    }
+  }
   const priceBlock = modules?.blocks.find((block) => block.type === 'prices')
   if (priceBlock?.type === 'prices') {
     const list = priceListNode(priceBlock.items, priceBlock.title)
@@ -245,8 +287,8 @@ async function loadVenue(slug: string) {
     })
   }
   const sponsored = await db.venues.sponsoredIds([venue.id])
-  const places = venue.latitude != null && venue.longitude != null
-    ? (await db.content.nearest(venue.latitude, venue.longitude, '', 6))
+  const places = shown.latitude != null && shown.longitude != null
+    ? (await db.content.nearest(shown.latitude, shown.longitude, '', 6))
         // The town itself is in the crumbs, not a sight «рядом».
         .filter((place) => place.slug !== region?.slug)
     : []
@@ -260,21 +302,21 @@ async function loadVenue(slug: string) {
       kind: venue.kind,
       kindLabel: kindLabel(venue.kind),
       partner: sponsoredVenuesEnabled() && sponsored.has(venue.id),
-      address: venue.address,
-      phone: venue.phone,
+      address: shown.address,
+      phone: shown.phone,
       website: venue.website,
       price: priceMarks(venue.priceLevel),
       avgCheck: formatAvgCheck(venue.avgCheck),
-      hours: formatHoursLines(hours),
-      hoursSet: hoursAreSet(hours),
-      description: venue.description,
-      html: renderMarkdown(venue.description),
-      latitude: venue.latitude,
-      longitude: venue.longitude,
+      hours: isVerified(schedule) ? hourLines : schedule ? [] : [HOURS_UNKNOWN],
+      hoursSet: hoursAreSet(normalizeHours(venue.hours)),
+      description: body,
+      html: renderMarkdown(body),
+      latitude: shown.latitude,
+      longitude: shown.longitude,
       stale,
       staleNote: stale ? STALE_NOTE : '',
       closed,
-      closedNote: closed ? CLOSED_NOTE : '',
+      closedNote,
       sources: venue.sources ?? [],
       cuisine: cuisineLabels(venue.cuisineTags, 4),
       socials: venue.socials ?? [],
@@ -290,7 +332,7 @@ async function loadVenue(slug: string) {
       modules,
       checkedAt: venue.lastVerifiedAt,
       regionTitle: region ? regionLabel(region) : null,
-      schedule: await loadSchedule('venue', venue.id),
+      schedule,
     },
     photos,
     cover,
@@ -330,13 +372,28 @@ async function loadListing(
     foodOnly: !kind,
   })
   const food = kind ? catalog : catalog.filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
+  const draftModules = toPublicListingModules(intro?.modules ?? [], renderMarkdown)
+  const situationSlugs = draftModules.flatMap((block) => block.type === 'situation' ? block.items.map((item) => item.placeSlug) : [])
+  const extraSlugs = [...new Set(situationSlugs.filter((slug) => !food.some((row) => row.slug === slug)))]
+  const extras = (await Promise.all(extraSlugs.map((slug) => db.venues.bySlug(slug)))).flatMap((row) => {
+    return row && row.status === 'published' ? [row] : []
+  })
+  const facts = await readShownFacts('venue', [...food, ...extras].map((row) => ({
+    id: row.id,
+    phone: row.phone,
+    address: row.address,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    status: row.status,
+  })))
+  const openFood = food.filter((row) => facts.get(row.id)?.status !== 'closed')
   const counts = new Map<string, number>()
-  for (const row of food) {
+  for (const row of openFood) {
     if (row.regionId) {
       counts.set(row.regionId, (counts.get(row.regionId) ?? 0) + 1)
     }
   }
-  const shown = region ? food.filter((row) => row.regionId === region.id) : food
+  const shown = region ? openFood.filter((row) => row.regionId === region.id) : openFood
   const townRows = regionRows
     .filter((row) => (counts.get(row.id) ?? 0) > 0 || row.slug === regionSlug)
     .map((row) => ({
@@ -365,13 +422,7 @@ async function loadListing(
     kind: 'CollectionPage',
   })
   const now = new Date()
-  const draftModules = toPublicListingModules(intro?.modules ?? [], renderMarkdown)
-  const situationSlugs = draftModules.flatMap((block) => block.type === 'situation' ? block.items.map((item) => item.placeSlug) : [])
-  const extraSlugs = [...new Set(situationSlugs.filter((slug) => !shown.some((row) => row.slug === slug)))]
-  const extras = (await Promise.all(extraSlugs.map((slug) => db.venues.bySlug(slug)))).flatMap((row) => {
-    return row && row.status === 'published' ? [row] : []
-  })
-  const cardRows = [...shown, ...extras]
+  const cardRows = [...shown, ...extras.filter((row) => facts.get(row.id)?.status !== 'closed')]
   const ids = cardRows.map((row) => row.id)
   const [covers, scheduleRows] = await Promise.all([
     db.venues.coversFor(ids),
@@ -391,7 +442,7 @@ async function loadListing(
       media: cover ? toPublicMedia(cover) : null,
       schedule: scheduleById.get(row.id) ?? null,
       stale: isStale(row.lastVerifiedAt, now),
-      meta: [row.address, cuisineLabels(row.cuisineTags).join(', '), priceMarks(row.priceLevel), formatAvgCheck(row.avgCheck)].filter(Boolean).join(' · '),
+      meta: [facts.get(row.id)?.address, cuisineLabels(row.cuisineTags).join(', '), priceMarks(row.priceLevel), formatAvgCheck(row.avgCheck)].filter(Boolean).join(' · '),
     }] as const
   }))
   const modules = attachSituationCards(draftModules, cards)
@@ -443,13 +494,13 @@ async function loadListing(
         slug: row.slug,
         name: row.name,
         kindLabel: kindLabel(row.kind),
-        address: row.address,
+        address: facts.get(row.id)?.address ?? null,
         cuisine: cuisineLabels(row.cuisineTags),
         price: priceMarks(row.priceLevel),
         avgCheck: formatAvgCheck(row.avgCheck),
         stale: isStale(row.lastVerifiedAt, now),
-        latitude: row.latitude,
-        longitude: row.longitude,
+        latitude: facts.get(row.id)?.latitude ?? null,
+        longitude: facts.get(row.id)?.longitude ?? null,
         media: card?.media ?? null,
         // Rules only. The card computes «открыто» in the browser (ADR 0028).
         schedule: card?.schedule ?? null,
@@ -517,23 +568,39 @@ export async function loadEatNow(regionSlug: string | null) {
   }
   const rows = (await db.venues.list({ regionId: town.id, status: 'published', foodOnly: true }))
     .filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
-  const located = rows.filter((row) => row.latitude != null && row.longitude != null)
+  const facts = await readShownFacts('venue', rows.map((row) => ({
+    id: row.id,
+    phone: row.phone,
+    address: row.address,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    status: row.status,
+  })))
+  const openRows = rows.filter((row) => facts.get(row.id)?.status !== 'closed')
+  const located = openRows.flatMap((row) => {
+    const shown = facts.get(row.id)
+    if (!shown || shown.latitude == null || shown.longitude == null) {
+      return []
+    }
+    return [{ latitude: shown.latitude, longitude: shown.longitude }]
+  })
   const centre = town.latitude != null && town.longitude != null
     ? { latitude: town.latitude, longitude: town.longitude }
     : located.length
       ? {
-          latitude: located.reduce((sum, row) => sum + row.latitude!, 0) / located.length,
-          longitude: located.reduce((sum, row) => sum + row.longitude!, 0) / located.length,
+          latitude: located.reduce((sum, row) => sum + row.latitude, 0) / located.length,
+          longitude: located.reduce((sum, row) => sum + row.longitude, 0) / located.length,
         }
       : null
   const [covers, schedules] = await Promise.all([
-    db.venues.coversFor(rows.map((row) => row.id)),
-    Promise.all(rows.map((row) => loadSchedule('venue', row.id))),
+    db.venues.coversFor(openRows.map((row) => row.id)),
+    Promise.all(openRows.map((row) => loadSchedule('venue', row.id))),
   ])
   const now = new Date()
-  const items = rows.map((row, index) => {
-    const distanceKm = centre && row.latitude != null && row.longitude != null
-      ? haversineKm(centre, { latitude: row.latitude, longitude: row.longitude })
+  const items = openRows.map((row, index) => {
+    const shown = facts.get(row.id)!
+    const distanceKm = centre && shown.latitude != null && shown.longitude != null
+      ? haversineKm(centre, { latitude: shown.latitude, longitude: shown.longitude })
       : null
     const cover = covers.get(row.id)
     return {
@@ -544,9 +611,9 @@ export async function loadEatNow(regionSlug: string | null) {
       cuisine: cuisineLabels(row.cuisineTags),
       price: priceMarks(row.priceLevel),
       check: row.avgCheck != null ? `~${new Intl.NumberFormat('ru-RU').format(row.avgCheck)} ₽` : '',
-      address: row.address,
-      latitude: row.latitude,
-      longitude: row.longitude,
+      address: shown.address,
+      latitude: shown.latitude,
+      longitude: shown.longitude,
       distanceKm,
       distance: distanceKm != null ? formatVenueDistance(distanceKm) : '',
       stale: isStale(row.lastVerifiedAt, now),

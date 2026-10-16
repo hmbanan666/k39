@@ -4,6 +4,7 @@ import { formatRub, indexablePriceLocs, onePricePerVenue, priceItemImage, priceI
 import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
 import { collectionDocument } from '../../../shared/seo'
+import { readShownFacts } from '../facts/read'
 
 /** One catalog item across venues, cheapest first. Reuses `db.prices.forItem`. */
 export async function loadPriceListing(itemSlug: string, regionSlug: string | null) {
@@ -46,9 +47,18 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
     return rules ? [[row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }] as const] : []
   }))
   const now = new Date()
+  const facts = await readShownFacts('venue', [...byId.values()].map((venue) => ({
+    id: venue.id,
+    address: venue.address,
+    latitude: venue.latitude,
+    longitude: venue.longitude,
+    phone: venue.phone,
+    status: venue.status,
+  })))
   const items = shown.flatMap((point) => {
     const venue = byId.get(point.venueId)
-    if (!venue) {
+    const shownFacts = venue ? facts.get(venue.id) : undefined
+    if (!venue || shownFacts?.status === 'closed') {
       return []
     }
     const cover = covers.get(venue.id)
@@ -60,7 +70,7 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
       media: cover ? toPublicMedia(cover) : null,
       schedule: scheduleById.get(venue.id) ?? null,
       stale: isStale(venue.lastVerifiedAt, now),
-      meta: venue.address?.trim() || '',
+      meta: shownFacts?.address?.trim() || '',
       priceLabel: formatRub(point.priceRub),
       variant: point.variant,
     }]

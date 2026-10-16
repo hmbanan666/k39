@@ -1,8 +1,10 @@
 import type { MapPoint, MapRoute } from '../../../shared/map'
-import { db, formatHoursLines, hoursAreSet, isStale, kindHeading } from '@k39/database'
+import { db, isStale, kindHeading } from '@k39/database'
 import { blurb, FOOD_FILTERS, isChurchPlace, normalizeRoutePath, partnerVisible, SIGHT_FACETS } from '../../../shared/map'
 import { toPublicMedia } from '../../../shared/media'
+import { isVerified, readRules, scheduleDetails } from '../../../shared/schedule'
 import { collectionDocument } from '../../../shared/seo'
+import { FACT_UNKNOWN, pinCoordinates, readShownFacts } from '../facts/read'
 import { sponsoredVenuesEnabled } from '../venues/public'
 
 function thumb(row: Parameters<typeof toPublicMedia>[0] | undefined) {
@@ -22,19 +24,36 @@ export async function loadMap() {
     db.venues.list({ status: 'published', foodOnly: true }),
     db.content.mapRouteStops(),
   ])
-  const placeCovers = await db.content.coversFor(placeRows.map((row) => row.id))
+  const placeIds = placeRows.map((row) => row.id)
   const venueIds = venueRows.map((row) => row.id)
-  const [venueCovers, sponsored] = await Promise.all([
+  const [placeCovers, venueCovers, sponsored, placeFacts, venueFacts, scheduleRows] = await Promise.all([
+    db.content.coversFor(placeIds),
     db.venues.coversFor(venueIds),
     db.venues.sponsoredIds(venueIds),
+    readShownFacts('place', placeRows.map((row) => ({ id: row.id, latitude: row.latitude, longitude: row.longitude, status: undefined }))),
+    readShownFacts('venue', venueRows.map((row) => ({
+      id: row.id,
+      address: row.address,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      status: row.status,
+    }))),
+    db.schedules.forEntities('venue', venueIds),
   ])
+  const scheduleByVenue = new Map(scheduleRows.flatMap((row) => {
+    const rules = readRules(row.rules)
+    const record = rules ? { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt } : null
+    const lines = record && isVerified(record) ? scheduleDetails(rules) : []
+    return [[row.entityId, lines] as const]
+  }))
   const stopCovers = await db.content.coversFor(stopRows.map((row) => row.placeId))
   const flag = sponsoredVenuesEnabled()
   const now = new Date()
   const points: MapPoint[] = []
 
   for (const row of placeRows) {
-    if (row.latitude == null || row.longitude == null) {
+    const pin = pinCoordinates('place', placeFacts.get(row.id)!)
+    if (!pin) {
       continue
     }
     const category = row.categorySlug || 'forty'
@@ -47,8 +66,8 @@ export async function loadMap() {
         slug: row.slug,
         title: row.title,
         href: `/${row.slug}`,
-        latitude: row.latitude,
-        longitude: row.longitude,
+        latitude: pin.latitude,
+        longitude: pin.longitude,
         category: 'eda',
         marker: 'eda',
         church: false,
@@ -68,8 +87,8 @@ export async function loadMap() {
       slug: row.slug,
       title: row.title,
       href: `/${row.slug}`,
-      latitude: row.latitude,
-      longitude: row.longitude,
+      latitude: pin.latitude,
+      longitude: pin.longitude,
       category,
       marker: church ? 'tserkvi' : (sight?.id || 'forty'),
       church,
@@ -84,7 +103,9 @@ export async function loadMap() {
   }
 
   for (const row of venueRows) {
-    if (row.noindex || row.latitude == null || row.longitude == null) {
+    const shown = venueFacts.get(row.id)
+    const pin = shown ? pinCoordinates('venue', shown) : null
+    if (row.noindex || !pin) {
       continue
     }
     const stale = isStale(row.lastVerifiedAt, now)
@@ -94,8 +115,8 @@ export async function loadMap() {
       slug: row.slug,
       title: row.name,
       href: `/zavedeniya/${row.slug}`,
-      latitude: row.latitude,
-      longitude: row.longitude,
+      latitude: pin.latitude,
+      longitude: pin.longitude,
       category: row.kind,
       marker: FOOD_FILTERS.some((item) => item.id === row.kind) ? row.kind : 'other',
       church: false,
@@ -104,8 +125,8 @@ export async function loadMap() {
       photo: thumb(venueCovers.get(row.id)),
       partner: partnerVisible(flag, sponsored.has(row.id)),
       stale,
-      address: row.address?.trim() || null,
-      hours: hoursAreSet(row.hours) ? formatHoursLines(row.hours).join(', ') : null,
+      address: shown?.address?.trim() && shown.address !== FACT_UNKNOWN ? shown.address : null,
+      hours: scheduleByVenue.get(row.id)?.join(', ') || null,
     })
   }
 

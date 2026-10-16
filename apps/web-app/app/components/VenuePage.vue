@@ -129,7 +129,7 @@
             <h2>Коротко</h2>
             <OpeningLive
               :schedule="venue.schedule"
-              :has-hours="venue.hours.length > 0"
+              :has-hours="Boolean(venue.schedule) || venue.hours.length > 0"
             />
             <div
               v-if="actions.primary || actions.secondary.length || hasCoords"

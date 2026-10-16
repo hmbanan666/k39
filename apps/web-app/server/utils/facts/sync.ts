@@ -1,8 +1,8 @@
 import type { VenuePriceInput } from '@k39/database'
-import type { FactActor } from '../../../shared/facts'
+import type { FactActor, SourceKind } from '../../../shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '../../../shared/schedule'
 import { db } from '@k39/database'
-import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, valueHash } from '../../../shared/facts'
+import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, shouldWriteContact, valueHash } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { commitFact, retireFactSlot } from './commit'
 
@@ -82,7 +82,7 @@ function hoursClaim(rules: ScheduleRules, record: ScheduleRecord): {
   value: ScheduleRules
   sourceUrl: string | null
   sourceTitle: string | null
-  sourceKind: 'official' | 'official_social' | 'map_yandex' | 'map_2gis' | 'osm' | 'owner' | 'none'
+  sourceKind: SourceKind
   checkedAt: string | null
   confidence: 'stated' | 'owner' | 'gap'
 } {
@@ -229,7 +229,7 @@ export async function syncVenueContact(input: {
 }) {
   const conflicts: string[] = []
   const skipped = { phone: false, address: false, status: false }
-  if (input.phone !== undefined && input.phone !== input.previous.phone) {
+  if (await contactChanged(input, 'phone')) {
     const blocked = await blockField(input, 'phone', input.phone ? { text: input.phone.trim() } : null)
     if (blocked) {
       skipped.phone = true
@@ -240,7 +240,7 @@ export async function syncVenueContact(input: {
       await retireFactSlot('venue', input.venueId, 'phone')
     }
   }
-  if (input.address !== undefined && input.address !== input.previous.address) {
+  if (await contactChanged(input, 'address')) {
     const blocked = await blockField(input, 'address', input.address ? { text: input.address.trim() } : null)
     if (blocked) {
       skipped.address = true
@@ -264,6 +264,26 @@ export async function syncVenueContact(input: {
     }
   }
   return { conflicts, skipped }
+}
+
+async function contactChanged(input: {
+  venueId: string
+  phone?: string | null
+  address?: string | null
+  previous: { phone: string | null, address: string | null }
+}, slot: 'phone' | 'address') {
+  const raw = input[slot]
+  if (raw === undefined) {
+    return false
+  }
+  const next = raw?.trim() || null
+  const previous = input.previous[slot]?.trim() || null
+  const changed = next !== previous
+  if (changed) {
+    return true
+  }
+  const existing = await db.facts.liveSlot('venue', input.venueId, slot)
+  return shouldWriteContact(false, Boolean(existing), next)
 }
 
 async function blockField(input: { venueId: string, actor: FactActor, pageStatus?: string | null }, slot: 'phone' | 'address' | 'status', value: unknown) {

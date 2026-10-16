@@ -42,17 +42,19 @@ Do not invent a coordinate, a year, a ticket price, a capacity, or a closed day.
 
 ## Venue facts
 
-Use Yandex Maps or 2GIS only for a venue that really exists and operates. The card may be what establishes that it is operating, and that status is one of the allowed facts. Do not use a card you cannot tie to that venue. If the card says the venue has closed, record the closed status. Do not copy a timetable as if it were still open.
+Use Yandex Maps, 2GIS, or Google Maps only for a venue that really exists and operates. The card may be what establishes that it is operating, and that status is one of the allowed facts. Do not use a card you cannot tie to that venue. If the card says the venue has closed, record the closed status. Do not copy a timetable as if it were still open.
 
 For a venue, take address, hours, phone, whether it is open or operating, and coordinates in this order:
 
 1. The venue's official site.
-2. Yandex Maps, 2GIS, and OpenStreetMap, only for a fact the site does not state.
+2. Yandex Maps, 2GIS, Google Maps, and OpenStreetMap, only for a fact the site does not state.
 3. «уточняйте».
 
-On a conflict, the official site wins. Do not replace a site address, hour, phone, operating status, or coordinate with a map or OSM value. Maps and OSM fill a gap. They do not override the site. If a map and OSM disagree and the site is silent, do not blend the two values. Record one of them with its URL, or write «уточняйте». Do not take the pin from a guessed point.
+`map_google` is the same kind of source as `map_yandex` and `map_2gis`: venues only, and only those fact fields. It sits below the official site. A Google result, a Google Business profile, and a Google page that is not a map card are not a source.
 
-Menu lines and prices stay the official menu: a page on the venue's site or a PDF on that site. Yandex Maps, 2GIS, aggregators, and delivery apps do not supply them.
+On a conflict, the official site wins. Do not replace a site address, hour, phone, operating status, or coordinate with a map or OSM value. Maps and OSM fill a gap. They do not override the site. If two maps disagree and the site is silent, do not blend the two values. Record one of them with its URL, or write «уточняйте». Do not take the pin from a guessed point.
+
+Menu lines and prices stay the official menu: a page on the venue's site or a PDF on that site. Yandex Maps, 2GIS, Google Maps, aggregators, and delivery apps do not supply them.
 
 Use «уточняйте» only when the official site says nothing about that field and neither a map card nor OSM states it. If the site states the fact, write the fact. An empty hours week still renders «Часы уточняйте» (ADR 0018). That is the empty state, not a reason to ignore the site or a map card that states the hours.
 
@@ -60,7 +62,7 @@ Use «уточняйте» only when the official site says nothing about that f
 
 ## Unknown
 
-For a place, write «уточняйте» (or leave the field empty where the template already says that) when the official source is silent. Place hours, phone, address, and coordinates do not come from Yandex Maps or 2GIS.
+For a place, write «уточняйте» (or leave the field empty where the template already says that) when the official source is silent. Place hours, phone, address, and coordinates do not come from Yandex Maps, 2GIS, or Google Maps.
 
 - Place hours with no official source: no schedule, or `needsCheck`. The hours text stays a human summary of a real schedule only.
 - Ticket or bill unknown: leave `price` empty. Do not guess a range.
@@ -112,7 +114,7 @@ Bad: a price row whose `sourceUrl` is a Yandex Maps or 2GIS page.
 
 - Verification of a stored fact started at `queue_list`.
 - Every number, name, date, and hour traces to an allowed source URL in `sources`.
-- Yandex Maps and 2GIS, when used, are only for a venue that exists and operates, and only for hours, phone, address, operating status, and coordinates. The card URL is in `sources`. No text, description, photo, review, rating, average check, or price comes from them.
+- Yandex Maps, 2GIS, and Google Maps, when used, are only for a venue that exists and operates, and only for hours, phone, address, operating status, and coordinates. The card URL is in `sources`. No text, description, photo, review, rating, average check, or price comes from them. Google Maps is `map_google`, below the official site, same as the other map cards.
 - Yandex Business, Yandex food cards, aggregators, delivery apps, and venue-site photos are unused.
 - A venue address, hours, phone, operating status, and coordinates come from the official site first. Maps and OSM fill a fact the site does not state. A conflict keeps the site. Then «уточняйте». Prices and menu lines stay the official menu.
 - «уточняйте» is the last step. Nothing is guessed.
