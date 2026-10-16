@@ -221,6 +221,28 @@ export function lengthProblem(kind: 'review' | 'tip' | 'alt' | 'value' | 'note',
   return ''
 }
 
+/** Shown to the author when a photo is rejected because a person can be recognized. */
+export const GUEST_FACE_REJECT_NOTE = 'На фото узнаваемый человек. Такие снимки не публикуем.'
+
+/**
+ * One decision for the admin queue and the editor-token tools.
+ * A photo the caller marks as a recognizable face is a reject, not an accept.
+ */
+export function routeGuestDecision(input: {
+  kind: string | null
+  decision: 'accept' | 'reject' | 'dispute'
+  recognizableFace?: boolean
+  note?: string
+}): { decision: 'accept' | 'reject' | 'dispute', note: string | null } {
+  if (input.decision === 'accept' && input.kind === 'photo' && input.recognizableFace === true) {
+    return { decision: 'reject', note: GUEST_FACE_REJECT_NOTE }
+  }
+  if (input.decision === 'reject') {
+    return { decision: 'reject', note: input.note ?? '' }
+  }
+  return { decision: input.decision, note: null }
+}
+
 /** A venue member does not review their own venue. Status corrections stay allowed. */
 export function memberGuestBlock(kind: GuestKind, correctionKind: string | null) {
   if (kind === 'review' || kind === 'tip' || kind === 'photo') {

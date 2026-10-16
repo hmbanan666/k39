@@ -235,6 +235,75 @@ describe('guest submissions', () => {
     expect(published).toEqual([])
   })
 
+  it('records an editor decision and a token decision on the same columns', async () => {
+    const author = await person('Анна Косарева')
+    const editor = await person('Редактор')
+    const row = await place()
+    const accepted = await Guests.create({
+      userId: author.id,
+      subjectType: 'place',
+      subjectId: row.id,
+      kind: 'tip',
+      body: 'Касса у входа справа',
+      alt: null,
+      correctionKind: null,
+      correctionValue: null,
+      sourceUrl: null,
+      mediaId: null,
+      bodyKey: 'касса у входа справа',
+    })
+    expect(accepted.ok).toBe(true)
+    if (!accepted.ok) {
+      return
+    }
+    const byEditor = await Guests.decide(accepted.id, editor.id, 'accepted', null)
+    expect(byEditor?.status).toBe('accepted')
+    expect(byEditor?.decidedBy).toBe(editor.id)
+
+    const other = await person('Борис')
+    const pending = await Guests.create({
+      userId: other.id,
+      subjectType: 'place',
+      subjectId: row.id,
+      kind: 'review',
+      body: 'Фикстура отзыва для токена',
+      alt: null,
+      correctionKind: null,
+      correctionValue: null,
+      sourceUrl: null,
+      mediaId: null,
+      bodyKey: 'фикстура отзыва для токена',
+    })
+    expect(pending.ok).toBe(true)
+    if (!pending.ok) {
+      return
+    }
+    const byToken = await Guests.decide(pending.id, null, 'rejected', 'На фото узнаваемый человек. Такие снимки не публикуем.')
+    expect(byToken?.status).toBe('rejected')
+    expect(byToken?.decidedBy).toBeNull()
+    expect(byToken?.decisionNote).toBe('На фото узнаваемый человек. Такие снимки не публикуем.')
+    const flagged = await Guests.create({
+      userId: other.id,
+      subjectType: 'place',
+      subjectId: row.id,
+      kind: 'tip',
+      body: 'Неясно, спам или визит у кассы',
+      alt: null,
+      correctionKind: null,
+      correctionValue: null,
+      sourceUrl: null,
+      mediaId: null,
+      bodyKey: 'неясно спам или визит у кассы',
+    })
+    expect(flagged.ok).toBe(true)
+    if (!flagged.ok) {
+      return
+    }
+    const dispute = await Guests.flagDispute(flagged.id, null)
+    expect(dispute?.status).toBe('pending')
+    expect(dispute?.disputed).toBe(true)
+  })
+
   it('flags a dispute without accepting the row', async () => {
     const author = await person('Анна')
     const editor = await person('Редактор')

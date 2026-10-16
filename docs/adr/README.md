@@ -63,6 +63,7 @@ Proposed.
 | 0037 | [Visitor map on MapLibre and OpenFreeMap](0037-visitor-map.md) | Accepted |
 | 0038 | [Photos on collections](0038-collection-media.md) | Accepted |
 | 0039 | [«Где дешевле»](0039-where-cheaper.md) | Accepted |
+| 0040 | [Editor token moderates guest rows](0040-guest-mcp-moderation.md) | Accepted |
 
 ## Redirects
 
