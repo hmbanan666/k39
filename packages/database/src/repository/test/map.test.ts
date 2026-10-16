@@ -1,7 +1,8 @@
 import { eq, inArray } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
-import { businesses, offers, places, routePoints, routes, venues } from '../../tables'
+import { businesses, facts, offers, places, routePoints, routes, venues } from '../../tables'
+import { Facts } from '../facts'
 import { MapCatalog } from '../map'
 
 const HERE = { latitude: 54.71, longitude: 20.51 }
@@ -14,6 +15,11 @@ async function wipe() {
   const db = useDatabase()
   const rows = await db.select({ id: venues.id }).from(venues).where(inArray(venues.slug, VENUE_SLUGS))
   const ids = rows.map((row) => row.id)
+  const placeIds = (await db.select({ id: places.id }).from(places).where(inArray(places.slug, ['map-pin-place', 'map-pin-far-place']))).map((row) => row.id)
+  const subjectIds = [...ids, ...placeIds]
+  if (subjectIds.length) {
+    await db.delete(facts).where(inArray(facts.subjectId, subjectIds))
+  }
   if (ids.length) {
     await db.delete(offers).where(inArray(offers.venueId, ids))
   }
@@ -73,7 +79,7 @@ describe('map catalog', () => {
       latitude: HERE.latitude + 0.004,
       longitude: HERE.longitude,
     }).returning()
-    await db.insert(venues).values([
+    const [farVenue] = await db.insert(venues).values([
       {
         slug: 'map-pin-far',
         name: 'Дальняя кофейня',
@@ -92,7 +98,7 @@ describe('map catalog', () => {
         latitude: HERE.latitude,
         longitude: HERE.longitude,
       },
-    ])
+    ]).returning()
     const [business] = await db.insert(businesses).values({ slug: 'map-pin-biz', name: 'Карта' }).returning()
     await db.insert(offers).values({
       businessId: business!.id,
@@ -102,14 +108,21 @@ describe('map catalog', () => {
       status: 'active',
     })
 
+    const far = insertedPlaces.find((row) => row.slug === 'map-pin-far-place')!
+    await pointFact('place', far.id, HERE.latitude, HERE.longitude)
+    await pointFact('place', focus!.id, 10, 10)
+    await pointFact('venue', farVenue!.id, HERE.latitude, HERE.longitude)
+
     const placeRows = await MapCatalog.places({ origins: [HERE], radiusKm: 1.2, limit: 50 })
     const slugs = placeRows.map((row) => row.slug)
-    expect(slugs).toContain('map-pin-place')
-    expect(slugs).not.toContain('map-pin-far-place')
+    expect(slugs).not.toContain('map-pin-place')
+    expect(slugs).toContain('map-pin-far-place')
+    expect(placeRows.find((row) => row.slug === 'map-pin-far-place')?.latitude).toBeCloseTo(HERE.latitude)
 
     const venueRows = await MapCatalog.venues({ origins: [HERE], radiusKm: 1.2, limit: 50 })
     expect(venueRows.map((row) => row.slug)).toContain('map-pin-cafe')
-    expect(venueRows.map((row) => row.slug)).not.toContain('map-pin-far')
+    expect(venueRows.map((row) => row.slug)).toContain('map-pin-far')
+    expect(venueRows.find((row) => row.slug === 'map-pin-far')?.latitude).toBeCloseTo(HERE.latitude)
     expect(venueRows.map((row) => row.slug)).not.toContain('map-pin-draft')
     const stops = await MapCatalog.routeStops('map-pin-route')
     expect(stops.map((row) => row.placeSlug)).toEqual(['map-pin-place'])
@@ -122,3 +135,21 @@ describe('map catalog', () => {
     expect(await MapCatalog.activeOffers([])).toEqual(new Map())
   })
 })
+
+async function pointFact(subjectType: 'place' | 'venue', subjectId: string, latitude: number, longitude: number) {
+  await Facts.upsert({
+    kind: 'coordinates',
+    subjectType,
+    subjectId,
+    slot: 'coordinates',
+    value: { latitude, longitude },
+    valueHash: 'c'.repeat(64),
+    sourceUrl: null,
+    sourceTitle: null,
+    sourceKind: 'none',
+    checkedAt: '2026-01-01T00:00:00.000Z',
+    ttlDays: 365,
+    confidence: 'stated',
+    actor: 'editor',
+  }, [{ consumerType: subjectType, consumerId: subjectId, path: 'short.coordinates' }])
+}

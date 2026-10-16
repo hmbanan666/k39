@@ -3,6 +3,7 @@ import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
 import { writingCopy } from '../../../shared/writing'
 import { syncPageSections } from '../facts/queue'
+import { syncCoordinates, syncPlaceStatus } from '../facts/sync'
 import { auditMcp } from './audit'
 import { normalizePublication } from './draft'
 import { parseFactsCheckedAt } from './facts'
@@ -116,13 +117,14 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     input.faq,
     input.sources,
   ]), publicationStatus === 'published')
+  const status = (VISIT.has(input.status || '') ? input.status : 'unknown') as VisitStatus
   const row = await db.editor.savePlace({
     slug,
     title: input.title.trim(),
     summary: input.summary || '',
     body: input.body || '',
     ...(input.sections ? { sections: input.sections as never } : {}),
-    status: (VISIT.has(input.status || '') ? input.status : 'unknown') as VisitStatus,
+    status,
     hours: input.hours || null,
     price: input.price || null,
     howToGet: input.howToGet || null,
@@ -141,6 +143,22 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     bestTime: cleanText(input.bestTime),
     faq: cleanFaq(input.faq ?? []),
     ...(checked !== undefined ? { lastVerifiedAt: checked } : {}),
+  })
+  await syncCoordinates({
+    subjectType: 'place',
+    subjectId: row!.id,
+    actor: 'mcp',
+    pageStatus: publicationStatus,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    previous: { latitude: null, longitude: null },
+  })
+  await syncPlaceStatus({
+    placeId: row!.id,
+    actor: 'mcp',
+    pageStatus: publicationStatus,
+    status,
+    previous: '',
   })
   await syncPageSections('place', row!.id)
   await auditMcp('place_draft_create', 'place', row?.id)
@@ -178,6 +196,23 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     input.faq === undefined ? current.faq : input.faq,
     input.sources ?? current.sources,
   ]), publicationStatus === 'published')
+  const status = (input.status && VISIT.has(input.status) ? input.status : current.status) as VisitStatus
+  const point = await syncCoordinates({
+    subjectType: 'place',
+    subjectId: current.id,
+    actor: 'mcp',
+    pageStatus: publicationStatus,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    previous: { latitude: current.latitude, longitude: current.longitude },
+  })
+  const visit = await syncPlaceStatus({
+    placeId: current.id,
+    actor: 'mcp',
+    pageStatus: publicationStatus,
+    status: input.status && VISIT.has(input.status) ? input.status : undefined,
+    previous: current.status,
+  })
   const row = await db.editor.savePlace({
     id: current.id,
     slug,
@@ -185,12 +220,12 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     summary: input.summary ?? current.summary,
     body: input.body ?? current.body,
     ...(input.sections ? { sections: input.sections as never } : {}),
-    status: (input.status && VISIT.has(input.status) ? input.status : current.status) as VisitStatus,
+    status: visit.skipped ? current.status : status,
     hours: input.hours === undefined ? current.hours : input.hours,
     price: input.price === undefined ? current.price : input.price,
     howToGet: input.howToGet === undefined ? current.howToGet : input.howToGet,
-    latitude: input.latitude === undefined ? current.latitude : input.latitude,
-    longitude: input.longitude === undefined ? current.longitude : input.longitude,
+    latitude: point.skipped || input.latitude === undefined ? current.latitude : input.latitude,
+    longitude: point.skipped || input.longitude === undefined ? current.longitude : input.longitude,
     categoryId: await categoryId(input.categorySlug, current.categoryId),
     regionId: await regionIdOf(input.regionSlug, current.regionId),
     sources: input.sources ?? current.sources ?? [],

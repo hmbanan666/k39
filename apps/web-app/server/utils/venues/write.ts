@@ -6,7 +6,7 @@ import { createError } from 'h3'
 import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
 import { writingCopy } from '../../../shared/writing'
 import { syncPageSections } from '../facts/queue'
-import { hoursConflict, syncVenueContact } from '../facts/sync'
+import { hoursConflict, syncCoordinates, syncVenueContact } from '../facts/sync'
 import { auditMcp } from '../mcp/audit'
 import { parseFactsCheckedAt } from '../mcp/facts'
 import { writingGate } from '../mcp/writing-guard'
@@ -105,6 +105,15 @@ export async function createVenue(input: Parameters<typeof venueWriteFromInput>[
       status: input.status,
       previous: { phone: null, address: null, status: 'draft' },
     })
+    await syncCoordinates({
+      subjectType: 'venue',
+      subjectId: row.id,
+      actor,
+      pageStatus: row.status,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      previous: { latitude: null, longitude: null },
+    })
     await syncPageSections('venue', row.id)
     await auditMcp('venue_create', 'venue', row.id)
     return { ...row, writingWarnings }
@@ -161,6 +170,15 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
       status: input.status,
       previous: { phone: current.phone, address: current.address, status: current.status },
     })
+    const point = await syncCoordinates({
+      subjectType: 'venue',
+      subjectId: current.id,
+      actor,
+      pageStatus: status,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      previous: { latitude: current.latitude, longitude: current.longitude },
+    })
     const saved = await db.venues.update(current.id, {
       ...venueWriteFromInput({
         ...input,
@@ -168,6 +186,8 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
         phone: contact.skipped.phone ? undefined : input.phone,
         address: contact.skipped.address ? undefined : input.address,
         status: contact.skipped.status ? undefined : input.status,
+        latitude: point.skipped ? undefined : input.latitude,
+        longitude: point.skipped ? undefined : input.longitude,
         hours: hoursQueue ? undefined : input.hours,
       }),
       regionId: regionId === undefined ? undefined : regionId,
