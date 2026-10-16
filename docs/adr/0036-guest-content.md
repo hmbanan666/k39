@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
-This record does not add tables, routes, or copy. It does not change the fact ledger, the cabinet, or the legal pages. Open questions for the owner are at the end.
+Owner answers on 2026-10-16 are under Resolved. This record does not add tables, routes, or copy. The build is a later change.
 
 ## Context
 
@@ -49,7 +49,7 @@ One submit is one kind. A review and a photo of the same visit are two rows, so 
 | `photo` | After accept | A file plus alt text, 10–140 characters | Three accepted |
 | `correction` | Never | A kind, a short value (1–120 characters), an optional note (0–400), an optional https URL | One pending. Further accepted rows only add signals |
 
-Correction kinds in this version: `hours`, `phone`, `address`, `status`, `other`. Price and coordinates stay with the official source, the cabinet, and the desk.
+Correction kinds in this version: `hours`, `phone`, `address`, `status`, `price`, `other`. Coordinates stay with the desk. A price report is a signal only. `venue_prices` changes later, from the official menu, as under Corrections.
 
 Text is plain. The server stores no HTML and no markdown. A review or a tip may contain one `https` URL. Any other URL, an email address, or a phone number refuses the submit, so a guest does not put someone else's contact details on the page. The correction URL is stored for the editor and is not rendered.
 
@@ -70,7 +70,7 @@ Columns: `user_id`, `subject_type` (`place` or `venue`), `subject_id`, `kind`, `
 
 `decision_note` is shown to the author in `/kabinet` when the status is `rejected`. It is not public.
 
-No IP column. No provider id. Email stays on `users` and is not copied here. The public render reads the current `users.name` at request time, so a renamed account updates the byline, and a removed account cannot leave the name behind.
+No IP column. No provider id. Email stays on `users` and is not copied here. The public byline is derived at render time from the current `users.name`: the first word, then the initial of the last word and a period («Анна Косарева» and «Анна Ивановна Косарева» both show «Анна К.»). A one-word name is shown as that word. The full account name is not stored on the submission, not rendered, and not put in JSON-LD. A renamed account updates the byline. A removed account cannot leave a name behind.
 
 An audit row records the action, the submission id, the actor, and the time. It does not store the body, the email, or the file. Same rule as `venue_audits`.
 
@@ -80,7 +80,7 @@ Accepted reviews, tips, and photos render in one server-rendered section, the sa
 
 The line under the heading says these are visitor messages, that the desk did not check them as facts, and that hours and prices on the page stay the sourced ones.
 
-Each item shows the account name, the accept date in `Europe/Kaliningrad`, and a kind label («Отзыв», «Совет», «Фото гостя»). No avatar image. The profile image from Yandex or VK is a third-party request and is not loaded. No stars, no likes, no reply, no thread.
+Each item shows the byline, the accept date in `Europe/Kaliningrad`, and a kind label («Отзыв», «Совет», «Фото гостя»). No avatar image. The profile image from Yandex or VK is a third-party request and is not loaded. No stars, no likes, no reply, no thread.
 
 The section is capped at the newest 30 reviews, 10 tips, and 12 photos. Older accepted rows stay in the database and in the author's cabinet. They do not add a page, a query parameter, or a second canonical.
 
@@ -92,11 +92,13 @@ A guest photo is not attached to a dish id (ADR 0032). It is not `place_media` o
 
 Nothing of the four kinds is public while `pending`. Accept is what shows a review, a tip, or a photo, and what releases a correction into the fact queue.
 
-The queue is `/admin/guests`. An editor or an admin accepts or rejects. Oldest pending first. The public page is linked beside the text or the photo. Reject stores `decision_note` for the author.
+The queue is `/admin/guests`. The public page is linked beside the text or the photo. Reject stores `decision_note` for the author.
 
-The moderator is looking for spam, advertising, illegal content, a copied page, a photo that is not of this place, and a recognizable person. The editorial publish checklist (`k39-publish-review`) is a different pass and does not run on guest rows.
+Once a day the K39 Grok Bot assistant works the pending rows, oldest first. It accepts or rejects a clear row. Accept: the text is a visit note, a tip, or a plain correction, or the photo is of this place and shows no recognizable face. Reject: spam, advertising, illegal content, a copied page, a photo of somewhere else, or a recognizable face. A face is always a reject. A guest's statement that someone else agreed is not a reason to accept, and it is not a dispute. That consent cannot be checked, and 152-FZ does not let the site rely on it.
 
-There is no MCP tool to submit or to accept. The draft token and the editor token stay on editorial content.
+A disputed row stays `pending`. The bot escalates only those to the owner, who decides them in `/admin/guests`. Disputed means the bot cannot tell whether the text is a real visit note or spam, or whether a photo is this place, or a rights complaint is already attached to the row. A clear price report is not a dispute. Accepting it only puts the signal on the fact queue. The menu check is that later step, and the bot does not write `venue_prices`.
+
+The editorial publish checklist (`k39-publish-review`) is a different pass and does not run on guest rows. Guests do not submit through the content MCP. The draft token and the editor token do not accept guest rows. They stay on editorial content.
 
 A rejected or removed row can be replaced by a new submit. There is no in-place edit of an accepted row. The author removes it and sends another, which waits again.
 
@@ -109,13 +111,15 @@ Accepting a correction writes a signal. It does not write `facts`, `fact_revisio
 The new queue reason is `guest_report`. It is added to `verification_queue_reason_check`. `Facts.enqueue` already upserts an open row of the same target and reason and replaces `proposal`.
 
 - When a live fact matches `(kind, subject_type, subject_id, slot)`, upsert one open `verification_queue` row with `target = fact`, that `fact_id`, and reason `guest_report`. `proposal` holds the latest submission id, the guest text, the optional URL, and a count. A second accepted correction for the same fact increments the count and replaces the latest text. The unique open row per fact and reason already enforces this.
-- When no live fact matches, upsert one open row with `target = section`, the page, path `guest:{kind}`, and the same reason. `other` uses path `guest:other`.
+- When no live fact matches, upsert one open row with `target = section`, the page, path `guest:{kind}`, and the same reason. `other` uses path `guest:other`. A price report that names one live price fact targets that fact. Any other price report uses path `guest:price`.
+
+A price signal does not write `venue_prices`, `facts`, or a price revision. The number on the page changes only after a check against the official menu (`k39-sources-and-facts`, `k39-price-anchors`): a page or a PDF on the venue's site. The guest's number, a map card, and an aggregator are not that source. The write is the existing price path, with `source_kind` official and that menu URL. If the menu still matches the stored price, `fact_confirm` closes the queue row and `venue_prices` stays. An owner-set price is still not overwritten by the content token. That conflict waits in `/admin`.
 
 Priority uses risk 1, the prose weight from ADR 0033: `1 × round(ln(1 + traffic))`. The count does not multiply priority. A pile of reports must not outrank `source_changed` on hours.
 
-The latest revision actor may be `owner`. The signal is still queued so an editor can see the disagreement. `fact_update` keeps refusing that overwrite. The conflict stays in `/admin`. This path does not insert `owner_conflict` by itself.
+The latest revision actor may be `owner`. The signal is still queued so the owner can see the disagreement. `fact_update` keeps refusing that overwrite. The conflict stays in `/admin`. This path does not insert `owner_conflict` by itself.
 
-An agent starts at `queue_list`, reads `proposal` as a hint, and checks an allowed source (`k39-sources-and-facts`). The guest text and the guest URL are not a source. `source_kind` does not gain `guest`. Actor does not gain `guest`. `fact_confirm` of the current hash, or `fact_update` from a real source, closes that fact's queue rows, including `guest_report`. Confirming without adopting the hint is a valid close. A section-targeted `guest:*` row is resolved from `/admin/guests` when the editor dismisses it, and also when a matching fact row is written for that page, so the two signals do not both stay open.
+An agent starts at `queue_list`, reads `proposal` as a hint, and checks an allowed source (`k39-sources-and-facts`). The guest text and the guest URL are not a source. `source_kind` does not gain `guest`. Actor does not gain `guest`. `fact_confirm` of the current hash, or `fact_update` from a real source, closes that fact's queue rows, including `guest_report`. Confirming without adopting the hint is a valid close. A section-targeted `guest:*` row is resolved from `/admin/guests` when the owner dismisses it, and also when a matching fact row is written for that page, so the two signals do not both stay open.
 
 The public page keeps showing the verified fact the whole time.
 
@@ -123,7 +127,7 @@ The public page keeps showing the verified fact the whole time.
 
 The file goes through the existing pipeline (ADR 0011): JPEG, PNG, or WebP, 25 MB, EXIF dropped, including GPS, variants under `MEDIA_DIR/{id}/`. HEIC is refused. No upload-from-URL and no Commons import on this path.
 
-`media.license` gains `guest`. That value is only this path. `own` stays a K39 shot. `permission` stays a cabinet upload with origin `venue`. Author is `users.name`, not a name typed in the form. `sourceUrl` is null. Alt is the guest's plain text.
+`media.license` gains `guest`. That value is only this path. `own` stays a K39 shot. `permission` stays a cabinet upload with origin `venue`. The public author is the byline, not a name typed in the form and not the full `users.name`. `sourceUrl` is null. Alt is the guest's plain text.
 
 The client sends `rights=1`, the same shape as the cabinet photo post. That flag is the guest's statement of all of the following:
 
@@ -135,7 +139,7 @@ The client sends `rights=1`, the same shape as the cabinet photo post. That flag
 
 A missing `rights=1` stores nothing.
 
-A recognizable face is a reject. The desk does not collect a second person's consent inside the form.
+A recognizable face is always a reject, including when the guest writes that the person agreed. The form does not ask for a third party's consent. The bot and the owner both refuse the file.
 
 ### Personal data and the other legal pages
 
@@ -143,7 +147,7 @@ A recognizable face is a reject. The desk does not collect a second person's con
 
 The new constant is a distinct version string, dated the day the Russian text is published, stored in the same `user_consents` table with method `ugc-submit`. The unique active key is `(user_id, version)`, so the string must not collide with `2026-10-12`. The page is a new legal route, linked from the submit control and from `/privacy`, and kept out of the footer, the same way `/soglasie` is kept out. The operator block comes from `operator.ts`.
 
-The consent names: the account name, which will be public next to the material and in the page source; the text; the photo; the account id that ties them together; the time. It states that the email and the provider id are not published. Purposes: take the submission, moderate it, show an accepted review, tip, or photo, and handle a removal request. Actions match the account consent, plus publication of the name and the material. Term: until withdrawal or deletion of the account. Withdrawal is an email to the operator, the address already on those pages. No cross-border transfer. Hosting stays in Russia. The text is specific, separate, and not buried in the policy or the terms.
+The consent names: the public byline (first name and the initial of the last name), which is what visitors and the page source see; the text; the photo; the account id that ties them together; the time. It states that the full account name, the email, and the provider id are not published. Purposes: take the submission, moderate it, show an accepted review, tip, or photo, and handle a removal request. Actions match the account consent, plus publication of the byline and the material. Term: until withdrawal or deletion of the account. Withdrawal is an email to the operator, the address already on those pages. No cross-border transfer. Hosting stays in Russia. The text is specific, separate, and not buried in the policy or the terms.
 
 `/privacy` gets a new dated edition when this ships. It adds submissions to the data and purposes, points at the new consent for the public name, and leaves the account consent where it is.
 
@@ -164,7 +168,7 @@ The canonical URL, the sitemap row, and the indexability of the place or venue d
 
 The one `https` URL in a review or a tip is an anchor whose text is the hostname. `rel` is `ugc nofollow`, plus `noopener` and `noreferrer`. The correction URL is not a link on the page.
 
-JSON-LD gains a `Review` for each review that is actually in the HTML, attached to the existing place or venue `@id`. Fields: `author` as `Person` with `name` only, `datePublished`, `reviewBody`, `inLanguage: ru`, `itemReviewed`. No `reviewRating`, no `aggregateRating`, no `ratingCount`, no author `url`, no author image. Tips, photos, and corrections are not `Review`. Guest photos are not added to the entity's `image` array. `Review` has to be added to `SCHEMA_TYPES` in `apps/web-app/shared/seo.ts` when this is built, or `schemaProblems` will fail the page. `AggregateRating` is not added.
+JSON-LD gains a `Review` for each review that is actually in the HTML, attached to the existing place or venue `@id`. Fields: `author` as `Person` with the byline only, `datePublished`, `reviewBody`, `inLanguage: ru`, `itemReviewed`. No `reviewRating`, no `aggregateRating`, no `ratingCount`, no author `url`, no author image. Tips, photos, and corrections are not `Review`. Guest photos are not added to the entity's `image` array. `Review` has to be added to `SCHEMA_TYPES` in `apps/web-app/shared/seo.ts` when this is built, or `schemaProblems` will fail the page. `AggregateRating` is not added.
 
 Yandex and Google both see the visible text and the `nofollow` links. Stars are not requested.
 
@@ -176,7 +180,7 @@ The public cost of a page is one indexed read of accepted rows for that subject,
 
 Postgres is the store. Photo bytes stay on the existing media volume. No second queue service, no search index of guest text, no classifier, no mailer.
 
-What grows with success is the moderator's queue, not the schema. The caps, the duplicate hash, and pre-moderation are what keep that queue to rows a person can read. A later auto-publish rule is a new record, after this one has been used.
+What grows with success is the pending queue, not the schema. The caps and the duplicate hash keep a day's rows readable. The bot clears the clear ones. The owner sees the disputes. A later auto-publish rule is a new record, after this one has been used.
 
 ### Out of scope
 
@@ -185,11 +189,13 @@ What grows with success is the moderator's queue, not the schema. The caps, the 
 - Threads, replies, likes, profiles, follows, and direct messages.
 - Importing reviews or photos from Yandex, 2GIS, Google, or another guide.
 - Guest edits to editorial prose, modules, sources, the map pin, or the route line.
-- A guest value written straight onto a fact, a schedule, or a price.
+- A guest value written straight onto a fact, a schedule, or `venue_prices`.
 - Guest photos as cover, OG image, or a dish `mediaId`.
 - Applying `WRITING_STOP_LIST` to visitor text.
 - Folding ADR 0031 owner edits into this queue.
-- Showing a correction on the public page.
+- Showing a correction, including a price report, on the public page.
+- Publishing the full account name. The public line is the byline.
+- Treating a guest's statement of someone else's consent as a reason to publish a face.
 - MCP submit or approve tools.
 - An agent that turns `proposal` into `fact_update` without an allowed source.
 - Paying for a submission, badges, or points.
@@ -201,17 +207,19 @@ What grows with success is the moderator's queue, not the schema. The caps, the 
 
 ## Consequences
 
-When this is accepted and then built, a visitor can leave a moderated, attributed note or photo without that note becoming the guide's voice or the phone number on the page. A correction can move a fact up the existing queue. The shown value still changes only through `fact_update` or the cabinet, from an allowed source.
+When this is built, a visitor can leave a moderated, attributed note or photo without that note becoming the guide's voice or the phone number on the page. The public name is the byline. A correction, including a wrong price, can move a fact up the existing queue. The shown value still changes only through `fact_update`, the official-menu price path, or the cabinet.
 
 The legal pages and the new consent ship in the same change as the form. Until that consent version exists, the submit endpoint stores nothing.
 
 ADR 0032's deferral of venue-level guest reviews and guest photos is the scope this record takes up. Dish ids stay out of it. `page_reviews` stays the editorial hash ledger.
 
-Process-local rate limits remain a per-instance ceiling. A determined sender with many accounts still lands in `/admin/guests` as pending, which is the point of pre-moderation.
+Process-local rate limits remain a per-instance ceiling. A determined sender with many accounts still lands in `/admin/guests` as pending. The daily bot pass is what clears the clear rows. The owner sees the rest.
 
-## Open questions
+## Resolved
 
-1. The byline is the full name from Yandex or VK. Should the public line be the first word only?
-2. A recognizable face is a reject. Should a guest be able to say they have that person's consent, and should a moderator then accept the photo?
-3. Editors and admins are allowed to decide `/admin/guests`. Who actually watches that queue?
-4. Price stays off the correction form. Should a visitor still be able to flag a wrong price as a signal, without that signal writing `venue_prices`?
+Owner answers, 2026-10-16:
+
+1. The public byline is the first name and the initial of the last name («Анна К.»). The full account name is not published.
+2. A photo with a recognizable face is always rejected. A guest cannot clear that by stating a third party's consent. That consent cannot be checked, and 152-FZ does not allow the site to rely on it.
+3. The K39 Grok Bot assistant processes `/admin/guests` daily. It escalates only disputed items to the owner.
+4. A guest report of a wrong price is a `guest_report` signal on `verification_queue`. `venue_prices` changes only after a check against the official menu.
