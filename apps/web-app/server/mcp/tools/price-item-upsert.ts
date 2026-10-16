@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
+import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
@@ -14,6 +15,7 @@ export default defineMcpTool({
     image: z.string().max(300).nullable().optional().describe('Optional custom picture: a site path or https URL. Null clears it. Omit to keep the stored picture. When empty, a food sticker shows for a catalog slug that has one, otherwise the line icon.'),
   },
   handler: async (input) => {
+    requireEditorContent('edit the price catalog')
     const row = await db.prices.upsertItem(input)
     await auditMcp('price_item_upsert', 'price_item', row?.id ?? null)
     return { item: row ?? null }

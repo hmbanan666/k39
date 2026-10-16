@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { requireEditorContent } from '../../utils/access'
 import { upsertRegion } from '../../utils/mcp/regions'
 
 const point = z.object({
@@ -17,5 +18,8 @@ export default defineMcpTool({
     coordinates: point.nullable().optional(),
     center: point.nullable().optional().describe('Alias of coordinates'),
   },
-  handler: async (input) => upsertRegion(input),
+  handler: async (input) => {
+    requireEditorContent('edit a region')
+    return upsertRegion(input)
+  },
 })

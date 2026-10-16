@@ -48,6 +48,7 @@ export default defineMcpTool({
       visitDuration: place.visitDuration,
       bestTime: place.bestTime,
       faq: place.faq ?? [],
+      pendingReview: await pendingReview(place.id),
       media: gallery.map((item) => ({
         ...compactMedia(item.media),
         isCover: item.isCover,
@@ -57,6 +58,18 @@ export default defineMcpTool({
     }
   },
 })
+
+async function pendingReview(placeId: string) {
+  const draft = await db.editor.contentDraft('place', placeId)
+  if (!draft) {
+    return null
+  }
+  return {
+    publicationStatus: draft.publicationStatus,
+    updatedAt: draft.updatedAt,
+    payload: draft.payload,
+  }
+}
 
 function compactMedia(row: Parameters<typeof toPublicMedia>[0]) {
   const media = toPublicMedia(row)

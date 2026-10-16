@@ -26,6 +26,7 @@ export interface ScorePlace {
   seoDescription: string | null
   factsCheckedAt: string | null
   sources: Array<{ title: string, url: string }>
+  faq: Array<{ question: string, answer: string }>
   faqCount: number
   categorySlug: string | null
   categoryTitle: string | null

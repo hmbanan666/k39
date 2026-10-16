@@ -105,6 +105,20 @@ export const places = pgTable('places', {
   index('places_category_idx').on(table.categoryId),
 ])
 
+/** Agent write against a live row. The public page keeps reading `places` until an editor publishes. */
+export const contentDrafts = pgTable('content_drafts', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  entityType: varchar('entity_type').notNull(),
+  entityId: varchar('entity_id').notNull(),
+  publicationStatus: varchar('publication_status').notNull().default('review').$type<'draft' | 'review'>(),
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+}, (table) => [
+  uniqueIndex('content_drafts_entity_idx').on(table.entityType, table.entityId),
+  check('content_drafts_status_check', sql`${table.publicationStatus} in ('draft', 'review')`),
+])
+
 export const media = pgTable('media', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),

@@ -6,7 +6,7 @@ import { writingCopy } from '../../../shared/writing'
 import { syncPageSections } from '../../utils/facts/queue'
 import { auditMcp } from '../../utils/mcp/audit'
 import { rethrowContentWrite } from '../../utils/mcp/content-error'
-import { normalizePublication } from '../../utils/mcp/draft'
+import { refusePendingLiveEdit, resolvePublication } from '../../utils/mcp/draft'
 import { orderedStopView } from '../../utils/mcp/routes'
 import { orderedStops, sources } from '../../utils/mcp/schemas'
 import { writingGate } from '../../utils/mcp/writing-guard'
@@ -40,7 +40,8 @@ export default defineMcpTool({
     const current = input.id
       ? rows.find((item) => item.id === input.id)
       : rows.find((item) => item.slug === input.slug)
-    const publicationStatus = normalizePublication(input.publicationStatus, current?.publicationStatus)
+    const publicationStatus = resolvePublication(input.publicationStatus, current?.publicationStatus)
+    refusePendingLiveEdit(publicationStatus, 'collection')
     const modules = input.modules === undefined ? current?.modules : input.modules
     const plan = collectionWritePlan({
       sentBody: input.body,

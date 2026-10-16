@@ -5,7 +5,7 @@ import { writingCopy } from '../../../shared/writing'
 import { syncPageSections } from '../facts/queue'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
-import { normalizePublication } from './draft'
+import { refusePendingLiveEdit, resolvePublication } from './draft'
 import { writingGate } from './writing-guard'
 
 type StopInput = { placeSlug: string, note?: string | null }
@@ -50,7 +50,8 @@ export async function createRouteDraft(input: {
   if (problem) {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
-  const publicationStatus = normalizePublication(input.publicationStatus)
+  const publicationStatus = resolvePublication(input.publicationStatus)
+  refusePendingLiveEdit(publicationStatus, 'route')
   const writingWarnings = writingGate(writingCopy([
     input.title,
     input.summary,
@@ -101,7 +102,8 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
   if (problem) {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
-  const publicationStatus = normalizePublication(input.publicationStatus, current.publicationStatus)
+  const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus)
+  refusePendingLiveEdit(publicationStatus, 'route')
   const writingWarnings = writingGate(writingCopy([
     input.title || current.title,
     input.summary ?? current.summary,

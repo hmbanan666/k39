@@ -7,6 +7,8 @@ description: Use when choosing a source, a photo, hours, a price, or any fact fo
 
 If a source does not state it, do not write it. Voice and the stop-list are `k39-writing`. Price matching is `k39-price-anchors`. Photo files and licenses in the pipeline are ADR 0011.
 
+Content lives only in Postgres. Do not commit a place, venue, route, collection, quest, or hub as a draft, a seed, or a file in this repo. Write through the content MCP with `CONTENT_DRAFT_TOKEN` (ADR 0035). That token cannot publish. A write to a published place is stored as a pending review and the live page stays. Publishing is a separate pass (`k39-publish-review`).
+
 Verification of a fact that is already stored starts at `queue_list` (ADR 0033). Do not walk `places_list` to re-check a fact that is still inside its TTL. `fact_get` reads the claim, `fact_confirm` accepts the same value hash, and `fact_update` writes a new one. A map or OSM phone uses the same 180-day TTL as an official phone and is not fetched. The content token does not overwrite a fact whose latest revision actor is owner. That conflict waits for an editor in `/admin`.
 
 Never contact a venue. Never do outreach. Never ask a venue for photos or data.

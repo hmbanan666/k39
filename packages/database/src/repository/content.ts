@@ -4,7 +4,7 @@ import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, Publicati
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { composeBody, readSections, splitBody } from '../body-sections'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collectionMedia, collections, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
+import { categories, collectionItems, collectionMedia, collections, contentDrafts, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
 const published = 'published' as const
@@ -442,6 +442,44 @@ export class Editor {
     }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(where).orderBy(asc(places.title)).limit(input.pageSize).offset((input.page - 1) * input.pageSize)
     const [countRow] = await db.select({ value: sql<number>`count(*)::int` }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(where)
     return { items: rows, total: countRow?.value ?? 0 }
+  }
+
+  static async contentDraft(entityType: string, entityId: string) {
+    const [row] = await useDatabase().select().from(contentDrafts).where(and(
+      eq(contentDrafts.entityType, entityType),
+      eq(contentDrafts.entityId, entityId),
+    )).limit(1)
+    return row ?? null
+  }
+
+  static async saveContentDraft(input: {
+    entityType: string
+    entityId: string
+    publicationStatus: 'draft' | 'review'
+    payload: Record<string, unknown>
+  }) {
+    const db = useDatabase()
+    const existing = await this.contentDraft(input.entityType, input.entityId)
+    if (existing) {
+      const [row] = await db.update(contentDrafts).set({
+        publicationStatus: input.publicationStatus,
+        payload: input.payload,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(contentDrafts.id, existing.id)).returning()
+      return row ?? existing
+    }
+    const [row] = await db.insert(contentDrafts).values(input).returning()
+    if (!row) {
+      throw new Error('Content draft insert failed')
+    }
+    return row
+  }
+
+  static async deleteContentDraft(entityType: string, entityId: string) {
+    await useDatabase().delete(contentDrafts).where(and(
+      eq(contentDrafts.entityType, entityType),
+      eq(contentDrafts.entityId, entityId),
+    ))
   }
 
   static async recordMcpAudit(data: { tool: string, entityType?: string | null, entityId?: string | null }) {

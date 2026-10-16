@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { contentAuthFailure } from '../server/utils/access'
-import { normalizePublication } from '../server/utils/mcp/draft'
+import { CONTENT_BEARER_CHALLENGE, contentAuthFailure, resolveContentAuth } from '../server/utils/access'
+import { normalizePublication, resolvePublication } from '../server/utils/mcp/draft'
 import { parseFactsCheckedAt } from '../server/utils/mcp/facts'
+import { placeWriteFromBody } from '../server/utils/mcp/places'
 import { routeIdForSlug, routeSlugOf } from '../server/utils/mcp/quests'
 import { resetContentSlots, takeContentSlot } from '../server/utils/mcp/rate-limit'
 import { regionView, resolveCenter } from '../server/utils/mcp/regions'
@@ -10,18 +11,32 @@ import { placeFields } from '../server/utils/mcp/schemas'
 
 describe('content MCP auth', () => {
   const previous = process.env.CONTENT_API_TOKEN
+  const previousDraft = process.env.CONTENT_DRAFT_TOKEN
 
   afterEach(() => {
     process.env.CONTENT_API_TOKEN = previous
+    process.env.CONTENT_DRAFT_TOKEN = previousDraft
   })
 
   it('returns 401 without the bearer token and 503 when the token is unset', () => {
     process.env.CONTENT_API_TOKEN = 'secret-token'
+    delete process.env.CONTENT_DRAFT_TOKEN
     expect(contentAuthFailure(undefined)).toEqual({ statusCode: 401, statusMessage: 'Unauthorized' })
     expect(contentAuthFailure('Bearer other')).toEqual({ statusCode: 401, statusMessage: 'Unauthorized' })
     expect(contentAuthFailure('Bearer secret-token')).toBeNull()
+    expect(CONTENT_BEARER_CHALLENGE).toBe('Bearer realm="k39"')
+    expect(CONTENT_BEARER_CHALLENGE).not.toContain('resource_metadata')
     delete process.env.CONTENT_API_TOKEN
     expect(contentAuthFailure('Bearer secret-token')?.statusCode).toBe(503)
+  })
+
+  it('accepts a draft token and keeps publish on the editor token', () => {
+    process.env.CONTENT_API_TOKEN = 'editor-token'
+    process.env.CONTENT_DRAFT_TOKEN = 'draft-token'
+    expect(resolveContentAuth('Bearer draft-token')).toEqual({ ok: true, scope: 'draft' })
+    expect(resolveContentAuth('Bearer editor-token')).toEqual({ ok: true, scope: 'editor' })
+    process.env.CONTENT_DRAFT_TOKEN = 'editor-token'
+    expect(resolveContentAuth('Bearer editor-token')).toEqual({ ok: true, scope: 'editor' })
   })
 
   it('limits repeated calls for one token', () => {
@@ -46,6 +61,42 @@ describe('publication status', () => {
     expect(normalizePublication(undefined, 'published')).toBe('published')
     expect(normalizePublication(undefined, 'archived')).toBe('archived')
     expect(() => normalizePublication('archived')).toThrowError()
+  })
+
+  it('keeps a draft token off the published status', () => {
+    expect(resolvePublication(undefined, undefined, 'draft')).toBe('draft')
+    expect(resolvePublication('review', 'draft', 'draft')).toBe('review')
+    expect(resolvePublication(undefined, 'review', 'draft')).toBe('review')
+    expect(resolvePublication('review', 'published', 'draft')).toBe('pending')
+    expect(resolvePublication(undefined, 'published', 'editor')).toBe('published')
+    expect(() => resolvePublication('published', 'draft', 'draft')).toThrowError()
+    try {
+      resolvePublication('published', 'published', 'draft')
+    } catch (error) {
+      expect((error as { statusCode: number }).statusCode).toBe(403)
+    }
+  })
+})
+
+describe('place patch body', () => {
+  it('forwards faq, sections, best time, visit duration, and region', () => {
+    const input = placeWriteFromBody({
+      faq: [{ question: 'Можно ли войти?', answer: 'Да, по билету музея.' }],
+      sections: [{ kind: 'directions', text: 'Автобус 40.' }],
+      bestTime: 'май–сентябрь, утром',
+      visitDuration: '1–2 часа',
+      regionSlug: 'svetlogorsk',
+    }, { id: 'place-1', slug: 'fort-a' })
+    expect(input).toMatchObject({
+      id: 'place-1',
+      slug: 'fort-a',
+      faq: [{ question: 'Можно ли войти?', answer: 'Да, по билету музея.' }],
+      sections: [{ kind: 'directions', text: 'Автобус 40.' }],
+      bestTime: 'май–сентябрь, утром',
+      visitDuration: '1–2 часа',
+      regionSlug: 'svetlogorsk',
+    })
+    expect(placeWriteFromBody({}, { id: 'place-1', slug: 'fort-a' }).faq).toBeUndefined()
   })
 })
 

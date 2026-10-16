@@ -27,7 +27,7 @@ Yandex Webmaster:
 1. Create an OAuth token that can read Webmaster (`https://oauth.yandex.ru`, access to the Webmaster API).
 2. Call `GET https://api.webmaster.yandex.net/v4/user` with `Authorization: OAuth <token>` and then `GET /v4/user/{user-id}/hosts`.
 3. Copy the host id. For this site it looks like `https:k39.online:443`.
-4. Set `YANDEX_WEBMASTER_TOKEN` and `YANDEX_WEBMASTER_HOST_ID` on the web app.
+4. Set `YANDEX_WEBMASTER_TOKEN` and `YANDEX_WEBMASTER_HOST_ID` on the web app. The host id is `https:k39.online:443` for the apex. A URL or an http mirror is accepted: the job picks the verified host with the same name. The import asks for a week that ends three days ago, because a range through yesterday comes back with no queries. If either variable is empty, Yandex is skipped and only Google rows are stored.
 
 Google Search Console, one of these:
 

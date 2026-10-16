@@ -186,7 +186,12 @@ export class Scoring {
           seoDescription: row.seoDescription,
           factsCheckedAt: row.lastVerifiedAt,
           sources: row.sources ?? [],
-          faqCount: row.faq?.length ?? 0,
+          faq: (row.faq ?? []).flatMap((item) => {
+            const question = item.question?.trim()
+            const answer = item.answer?.trim()
+            return question && answer ? [{ question, answer }] : []
+          }),
+          faqCount: (row.faq ?? []).filter((item) => item.question?.trim() && item.answer?.trim()).length,
           categorySlug: row.categorySlug,
           categoryTitle: row.categoryTitle,
           regionId: row.regionId,

@@ -5,6 +5,7 @@ import { db, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
 import { writingCopy } from '../../../shared/writing'
+import { contentScope } from '../access'
 import { syncPageSections } from '../facts/queue'
 import { hoursConflict, syncCoordinates, syncVenueContact } from '../facts/sync'
 import { auditMcp } from '../mcp/audit'
@@ -76,6 +77,9 @@ export function venueWriteFromInput(input: {
 }
 
 export async function createVenue(input: Parameters<typeof venueWriteFromInput>[0] & { regionSlug?: string | null }, userId?: string | null) {
+  if (contentScope() === 'draft' && input.status === 'published') {
+    throw createError({ statusCode: 403, statusMessage: 'Draft token cannot publish' })
+  }
   try {
     const regionId = await regionIdForSlug(input.regionSlug)
     const modules = input.modules ? await normalizeDishModules(null, input.modules as VenueModule[], 'editorial') : undefined
@@ -130,6 +134,14 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
       : null
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
+  }
+  if (contentScope() === 'draft' && (input.status === 'published' || current.status === 'published' || current.status === 'closed')) {
+    throw createError({
+      statusCode: input.status === 'published' ? 403 : 409,
+      statusMessage: input.status === 'published'
+        ? 'Draft token cannot publish'
+        : 'Draft token cannot edit a published venue. The live page was not changed.',
+    })
   }
   try {
     const regionId = await regionIdForSlug(input.regionSlug)

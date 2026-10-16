@@ -2,7 +2,7 @@ import { db } from '@k39/database'
 import { collectionWritePlan } from '../../../shared/page-modules'
 import { writingCopy } from '../../../shared/writing'
 import { auditMcp } from './audit'
-import { normalizePublication } from './draft'
+import { refusePendingLiveEdit, resolvePublication } from './draft'
 import { updatePlaceDraft } from './places'
 import { writingGate } from './writing-guard'
 
@@ -12,9 +12,8 @@ export async function setPublication(input: {
   slug?: string
   publicationStatus: string
 }) {
-  const publicationStatus = normalizePublication(input.publicationStatus)
   if (input.entity === 'place') {
-    return updatePlaceDraft({ id: input.id, slug: input.slug, publicationStatus }, 'content_set_publication')
+    return updatePlaceDraft({ id: input.id, slug: input.slug, publicationStatus: input.publicationStatus }, 'content_set_publication')
   }
   if (input.entity === 'route') {
     const rows = await db.editor.listRoutes()
@@ -22,6 +21,8 @@ export async function setPublication(input: {
     if (!current) {
       throw createError({ statusCode: 404, statusMessage: 'Маршрут не найден' })
     }
+    const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus)
+    refusePendingLiveEdit(publicationStatus, 'route')
     const writingWarnings = writingGate(writingCopy([
       current.title,
       current.summary,
@@ -50,6 +51,8 @@ export async function setPublication(input: {
     if (!current) {
       throw createError({ statusCode: 404, statusMessage: 'Подборка не найдена' })
     }
+    const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus)
+    refusePendingLiveEdit(publicationStatus, 'collection')
     const plan = collectionWritePlan({
       sentBody: undefined,
       currentBody: current.body,
@@ -93,6 +96,8 @@ export async function setPublication(input: {
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Квест не найден' })
   }
+  const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus)
+  refusePendingLiveEdit(publicationStatus, 'quest')
   const writingWarnings = writingGate(writingCopy([
     current.title,
     current.summary,

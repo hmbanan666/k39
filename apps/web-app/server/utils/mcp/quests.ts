@@ -5,7 +5,7 @@ import { writingCopy } from '../../../shared/writing'
 import { syncPageSections } from '../facts/queue'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
-import { normalizePublication } from './draft'
+import { refusePendingLiveEdit, resolvePublication } from './draft'
 import { writingGate } from './writing-guard'
 
 export interface QuestStepInput {
@@ -82,7 +82,8 @@ export async function writeQuest(input: QuestWriteInput, auditTool: string, opti
   }
   const routes = await db.editor.listRoutes()
   const routeId = routeIdForSlug(input.routeSlug, routes)
-  const publicationStatus = normalizePublication(input.publicationStatus, current?.publicationStatus)
+  const publicationStatus = resolvePublication(input.publicationStatus, current?.publicationStatus)
+  refusePendingLiveEdit(publicationStatus, 'quest')
   const writingWarnings = writingGate(writingCopy([
     title,
     input.summary === undefined ? current?.summary : input.summary,

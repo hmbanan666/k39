@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { rulesFromText, rulesFromVenueHours, scheduleRulesSchema, verifiedDate } from '../../../shared/schedule'
+import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
 import { saveSchedule } from '../../utils/schedule'
 
@@ -11,6 +12,7 @@ export default defineMcpTool({
     dryRun: z.boolean().default(true),
   },
   handler: async ({ dryRun }) => {
+    requireEditorContent('migrate schedules')
     const { placeRows, venueRows, existing } = await db.schedules.migrationSources()
     const report = { places: 0, venues: 0, flagged: [] as string[], skipped: 0 }
     for (const place of placeRows) {

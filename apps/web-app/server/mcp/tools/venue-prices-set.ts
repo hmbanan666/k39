@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
+import { contentScope } from '../../utils/access'
 import { setVenuePrices } from '../../utils/facts/sync'
 import { auditMcp } from '../../utils/mcp/audit'
 import { recomputeTownPriceBands } from '../../utils/venues/price-band'
@@ -17,6 +18,9 @@ export default defineMcpTool({
     const venue = venueId ? await db.venues.byId(venueId) : slug ? await db.venues.bySlug(slug) : null
     if (!venue) {
       throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
+    }
+    if (contentScope() === 'draft' && venue.status !== 'draft') {
+      throw createError({ statusCode: 409, statusMessage: 'Draft token cannot edit prices on a published venue. The live page was not changed.' })
     }
     try {
       const saved = await setVenuePrices(venue.id, prices, 'mcp', venue.status)

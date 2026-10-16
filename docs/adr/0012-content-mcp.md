@@ -12,7 +12,7 @@ Editors and agents already create drafts through `POST` and `PATCH /api/content/
 
 `@nuxtjs/mcp-toolkit` 0.24.1 registers tools, one resource, and one prompt from `server/mcp/`. The streamable HTTP endpoint is `/mcp`.
 
-Every request needs `Authorization: Bearer $CONTENT_API_TOKEN`, the same check as the content API (`contentAuthFailure` / `requireContentToken`). A missing or wrong token is HTTP 401. If the token is unset, the answer is 503. There is no OAuth discovery. An in-memory limit of 60 calls per minute applies per token.
+Every request needs `Authorization: Bearer` with either `CONTENT_API_TOKEN` (editor) or `CONTENT_DRAFT_TOKEN` (agent). The check is `resolveContentAuth` / `requireContentToken`. A missing or wrong token is HTTP 401 with `WWW-Authenticate: Bearer realm="k39"` and no OAuth `resource_metadata`, plus a JSON-RPC body on `/mcp`. If both tokens are unset, the answer is 503. There is no OAuth. An in-memory limit of 60 calls per minute applies per presented secret. ADR 0035 records the draft token: agent writes stay drafts or a pending review, and publishing stays a separate step.
 
 On 2026-10-11 Nick decided this token has the same content rights as an editor. Tools may publish, unpublish (`publicationStatus: draft`), edit a published row, and set `noindex`. `content_set_publication` accepts only `draft`, `review`, and `published`. Requesting `archived` there is a 400. Omitting `publicationStatus` on an update keeps the current status, including `archived`. The token cannot manage users, roles, or site settings.
 

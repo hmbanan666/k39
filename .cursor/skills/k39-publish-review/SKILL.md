@@ -30,7 +30,7 @@ Reject, with the failing lines, when any of these fail:
 - Photos. A missing photo is a note, not a blocker. A photo that is attached still needs `alt`, `author`, `license`, and `sourceUrl`.
 - Score. `content_score_get` with `refresh: true`. `passport empty`, `facts not checked`, `stale facts` once the page cites fact rows, a venue description outside 300–600, and `no Как добраться` on a page that needs it block publish. `0 photos` is a note.
 
-One known gap does not block: a place that uses the structured `faq` (3 to 6) and has no body FAQ can show `no FAQ`, because `faqFromBody` reads only `## Частые вопросы`. Note it. Do not ask the author to paste a second FAQ.
+The score counts structured `faq` through `pageFaq`. A body `## Частые вопросы` counts only when `faq` is empty. Do not ask the author to paste a second FAQ into the body.
 
 Write `PASS` or a list of failures. Do not publish on failures.
 
@@ -52,7 +52,7 @@ Good: the author saves a draft, moves a place to `review`, and stops. A second p
 
 Bad: clearing `no FAQ` by copying the six structured answers into the body.
 
-Good: the review says `PASS`, and notes `no FAQ` because `faq` is set and the body has no second list.
+Good: the review says `PASS`. Structured `faq` already counts. A second list in the body is a duplicate.
 
 ## Checklist
 

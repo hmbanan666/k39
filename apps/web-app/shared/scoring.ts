@@ -2,7 +2,7 @@ import type { LengthOverride } from './length-override'
 import { articleBody } from './address'
 import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, lengthOverrideApplies, lengthOverrideIsStale, longPageFiller } from './length-override'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
-import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
+import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, pageFaq, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
 import { statusContradictions } from './status-consistency'
 
 export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest' | 'venue'
@@ -64,6 +64,8 @@ export interface ScoreSource {
   latitude: number | null
   longitude: number | null
   sources: Array<{ title: string, url: string }>
+  /** Structured place FAQ. Empty falls back to a body «Частые вопросы» section. */
+  faq?: Array<{ question: string, answer: string }>
   publicationStatus: 'draft' | 'review' | 'published'
   noindex: boolean
   seoTitle: string | null
@@ -473,8 +475,15 @@ function lengthPoints(length: number, norm: { min: number, max: number | null })
   return { points: Math.round(25 * length / norm.min), checks: [`body ${length} chars, need ${need}`] }
 }
 
-function faqSection(text: string) {
-  const questions = faqFromBody(text).length
+function faqQuestionCount(page: ScoreSource, text: string) {
+  if (page.kind === 'place') {
+    return pageFaq(text, page.faq).length
+  }
+  return faqFromBody(text).length
+}
+
+function faqSection(page: ScoreSource, text: string) {
+  const questions = faqQuestionCount(page, text)
   if (questions >= 6) {
     return { points: 10, checks: [] as string[], questions }
   }
@@ -485,7 +494,7 @@ function faqSection(text: string) {
 }
 
 function sectionPoints(page: ScoreSource, text: string) {
-  const faq = faqSection(text)
+  const faq = faqSection(page, text)
   // Hubs are lists. Directions and prices stay optional; the article FAQ still counts.
   if (page.kind === 'hub') {
     return { points: 20 + faq.points, checks: faq.checks, questions: faq.questions }
@@ -1006,7 +1015,7 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
     signals: {
       bodyChars: text.length,
       tier: page.kind === 'place' ? (MAJOR_PLACE_CATEGORIES.has(page.categorySlug || '') ? 'major' : 'minor') : null,
-      faqCount: faqFromBody(text).length,
+      faqCount: faqQuestionCount(page, text),
       photoCount: page.photoCount,
       factsAgeDays: fresh.age,
       inbound: page.inbound,
