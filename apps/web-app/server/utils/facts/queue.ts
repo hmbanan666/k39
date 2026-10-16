@@ -1,7 +1,10 @@
 import type { QueueReason } from '../../../shared/facts'
+import type { ScheduleRules } from '../../../shared/schedule'
+import type { PageSnapshot } from './pages'
 import { db } from '@k39/database'
+import { repeatedKinds } from '../../../shared/fact-prose'
 import { pageTraffic, pastTtl, priorityFor, queueMayOpen, seasonBoundaryWithin, unreviewedSections } from '../../../shared/facts'
-import { readRules } from '../../../shared/schedule'
+import { readRules, scheduleDetails } from '../../../shared/schedule'
 import { loadPageSnapshots } from './pages'
 
 function dayStamp(date: Date) {
@@ -138,7 +141,39 @@ export async function syncVerificationQueue(now = new Date()) {
     return { id: row.id, priority: priorityFor(row.kind ?? 'prose', row.reason, traffic || 1) }
   })
   await db.facts.setPriorities(priorities)
+  await syncRepeatedProse(pages, await venueRules())
   return { pages: pages.length, open: open.length }
+}
+
+/** A prose section that repeats the schedule or a phone is a review warning, not a publish block. */
+export async function syncRepeatedProse(pages: PageSnapshot[], rulesByVenue: Map<string, ScheduleRules | null>) {
+  for (const page of pages) {
+    if (page.pageType !== 'venue' || !queueMayOpen(page.status, 'fact_repeated')) {
+      continue
+    }
+    const lines = scheduleDetails(rulesByVenue.get(page.entityId) ?? null)
+    for (const section of page.sections) {
+      const repeats = repeatedKinds(section.text, lines)
+      if (!repeats.length) {
+        await db.facts.closeSection(page.pageType, page.entityId, section.path, 'fact_repeated')
+        continue
+      }
+      await db.facts.enqueue({
+        target: 'section',
+        pageType: page.pageType,
+        entityId: page.entityId,
+        path: section.path,
+        reason: 'fact_repeated',
+        priority: priorityFor('prose', 'fact_repeated', 1),
+        proposal: { repeats },
+      })
+    }
+  }
+}
+
+async function venueRules() {
+  const rows = await db.schedules.list('venue')
+  return new Map(rows.map((row) => [row.entityId, readRules(row.rules)]))
 }
 
 async function closeReason(factId: string, reason: QueueReason) {
@@ -173,5 +208,9 @@ export async function syncPageSections(pageType: string, entityId: string) {
       reason: 'section_changed',
       priority: priorityFor('prose', 'section_changed', 1),
     })
+  }
+  if (page.pageType === 'venue') {
+    const row = await db.schedules.get('venue', page.entityId)
+    await syncRepeatedProse([page], new Map([[page.entityId, row ? readRules(row.rules) : null]]))
   }
 }

@@ -56,9 +56,7 @@ function numArray(values: number[]) {
   return sql`array[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::float8[]`
 }
 
-function distanceSql(latColumn: string, lngColumn: string, origins: MapOrigin[]) {
-  const lat = sql.raw(latColumn)
-  const lng = sql.raw(lngColumn)
+function distanceSql(lat: ReturnType<typeof sql>, lng: ReturnType<typeof sql>, origins: MapOrigin[]) {
   return sql`(
     select min(6371 * acos(least(1::float8, greatest(-1::float8,
       cos(radians(o.lat)) * cos(radians(${lat})) * cos(radians(${lng}) - radians(o.lng))
@@ -68,23 +66,47 @@ function distanceSql(latColumn: string, lngColumn: string, origins: MapOrigin[])
   )`
 }
 
+/** Fact coordinates when that row exists, otherwise the column. */
+function pointFrom(alias: 'p' | 'v', subject: 'place' | 'venue') {
+  const id = sql.raw(`${alias}.id`)
+  const latitude = () => sql`case when coord.fact_id is not null then coord.latitude else ${sql.raw(`${alias}.latitude`)} end`
+  const longitude = () => sql`case when coord.fact_id is not null then coord.longitude else ${sql.raw(`${alias}.longitude`)} end`
+  const fact = sql`left join lateral (
+    select f.id as fact_id,
+      (f.value->>'latitude')::float8 as latitude,
+      (f.value->>'longitude')::float8 as longitude
+    from facts f
+    where f.subject_type = ${subject}
+      and f.subject_id = ${id}
+      and f.kind = 'coordinates'
+      and f.slot = 'coordinates'
+      and f.retired_at is null
+    limit 1
+  ) coord on true`
+  return { latitude, longitude, fact }
+}
+
 export class MapCatalog {
   static async places(input: { origins: MapOrigin[], radiusKm: number | null, limit: number }) {
     const limit = Math.max(1, Math.min(800, Math.floor(input.limit)))
     const nearby = input.origins.length > 0 && input.radiusKm != null
-    const distance = nearby ? distanceSql('p.latitude', 'p.longitude', input.origins) : sql`null::float8`
+    const point = pointFrom('p', 'place')
+    const distance = nearby ? distanceSql(point.latitude(), point.longitude(), input.origins) : sql`null::float8`
     const where = nearby ? sql`where distance_km <= ${input.radiusKm}` : sql``
     const order = nearby ? sql`order by distance_km asc` : sql`order by title asc`
     const result = await useDatabase().execute(sql`
       select * from (
-        select p.id, p.slug, p.title, p.summary, p.latitude, p.longitude,
+        select p.id, p.slug, p.title, p.summary,
+          ${point.latitude()} as latitude,
+          ${point.longitude()} as longitude,
           c.slug as category_slug, c.title as category_title,
           ${distance} as distance_km
         from places p
+        ${point.fact}
         left join categories c on c.id = p.category_id
         where p.publication_status = 'published'
-          and p.latitude is not null
-          and p.longitude is not null
+          and ${point.latitude()} is not null
+          and ${point.longitude()} is not null
       ) points
       ${where}
       ${order}
@@ -116,17 +138,21 @@ export class MapCatalog {
   static async venues(input: { origins: MapOrigin[], radiusKm: number | null, limit: number }) {
     const limit = Math.max(1, Math.min(800, Math.floor(input.limit)))
     const nearby = input.origins.length > 0 && input.radiusKm != null
-    const distance = nearby ? distanceSql('v.latitude', 'v.longitude', input.origins) : sql`null::float8`
+    const point = pointFrom('v', 'venue')
+    const distance = nearby ? distanceSql(point.latitude(), point.longitude(), input.origins) : sql`null::float8`
     const where = nearby ? sql`where distance_km <= ${input.radiusKm}` : sql``
     const order = nearby ? sql`order by distance_km asc` : sql`order by name asc`
     const result = await useDatabase().execute(sql`
       select * from (
-        select v.id, v.slug, v.name, v.kind, v.address, v.description, v.latitude, v.longitude,
+        select v.id, v.slug, v.name, v.kind, v.address, v.description,
+          ${point.latitude()} as latitude,
+          ${point.longitude()} as longitude,
           ${distance} as distance_km
         from venues v
+        ${point.fact}
         where v.status = 'published'
-          and v.latitude is not null
-          and v.longitude is not null
+          and ${point.latitude()} is not null
+          and ${point.longitude()} is not null
       ) points
       ${where}
       ${order}

@@ -2,6 +2,7 @@ import { db } from '@k39/database'
 import { slugError } from '../../../../shared/seo'
 import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
+import { syncCoordinates, syncPlaceStatus } from '../../../utils/facts/sync'
 import { writingGate } from '../../../utils/mcp/writing-guard'
 
 export default defineEventHandler(async (event) => {
@@ -29,18 +30,34 @@ export default defineEventHandler(async (event) => {
     body.seoTitle ?? current.seoTitle,
     body.seoDescription ?? current.seoDescription,
   ]), publicationStatus === 'published')
+  const point = await syncCoordinates({
+    subjectType: 'place',
+    subjectId: id,
+    actor: 'editor',
+    pageStatus: publicationStatus,
+    latitude: body.latitude,
+    longitude: body.longitude,
+    previous: { latitude: current.latitude, longitude: current.longitude },
+  })
+  const visit = await syncPlaceStatus({
+    placeId: id,
+    actor: 'editor',
+    pageStatus: publicationStatus,
+    status: ['open', 'ruins', 'closed', 'unknown'].includes(body.status) ? body.status : undefined,
+    previous: current.status,
+  })
   const row = await db.editor.savePlace({
     id,
     slug,
     title: String(body.title ?? current.title),
     summary: String(body.summary ?? current.summary),
     body: String(body.body ?? current.body),
-    status: body.status ?? current.status,
+    status: visit.skipped || body.status == null ? current.status : body.status,
     hours: body.hours ?? current.hours,
     price: body.price ?? current.price,
     howToGet: body.howToGet ?? current.howToGet,
-    latitude: body.latitude ?? current.latitude,
-    longitude: body.longitude ?? current.longitude,
+    latitude: point.skipped || body.latitude == null ? current.latitude : body.latitude,
+    longitude: point.skipped || body.longitude == null ? current.longitude : body.longitude,
     categoryId: category?.id ?? current.categoryId,
     regionId: body.regionId ?? current.regionId,
     sources: Array.isArray(body.sources) ? body.sources : current.sources,

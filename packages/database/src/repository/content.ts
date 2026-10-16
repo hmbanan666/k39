@@ -1,10 +1,10 @@
 import type { BodySection } from '../body-sections'
 import type { PlaceDraft } from '../types'
 import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, StoredPageModule, VisitStatus } from '../types/entities'
-import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { composeBody, readSections, splitBody } from '../body-sections'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collectionMedia, collections, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
+import { categories, collectionItems, collectionMedia, collections, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
 const published = 'published' as const
@@ -204,21 +204,29 @@ export class Content {
   }
 
   static async mapPlaces() {
+    const latitude = () => sql<number>`case when ${facts.id} is not null then (${facts.value}->>'latitude')::float8 else ${places.latitude} end`
+    const longitude = () => sql<number>`case when ${facts.id} is not null then (${facts.value}->>'longitude')::float8 else ${places.longitude} end`
     return useDatabase().select({
       id: places.id,
       slug: places.slug,
       title: places.title,
       summary: places.summary,
-      latitude: places.latitude,
-      longitude: places.longitude,
+      latitude: latitude(),
+      longitude: longitude(),
       categorySlug: categories.slug,
       categoryTitle: categories.title,
       hours: places.hours,
-    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).where(and(
+    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(facts, and(
+      eq(facts.subjectType, 'place'),
+      eq(facts.subjectId, places.id),
+      eq(facts.kind, 'coordinates'),
+      eq(facts.slot, 'coordinates'),
+      isNull(facts.retiredAt),
+    )).where(and(
       eq(places.publicationStatus, published),
       eq(places.noindex, false),
-      sql`${places.latitude} is not null`,
-      sql`${places.longitude} is not null`,
+      sql`${latitude()} is not null`,
+      sql`${longitude()} is not null`,
     )).orderBy(asc(places.title))
   }
 

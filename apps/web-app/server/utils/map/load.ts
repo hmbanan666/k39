@@ -3,6 +3,7 @@ import type { MediaVariant } from '../../../shared/media'
 import { db, kindLabel } from '@k39/database'
 import { mapDistanceLabel, pinOffer, shortMapText, WALKING_RADIUS_KM } from '../../../shared/embed-map'
 import { toPublicMedia } from '../../../shared/media'
+import { FACT_UNKNOWN, pinCoordinates, readShownFacts } from '../facts/read'
 import { sponsoredVenuesEnabled } from '../venues/public'
 
 function photoOf(row: { id: string, filename: string, alt: string, width: number | null, height: number | null, variants?: unknown }) {
@@ -149,16 +150,40 @@ export async function loadMap(query: MapQuery): Promise<MapPayload> {
   const stopIds = new Set(catalog ? [] : grouped.flatMap((group) => group.rows.map((row) => row.placeId)))
   const placeIds = placeRows.map((row) => row.id)
   const venueIds = venueRows.map((row) => row.id)
-  const [placeCovers, venueCovers, offers] = await Promise.all([
+  const [placeCovers, venueCovers, offers, placeFacts, venueFacts] = await Promise.all([
     db.content.coversFor([...placeIds, ...stopIds]),
     db.venues.coversFor(venueIds),
     enabled ? db.map.activeOffers(venueIds) : Promise.resolve(new Map<string, { title: string, terms: string }>()),
+    readShownFacts('place', placeRows.map((row) => ({ id: row.id, latitude: row.latitude, longitude: row.longitude }))),
+    readShownFacts('venue', venueRows.map((row) => ({
+      id: row.id,
+      address: row.address,
+      latitude: row.latitude,
+      longitude: row.longitude,
+    }))),
   ])
   const points: MapPoint[] = [
-    ...placeRows
-      .filter((row) => !stopIds.has(row.id))
-      .map((row) => placePoint(row, photoOfCover(placeCovers.get(row.id)))),
-    ...venueRows.map((row) => venuePoint(row, photoOfCover(venueCovers.get(row.id)), offers.get(row.id), enabled)),
+    ...placeRows.flatMap((row) => {
+      if (stopIds.has(row.id)) {
+        return []
+      }
+      const pin = pinCoordinates('place', placeFacts.get(row.id)!)
+      if (!pin || (radiusKm != null && origins.length && (minDistance(pin.latitude, pin.longitude, origins) ?? Infinity) > radiusKm)) {
+        return []
+      }
+      const distanceKm = origins.length ? minDistance(pin.latitude, pin.longitude, origins) : row.distanceKm
+      return [placePoint({ ...row, latitude: pin.latitude, longitude: pin.longitude, distanceKm }, photoOfCover(placeCovers.get(row.id)))]
+    }),
+    ...venueRows.flatMap((row) => {
+      const shown = venueFacts.get(row.id)!
+      const pin = pinCoordinates('venue', shown)
+      if (!pin || (radiusKm != null && origins.length && (minDistance(pin.latitude, pin.longitude, origins) ?? Infinity) > radiusKm)) {
+        return []
+      }
+      const distanceKm = origins.length ? minDistance(pin.latitude, pin.longitude, origins) : row.distanceKm
+      const address = shown.address?.trim() && shown.address !== FACT_UNKNOWN ? shown.address : null
+      return [venuePoint({ ...row, address, latitude: pin.latitude, longitude: pin.longitude, distanceKm }, photoOfCover(venueCovers.get(row.id)), offers.get(row.id), enabled)]
+    }),
   ]
   if (!catalog && routeSlug) {
     for (const group of grouped) {

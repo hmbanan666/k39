@@ -2,6 +2,7 @@ import { db } from '@k39/database'
 import { slugError } from '../../../../shared/seo'
 import { writingCopy } from '../../../../shared/writing'
 import { requireEditor } from '../../../utils/access'
+import { syncCoordinates, syncPlaceStatus } from '../../../utils/facts/sync'
 import { writingGate } from '../../../utils/mcp/writing-guard'
 
 export default defineEventHandler(async (event) => {
@@ -45,5 +46,22 @@ export default defineEventHandler(async (event) => {
     noindex: Boolean(body.noindex),
     authorKind: body.authorKind || 'human',
   }, user.id)
+  const status = body.status || 'unknown'
+  await syncCoordinates({
+    subjectType: 'place',
+    subjectId: row!.id,
+    actor: 'editor',
+    pageStatus: publicationStatus,
+    latitude: body.latitude,
+    longitude: body.longitude,
+    previous: { latitude: null, longitude: null },
+  })
+  await syncPlaceStatus({
+    placeId: row!.id,
+    actor: 'editor',
+    pageStatus: publicationStatus,
+    status,
+    previous: '',
+  })
   return { ...row, writingWarnings }
 })

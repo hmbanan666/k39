@@ -9,8 +9,16 @@ import { categoryTags, collectionArticle, toPublicModules } from '../../shared/p
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
+import { readShownFacts } from './facts/read'
 import { loadSchedule } from './schedule'
 import { eatNearby, TOWN_EAT_LIMIT } from './venues/public'
+
+function visitStatus(value: string | null, fallback: 'open' | 'ruins' | 'closed' | 'unknown') {
+  if (value === 'open' || value === 'ruins' || value === 'closed' || value === 'unknown') {
+    return value
+  }
+  return fallback
+}
 
 function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
   return {
@@ -133,6 +141,15 @@ export async function loadPlace(slug: string, page = 1) {
     return null
   }
   const schedule = await loadSchedule('place', loaded.place.id)
+  const shown = (await readShownFacts('place', [{
+    id: loaded.place.id,
+    latitude: loaded.place.latitude,
+    longitude: loaded.place.longitude,
+    status: loaded.place.status,
+  }])).get(loaded.place.id)!
+  const latitude = shown.latitude
+  const longitude = shown.longitude
+  const status = visitStatus(shown.status, loaded.place.status)
   const gallery = loaded.gallery.map((item) => ({ ...toPublicMedia(item.media), isCover: item.isCover }))
   const cover = gallery.find((item) => item.isCover) ?? gallery[0] ?? null
   const images = gallery.map((item) => {
@@ -163,8 +180,8 @@ export async function loadPlace(slug: string, page = 1) {
     categorySlug: loaded.category.slug,
     categoryTitle: loaded.category.title,
     regionTitle: loaded.region?.title ?? null,
-    latitude: loaded.place.latitude,
-    longitude: loaded.place.longitude,
+    latitude,
+    longitude,
     hours: loaded.place.hours,
     schedule,
     price: loaded.place.price,
@@ -237,7 +254,7 @@ export async function loadPlace(slug: string, page = 1) {
     directionsHtml: directionsSource ? renderMarkdown(directionsSource, { headingPrefix: 'directions-' }) : '',
     faq: structuredFaq,
     checkedAt: isoDay(loaded.place.lastVerifiedAt),
-    place: { ...loaded.place, schedule },
+    place: { ...loaded.place, schedule, latitude, longitude, status },
     categoryTitle: loaded.category.title,
     categorySlug: loaded.category.slug,
     category: loaded.category,
@@ -251,7 +268,7 @@ export async function loadPlace(slug: string, page = 1) {
     sources: loaded.place.sources ?? [],
     // A town page lists more of its venues, so each one gets a link from it.
     eatNearby: await eatNearby(
-      [{ latitude: loaded.place.latitude, longitude: loaded.place.longitude }],
+      [{ latitude, longitude }],
       { limit: loaded.region?.slug === loaded.place.slug ? TOWN_EAT_LIMIT : undefined },
     ),
   }

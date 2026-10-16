@@ -71,7 +71,7 @@ Confidence is that enum, not a percentage. A number would look sharper than the 
 
 1. `official`. Site of the place, museum, administration, or venue, including a menu page or a PDF on that site.
 2. `official_social`. The venue's own official social account, for a fact that page states.
-3. `map_yandex`, `map_2gis`, `osm`. Venues only. Only address, hours, phone, operating status, and coordinates. Only when the official site does not state that fact. Places still do not take those fields from Yandex Maps or 2GIS.
+3. `map_yandex`, `map_2gis`, `map_google`, `osm`. Venues only. Only address, hours, phone, operating status, and coordinates. Only when the official site does not state that fact. Places still do not take those fields from a map. Google Maps follows the same rule as Yandex Maps and 2GIS.
 4. `owner`. Cabinet.
 5. `none`. A gap, or a seed that has no URL yet.
 
@@ -207,7 +207,7 @@ Publish review stays two passes. The reviewer loads the queue rows for that page
 
 Phase 1. Tables, the six phase-1 kinds, the seed below, the watcher, the queue, the five MCP tools, the trust column, and the score and weekly hooks. Dual write from schedule, price, and venue phone, address, and status saves. Readers stay on `schedules`, `places`, `venues`, `venue_prices`, and `schedule_intervals`.
 
-Phase 2. Place pages, venue cards, and JSON-LD read phase-1 facts. Transport facts come off `how_to_get` and stop notes through the queue, not a bulk extract. Routes and collections reference place facts. A prose section that repeats a fact value is a review warning, not a publish block.
+Phase 2. Place pages, venue cards, and JSON-LD read phase-1 facts. The public reader is `readShownFacts` in `apps/web-app/server/utils/facts/read.ts`. Transport facts come off `how_to_get` and stop notes through the queue, not a bulk extract. Routes and collections reference place facts. A prose section that repeats a fact value is a review warning, not a publish block.
 
 Phase 3. Seasonality, events, and history, and only when a section is already queued. «Where cheaper» and a trip plan read price and hours facts. Open now stays on intervals built from the hours fact. Retire `venues.hours` and free-text place hours once nothing reads them. Then drop the page-level freshness stamp in favor of the oldest fresh fact.
 

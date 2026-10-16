@@ -688,7 +688,7 @@ export const facts = pgTable('facts', {
   index('facts_kind_checked_idx').on(table.kind, table.checkedAt),
   check('facts_kind_check', sql`${table.kind} in ('hours', 'price', 'phone', 'address', 'coordinates', 'status')`),
   check('facts_subject_check', sql`${table.subjectType} in ('place', 'venue', 'route', 'route_stop', 'region')`),
-  check('facts_source_check', sql`${table.sourceKind} in ('official', 'official_social', 'map_yandex', 'map_2gis', 'osm', 'owner', 'none')`),
+  check('facts_source_check', sql`${table.sourceKind} in ('official', 'official_social', 'map_yandex', 'map_2gis', 'map_google', 'osm', 'owner', 'none')`),
   check('facts_confidence_check', sql`${table.confidence} in ('stated', 'owner', 'gap')`),
   check('facts_ttl_check', sql`${table.ttlDays} > 0`),
 ])
@@ -767,7 +767,7 @@ export const verificationQueue = pgTable('verification_queue', {
   uniqueIndex('verification_queue_fact_open_idx').on(table.factId, table.reason).where(sql`${table.resolvedAt} is null and ${table.target} = 'fact'`),
   uniqueIndex('verification_queue_section_open_idx').on(table.pageType, table.entityId, table.path, table.reason).where(sql`${table.resolvedAt} is null and ${table.target} = 'section'`),
   check('verification_queue_target_check', sql`${table.target} in ('fact', 'section')`),
-  check('verification_queue_reason_check', sql`${table.reason} in ('source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict')`),
+  check('verification_queue_reason_check', sql`${table.reason} in ('source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict', 'fact_repeated')`),
 ])
 
 // Concrete open intervals for a rolling window, rebuilt on write and daily.
