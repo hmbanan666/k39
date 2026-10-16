@@ -2,6 +2,7 @@ import type { VisitStatus } from '@k39/database'
 import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
 import { writingCopy } from '../../../shared/writing'
+import { syncPageSections } from '../facts/queue'
 import { auditMcp } from './audit'
 import { normalizePublication } from './draft'
 import { parseFactsCheckedAt } from './facts'
@@ -141,6 +142,7 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     faq: cleanFaq(input.faq ?? []),
     ...(checked !== undefined ? { lastVerifiedAt: checked } : {}),
   })
+  await syncPageSections('place', row!.id)
   await auditMcp('place_draft_create', 'place', row?.id)
   return { ...compactPlace(row!), writingWarnings }
 }
@@ -203,6 +205,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     faq: input.faq === undefined ? current.faq : cleanFaq(input.faq),
     lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
   })
+  await syncPageSections('place', current.id)
   await auditMcp(auditTool, 'place', current.id)
   return { ...compactPlace(row!), writingWarnings }
 }

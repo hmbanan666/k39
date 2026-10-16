@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan, pageModulesSchema } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
 import { writingCopy } from '../../../shared/writing'
+import { syncPageSections } from '../../utils/facts/queue'
 import { auditMcp } from '../../utils/mcp/audit'
 import { rethrowContentWrite } from '../../utils/mcp/content-error'
 import { normalizePublication } from '../../utils/mcp/draft'
@@ -76,6 +77,7 @@ export default defineMcpTool({
         sources: input.sources,
         modules: input.modules,
       })
+      await syncPageSections('collection', row.id)
       await auditMcp('collection_save', 'collection', row.id)
       return {
         id: row.id,

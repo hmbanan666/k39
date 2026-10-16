@@ -7,6 +7,8 @@ description: Use when choosing a source, a photo, hours, a price, or any fact fo
 
 If a source does not state it, do not write it. Voice and the stop-list are `k39-writing`. Price matching is `k39-price-anchors`. Photo files and licenses in the pipeline are ADR 0011.
 
+Verification of a fact that is already stored starts at `queue_list` (ADR 0033). Do not walk `places_list` to re-check a fact that is still inside its TTL. `fact_get` reads the claim, `fact_confirm` accepts the same value hash, and `fact_update` writes a new one. A map or OSM phone uses the same 180-day TTL as an official phone and is not fetched. The content token does not overwrite a fact whose latest revision actor is owner. That conflict waits for an editor in `/admin`.
+
 Never contact a venue. Never do outreach. Never ask a venue for photos or data.
 
 Never copy another site's content: not the sentences, not the photos, and not the structure. Write from the source facts in our order.
@@ -108,6 +110,7 @@ Bad: a price row whose `sourceUrl` is a Yandex Maps or 2GIS page.
 
 ## Checklist
 
+- Verification of a stored fact started at `queue_list`.
 - Every number, name, date, and hour traces to an allowed source URL in `sources`.
 - Yandex Maps and 2GIS, when used, are only for a venue that exists and operates, and only for hours, phone, address, operating status, and coordinates. The card URL is in `sources`. No text, description, photo, review, rating, average check, or price comes from them.
 - Yandex Business, Yandex food cards, aggregators, delivery apps, and venue-site photos are unused.

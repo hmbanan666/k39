@@ -87,6 +87,16 @@ function faq(count: number) {
 }
 
 describe('page score', () => {
+  it('uses fact refs instead of the 180-day stamp once a page cites facts', () => {
+    const stale = scorePage(source({ factsCheckedAt: null, factRefs: { count: 2, stale: 1 } }))
+    const fresh = scorePage(source({ factsCheckedAt: null, factRefs: { count: 2, stale: 0 } }))
+    expect(stale.checks.quality).toContain('stale facts')
+    expect(stale.checks.quality).not.toContain('facts not checked')
+    expect(fresh.checks.quality).not.toContain('stale facts')
+    expect(fresh.checks.quality).not.toContain('facts not checked')
+    expect(issueLabel('stale facts')).toBe('Устаревшие факты')
+  })
+
   it('names a thin major place: no FAQ, short description, orphan', () => {
     const score = scorePage(source({
       body: 'Мало текста.',

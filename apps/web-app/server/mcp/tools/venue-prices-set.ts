@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
+import { setVenuePrices } from '../../utils/facts/sync'
 import { auditMcp } from '../../utils/mcp/audit'
 import { recomputeTownPriceBands } from '../../utils/venues/price-band'
 import { venuePricesWriteSchema } from '../../utils/venues/prices'
@@ -18,10 +19,10 @@ export default defineMcpTool({
       throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
     }
     try {
-      const saved = await db.prices.setForVenue(venue.id, prices)
+      const saved = await setVenuePrices(venue.id, prices, 'mcp', venue.status)
       const bands = await recomputeTownPriceBands(venue.regionId)
       await auditMcp('venue_prices_set', 'venue', venue.id)
-      return { venueId: venue.id, prices: saved, priceBands: bands }
+      return { venueId: venue.id, prices: saved.prices, priceBands: bands, ownerConflicts: saved.conflicts }
     } catch (error) {
       throw createError({ statusCode: 400, statusMessage: error instanceof Error ? error.message : 'Не удалось сохранить цены' })
     }

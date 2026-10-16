@@ -19,7 +19,7 @@ Save a draft. Then read the stored row (`place_get`, `venue_get`, `route_get`, `
 
 ## Reviewer pass
 
-A different agent, in a separate session. The author does not review their own draft, including in a later turn of the same session. The reviewer starts by loading the stored page.
+A different agent, in a separate session. The author does not review their own draft, including in a later turn of the same session. Verification starts at `queue_list` for this page, then the reviewer loads the stored page. `fact_get` reads a queued fact. `fact_confirm` is only for a hash that still matches. `fact_update` does not overwrite a fact whose latest revision actor is owner: that conflict waits in `/admin`. `page_mark_reviewed` stores section hashes after the prose is accepted. A fact confirm does not mark prose reviewed.
 
 Reject, with the failing lines, when any of these fail:
 
@@ -28,7 +28,7 @@ Reject, with the failing lines, when any of these fail:
 - Duplicates. The summary is not repeated as the opening. Place `faq` is not also a body `## Частые вопросы`. A price row is not duplicated. A venue dish list is not the full menu. On a page above the default length ceiling, an H2 is not a near-copy of another H2, and a paragraph is not a near-copy of another paragraph.
 - Length. The default ceiling in `k39-writing` still applies. A longer body needs a justified `lengthOverride` from `page_passport_get`: ceiling at most 20000, target queries, observed impressions and position or competitor lengths, and the extra sections. Each added section has its own sourced facts. Stop-list filler and padding to fill the extra room fail. An override with no search impressions after 60 days is a reason to cut the page back.
 - Photos. A missing photo is a note, not a blocker. A photo that is attached still needs `alt`, `author`, `license`, and `sourceUrl`.
-- Score. `content_score_get` with `refresh: true`. `passport empty`, `facts not checked`, a venue description outside 300–600, and `no Как добраться` on a page that needs it block publish. `0 photos` is a note.
+- Score. `content_score_get` with `refresh: true`. `passport empty`, `facts not checked`, `stale facts` once the page cites fact rows, a venue description outside 300–600, and `no Как добраться` on a page that needs it block publish. `0 photos` is a note.
 
 One known gap does not block: a place that uses the structured `faq` (3 to 6) and has no body FAQ can show `no FAQ`, because `faqFromBody` reads only `## Частые вопросы`. Note it. Do not ask the author to paste a second FAQ.
 
@@ -57,7 +57,7 @@ Good: the review says `PASS`, and notes `no FAQ` because `faq` is set and the bo
 ## Checklist
 
 - Author checklist of the page-type skill is done on the stored row.
-- Reviewer is a second pass and started from `*_get`.
+- Reviewer is a second pass and started from `queue_list`, then `*_get`.
 - Stop-list, sources, duplicates, length, and photos were checked.
 - Score failures are fixed, except the structured-FAQ gap, which is noted.
 - The review says `PASS`.

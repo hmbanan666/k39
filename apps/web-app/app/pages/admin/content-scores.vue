@@ -21,16 +21,67 @@
     >
       {{ errorText }}
     </p>
-    <label
-      v-if="rows.length"
-      class="filter"
+    <section
+      v-if="conflicts.length"
+      class="conflicts"
     >
-      <input
-        v-model="withoutPersona"
-        type="checkbox"
-      >
-      Только страницы без основной персоны ({{ missingPersona }})
-    </label>
+      <h2>Конфликты владельца</h2>
+      <p class="muted">
+        Токен содержания не записал эти факты. Редактор принимает значение или отклоняет его.
+      </p>
+      <ul>
+        <li
+          v-for="conflict in conflicts"
+          :key="conflict.id"
+        >
+          <span>{{ kindName(conflict.kind) }}, {{ conflict.slot }}</span>
+          <span class="path">{{ conflict.subjectType }} {{ conflict.subjectId }}</span>
+          <span class="actions">
+            <UiButton
+              type="button"
+              @click="resolveConflict(conflict.id, 'apply')"
+            >
+              Принять
+            </UiButton>
+            <UiButton
+              type="button"
+              @click="resolveConflict(conflict.id, 'dismiss')"
+            >
+              Отклонить
+            </UiButton>
+          </span>
+        </li>
+      </ul>
+    </section>
+    <div
+      v-if="rows.length"
+      class="filters"
+    >
+      <label class="filter">
+        <input
+          v-model="withoutPersona"
+          type="checkbox"
+        >
+        Только страницы без основной персоны ({{ missingPersona }})
+      </label>
+      <label class="filter">
+        Доверие
+        <select v-model="trustFilter">
+          <option value="all">
+            Все
+          </option>
+          <option value="verified">
+            Проверено
+          </option>
+          <option value="stale">
+            Устаревшие факты
+          </option>
+          <option value="unreviewed">
+            Непроверенные правки
+          </option>
+        </select>
+      </label>
+    </div>
     <p
       v-if="pending && !rows.length"
       class="muted"
@@ -97,6 +148,7 @@
             </button>
           </th>
           <th>Персоны</th>
+          <th>Доверие</th>
           <th>Проблема</th>
         </tr>
       </thead>
@@ -146,6 +198,7 @@
               class="missing"
             >нет</span>
           </td>
+          <td>{{ trustText(row.trust) }}</td>
           <td>{{ row.topIssue ? issueLabel(row.topIssue) : 'нет' }}</td>
         </tr>
       </tbody>
@@ -209,7 +262,9 @@
 </template>
 
 <script setup lang="ts">
+import type { TrustCounts } from '~~/shared/facts'
 import type { PageKind, PrimaryAction, ScoreChecks } from '~~/shared/scoring'
+import { trustText } from '~~/shared/facts'
 import { issueLabel, pageKindLabel } from '~~/shared/scoring'
 
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
@@ -227,6 +282,18 @@ interface ScoreRow {
   checks: ScoreChecks
   topIssue: string | null
   personas: { code: string, title: string, weight: number, primary: boolean }[]
+  trust: TrustCounts
+}
+
+interface OwnerConflict {
+  id: string
+  factId: string
+  kind: string
+  slot: string
+  subjectType: string
+  subjectId: string
+  proposal: Record<string, unknown> | null
+  enqueuedAt: string
 }
 
 interface Passport {
@@ -264,11 +331,19 @@ const goal30 = ref<string | number>('')
 const goal90 = ref<string | number>('')
 const notes = ref('')
 
-const { data, pending, error, refresh } = await useFetch<{ rows: ScoreRow[] }>('/api/admin/content-scores')
+const { data, pending, error, refresh } = await useFetch<{ rows: ScoreRow[], conflicts: OwnerConflict[] }>('/api/admin/content-scores')
 const withoutPersona = ref(false)
+const trustFilter = ref<'all' | 'verified' | 'stale' | 'unreviewed'>('all')
 const rows = computed(() => data.value?.rows ?? [])
+const conflicts = computed(() => data.value?.conflicts ?? [])
 const missingPersona = computed(() => rows.value.filter((row) => !row.personas.some((item) => item.primary)).length)
-const visible = computed(() => withoutPersona.value ? rows.value.filter((row) => !row.personas.some((item) => item.primary)) : rows.value)
+const visible = computed(() => {
+  const persona = withoutPersona.value ? rows.value.filter((row) => !row.personas.some((item) => item.primary)) : rows.value
+  if (trustFilter.value === 'all') {
+    return persona
+  }
+  return persona.filter((row) => row.trust.labels.includes(trustFilter.value as 'verified'))
+})
 const sorted = computed(() => {
   const key = sortKey.value
   const direction = sortAsc.value ? 1 : -1
@@ -290,6 +365,29 @@ function kindLabel(kind: PageKind) {
   return pageKindLabel(kind)
 }
 
+const FACT_KIND: Record<string, string> = {
+  hours: 'часы',
+  price: 'цена',
+  phone: 'телефон',
+  address: 'адрес',
+  coordinates: 'координаты',
+  status: 'статус',
+}
+
+function kindName(kind: string) {
+  return FACT_KIND[kind] ?? kind
+}
+
+async function resolveConflict(id: string, action: 'apply' | 'dismiss') {
+  errorText.value = ''
+  try {
+    await $fetch('/api/admin/fact-conflicts', { method: 'POST', body: { id, action } })
+    await refresh()
+  } catch {
+    errorText.value = 'Не удалось закрыть конфликт.'
+  }
+}
+
 function toggleSort(key: typeof sortKey.value) {
   if (sortKey.value === key) {
     sortAsc.value = !sortAsc.value
@@ -303,8 +401,8 @@ async function recompute() {
   refreshing.value = true
   errorText.value = ''
   try {
-    const response = await $fetch<{ rows: ScoreRow[] }>('/api/admin/content-scores/refresh', { method: 'POST' })
-    data.value = { rows: response.rows }
+    const response = await $fetch<{ rows: ScoreRow[], conflicts: OwnerConflict[] }>('/api/admin/content-scores/refresh', { method: 'POST' })
+    data.value = { rows: response.rows, conflicts: response.conflicts }
   } catch {
     errorText.value = 'Не удалось пересчитать.'
   } finally {
@@ -369,7 +467,13 @@ async function savePassport() {
 h1 { margin: 0; font-family: var(--font-display); }
 h2 { margin: 0 0 0.8rem; font-size: 1.25rem; }
 .muted { color: var(--muted); }
-.filter { display: inline-flex; gap: 0.4rem; align-items: center; margin: 1rem 0 0.5rem; }
+.filters { display: flex; flex-wrap: wrap; gap: 0.8rem 1.2rem; align-items: center; margin: 1rem 0 0.5rem; }
+.filter { display: inline-flex; gap: 0.4rem; align-items: center; }
+.filter select { font: inherit; }
+.conflicts { margin-top: 1rem; padding: 0.8rem 1rem; border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--surface); }
+.conflicts ul { list-style: none; margin: 0.6rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.conflicts li { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; align-items: center; }
+.actions { display: inline-flex; gap: 0.4rem; }
 .personas { display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; font-size: 0.85rem; }
 .personas span { color: var(--muted); }
 .missing { color: var(--color-danger); }

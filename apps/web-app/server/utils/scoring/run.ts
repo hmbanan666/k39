@@ -3,6 +3,7 @@ import type { PageKind, PrimaryAction } from '../../../shared/scoring'
 import { db } from '@k39/database'
 import { lengthOverrideRejection, stampLengthOverride } from '../../../shared/length-override'
 import { buildWeeklyReport, filterScores, lengthNorm, pageKindLabel, topIssue } from '../../../shared/scoring'
+import { syncVerificationQueue } from '../facts/queue'
 import { auditMcp } from '../mcp/audit'
 import { catalogPageRefs, scoresFromCatalog, toStored } from './assemble'
 
@@ -29,13 +30,16 @@ export async function refreshContentScores(options?: { force?: boolean }) {
   const metrics = await db.scoring.pageMetrics(now)
   const queries = await db.scoring.searchQueriesSince(shiftDay(today, -90))
   const searchImported = await db.scoring.searchImported()
-  const scores = scoresFromCatalog(catalog, metrics, queries, searchImported, now)
+  const freshness = await db.facts.freshnessByConsumer(now.toISOString())
+  const factRefs = new Map(freshness.map((row) => [`${row.consumer_type}:${row.consumer_id}`, { count: Number(row.refs), stale: Number(row.stale) }]))
+  const scores = scoresFromCatalog(catalog, metrics, queries, searchImported, now, factRefs)
   const stored = scores.map(toStored)
   await db.scoring.replaceScores(stored, now.toISOString())
   await db.scoring.upsertDays(today, stored)
   const pages = catalogPageRefs(catalog)
   await db.scoring.syncPassportPaths(pages)
   await db.scoring.deleteStalePassports(pages)
+  await syncVerificationQueue(now)
   return { skipped: false, pages: scores.length, scoredAt: now.toISOString() }
 }
 
@@ -67,7 +71,33 @@ export async function weeklyContentReport() {
   const current = await db.scoring.listScores()
   const previousDay = await db.scoring.latestDayOnOrBefore(shiftDay(today, -7))
   const previous = previousDay ? await db.scoring.scoresForDay(previousDay) : null
-  return buildWeeklyReport(current, previous, { current: today, previous: previousDay })
+  const report = buildWeeklyReport(current, previous, { current: today, previous: previousDay })
+  const [byReason, top] = await Promise.all([db.facts.countsByReason(), db.facts.topOpen(10)])
+  const open = await db.facts.openRows()
+  const openKeys = new Set(open.map((row) => `${row.pageType}:${row.entityId}`))
+  const goalAndQueue = current.filter((row) => row.goal30d != null && row.organic30d < row.goal30d && openKeys.has(`${row.pageType}:${row.entityId}`)).map((row) => ({
+    path: row.path,
+    title: row.title,
+    organic30d: row.organic30d,
+    goal30d: row.goal30d,
+  }))
+  return {
+    ...report,
+    queue: {
+      byReason: Object.fromEntries(byReason.map((row) => [row.reason, Number(row.count)])),
+      top: top.map((row) => ({
+        id: row.id,
+        reason: row.reason,
+        priority: row.priority,
+        kind: row.kind,
+        slot: row.slot,
+        pageType: row.pageType ?? row.subjectType,
+        entityId: row.entityId ?? row.subjectId,
+        path: row.path,
+      })),
+    },
+    goalAndQueue,
+  }
 }
 
 export async function auditedScore<T>(tool: string, entityId: string | null, run: () => Promise<T>) {

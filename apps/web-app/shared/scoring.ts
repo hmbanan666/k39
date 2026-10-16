@@ -69,6 +69,8 @@ export interface ScoreSource {
   seoTitle: string | null
   seoDescription: string | null
   factsCheckedAt: string | null
+  /** Set when the page cites facts. Replaces the 180-day stamp for this check. */
+  factRefs?: { count: number, stale: number }
   /** Places only: schedule rules mode, null without a schedule. */
   scheduleMode?: string | null
   // Collection stops only. city is the place region id. access is the item note plus the place address.
@@ -535,6 +537,12 @@ function ageDays(value: string | null, now: Date) {
 }
 
 function freshPoints(page: ScoreSource, now: Date) {
+  if (page.factRefs && page.factRefs.count > 0) {
+    if (page.factRefs.stale > 0) {
+      return { points: 0, checks: ['stale facts'], age: null as number | null }
+    }
+    return { points: 15, checks: [] as string[], age: null as number | null }
+  }
   const age = ageDays(page.factsCheckedAt, now)
   if (age == null) {
     return { points: 0, checks: ['facts not checked'], age: null as number | null }
@@ -1060,6 +1068,7 @@ export function issueLabel(check: string) {
     [/^no Как добраться$/, () => 'Нет блока «Как добраться»'],
     [/^0 photos$/, () => 'Нет фотографий'],
     [/^(\d+) photos?, need (\d+)$/, (match) => `Фотографий: ${match[1]}, нужно ${match[2]}`],
+    [/^stale facts$/, () => 'Устаревшие факты'],
     [/^facts not checked$/, () => 'Факты не проверены'],
     [/^facts checked (\d+) days ago$/, (match) => `Факты проверены ${match[1]} дн. назад`],
     [/^passport empty$/, () => 'Паспорт пустой'],

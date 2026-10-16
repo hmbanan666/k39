@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { describeSchedule, scheduleRulesSchema } from '../../../shared/schedule'
+import { retireFactSlot } from '../../utils/facts/commit'
 import { auditMcp } from '../../utils/mcp/audit'
 import { scheduleTarget } from '../../utils/mcp/schedule-target'
 import { saveSchedule } from '../../utils/schedule'
@@ -21,14 +22,18 @@ export default defineMcpTool({
     const target = await scheduleTarget(entityType, id, slug)
     if (remove) {
       await db.schedules.remove(entityType, target.id)
+      await retireFactSlot(entityType, target.id, 'hours')
       await auditMcp('schedule_set', entityType, target.id)
       return { ...target, removed: true }
     }
     if (!rules) {
       throw createError({ statusCode: 400, statusMessage: 'Нужны rules или remove' })
     }
-    await saveSchedule(entityType, target.id, { rules, sourceUrl: sourceUrl ?? null, verifiedAt: verifiedAt ?? null })
+    const saved = await saveSchedule(entityType, target.id, { rules, sourceUrl: sourceUrl ?? null, verifiedAt: verifiedAt ?? null }, { actor: 'mcp' })
     await auditMcp('schedule_set', entityType, target.id)
+    if (saved.conflict) {
+      return { ...target, conflict: true, queueId: saved.queueId, text: describeSchedule(rules) }
+    }
     return { ...target, text: describeSchedule(rules) }
   },
 })

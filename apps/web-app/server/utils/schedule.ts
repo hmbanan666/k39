@@ -1,6 +1,8 @@
+import type { FactActor } from '~~/shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '~~/shared/schedule'
 import { db } from '@k39/database'
 import { addDays, expandIntervals, localNow, readRules } from '~~/shared/schedule'
+import { hoursConflict, writeHoursFact } from './facts/sync'
 
 // Materialised window (ADR 0028): yesterday to 30 days ahead, so overnight
 // intervals that started yesterday still answer "open now".
@@ -15,14 +17,26 @@ function intervalsFor(rules: ScheduleRules, at = new Date()) {
   }))
 }
 
-export async function saveSchedule(entityType: string, entityId: string, record: ScheduleRecord) {
-  return db.schedules.save({
+export async function saveSchedule(entityType: string, entityId: string, record: ScheduleRecord, options?: { actor?: FactActor, syncFacts?: boolean, pageStatus?: string | null }) {
+  const syncFacts = options?.syncFacts !== false
+  const actor = options?.actor ?? 'mcp'
+  if (syncFacts && (entityType === 'place' || entityType === 'venue')) {
+    const blocked = await hoursConflict(entityType, entityId, record, actor)
+    if (blocked) {
+      return { conflict: true as const, queueId: blocked.queueId }
+    }
+  }
+  const saved = await db.schedules.save({
     entityType,
     entityId,
     rules: record.rules as unknown as Record<string, unknown>,
     sourceUrl: record.sourceUrl,
     verifiedAt: record.verifiedAt,
   }, intervalsFor(record.rules))
+  if (syncFacts && (entityType === 'place' || entityType === 'venue')) {
+    await writeHoursFact(entityType, entityId, record, actor, options?.pageStatus)
+  }
+  return { conflict: false as const, saved }
 }
 
 export async function loadSchedule(entityType: string, entityId: string): Promise<ScheduleRecord | null> {
@@ -40,7 +54,7 @@ export async function refreshScheduleIntervals() {
     if (!rules) {
       continue
     }
-    await db.schedules.save({ entityType: row.entityType, entityId: row.entityId, rules: row.rules as Record<string, unknown>, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }, intervalsFor(rules))
+    await saveSchedule(row.entityType, row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }, { syncFacts: false })
     count += 1
   }
   return count

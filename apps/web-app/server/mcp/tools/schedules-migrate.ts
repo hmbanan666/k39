@@ -26,7 +26,7 @@ export default defineMcpTool({
       }
       report.places += 1
       if (!dryRun) {
-        await saveSchedule('place', place.id, { rules, sourceUrl: null, verifiedAt: parsed && place.verifiedAt ? place.verifiedAt.slice(0, 10) : null })
+        await saveSchedule('place', place.id, { rules, sourceUrl: null, verifiedAt: parsed && place.verifiedAt ? place.verifiedAt.slice(0, 10) : null }, { actor: 'migration' })
       }
     }
     for (const venue of venueRows) {
@@ -40,7 +40,7 @@ export default defineMcpTool({
       }
       report.venues += 1
       if (!dryRun) {
-        await saveSchedule('venue', venue.id, { rules, sourceUrl: null, verifiedAt: verifiedDate(venue.verifiedAt) })
+        await saveSchedule('venue', venue.id, { rules, sourceUrl: null, verifiedAt: verifiedDate(venue.verifiedAt) }, { actor: 'migration' })
       }
     }
     if (!dryRun) {
