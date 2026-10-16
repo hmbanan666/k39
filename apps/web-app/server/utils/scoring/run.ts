@@ -3,6 +3,7 @@ import type { PageKind, PrimaryAction } from '../../../shared/scoring'
 import { db } from '@k39/database'
 import { lengthOverrideRejection, stampLengthOverride } from '../../../shared/length-override'
 import { buildWeeklyReport, filterScores, lengthNorm, pageKindLabel, topIssue } from '../../../shared/scoring'
+import { savePassportContent } from '../content/save'
 import { syncVerificationQueue } from '../facts/queue'
 import { auditMcp } from '../mcp/audit'
 import { catalogPageRefs, scoresFromCatalog, toStored } from './assemble'
@@ -166,7 +167,7 @@ export async function writePassport(page: ResolvedPage, input: {
       : null
     lengthOverride = stampLengthOverride(input.lengthOverride, previous)
   }
-  await db.scoring.upsertPassport({
+  await savePassportContent({
     pageType: page.pageType,
     entityId: page.entityId,
     path: page.path,
@@ -177,6 +178,9 @@ export async function writePassport(page: ResolvedPage, input: {
     goal90d: input.goal90d,
     notes: input.notes,
     ...(lengthOverride !== undefined ? { lengthOverride } : {}),
+  }, {
+    parts: [input.notes, input.audience, input.targetQueries],
+    publishing: false,
   })
   return readPassport(page)
 }

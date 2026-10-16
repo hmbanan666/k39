@@ -26,17 +26,15 @@ import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
 import { collectionDocument } from '../../../shared/seo'
 import { omitFactGap, readShownFacts } from '../facts/read'
-import { projectMenuPrices } from './menu-prices'
+import { loadComparablePrices } from './comparable-prices'
 
 /** Official fresh menu prices, one per venue and item, with closed venues removed. */
 async function loadCheaperSamples(now = new Date()) {
-  const [rows, regions, catalog] = await Promise.all([
-    db.prices.freshPublished(now),
+  const [comparable, regions, catalog] = await Promise.all([
+    loadComparablePrices(now),
     db.editor.listRegions(),
     db.prices.items(),
   ])
-  const projected = await projectMenuPrices(rows, now)
-  const comparable = projected.filter((item) => item.comparable).map((item) => item.row)
   const catalogBySlug = new Map(catalog.map((item) => [item.slug, item]))
   const regionById = new Map(regions.map((row) => [row.id, row]))
   const byItem = new Map<string, typeof comparable>()

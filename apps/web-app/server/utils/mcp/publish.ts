@@ -1,10 +1,9 @@
 import { db } from '@k39/database'
 import { collectionWritePlan } from '../../../shared/page-modules'
-import { writingCopy } from '../../../shared/writing'
+import { saveCollectionContent, saveQuestContent, saveRouteContent } from '../content/save'
 import { auditMcp } from './audit'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
 import { updatePlaceDraft } from './places'
-import { writingGate } from './writing-guard'
 
 export async function setPublication(input: {
   entity: 'place' | 'route' | 'collection' | 'quest'
@@ -23,14 +22,7 @@ export async function setPublication(input: {
     }
     const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus)
     refusePendingLiveEdit(publicationStatus, 'route')
-    const writingWarnings = writingGate(writingCopy([
-      current.title,
-      current.summary,
-      current.body,
-      current.seoTitle,
-      current.seoDescription,
-    ]), publicationStatus === 'published')
-    const row = await db.editor.saveRoute({
+    const { row, writingWarnings } = await saveRouteContent({
       id: current.id,
       slug: current.slug,
       title: current.title,
@@ -41,6 +33,9 @@ export async function setPublication(input: {
       seoDescription: current.seoDescription,
       ogImage: current.ogImage,
       noindex: current.noindex,
+    }, null, {
+      parts: [current.title, current.summary, current.body, current.seoTitle, current.seoDescription],
+      publishing: publicationStatus === 'published',
     })
     await auditMcp('content_set_publication', 'route', current.id)
     return { id: row?.id, slug: row?.slug, publicationStatus: row?.publicationStatus, writingWarnings }
@@ -58,15 +53,7 @@ export async function setPublication(input: {
       currentBody: current.body,
       modules: current.modules,
     })
-    const writingWarnings = writingGate(writingCopy([
-      current.title,
-      current.summary,
-      plan.copy,
-      current.seoTitle,
-      current.seoDescription,
-      current.sources,
-    ]), publicationStatus === 'published')
-    const row = await db.editor.saveCollection({
+    const { row, writingWarnings } = await saveCollectionContent({
       id: current.id,
       slug: current.slug,
       title: current.title,
@@ -77,6 +64,9 @@ export async function setPublication(input: {
       seoDescription: current.seoDescription,
       ogImage: current.ogImage,
       noindex: current.noindex,
+    }, null, {
+      parts: [current.title, current.summary, plan.copy, current.seoTitle, current.seoDescription, current.sources],
+      publishing: publicationStatus === 'published',
     })
     await auditMcp('content_set_publication', 'collection', current.id)
     return {
@@ -98,14 +88,7 @@ export async function setPublication(input: {
   }
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus)
   refusePendingLiveEdit(publicationStatus, 'quest')
-  const writingWarnings = writingGate(writingCopy([
-    current.title,
-    current.summary,
-    current.body,
-    current.seoTitle,
-    current.seoDescription,
-  ]), publicationStatus === 'published')
-  const row = await db.editor.saveQuest({
+  const { row, writingWarnings } = await saveQuestContent({
     id: current.id,
     slug: current.slug,
     title: current.title,
@@ -117,6 +100,9 @@ export async function setPublication(input: {
     ogImage: current.ogImage,
     noindex: current.noindex,
     routeId: current.routeId,
+  }, null, {
+    parts: [current.title, current.summary, current.body, current.seoTitle, current.seoDescription],
+    publishing: publicationStatus === 'published',
   })
   await auditMcp('content_set_publication', 'quest', current.id)
   return { id: row.id, slug: row.slug, publicationStatus: row.publicationStatus, writingWarnings }

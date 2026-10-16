@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { coverageConfigDefaults, defineConfig } from 'vitest/config'
+import { nuxtSfcTestPlugin } from './apps/web-app/test/nuxt-sfc-plugin'
 
 export default defineConfig({
   test: {
@@ -25,7 +26,7 @@ export default defineConfig({
         },
       },
       {
-        plugins: [vue()],
+        plugins: [nuxtSfcTestPlugin(), vue()],
         resolve: {
           alias: [
             { find: '~~', replacement: fileURLToPath(new URL('./apps/web-app', import.meta.url)) },

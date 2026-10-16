@@ -1,12 +1,10 @@
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { slugError } from '../../../shared/seo'
-import { writingCopy } from '../../../shared/writing'
-import { syncPageSections } from '../facts/queue'
+import { saveQuestContent } from '../content/save'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
-import { writingGate } from './writing-guard'
 
 export interface QuestStepInput {
   placeSlug: string
@@ -84,16 +82,8 @@ export async function writeQuest(input: QuestWriteInput, auditTool: string, opti
   const routeId = routeIdForSlug(input.routeSlug, routes)
   const publicationStatus = resolvePublication(input.publicationStatus, current?.publicationStatus)
   refusePendingLiveEdit(publicationStatus, 'quest')
-  const writingWarnings = writingGate(writingCopy([
-    title,
-    input.summary === undefined ? current?.summary : input.summary,
-    input.body === undefined ? current?.body : input.body,
-    input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
-    input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
-    input.steps,
-  ]), publicationStatus === 'published')
   try {
-    const row = await db.editor.saveQuest({
+    const { row, writingWarnings } = await saveQuestContent({
       id: current?.id,
       slug,
       title,
@@ -106,8 +96,17 @@ export async function writeQuest(input: QuestWriteInput, auditTool: string, opti
       noindex: input.noindex,
       routeId,
       steps: input.steps,
+    }, null, {
+      parts: [
+        title,
+        input.summary === undefined ? current?.summary : input.summary,
+        input.body === undefined ? current?.body : input.body,
+        input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
+        input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
+        input.steps,
+      ],
+      publishing: publicationStatus === 'published',
     })
-    await syncPageSections('quest', row.id)
     await auditMcp(auditTool, 'quest', row.id)
     return {
       id: row.id,

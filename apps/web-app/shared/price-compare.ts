@@ -5,8 +5,8 @@ import { pageTitle } from './seo'
 
 /**
  * «Ориентиры цен» (docs/venue-modules.md).
- * Comparison is pure: the server loads `db.prices.forItem` (published venues
- * only, one fresh price each) and calls these helpers, so the HTML already
+ * Comparison is pure: the server loads fresh published comparable prices
+ * once (`loadComparablePrices`) and calls these helpers, so the HTML already
  * contains the conclusion.
  */
 

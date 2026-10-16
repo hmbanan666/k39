@@ -71,17 +71,7 @@ describe('writing stop-list', () => {
     expect(writingGate('Форт у дороги.', false)).toEqual([])
     expect(writingGate('уютная атмосфера', false)).toEqual(['уютная атмосфера: уютная атмосфера'])
     expect(() => writingGate('уютная атмосфера', true)).toThrow(/Нельзя опубликовать/)
-    for (const file of [
-      'server/utils/mcp/places.ts',
-      'server/utils/mcp/routes.ts',
-      'server/utils/mcp/quests.ts',
-      'server/utils/mcp/publish.ts',
-      'server/mcp/tools/collection-save.ts',
-      'server/mcp/tools/hub-update.ts',
-      'server/utils/venues/write.ts',
-    ]) {
-      expect(readFileSync(resolve(import.meta.dirname, '..', file), 'utf8'), file).toContain('writingGate(')
-    }
+    expect(readFileSync(resolve(import.meta.dirname, '../server/utils/content/save.ts'), 'utf8')).toContain('writingGate(')
     try {
       writingGate('Форт — музей', true)
       expect.unreachable()

@@ -122,7 +122,7 @@ function groupRoutes(stops: RouteStopRow[]) {
   })
 }
 
-export async function loadMap(query: MapQuery): Promise<MapPayload> {
+export async function loadEmbedMap(query: MapQuery): Promise<MapPayload> {
   const enabled = sponsoredVenuesEnabled()
   const catalog = query.scope === 'catalog'
   let origins: Array<{ latitude: number, longitude: number }> = []

@@ -1,7 +1,7 @@
 import type { SourceLink } from '@k39/database'
 import { db, tables, useDatabase } from '@k39/database'
 import { eq } from 'drizzle-orm'
-import { classifySourceUrl, defaultTtl, FACT_IMPORT_ID, hoursLookEmpty } from '../../../shared/facts'
+import { classifySourceUrl, defaultTtl, FACT_IMPORT_ID, hoursLookEmpty, seedFactDisposition } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { commitFact } from './commit'
 import { loadPageSnapshots } from './pages'
@@ -74,6 +74,10 @@ export async function applyFactLayer() {
     const empty = hoursLookEmpty(rules)
     const unchecked = empty || !row.verifiedAt || rules.needsCheck
     const sourceKind = empty || !row.sourceUrl ? 'none' : classifySourceUrl(row.sourceUrl)
+    const disposition = seedFactDisposition({ sourceKind, empty })
+    if (disposition === 'skip') {
+      continue
+    }
     await commitFact({
       kind: 'hours',
       subjectType: row.entityType,
@@ -85,7 +89,7 @@ export async function applyFactLayer() {
       sourceKind,
       checkedAt: unchecked ? null : dateStamp(row.verifiedAt),
       ttlDays: defaultTtl('hours'),
-      confidence: empty || sourceKind === 'none' ? 'gap' : 'stated',
+      confidence: disposition,
       actor: 'migration',
       refs: [{ consumerType: row.entityType, consumerId: row.entityId, path: 'short.hours' }],
       pageType: row.entityType,
@@ -119,13 +123,22 @@ export async function applyFactLayer() {
     const checkedAt = venue.lastVerifiedAt
     const pageStatus = venue.status
     if (venue.phone?.trim()) {
-      await commitFact(contactFact('phone', venue.id, { text: venue.phone.trim() }, citation, checkedAt, pageStatus))
+      const fact = contactFact('phone', venue.id, { text: venue.phone.trim() }, citation, checkedAt, pageStatus)
+      if (fact) {
+        await commitFact(fact)
+      }
     }
     if (venue.address?.trim()) {
-      await commitFact(contactFact('address', venue.id, { text: venue.address.trim() }, citation, checkedAt, pageStatus))
+      const fact = contactFact('address', venue.id, { text: venue.address.trim() }, citation, checkedAt, pageStatus)
+      if (fact) {
+        await commitFact(fact)
+      }
     }
     if (venue.latitude != null && venue.longitude != null) {
-      await commitFact(contactFact('coordinates', venue.id, { latitude: venue.latitude, longitude: venue.longitude }, citation, checkedAt, pageStatus))
+      const fact = contactFact('coordinates', venue.id, { latitude: venue.latitude, longitude: venue.longitude }, citation, checkedAt, pageStatus)
+      if (fact) {
+        await commitFact(fact)
+      }
     }
     if (venue.status === 'closed') {
       await commitFact({
@@ -167,25 +180,6 @@ export async function applyFactLayer() {
       pageType: 'place',
       pageStatus: place.publicationStatus,
     })
-    if (place.latitude != null && place.longitude != null) {
-      await commitFact({
-        kind: 'coordinates',
-        subjectType: 'place',
-        subjectId: place.id,
-        slot: 'coordinates',
-        value: { latitude: place.latitude, longitude: place.longitude },
-        sourceUrl: null,
-        sourceTitle: null,
-        sourceKind: 'none',
-        checkedAt: place.lastVerifiedAt,
-        ttlDays: defaultTtl('coordinates'),
-        confidence: place.lastVerifiedAt ? 'stated' : 'gap',
-        actor: 'migration',
-        refs: [{ consumerType: 'place', consumerId: place.id, path: 'short.coordinates' }],
-        pageType: 'place',
-        pageStatus: place.publicationStatus,
-      })
-    }
   }
 
   const pages = await loadPageSnapshots()
@@ -203,6 +197,9 @@ export async function applyFactLayer() {
 
 function contactFact(kind: 'phone' | 'address' | 'coordinates', venueId: string, value: unknown, citation: { title: string, url: string } | null, checkedAt: string | null, pageStatus: string) {
   const sourceKind = !checkedAt || !citation ? 'none' : classifySourceUrl(citation.url)
+  if (seedFactDisposition({ sourceKind, empty: false }) === 'skip') {
+    return null
+  }
   return {
     kind,
     subjectType: 'venue' as const,

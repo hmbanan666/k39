@@ -4,7 +4,7 @@ import process from 'node:process'
 import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
-import { syncPageSections } from '../facts/queue'
+import { updateVenueContent } from '../content/save'
 import { readShownFacts, shownText } from '../facts/read'
 import { setVenuePrices, syncVenueContact } from '../facts/sync'
 import { normalizeDishModules } from '../venues/dishes'
@@ -288,10 +288,15 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     if (!current) {
       fail(404, 'Заведение не найдено')
     }
-    const saved = await db.venues.update(venueId, {
+    const updated = await updateVenueContent(venueId, {
       ...write,
       lastVerifiedAt: touchHours ? new Date().toISOString() : undefined,
-    }, userId)
+    }, userId, {
+      parts: [write.description, write.modules, write.address, write.phone, write.name],
+      publishing: current.status === 'published',
+      venue: true,
+    })
+    const saved = updated.row
     if (!saved) {
       fail(404, 'Заведение не найдено')
     }
@@ -308,7 +313,6 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
       await setVenuePrices(venueId, ownerPrices, 'owner', saved.status)
       await recomputeTownPriceBands(saved.regionId)
     }
-    await syncPageSections('venue', venueId)
     const fields = [...Object.keys(write), ...(ownerPrices ? ['prices'] : [])]
     await db.venueClaims.audit(venueId, userId, 'owner_update', { fields })
     return { id: saved.id, slug: saved.slug }

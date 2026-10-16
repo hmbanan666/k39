@@ -1,6 +1,6 @@
 import { parseMapQuery as parseEmbedQuery } from '../../../shared/embed-map'
-import { loadMap as loadEmbed } from '../../utils/map/load'
-import { loadMap as loadCatalog } from '../../utils/map/public'
+import { loadEmbedMap } from '../../utils/map/load'
+import { loadMap } from '../../utils/map/public'
 
 function one(value: unknown) {
   const raw = Array.isArray(value) ? value[0] : value
@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const scoped = one(query.scope) || one(query.lat) || one(query.lng) || one(query.route) || one(query.radius)
   if (scoped) {
-    return loadEmbed(parseEmbedQuery({
+    return loadEmbedMap(parseEmbedQuery({
       scope: one(query.scope),
       lat: one(query.lat),
       lng: one(query.lng),
@@ -19,5 +19,5 @@ export default defineEventHandler(async (event) => {
       radius: one(query.radius),
     }))
   }
-  return loadCatalog()
+  return loadMap()
 })

@@ -320,6 +320,24 @@ export class Facts {
     return row ?? null
   }
 
+  /**
+   * Drop review hashes that no longer match any rendered section.
+   * `reviewedAt` stays: this is invalidation, not a new review.
+   */
+  static async retainReviewSections(pageType: string, entityId: string, liveHashes: string[]) {
+    const review = await this.review(pageType, entityId)
+    if (!review) {
+      return null
+    }
+    const live = new Set(liveHashes)
+    const sections = review.sections.filter((section) => live.has(section.hash))
+    if (sections.length === review.sections.length) {
+      return review
+    }
+    const [row] = await useDatabase().update(pageReviews).set({ sections }).where(eq(pageReviews.id, review.id)).returning()
+    return row ?? review
+  }
+
   static async saveReview(input: { pageType: string, entityId: string, reviewer: string, sections: Array<{ path: string, hash: string }> }) {
     const now = new Date().toISOString()
     const [row] = await useDatabase().insert(pageReviews).values({

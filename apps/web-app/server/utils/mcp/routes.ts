@@ -1,12 +1,10 @@
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { slugError } from '../../../shared/seo'
-import { writingCopy } from '../../../shared/writing'
-import { syncPageSections } from '../facts/queue'
+import { saveRouteContent } from '../content/save'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
-import { writingGate } from './writing-guard'
 
 type StopInput = { placeSlug: string, note?: string | null }
 
@@ -52,17 +50,8 @@ export async function createRouteDraft(input: {
   }
   const publicationStatus = resolvePublication(input.publicationStatus)
   refusePendingLiveEdit(publicationStatus, 'route')
-  const writingWarnings = writingGate(writingCopy([
-    input.title,
-    input.summary,
-    input.body,
-    input.sections,
-    input.seoTitle,
-    input.seoDescription,
-    input.points,
-  ]), publicationStatus === 'published')
   try {
-    const row = await db.editor.saveRoute({
+    const { row, writingWarnings } = await saveRouteContent({
       slug: input.slug,
       title: input.title,
       summary: input.summary,
@@ -73,8 +62,10 @@ export async function createRouteDraft(input: {
       seoDescription: input.seoDescription,
       points: input.points,
       path: input.path,
+    }, null, {
+      parts: [input.title, input.summary, input.body, input.sections, input.seoTitle, input.seoDescription, input.points],
+      publishing: publicationStatus === 'published',
     })
-    await syncPageSections('route', row.id)
     await auditMcp('route_draft_create', 'route', row.id)
     return {
       id: row.id,
@@ -104,17 +95,8 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
   }
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus)
   refusePendingLiveEdit(publicationStatus, 'route')
-  const writingWarnings = writingGate(writingCopy([
-    input.title || current.title,
-    input.summary ?? current.summary,
-    input.body ?? current.body,
-    input.sections,
-    input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-    input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-    input.points,
-  ]), publicationStatus === 'published')
   try {
-    const row = await db.editor.saveRoute({
+    const { row, writingWarnings } = await saveRouteContent({
       id: current.id,
       slug,
       title: input.title || current.title,
@@ -126,8 +108,18 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
       points: input.points,
       path: input.path,
+    }, null, {
+      parts: [
+        input.title || current.title,
+        input.summary ?? current.summary,
+        input.body ?? current.body,
+        input.sections,
+        input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+        input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+        input.points,
+      ],
+      publishing: publicationStatus === 'published',
     })
-    await syncPageSections('route', row.id)
     await auditMcp(auditTool, 'route', current.id)
     return {
       id: row.id,

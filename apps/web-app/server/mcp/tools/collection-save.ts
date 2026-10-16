@@ -2,14 +2,12 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan, pageModulesSchema } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
-import { writingCopy } from '../../../shared/writing'
-import { syncPageSections } from '../../utils/facts/queue'
+import { saveCollectionContent } from '../../utils/content/save'
 import { auditMcp } from '../../utils/mcp/audit'
 import { rethrowContentWrite } from '../../utils/mcp/content-error'
 import { refusePendingLiveEdit, resolvePublication } from '../../utils/mcp/draft'
 import { orderedStopView } from '../../utils/mcp/routes'
 import { orderedStops, sources } from '../../utils/mcp/schemas'
-import { writingGate } from '../../utils/mcp/writing-guard'
 
 export default defineMcpTool({
   name: 'collection_save',
@@ -51,17 +49,8 @@ export default defineMcpTool({
     if (plan.rejectBody) {
       throw createError({ statusCode: 400, statusMessage: COLLECTION_BODY_REJECTED })
     }
-    const writingWarnings = writingGate(writingCopy([
-      input.title,
-      input.summary === undefined ? current?.summary : input.summary,
-      plan.copy,
-      input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
-      input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
-      input.items,
-      input.sources === undefined ? current?.sources : input.sources,
-    ]), publicationStatus === 'published')
     try {
-      const row = await db.editor.saveCollection({
+      const { row, writingWarnings } = await saveCollectionContent({
         id: current?.id ?? input.id,
         slug: input.slug,
         title: input.title,
@@ -77,8 +66,18 @@ export default defineMcpTool({
         month: input.kind === 'theme' ? null : input.month,
         sources: input.sources,
         modules: input.modules,
+      }, null, {
+        parts: [
+          input.title,
+          input.summary === undefined ? current?.summary : input.summary,
+          plan.copy,
+          input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
+          input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
+          input.items,
+          input.sources === undefined ? current?.sources : input.sources,
+        ],
+        publishing: publicationStatus === 'published',
       })
-      await syncPageSections('collection', row.id)
       await auditMcp('collection_save', 'collection', row.id)
       return {
         id: row.id,

@@ -22,6 +22,7 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "media:rebuild": "pnpm --filter @k39/web-app media:rebuild",
+    "db:seed:fixtures": "pnpm --filter @k39/web-app db:seed:fixtures",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check:full": "pnpm run lint:fix && pnpm run typecheck && pnpm vitest run",

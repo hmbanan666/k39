@@ -2,7 +2,7 @@ import type { VenuePriceInput } from '@k39/database'
 import type { FactActor, SourceKind } from '../../../shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '../../../shared/schedule'
 import { db } from '@k39/database'
-import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, shouldWriteContact, valueHash } from '../../../shared/facts'
+import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { commitFact, retireFactSlot } from './commit'
 
@@ -20,6 +20,9 @@ export async function hoursConflict(entityType: 'place' | 'venue', entityId: str
   }
   const latest = await db.facts.latestActor(existing.id)
   const next = hoursClaim(rules, record)
+  if (!next.store) {
+    return null
+  }
   const same = existing.valueHash === valueHash(next.value)
     && existing.sourceKind === next.sourceKind
     && (existing.sourceUrl ?? null) === next.sourceUrl
@@ -58,6 +61,10 @@ export async function writeHoursFact(entityType: 'place' | 'venue', entityId: st
     next.sourceTitle = null
     next.confidence = 'owner'
     next.checkedAt = next.checkedAt ?? new Date().toISOString()
+    next.store = true
+  }
+  if (!next.store) {
+    return
   }
   await commitFact({
     kind: 'hours',
@@ -85,17 +92,21 @@ function hoursClaim(rules: ScheduleRules, record: ScheduleRecord): {
   sourceKind: SourceKind
   checkedAt: string | null
   confidence: 'stated' | 'owner' | 'gap'
+  /** False when the rules are a filled column with no source. That is not a gap. */
+  store: boolean
 } {
   const empty = hoursLookEmpty(rules)
   const unchecked = empty || !record.verifiedAt || rules.needsCheck
   const sourceKind = empty || !record.sourceUrl ? 'none' as const : classifySourceUrl(record.sourceUrl)
+  const disposition = seedFactDisposition({ sourceKind, empty })
   return {
     value: rules,
     sourceUrl: sourceKind === 'none' ? null : record.sourceUrl,
     sourceTitle: null,
     sourceKind,
     checkedAt: unchecked || !record.verifiedAt ? null : `${record.verifiedAt.slice(0, 10)}T00:00:00.000Z`,
-    confidence: empty || sourceKind === 'none' ? 'gap' as const : 'stated' as const,
+    confidence: disposition === 'stated' ? 'stated' as const : 'gap' as const,
+    store: disposition !== 'skip',
   }
 }
 

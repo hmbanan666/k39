@@ -1,14 +1,12 @@
 import type { VisitStatus } from '@k39/database'
 import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
-import { writingCopy } from '../../../shared/writing'
 import { contentScope } from '../access'
-import { syncPageSections } from '../facts/queue'
+import { applyPendingPlaceContent, savePendingDraftContent, savePlaceContent } from '../content/save'
 import { syncCoordinates, syncPlaceStatus } from '../facts/sync'
 import { auditMcp } from './audit'
 import { resolvePublication } from './draft'
 import { parseFactsCheckedAt } from './facts'
-import { writingGate } from './writing-guard'
 
 const VISIT = new Set(['open', 'ruins', 'closed', 'unknown'])
 
@@ -213,23 +211,8 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     throw createError({ statusCode: 400, statusMessage: problem || 'Нужны название и адрес' })
   }
   const checked = parseFactsCheckedAt(input.factsCheckedAt)
-  const writingWarnings = writingGate(writingCopy([
-    input.title,
-    input.summary,
-    input.body,
-    input.sections,
-    input.hours,
-    input.price,
-    input.howToGet,
-    input.seoTitle,
-    input.seoDescription,
-    input.visitDuration,
-    input.bestTime,
-    input.faq,
-    input.sources,
-  ]), publicationStatus === 'published')
   const status = (VISIT.has(input.status || '') ? input.status : 'unknown') as VisitStatus
-  const row = await db.editor.savePlace({
+  const { row, writingWarnings } = await savePlaceContent({
     slug,
     title: input.title.trim(),
     summary: input.summary || '',
@@ -254,10 +237,27 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     bestTime: cleanText(input.bestTime),
     faq: cleanFaq(input.faq ?? []),
     ...(checked !== undefined ? { lastVerifiedAt: checked } : {}),
+  }, null, {
+    parts: [
+      input.title,
+      input.summary,
+      input.body,
+      input.sections,
+      input.hours,
+      input.price,
+      input.howToGet,
+      input.seoTitle,
+      input.seoDescription,
+      input.visitDuration,
+      input.bestTime,
+      input.faq,
+      input.sources,
+    ],
+    publishing: publicationStatus === 'published',
   })
   await syncCoordinates({
     subjectType: 'place',
-    subjectId: row!.id,
+    subjectId: row.id,
     actor: 'mcp',
     pageStatus: publicationStatus,
     latitude: input.latitude,
@@ -265,15 +265,14 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     previous: { latitude: null, longitude: null },
   })
   await syncPlaceStatus({
-    placeId: row!.id,
+    placeId: row.id,
     actor: 'mcp',
     pageStatus: publicationStatus,
     status,
     previous: '',
   })
-  await syncPageSections('place', row!.id)
-  await auditMcp('place_draft_create', 'place', row?.id)
-  return { ...compactPlace(row!), writingWarnings }
+  await auditMcp('place_draft_create', 'place', row.id)
+  return { ...compactPlace(row), writingWarnings }
 }
 
 export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'place_draft_update') {
@@ -290,22 +289,25 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus, scope)
   if (scope === 'editor' && publicationStatus === 'published' && pending && publicationOnly(input, current.slug)) {
     const payload = pending.payload
-    writingGate(writingCopy([
-      payload.title,
-      payload.summary,
-      payload.body,
-      payload.sections,
-      payload.hours,
-      payload.price,
-      payload.howToGet,
-      payload.seoTitle,
-      payload.seoDescription,
-      payload.visitDuration,
-      payload.bestTime,
-      payload.faq,
-      payload.sources,
-    ]), true)
-    const row = await db.editor.applyPendingPlace(current.id)
+    const applied = await applyPendingPlaceContent(current.id, {
+      parts: [
+        payload.title,
+        payload.summary,
+        payload.body,
+        payload.sections,
+        payload.hours,
+        payload.price,
+        payload.howToGet,
+        payload.seoTitle,
+        payload.seoDescription,
+        payload.visitDuration,
+        payload.bestTime,
+        payload.faq,
+        payload.sources,
+      ],
+      publishing: true,
+    })
+    const row = applied.row
     if (row) {
       await syncCoordinates({
         subjectType: 'place',
@@ -323,9 +325,8 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
         status: row.status,
         previous: current.status,
       })
-      await syncPageSections('place', current.id)
       await auditMcp(auditTool, 'place', current.id)
-      return { ...compactPlace(row), pendingReview: false, bodyLength: row.body.length, writingWarnings: [] as string[] }
+      return { ...compactPlace(row), pendingReview: false, bodyLength: row.body.length, writingWarnings: applied.writingWarnings }
     }
   }
   if (publicationStatus === 'pending') {
@@ -381,27 +382,31 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       lastVerifiedAt: checked === undefined ? (base.lastVerifiedAt as string | null | undefined) ?? current.lastVerifiedAt : checked,
       authorKind: current.authorKind,
     }
-    const writingWarnings = writingGate(writingCopy([
-      payload.title,
-      payload.summary,
-      payload.body,
-      payload.sections,
-      payload.hours,
-      payload.price,
-      payload.howToGet,
-      payload.seoTitle,
-      payload.seoDescription,
-      payload.visitDuration,
-      payload.bestTime,
-      payload.faq,
-      payload.sources,
-    ]), false)
-    const stored = await db.editor.saveContentDraft({
+    const storedDraft = await savePendingDraftContent({
       entityType: 'place',
       entityId: current.id,
       publicationStatus: pendingStatus,
       payload,
+    }, {
+      parts: [
+        payload.title,
+        payload.summary,
+        payload.body,
+        payload.sections,
+        payload.hours,
+        payload.price,
+        payload.howToGet,
+        payload.seoTitle,
+        payload.seoDescription,
+        payload.visitDuration,
+        payload.bestTime,
+        payload.faq,
+        payload.sources,
+      ],
+      publishing: false,
     })
+    const stored = storedDraft.row
+    const writingWarnings = storedDraft.writingWarnings
     await auditMcp(auditTool, 'place', current.id)
     return storedDraftResponse(current, stored.payload, pendingStatus, writingWarnings)
   }
@@ -411,21 +416,6 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     throw createError({ statusCode: 400, statusMessage: problem })
   }
   const checked = parseFactsCheckedAt(input.factsCheckedAt)
-  const writingWarnings = writingGate(writingCopy([
-    input.title ?? current.title,
-    input.summary ?? current.summary,
-    input.body ?? current.body,
-    input.sections,
-    input.hours === undefined ? current.hours : input.hours,
-    input.price === undefined ? current.price : input.price,
-    input.howToGet === undefined ? current.howToGet : input.howToGet,
-    input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-    input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-    input.visitDuration === undefined ? current.visitDuration : input.visitDuration,
-    input.bestTime === undefined ? current.bestTime : input.bestTime,
-    input.faq === undefined ? current.faq : input.faq,
-    input.sources ?? current.sources,
-  ]), publicationStatus === 'published')
   const status = (input.status && VISIT.has(input.status) ? input.status : current.status) as VisitStatus
   const point = await syncCoordinates({
     subjectType: 'place',
@@ -443,7 +433,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     status: input.status && VISIT.has(input.status) ? input.status : undefined,
     previous: current.status,
   })
-  const row = await db.editor.savePlace({
+  const saved = await savePlaceContent({
     id: current.id,
     slug,
     title: input.title ?? current.title,
@@ -469,13 +459,30 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     bestTime: input.bestTime === undefined ? current.bestTime : cleanText(input.bestTime),
     faq: input.faq === undefined ? current.faq : cleanFaq(input.faq),
     lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
+  }, null, {
+    parts: [
+      input.title ?? current.title,
+      input.summary ?? current.summary,
+      input.body ?? current.body,
+      input.sections,
+      input.hours === undefined ? current.hours : input.hours,
+      input.price === undefined ? current.price : input.price,
+      input.howToGet === undefined ? current.howToGet : input.howToGet,
+      input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+      input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+      input.visitDuration === undefined ? current.visitDuration : input.visitDuration,
+      input.bestTime === undefined ? current.bestTime : input.bestTime,
+      input.faq === undefined ? current.faq : input.faq,
+      input.sources ?? current.sources,
+    ],
+    publishing: publicationStatus === 'published',
   })
-  await syncPageSections('place', current.id)
+  const { row, writingWarnings } = saved
   if (scope === 'editor') {
     await db.editor.deleteContentDraft('place', current.id)
   }
   await auditMcp(auditTool, 'place', current.id)
-  return { ...compactPlace(row!), pendingReview: false, writingWarnings }
+  return { ...compactPlace(row), pendingReview: false, writingWarnings }
 }
 
 export async function submitPlaceReview(input: { id?: string, slug?: string }) {
@@ -490,7 +497,7 @@ export async function submitPlaceReview(input: { id?: string, slug?: string }) {
   if (contentScope() === 'draft' && (current.publicationStatus === 'published' || current.publicationStatus === 'archived')) {
     return updatePlaceDraft({ id: current.id, publicationStatus: 'review' }, 'place_submit_review')
   }
-  const row = await db.editor.savePlace({
+  const { row } = await savePlaceContent({
     id: current.id,
     slug: current.slug,
     title: current.title,
@@ -512,7 +519,10 @@ export async function submitPlaceReview(input: { id?: string, slug?: string }) {
     publicationStatus: 'review',
     authorKind: current.authorKind,
     lastVerifiedAt: current.lastVerifiedAt,
+  }, null, {
+    parts: [current.title, current.summary, current.body, current.hours, current.price, current.howToGet, current.seoTitle, current.seoDescription, current.sources],
+    publishing: false,
   })
   await auditMcp('place_submit_review', 'place', current.id)
-  return compactPlace(row!)
+  return compactPlace(row)
 }

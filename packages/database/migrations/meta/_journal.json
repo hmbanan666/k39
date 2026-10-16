@@ -253,6 +253,20 @@
       "when": 1792130000000,
       "tag": "0035_content_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792140000000,
+      "tag": "0036_unsourced_gap_facts",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792150000000,
+      "tag": "0037_consent_method",
+      "breakpoints": true
     }
   ]
 }
