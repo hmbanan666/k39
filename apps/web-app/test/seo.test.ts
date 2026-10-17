@@ -7,7 +7,7 @@ import { findOrphans, haversineKm, homeLinks, HUBS, indexableHubs, SECTION_LINKS
 import { renderMarkdown } from '../shared/markdown'
 import { lcpPreload, openGraphFile } from '../shared/media'
 import { decideRedirect } from '../shared/redirects'
-import { accessibleForFree, brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, imageCredit, jsonLdTypes, pageTitle, placeDocument, placeNodeTypes, placeSchemaType, schemaOpeningHours, schemaProblems, tuneRobots, venueDocument, venueSchemaType, verificationMeta } from '../shared/seo'
+import { accessibleForFree, BRAND_ICON_VERSION, brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, imageCredit, jsonLdTypes, pageTitle, placeDocument, placeNodeTypes, placeSchemaType, schemaOpeningHours, schemaProblems, tuneRobots, venueDocument, venueSchemaType, verificationMeta } from '../shared/seo'
 
 function assertDocument(doc: ReturnType<typeof homeDocument>, htmlBody: string) {
   expect(doc.title.length).toBeGreaterThan(10)
@@ -646,21 +646,83 @@ describe('default social image', () => {
     const head = createHead()
     head.push({ link: [...brandHeadLinks] })
     const rendered = await renderSSRHead(head)
-    const icons = [...rendered.headTags.matchAll(/<link[^>]*href="\/favicon\.ico"[^>]*>/g)].map((match) => match[0])
-    expect(icons).toHaveLength(2)
-    expect(icons.some((tag) => tag.includes('sizes="48x48"'))).toBe(true)
-    expect(icons.some((tag) => tag.includes('sizes="any"'))).toBe(true)
+    const icoHref = `/favicon.ico?v=${BRAND_ICON_VERSION}`
+    const icons = [...rendered.headTags.matchAll(/<link[^>]*rel="icon"[^>]*>/g)].map((match) => match[0])
+    const icoLinks = icons.filter((tag) => tag.includes(`href="${icoHref}"`))
+    expect(icoLinks).toHaveLength(2)
+    expect(icoLinks.some((tag) => tag.includes('sizes="48x48"'))).toBe(true)
+    expect(icoLinks.some((tag) => tag.includes('sizes="any"'))).toBe(true)
     expect(rendered.headTags).toContain('rel="apple-touch-icon"')
-    expect(rendered.headTags).toContain('href="/site.webmanifest"')
+    expect(rendered.headTags).toContain(`href="/apple-touch-icon.png?v=${BRAND_ICON_VERSION}"`)
+    expect(rendered.headTags).toContain(`href="/favicon-32.png?v=${BRAND_ICON_VERSION}"`)
+    expect(rendered.headTags).toContain(`href="/favicon-16.png?v=${BRAND_ICON_VERSION}"`)
+    expect(rendered.headTags).toContain(`href="/site.webmanifest?v=${BRAND_ICON_VERSION}"`)
+    expect(rendered.headTags).not.toContain('favicon.svg')
+    expect(rendered.headTags).not.toContain('image/svg')
 
     const collapsed = createHead()
     collapsed.push({
       link: brandHeadLinks
-        .filter((link) => link.href === '/favicon.ico')
+        .filter((link) => link.href === icoHref)
         .map(({ key: _key, ...link }) => link),
     })
     const withoutKeys = await renderSSRHead(collapsed)
-    expect([...withoutKeys.headTags.matchAll(/href="\/favicon\.ico"/g)]).toHaveLength(1)
+    expect([...withoutKeys.headTags.matchAll(/href="\/favicon\.ico/g)]).toHaveLength(1)
+  })
+
+  it('serves the moose icon set and versions the manifest icons', async () => {
+    const pub = resolve(process.cwd(), 'apps/web-app/public')
+    const sharp = (await import('sharp')).default
+    const paper = { r: 245, g: 238, b: 225 }
+    const expectSize = async (name: string, width: number, height: number, alpha: boolean) => {
+      const meta = await sharp(resolve(pub, name)).metadata()
+      expect(meta.width).toBe(width)
+      expect(meta.height).toBe(height)
+      expect(Boolean(meta.hasAlpha)).toBe(alpha)
+    }
+    await expectSize('favicon-16.png', 16, 16, true)
+    await expectSize('favicon-32.png', 32, 32, true)
+    await expectSize('apple-touch-icon.png', 180, 180, false)
+    await expectSize('icon-192.png', 192, 192, true)
+    await expectSize('icon-512.png', 512, 512, true)
+    await expectSize('icon-maskable-512.png', 512, 512, false)
+
+    const apple = await sharp(resolve(pub, 'apple-touch-icon.png')).raw().toBuffer({ resolveWithObject: true })
+    expect([...apple.data.subarray(0, 3)]).toEqual([paper.r, paper.g, paper.b])
+    const mask = await sharp(resolve(pub, 'icon-maskable-512.png')).raw().toBuffer({ resolveWithObject: true })
+    expect([...mask.data.subarray(0, 3)]).toEqual([paper.r, paper.g, paper.b])
+    const small = await sharp(resolve(pub, 'favicon-32.png')).ensureAlpha().raw().toBuffer()
+    expect(small[3]).toBe(0)
+
+    const ico = readFileSync(resolve(pub, 'favicon.ico'))
+    expect(ico.readUInt16LE(0)).toBe(0)
+    expect(ico.readUInt16LE(2)).toBe(1)
+    expect(ico.readUInt16LE(4)).toBe(3)
+    const frames = [16, 32, 48].map((size, index) => {
+      const at = 6 + index * 16
+      expect(ico[at]).toBe(size)
+      expect(ico[at + 1]).toBe(size)
+      const length = ico.readUInt32LE(at + 8)
+      const offset = ico.readUInt32LE(at + 12)
+      return ico.subarray(offset, offset + length)
+    })
+    expect(frames[0]?.equals(readFileSync(resolve(pub, 'favicon-16.png')))).toBe(true)
+    expect(frames[1]?.equals(readFileSync(resolve(pub, 'favicon-32.png')))).toBe(true)
+    const frame48 = await sharp(frames[2]).metadata()
+    expect(frame48.width).toBe(48)
+    expect(frame48.height).toBe(48)
+    expect(frame48.format).toBe('png')
+
+    const manifest = JSON.parse(readFileSync(resolve(pub, 'site.webmanifest'), 'utf8')) as {
+      icons: Array<{ src: string, sizes: string, purpose?: string }>
+    }
+    expect(manifest.icons.map((icon) => icon.src)).toEqual([
+      `/icon-192.png?v=${BRAND_ICON_VERSION}`,
+      `/icon-512.png?v=${BRAND_ICON_VERSION}`,
+      `/icon-maskable-512.png?v=${BRAND_ICON_VERSION}`,
+    ])
+    expect(manifest.icons.map((icon) => icon.sizes)).toEqual(['192x192', '512x512', '512x512'])
+    expect(manifest.icons[2]?.purpose).toBe('maskable')
   })
 })
 
