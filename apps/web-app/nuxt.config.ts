@@ -66,8 +66,9 @@ export default defineNuxtConfig({
     '/pages/**': { redirect: { to: '/eda', statusCode: 301 } },
     '/media/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
-    // Brand URLs stay stable, so they are not immutable. A week lets a deploy replace them.
-    // The manifest is a day so a theme or icon change is not stuck behind the image cache.
+    // Brand file names stay stable, so they are not immutable. A week is the cache for one URL.
+    // Favicon links add ?v= from BRAND_ICON_VERSION so a replaced moose is not stuck on that week.
+    // The manifest file is a day. Its link uses the same query.
     ...Object.fromEntries([
       '/favicon.ico',
       '/favicon-16.png',

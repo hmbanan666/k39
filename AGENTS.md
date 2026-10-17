@@ -16,7 +16,7 @@ Monorepo (pnpm):
 - `packages/database`: Drizzle ORM and Postgres. Schema, repositories, SQL migrations, initial seed.
 - `packages/types`: Zod schemas shared by the API.
 
-Brand files live in `apps/web-app/public/`: `favicon.ico` (16, 32 and 48), `favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `logo/moose-head` (png and webp, 1x and 2x), `logo/moose-head-512.webp`, `og-default.png`, `og-default.jpg`, and `site.webmanifest`. The source master is kept outside this repo. Do not regenerate or re-encode these binaries.
+Brand files live in `apps/web-app/public/`: `favicon.ico` (16, 32 and 48), `favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `logo/moose-head` (png and webp, 1x and 2x), `logo/moose-head-512.webp`, `og-default.png`, `og-default.jpg`, and `site.webmanifest`. The source master is kept outside this repo. Do not regenerate or re-encode these binaries. Favicon, touch icon, and manifest icon URLs append `?v=` from `BRAND_ICON_VERSION` in `apps/web-app/shared/seo.ts`. Bump that constant in the same change as the binaries. The file names stay. There is no SVG favicon.
 
 Published pages are server-rendered from Postgres. Place body is markdown text in the database. See ADR 0007, ADR 0008 and ADR 0009.
 

@@ -30,15 +30,23 @@ export function publicRobots(noindex = false) {
     : 'index, follow, max-image-preview:large'
 }
 
+// Bump when the favicon, touch icon, or manifest icons change.
+// Those files cache for a week (see routeRules in nuxt.config.ts). The query is the cache buster.
+export const BRAND_ICON_VERSION = '20261017'
+
+function brandIcon(path: string) {
+  return `${path}?v=${BRAND_ICON_VERSION}`
+}
+
 // Unhead dedupes <link> on rel+href unless each tag has its own key.
 // favicon.ico is linked twice (48x48 and any), so the keys must stay distinct.
 export const brandHeadLinks = [
-  { key: 'icon-ico-48', rel: 'icon', href: '/favicon.ico', sizes: '48x48' },
-  { key: 'icon-ico-any', rel: 'icon', href: '/favicon.ico', sizes: 'any' },
-  { key: 'icon-32', rel: 'icon', type: 'image/png', href: '/favicon-32.png', sizes: '32x32' },
-  { key: 'icon-16', rel: 'icon', type: 'image/png', href: '/favicon-16.png', sizes: '16x16' },
-  { key: 'apple-touch-icon', rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
-  { key: 'manifest', rel: 'manifest', href: '/site.webmanifest' },
+  { key: 'icon-ico-48', rel: 'icon', href: brandIcon('/favicon.ico'), sizes: '48x48' },
+  { key: 'icon-ico-any', rel: 'icon', href: brandIcon('/favicon.ico'), sizes: 'any' },
+  { key: 'icon-32', rel: 'icon', type: 'image/png', href: brandIcon('/favicon-32.png'), sizes: '32x32' },
+  { key: 'icon-16', rel: 'icon', type: 'image/png', href: brandIcon('/favicon-16.png'), sizes: '16x16' },
+  { key: 'apple-touch-icon', rel: 'apple-touch-icon', href: brandIcon('/apple-touch-icon.png') },
+  { key: 'manifest', rel: 'manifest', href: brandIcon('/site.webmanifest') },
 ] as const
 
 export const RESERVED_SLUGS = [
