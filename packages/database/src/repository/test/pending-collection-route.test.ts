@@ -19,6 +19,7 @@ import { renderMarkdown } from '../../../../../apps/web-app/shared/markdown'
 import { toPublicModules } from '../../../../../apps/web-app/shared/page-modules'
 import { bodyOf } from '../../body-sections'
 import { useDatabase } from '../../database'
+import { SOURCE_LINK_LIMIT, sourceLimitMessage } from '../../sources'
 import { collections, contentDrafts, facts, mcpAudits, media, pageReviews, places, quests, regions, revisions, routePoints, routes, schedules, slugRedirects, venues, verificationQueue } from '../../tables'
 import { Content, Editor } from '../content'
 import { Facts } from '../facts'
@@ -398,6 +399,87 @@ describe('pending collection and route drafts', () => {
     expect((await Editor.collectionById(collection.id))?.firstPublishedAt).toBe(collectionBefore)
     expect((await Editor.routeById(route.id))?.title).toBe('Маршрут со штампом')
     expect((await Editor.collectionById(collection.id))?.title).toBe('Подборка со штампом')
+  })
+
+  it('caps and dedupes sources when a pending collection or route is applied', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const collection = await publishedCollection('pending-source-collection')
+    const route = await publishedRoute('pending-source-route')
+    const kept = [{ title: 'Старый', url: 'https://example.com/old' }]
+    await useDatabase().update(collections).set({ sources: kept }).where(eq(collections.id, collection.id))
+
+    enterContentScope('draft')
+    await saveCollectionDraft({
+      id: collection.id,
+      slug: collection.slug,
+      title: 'Подборка с источниками',
+      sources: [
+        { title: 'Первый', url: 'https://www.example.com/guide' },
+        { title: 'Повтор', url: 'http://example.com/guide/' },
+        { title: 'Второй', url: 'https://example.com/other' },
+      ],
+    })
+    await Editor.saveContentDraft({
+      entityType: 'route',
+      entityId: route.id,
+      publicationStatus: 'review',
+      payload: {
+        title: 'Маршрут с лишними источниками',
+        sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+          title: `Источник ${index + 1}`,
+          url: `https://example.com/route/${index + 1}`,
+        })),
+      },
+    })
+
+    enterContentScope('editor')
+    await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
+    await expect(setPublication({ entity: 'route', id: route.id, publicationStatus: 'published' })).rejects.toMatchObject({
+      statusCode: 400,
+      statusMessage: sourceLimitMessage(),
+    })
+
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual([
+      { title: 'Первый', url: 'https://www.example.com/guide' },
+      { title: 'Второй', url: 'https://example.com/other' },
+    ])
+    expect((await Editor.routeById(route.id))?.title).toBe('Старый маршрут')
+    expect(await Editor.contentDraft('route', route.id)).not.toBeNull()
+
+    enterContentScope('draft')
+    await saveCollectionDraft({
+      id: collection.id,
+      slug: 'pending-source-collection',
+      title: 'Слишком много источников',
+      sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+        title: `Источник ${index + 1}`,
+        url: `https://example.com/collection/${index + 1}`,
+      })),
+    })
+    await Editor.saveContentDraft({
+      entityType: 'route',
+      entityId: route.id,
+      publicationStatus: 'review',
+      payload: {
+        title: 'Маршрут после проверки',
+        sources: [
+          { title: 'Первый', url: 'https://www.example.com/route' },
+          { title: 'Повтор', url: 'http://example.com/route/' },
+        ],
+      },
+    })
+    enterContentScope('editor')
+    await expect(setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })).rejects.toMatchObject({
+      statusCode: 400,
+      statusMessage: sourceLimitMessage(),
+    })
+    await setPublication({ entity: 'route', id: route.id, publicationStatus: 'published' })
+
+    expect((await Editor.collectionById(collection.id))?.title).toBe('Подборка с источниками')
+    expect((await Editor.collectionById(collection.id))?.sources).toHaveLength(2)
+    expect(await Editor.contentDraft('collection', collection.id)).not.toBeNull()
+    expect((await Editor.routeById(route.id))?.title).toBe('Маршрут после проверки')
+    expect(await Editor.contentDraft('route', route.id)).toBeNull()
   })
 
   it('shows the admin diff, refuses a save, then apply and discard', async () => {

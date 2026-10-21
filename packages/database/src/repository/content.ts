@@ -80,7 +80,7 @@ function collectionFromPending(existing: typeof collections.$inferSelect, payloa
     noindex: kept(payload, 'noindex', existing.noindex),
     kind: kept(payload, 'kind', existing.kind),
     month: kept(payload, 'month', existing.month),
-    sources: kept(payload, 'sources', existing.sources),
+    sources: Object.hasOwn(payload, 'sources') ? pageSources(payload.sources) : existing.sources,
     modules: kept(payload, 'modules', existing.modules),
     publicationStatus: 'published' as const,
   }
@@ -698,6 +698,10 @@ export class Editor {
       const [existing] = await tx.select().from(routes).where(eq(routes.id, id)).limit(1)
       if (!existing) {
         return null
+      }
+      // A route row has no sources column. The same cap and dedupe still run, so a list on the payload is not copied as-is.
+      if (Object.hasOwn(draft.payload, 'sources')) {
+        pageSources(draft.payload.sources)
       }
       const next = routeFromPending(existing, draft.payload)
       await tx.insert(revisions).values({
