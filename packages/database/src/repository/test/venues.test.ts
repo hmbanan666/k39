@@ -171,6 +171,7 @@ describe('venue repository', () => {
     expect(second.existing).toEqual(first.created)
     const row = await Venues.byId(first.created[0]!)
     expect(row?.status).toBe('draft')
+    expect(row?.firstPublishedAt).toBeNull()
     expect(row?.osmId).toBe('way/7')
     await expect(Venues.update(row!.id, { status: 'published', description: 'Коротко' })).rejects.toBeInstanceOf(VenueInputError)
   })
@@ -185,8 +186,10 @@ describe('venue repository', () => {
       phone: phones,
     })
     expect(created.phone).toBe(phones)
+    expect(created.firstPublishedAt).toBeTruthy()
     const updated = await Venues.update(created.id, { phone: phones })
     expect(updated?.phone).toBe(phones)
+    expect(updated?.firstPublishedAt).toBe(created.firstPublishedAt)
   })
 
   it('rejects a social website and can move that link into socials in one update', async () => {

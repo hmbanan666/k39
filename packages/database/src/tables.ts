@@ -64,6 +64,8 @@ export const categories = pgTable('categories', {
   seoDescription: varchar('seo_description'),
   ogImage: varchar('og_image'),
   noindex: boolean('noindex').notNull().default(false),
+  // Hubs have no separate publish step. The migration copies created_at.
+  firstPublishedAt: timestamp('first_published_at', { precision: 3, withTimezone: true, mode: 'string' }),
 })
 
 export const places = pgTable('places', {
@@ -99,6 +101,8 @@ export const places = pgTable('places', {
   ogImage: varchar('og_image'),
   publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
   noindex: boolean('noindex').notNull().default(false),
+  // Set on the first publish and kept. Goal windows read it (ADR 0045).
+  firstPublishedAt: timestamp('first_published_at', { precision: 3, withTimezone: true, mode: 'string' }),
   updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
 }, (table) => [
   index('places_publication_idx').on(table.publicationStatus),
@@ -180,6 +184,8 @@ export const routes = pgTable('routes', {
   ogImage: varchar('og_image'),
   publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
   noindex: boolean('noindex').notNull().default(false),
+  // Set on the first publish and kept. Goal windows read it (ADR 0045).
+  firstPublishedAt: timestamp('first_published_at', { precision: 3, withTimezone: true, mode: 'string' }),
   updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
   regionId: cuid2('region_id').references(() => regions.id, { onUpdate: 'cascade' }),
   // Optional real route geometry: [longitude, latitude] pairs. Null keeps the map on a dashed connector.
@@ -210,6 +216,8 @@ export const quests = pgTable('quests', {
   ogImage: varchar('og_image'),
   publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
   noindex: boolean('noindex').notNull().default(false),
+  // Set on the first publish and kept. Goal windows read it (ADR 0045).
+  firstPublishedAt: timestamp('first_published_at', { precision: 3, withTimezone: true, mode: 'string' }),
   updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
   routeId: cuid2('route_id').references(() => routes.id, { onUpdate: 'cascade' }),
 })
@@ -239,6 +247,8 @@ export const collections = pgTable('collections', {
   ogImage: varchar('og_image'),
   publicationStatus: varchar('publication_status').notNull().default('draft').$type<PublicationStatus>(),
   noindex: boolean('noindex').notNull().default(false),
+  // Set on the first publish and kept. Goal windows read it (ADR 0045).
+  firstPublishedAt: timestamp('first_published_at', { precision: 3, withTimezone: true, mode: 'string' }),
   updatedBy: cuid2('updated_by').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' }),
   // 'theme' is a plain collection. 'month' is a month guide with month 1..12.
   kind: varchar('kind').notNull().default('theme').$type<CollectionKind>(),
@@ -336,6 +346,7 @@ export const venues = pgTable('venues', {
   description: text('description').notNull().default(''),
   sources: jsonb('sources').$type<SourceLink[]>().notNull().default(sql`'[]'::jsonb`),
   status: varchar('status').notNull().default('draft').$type<VenueStatus>(),
+  firstPublishedAt: timestamp('first_published_at', { precision: 3, withTimezone: true, mode: 'string' }),
   lastVerifiedAt: timestamp('last_verified_at', { precision: 3, withTimezone: true, mode: 'string' }),
   osmId: varchar('osm_id').unique(),
   seoTitle: varchar('seo_title'),

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amended by ADR 0034 for a justified ceiling above the defaults below.
+Accepted. Amended by ADR 0034 for a justified ceiling above the defaults below, and by ADR 0045 for result goals and the status check.
 
 ## Context
 
@@ -36,7 +36,7 @@ Linking follows the public templates, including the header and footer hubs and t
 
 Indexing uses the same rules as the sitemap and the public loaders. In the sitemap, HTTP 200, JSON-LD types from `placeDocument` / `collectionDocument` (breadcrumb plus the page type), title 30–65 characters, description 110–160, and a canonical equal to `https://k39.online` plus the path. Drafts and reviews are not scored. A published place with no category still fails `not in sitemap` and `not 200`. `signals.yandexIndexed` and `signals.googleIndexed` stay null until a later job fills them. Null does not fail the block. `false` fails `not in Yandex` or `not in Google`.
 
-Results read `analytics_hits` and `analytics_search_queries`. Organic entrances are entry pageviews whose channel starts with `organic`, over 7, 30, and 90 days. A set goal that the page missed is `organic 30d: 0, goal 50` (and the 90-day twin). Search queries count when the imported row names the page, or when a site-wide query equals a passport target. An empty search table is not a failure: the import has not run. Scroll depth and engaged time fail only when the page has pageviews and the beacon recorded a weak or missing value. Clicks to the next page count `[data-track]` outbound hits and a later pageview in the same session.
+Results read `analytics_hits` and `analytics_search_queries`. Organic entrances are entry pageviews whose channel starts with `organic`, over 7, 30, and 90 days. A set goal that the page missed is `organic 30d: 0, goal 50` (and the 90-day twin). ADR 0045 is the rule for a missing goal, for a page younger than its goal window, and for a closure that is about a tenant rather than the place. Search queries count when the imported row names the page, or when a site-wide query equals a passport target. An empty search table is not a failure: the import has not run. Scroll depth and engaged time fail only when the page has pageviews and the beacon recorded a weak or missing value. Clicks to the next page count `[data-track]` outbound hits and a later pageview in the same session.
 
 `content_scores` holds the latest run. `content_score_days` keeps one row per page per UTC day so `content_report_weekly` can subtract the latest day on or before seven days ago. The report returns average deltas, the five highest and lowest totals, pages under a goal, the largest drops, and, since ADR 0034, pages with a length override and their traffic.
 

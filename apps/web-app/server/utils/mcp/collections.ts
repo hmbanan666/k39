@@ -24,6 +24,7 @@ export function collectionView(row: Collection, items: CollectionStop[]) {
     ogImage: row.ogImage,
     publicationStatus: row.publicationStatus,
     noindex: row.noindex,
+    firstPublishedAt: row.firstPublishedAt,
     updatedBy: row.updatedBy,
     kind: row.kind,
     month: row.month,

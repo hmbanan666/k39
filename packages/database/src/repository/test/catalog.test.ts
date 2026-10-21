@@ -81,9 +81,11 @@ describe('initial content', () => {
     const loaded = await Content.publishedPlace('fort-11-denhoff')
     expect(loaded?.place.title).toContain('Дёнхофф')
     expect(loaded?.place.publicationStatus).toBe('published')
+    expect(loaded?.place.firstPublishedAt).toBeTruthy()
     expect(loaded?.nearest.length).toBeGreaterThan(0)
     const forty = await Content.categoryBySlug('forty')
     expect(forty?.body).toContain('## Частые вопросы')
+    expect(forty?.firstPublishedAt).toBeTruthy()
     const quest = await Content.publishedQuest('pyat-fortov')
     expect(quest?.route).toEqual({ slug: 'pyat-fortov', title: 'Пять фортов за один выезд' })
     expect(quest?.steps[0]?.prompt).toContain('Отметьте визит')
@@ -239,7 +241,10 @@ describe('initial content', () => {
       body: '',
       publicationStatus: 'published',
     })
+    expect(created.firstPublishedAt).toBeNull()
     expect(published.publicationStatus).toBe('published')
+    expect(published.firstPublishedAt).toBeTruthy()
+    const publishedAt = published.firstPublishedAt
     const live = await Content.sitemapRows()
     expect(live.places.some((row) => row.loc === '/mcp-fort')).toBe(true)
 
@@ -252,6 +257,7 @@ describe('initial content', () => {
       publicationStatus: 'published',
     })
     const redirects = await useDatabase().select().from(slugRedirects)
+    expect(renamed.firstPublishedAt).toBe(publishedAt)
     expect(redirects).toEqual(expect.arrayContaining([
       expect.objectContaining({ fromPath: '/mcp-fort', toPath: '/mcp-fort-new', statusCode: 301 }),
     ]))
@@ -265,8 +271,138 @@ describe('initial content', () => {
       publicationStatus: 'draft',
     })
     expect(unpublished.publicationStatus).toBe('draft')
+    expect(unpublished.firstPublishedAt).toBe(publishedAt)
     const after = await Content.sitemapRows()
     expect(after.places.some((row) => row.loc === '/mcp-fort-new')).toBe(false)
     expect(after.places.some((row) => row.loc === '/mcp-fort')).toBe(false)
   })
+
+  it('backfills first publication from the revision that made the row public', async () => {
+    const db = useDatabase()
+    const direct = await Editor.savePlace({
+      slug: 'backfill-direct',
+      title: 'Сразу опубликован',
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
+    const drafted = await Editor.savePlace({
+      slug: 'backfill-draft',
+      title: 'Сначала черновик',
+      summary: '',
+      body: '',
+      publicationStatus: 'draft',
+    })
+    const publishedLater = await Editor.savePlace({
+      id: drafted.id,
+      slug: drafted.slug,
+      title: drafted.title,
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
+    const editedDraft = await Editor.savePlace({
+      slug: 'backfill-edited',
+      title: 'Черновик перед правкой',
+      summary: '',
+      body: '',
+      publicationStatus: 'draft',
+    })
+    await Editor.savePlace({
+      id: editedDraft.id,
+      slug: editedDraft.slug,
+      title: editedDraft.title,
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
+    await Editor.savePlace({
+      id: editedDraft.id,
+      slug: editedDraft.slug,
+      title: 'Черновик после правки',
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
+    const untouched = await Editor.savePlace({
+      slug: 'backfill-plain',
+      title: 'Без ревизий',
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
+    await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-direct'))
+    await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-draft'))
+    await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-edited'))
+    await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-plain'))
+    await db.update(revisions).set({ createdAt: '2026-03-01T00:00:00.000Z' }).where(eq(revisions.entityId, publishedLater.id))
+    const editedRevisions = await db.select().from(revisions).where(eq(revisions.entityId, editedDraft.id))
+    for (const revision of editedRevisions) {
+      const snapshot = revision.snapshot as { publicationStatus?: string }
+      const createdAt = snapshot.publicationStatus === 'published'
+        ? '2026-05-01T00:00:00.000Z'
+        : '2026-03-15T00:00:00.000Z'
+      await db.update(revisions).set({ createdAt }).where(eq(revisions.id, revision.id))
+    }
+    await db.insert(revisions).values([
+      {
+        entityType: 'place',
+        entityId: direct.id,
+        snapshot: { publicationStatus: 'published' },
+        createdAt: '2026-04-01T12:00:00.000Z',
+      },
+      {
+        entityType: 'place',
+        entityId: direct.id,
+        snapshot: { publicationStatus: 'draft' },
+        createdAt: '2026-08-01T00:00:00.000Z',
+      },
+    ])
+    const [hub] = await db.insert(categories).values({
+      slug: 'backfill-hub',
+      title: 'Хаб',
+      description: 'Описание хаба',
+      firstPublishedAt: null,
+    }).returning()
+    const updatePlaces = migrationStatement('UPDATE places')
+    const updateCategories = migrationStatement('UPDATE categories')
+    await db.$client.query(updatePlaces)
+    await db.$client.query(updateCategories)
+
+    const directRow = await Editor.placeById(direct.id)
+    const draftedRow = await Editor.placeById(publishedLater.id)
+    const editedRow = await Editor.placeById(editedDraft.id)
+    const plainRow = await Editor.placeById(untouched.id)
+    expect(directRow?.firstPublishedAt).toBe(direct.createdAt)
+    expect(new Date(draftedRow?.firstPublishedAt ?? '').toISOString()).toBe('2026-03-01T00:00:00.000Z')
+    expect(new Date(editedRow?.firstPublishedAt ?? '').toISOString()).toBe('2026-03-15T00:00:00.000Z')
+    expect(plainRow?.firstPublishedAt).toBe(plainRow?.createdAt)
+    const [hubRow] = await db.select().from(categories).where(eq(categories.id, hub?.id ?? ''))
+    expect(hubRow?.firstPublishedAt).toBe(hubRow?.createdAt)
+
+    await db.insert(revisions).values({
+      entityType: 'place',
+      entityId: direct.id,
+      snapshot: { publicationStatus: 'published' },
+      createdAt: '2025-01-01T00:00:00.000Z',
+    })
+    await db.$client.query(updatePlaces)
+    expect((await Editor.placeById(direct.id))?.firstPublishedAt).toBe(directRow?.firstPublishedAt)
+  })
 })
+
+function migrationStatement(startsWith: string) {
+  const path = [
+    resolve(process.cwd(), 'migrations/0041_first_published_at.sql'),
+    resolve(process.cwd(), 'packages/database/migrations/0041_first_published_at.sql'),
+    resolve(__dirname, '../../../migrations/0041_first_published_at.sql'),
+  ].find((item) => existsSync(item))
+  const statement = readFileSync(path ?? '', 'utf8')
+    .split('--> statement-breakpoint')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(startsWith))
+  if (!statement) {
+    throw new Error(`missing ${startsWith}`)
+  }
+  return statement
+}

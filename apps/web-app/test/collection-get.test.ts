@@ -17,6 +17,7 @@ describe('collection_get', () => {
       ogImage: '/media/october.jpg',
       publicationStatus: 'published',
       noindex: false,
+      firstPublishedAt: '2026-10-01T00:00:00.000Z',
       updatedBy: 'user-1',
       kind: 'month',
       month: 10,

@@ -64,6 +64,7 @@ export class Scoring {
       regionId: places.regionId,
       regionTitle: regions.title,
       updatedAt: places.updatedAt,
+      firstPublishedAt: places.firstPublishedAt,
       scheduleMode: sql<string | null>`${schedules.rules}->>'mode'`,
     }).from(places).leftJoin(schedules, and(eq(schedules.entityType, 'place'), eq(schedules.entityId, places.id))).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(ne(places.publicationStatus, 'archived'))
 
@@ -124,7 +125,7 @@ export class Scoring {
       group by venue_id
     `)
 
-    const article = (row: { id: string, slug: string, title: string, summary: string | null, body: string, publicationStatus: string, noindex: boolean, seoTitle: string | null, seoDescription: string | null, updatedAt: string, modules?: StoredPageModule[], sources?: SourceLink[] }, routeSlug: string | null = null): CatalogArticle | null => {
+    const article = (row: { id: string, slug: string, title: string, summary: string | null, body: string, publicationStatus: string, noindex: boolean, seoTitle: string | null, seoDescription: string | null, updatedAt: string, firstPublishedAt?: string | null, modules?: StoredPageModule[], sources?: SourceLink[] }, routeSlug: string | null = null): CatalogArticle | null => {
       const publicationStatus = statusOf(row.publicationStatus)
       if (!publicationStatus) {
         return null
@@ -140,6 +141,7 @@ export class Scoring {
         seoTitle: row.seoTitle,
         seoDescription: row.seoDescription,
         updatedAt: row.updatedAt,
+        firstPublishedAt: row.firstPublishedAt ?? null,
         routeSlug,
         modules: row.modules ?? [],
         sourcesCount: row.sources?.length ?? 0,
@@ -197,6 +199,7 @@ export class Scoring {
           regionId: row.regionId,
           regionTitle: row.regionTitle,
           updatedAt: row.updatedAt,
+          firstPublishedAt: row.firstPublishedAt ?? null,
           scheduleMode: row.scheduleMode ?? null,
         }]
       }),
@@ -225,6 +228,7 @@ export class Scoring {
         seoTitle: row.seoTitle,
         seoDescription: row.seoDescription,
         updatedAt: row.updatedAt,
+        firstPublishedAt: row.firstPublishedAt,
       })),
       venues: venueRows.flatMap((row): CatalogVenue[] => {
         const publicationStatus = row.venue.status === 'published' ? 'published' as const : row.venue.status === 'draft' ? 'draft' as const : null
@@ -249,6 +253,7 @@ export class Scoring {
           regionSlug: row.regionSlug,
           regionTitle: row.regionTitle,
           updatedAt: row.venue.updatedAt,
+          firstPublishedAt: row.venue.firstPublishedAt,
         }]
       }),
       related: relatedRows,
