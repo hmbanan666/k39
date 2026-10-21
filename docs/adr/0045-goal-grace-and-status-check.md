@@ -18,11 +18,13 @@ No column records the first publication. `mcp_audits` stores a tool name and a t
 
 The check reads the article, the hours line, the directions line, and each FAQ answer as its own plain sentence. Callers pass the FAQ array. They do not pass `JSON.stringify` of it.
 
-A closure phrase counts when it is about the place. In the same sentence, a phrase is ignored when the text before it names another subject: a «quoted name», or one of ресторан, кафе, магазин, выставка, экспозиция, or музей внутри (`музей внутри`). A tenant word or a quoted name that appears only after the phrase is ambiguous. The score records `status warning: closure may refer to another subject` and does not subtract 15. A sentence that is clearly about the place, such as "Ворота временно закрыты на реставрацию", still contradicts an open schedule and still costs 15.
+A closure phrase counts when it is about the place. The check receives the page title. In the clause that contains the phrase, the phrase is ignored when the text before it names another subject. Another subject is a tenant word (ресторан, кафе, бар, магазин, выставка, экспозиция, or `музей внутри`) or a «quoted name». A quoted name is another subject only when it sits directly after a tenant word, or when it is not this page's title. «Музей «Фридландские ворота»» is the place when that is the title. «Ресторан «Розенгартен»» is not.
+
+A clause break resets the subject: `, а`, `, но`, and сам/сама/само. Words before that break do not belong to the closure. A closure about the place wins over a tenant clause in the same sentence, including when the tenant is named after a comma ("кафе на первом этаже", "кафе «Башня» тоже не работает"). A tenant word only in the words immediately after the phrase, before the next comma, is ambiguous. The score records `status warning: closure may refer to another subject` and does not subtract 15. A sentence that is clearly about the place, such as "Ворота временно закрыты на реставрацию", still contradicts an open schedule and still costs 15.
 
 A sentence that links to another page (`](/`) stays ignored. Appointment wording is unchanged.
 
-A later closure in the same sentence is ignored as well when a tenant or a quoted name appears anywhere before it. Two sentences keep the second one.
+Two sentences keep a closure in the second one. A quoted name earlier in the same sentence does not hide a later closure once a clause break has reset the subject.
 
 ### Results
 
@@ -33,19 +35,19 @@ Goals are judged only after the page has been published and is indexable for tha
 - the 30-day goal after 30 days
 - the 90-day goal after 90 days
 
-Until then the goal part is neutral: half the weight, rounded with `Math.round(weight / 2)`, so 18 and 13. The check is `goal pending (N days)`, where N is the days left in that window. A page that is not published uses `goal pending (unpublished)`. A `noindex` page uses `goal pending (not indexable)`. Both still take the half weight, so a young or hidden page is not punished for an unmet or a missing goal. Quality points for filling the passport stay as they are.
+Until then a missing or unmet goal is neutral: half the weight, rounded with `Math.round(weight / 2)`, so 18 and 13. The check is `goal pending (N days)`, where N is the days left in that window. A page that is not published uses `goal pending (unpublished)`. A `noindex` page uses `goal pending (not indexable)`. A goal the traffic has already met (`actual >= goal`) scores its full weight during that hold and is not pending. Half weight stays the neutral point for a goal that is still open, so an empty passport does not outscore a passport whose goals are met, and it does not outscore one whose goals are still unmet. Quality points for filling the passport stay as they are.
 
 `first_published_at` is set by the publish path the first time the row becomes `published`. Later saves keep it. Drafts stay null. A null value on a published indexable page is judged immediately, so a missing date is not an open-ended grace.
 
-The migration sets the column for rows that are already published. It uses the earliest revision whose snapshot says published, then the latest revision whose snapshot does not (the write that published a draft stores the draft), then `created_at`. Hubs use `categories.created_at`, because a hub has no separate publish step. That UPDATE is schema backfill. This change does not write live articles.
+The migration sets the column for rows that are already published. A revision stores the row from before the write, so the earliest revision whose snapshot says published is the first edit after publish. Call that time t1. The stamp is the `created_at` of the latest revision whose snapshot is not published and whose `created_at` is less than or equal to t1. When t1 is missing, that bound is open. When no such revision exists, the page was created already published and the stamp is the row's `created_at`. Hubs use `categories.created_at`, because a hub has no separate publish step. That UPDATE is schema backfill. This change does not write live articles.
 
 The weekly report's under-a-goal list skips a goal whose signal `goal30Pending` or `goal90Pending` is true. Admin and MCP otherwise keep the same score shape.
 
-Half weight during the window is the neutral point. The full weight would again pay an empty passport the same as a met goal. At the same age and the same traffic, an empty passport does not outscore a passport that has goals.
+Half weight during the window is the neutral point for a goal that is still open. Paying that same half weight for a goal the page has already met would hide a page that reached its goal. At the same age and the same traffic, an empty passport does not outscore a passport that has goals.
 
 ## Consequences
 
-Scores recompute on the next run, as today. A page at day 5 keeps both goals pending. At day 40 the 30-day goal is judged and the 90-day goal is still pending. At day 100 both are judged.
+Scores recompute on the next run, as today. A page at day 5 keeps an unmet goal pending. A goal it has already met scores full weight. At day 40 the 30-day goal is judged and the 90-day goal is still pending unless it is already met. At day 100 both are judged.
 
 A closure about a named tenant does not cost 15. An unclear subject is a warning an editor can see. A real closure of the place still costs 15.
 

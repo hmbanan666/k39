@@ -6,9 +6,12 @@
 const CLOSED = /(?:закрыт\p{L}*|не работает)\s+(?:на|для|в связи с)\s+(?:реставрац|ремонт|реконструкц|консервац|посещени)|временно\s+(?:закрыт|не работает|не принимает)|(?:сейчас|пока)\s+(?:закрыт|не работает)|на реставрации|на реконструкции|посещение невозможно|не открыт\p{L}* для посещени|не приспособлен\p{L}* (?:для|к) посещени|свободного доступа нет|(?:осмотр\s+)?только\s+(?:осмотр\s+)?снаружи|внутрь\s+(?:\p{L}+\s+)?не пускают|^закрыт/imu
 const APPOINTMENT = /по\s+(?:предварительн\p{L}*\s+)?(?:записи|договор[её]нност|заявк)/iu
 
-// A small explicit set. A word after the closure phrase is not this set:
-// the subject is whoever is named before the phrase.
-const OTHER_SUBJECT = /«[^»\n]{1,80}»|(?:^|[^\p{L}])(?:ресторан\p{L}*|кафе|магазин\p{L}*|выставк\p{L}*|экспозици\p{L}*)(?!\p{L})|музе\p{L}*\s+внутри/iu
+// Tenant words name someone else. A quoted name does too when it follows
+// one of those words, or when it is not this page's title. ADR 0045.
+const TENANT_WORD = String.raw`ресторан\p{L}*|кафе|бар|магазин\p{L}*|выставк\p{L}*|экспозици\p{L}*`
+const TENANT = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})(?!\p{L})|музе\p{L}*\s+внутри`, 'iu')
+const TENANT_THEN_QUOTE = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})\s+$`, 'iu')
+const CLAUSE_RESET = /,\s*(?:а|но)(?!\p{L})|(?:^|[^\p{L}])сам[ао]?(?!\p{L})/giu
 
 export const STATUS_SUBJECT_WARNING = 'closure may refer to another subject'
 
@@ -23,6 +26,8 @@ export interface StatusCheckInput {
   mode: string | null
   /** FAQ answers, as text. The check does not read a JSON encoding of this array. */
   faq?: StatusFaqItem[]
+  /** Page title. A «quoted name» that is this title is the place, not a tenant. */
+  title?: string | null
 }
 
 export interface StatusCheckResult {
@@ -49,19 +54,67 @@ function ownSentences(input: StatusCheckInput) {
 
 type ClosureKind = 'definite' | 'other' | 'ambiguous'
 
-function closureKind(sentence: string): ClosureKind | null {
+function normalizeName(value: string) {
+  return value.replace(/[«»„“”"]/g, ' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase('ru')
+}
+
+/** The quoted name is this page when the title contains it as its own words. */
+function quoteIsPageTitle(quote: string, title: string | null | undefined) {
+  const name = normalizeName(quote)
+  const page = normalizeName(title ?? '')
+  if (!name || !page) {
+    return false
+  }
+  return page === name || ` ${page} `.includes(` ${name} `)
+}
+
+function quoteIsOtherSubject(quote: string, beforeQuote: string, title: string | null | undefined) {
+  if (TENANT_THEN_QUOTE.test(beforeQuote)) {
+    return true
+  }
+  return !quoteIsPageTitle(quote, title)
+}
+
+function hasOtherSubject(text: string, title: string | null | undefined) {
+  if (TENANT.test(text)) {
+    return true
+  }
+  for (const match of text.matchAll(/«([^»\n]{1,80})»/gu)) {
+    const index = match.index ?? 0
+    if (quoteIsOtherSubject(match[1] ?? '', text.slice(0, index), title)) {
+      return true
+    }
+  }
+  return false
+}
+
+/** «, а», «, но», and сам/сама/само start a new subject. Earlier words do not apply. */
+function scopeStart(sentence: string, index: number) {
+  let start = 0
+  CLAUSE_RESET.lastIndex = 0
+  for (const match of sentence.matchAll(CLAUSE_RESET)) {
+    const end = (match.index ?? 0) + match[0].length
+    if (end <= index) {
+      start = end
+    }
+  }
+  return start
+}
+
+function closureKind(sentence: string, title: string | null | undefined): ClosureKind | null {
   const pattern = new RegExp(CLOSED.source, `${CLOSED.flags}g`)
   let other = false
   let ambiguous = false
   for (const match of sentence.matchAll(pattern)) {
     const index = match.index ?? 0
-    const before = sentence.slice(0, index)
-    const after = sentence.slice(index + match[0].length)
-    if (OTHER_SUBJECT.test(before)) {
+    const before = sentence.slice(scopeStart(sentence, index), index)
+    // A tenant after a comma is another clause. It does not steal this closure.
+    const after = (sentence.slice(index + match[0].length).split(',')[0] ?? '')
+    if (hasOtherSubject(before, title)) {
       other = true
       continue
     }
-    if (OTHER_SUBJECT.test(after)) {
+    if (hasOtherSubject(after, title)) {
       ambiguous = true
       continue
     }
@@ -82,7 +135,7 @@ export function statusChecks(input: StatusCheckInput): StatusCheckResult {
   let definite = false
   let ambiguous = false
   for (const sentence of sentences) {
-    const kind = closureKind(sentence)
+    const kind = closureKind(sentence, input.title)
     if (kind === 'definite') {
       definite = true
     } else if (kind === 'ambiguous') {

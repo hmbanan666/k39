@@ -908,6 +908,19 @@ describe('goal grace and status scope', () => {
       results: { ...quiet, organic30d: 4, organic90d: 0 },
     })
     expect(missing.results).toBeLessThanOrEqual(partial.results)
+
+    const metEarly = at(5, { results: { ...quiet, organic30d: 5, organic90d: 0 } })
+    expect(metEarly.checks.results).toEqual(['goal pending (85 days)'])
+    expect(metEarly.results).toBe(88)
+    expect(metEarly.signals.goal30Pending).toBe(false)
+    expect(metEarly.signals.goal90Pending).toBe(true)
+    const bothMet = at(5, { results: { ...quiet, organic30d: 5, organic90d: 50 } })
+    expect(bothMet.checks.results).toEqual([])
+    expect(bothMet.results).toBe(100)
+    const emptySame = at(5, { passport: null, results: { ...quiet, organic30d: 5, organic90d: 50 } })
+    expect(emptySame.results).toBe(71)
+    expect(emptySame.results).toBeLessThan(metEarly.results)
+    expect(emptySame.results).toBeLessThan(bothMet.results)
   })
 
   it('holds goals while the page is hidden from the index', () => {
@@ -941,6 +954,32 @@ describe('goal grace and status scope', () => {
       faq: [{ question: 'Идут ли работы?', answer: 'Ворота временно закрыты на реставрацию.' }],
     }))
     expect(fromFaq.checks.quality).toContain('status contradiction: text says closed, schedule mode is always')
+
+    const titled = [
+      { title: 'Музей «Фридландские ворота»', body: 'Музей «Фридландские ворота» временно закрыт на реставрацию.' },
+      { title: 'Форт №5 «Король Фридрих Вильгельм III»', body: 'Форт №5 «Король Фридрих Вильгельм III» сейчас закрыт для посещения.' },
+      { title: 'Башня', body: 'Выставка завершилась, а сама башня временно закрыта на ремонт.' },
+      { title: 'Здание биржи', body: 'Здание временно закрыто на ремонт, работает только кафе на первом этаже.' },
+      { title: 'Башня', body: 'Закрыт на реконструкцию до 2027 года, кафе «Башня» тоже не работает.' },
+    ]
+    for (const item of titled) {
+      const shut = scorePage(source({ scheduleMode: 'closed', title: item.title, body: item.body }))
+      const listed = scorePage(source({ scheduleMode: 'always', title: item.title, body: item.body }))
+      expect(listed.quality).toBe(shut.quality - 15)
+    }
+    const judittenOpen = scorePage(source({
+      scheduleMode: 'always',
+      title: 'Кирха «Юдиттен»',
+      body: 'Фасад на месте.',
+      faq: [{ question: 'Идёт ремонт?', answer: 'Да, кирха «Юдиттен» сейчас закрыта на реставрацию' }],
+    }))
+    const judittenShut = scorePage(source({
+      scheduleMode: 'closed',
+      title: 'Кирха «Юдиттен»',
+      body: 'Фасад на месте.',
+      faq: [{ question: 'Идёт ремонт?', answer: 'Да, кирха «Юдиттен» сейчас закрыта на реставрацию' }],
+    }))
+    expect(judittenOpen.quality).toBe(judittenShut.quality - 15)
 
     const ambiguous = 'Временно закрыт ресторан внутри.'
     const warned = scorePage(source({ scheduleMode: 'always', body: ambiguous }))

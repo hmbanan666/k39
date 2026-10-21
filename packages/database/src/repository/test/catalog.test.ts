@@ -301,6 +301,29 @@ describe('initial content', () => {
       body: '',
       publicationStatus: 'published',
     })
+    const editedDraft = await Editor.savePlace({
+      slug: 'backfill-edited',
+      title: 'Черновик перед правкой',
+      summary: '',
+      body: '',
+      publicationStatus: 'draft',
+    })
+    await Editor.savePlace({
+      id: editedDraft.id,
+      slug: editedDraft.slug,
+      title: editedDraft.title,
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
+    await Editor.savePlace({
+      id: editedDraft.id,
+      slug: editedDraft.slug,
+      title: 'Черновик после правки',
+      summary: '',
+      body: '',
+      publicationStatus: 'published',
+    })
     const untouched = await Editor.savePlace({
       slug: 'backfill-plain',
       title: 'Без ревизий',
@@ -310,8 +333,17 @@ describe('initial content', () => {
     })
     await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-direct'))
     await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-draft'))
+    await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-edited'))
     await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-plain'))
     await db.update(revisions).set({ createdAt: '2026-03-01T00:00:00.000Z' }).where(eq(revisions.entityId, publishedLater.id))
+    const editedRevisions = await db.select().from(revisions).where(eq(revisions.entityId, editedDraft.id))
+    for (const revision of editedRevisions) {
+      const snapshot = revision.snapshot as { publicationStatus?: string }
+      const createdAt = snapshot.publicationStatus === 'published'
+        ? '2026-05-01T00:00:00.000Z'
+        : '2026-03-15T00:00:00.000Z'
+      await db.update(revisions).set({ createdAt }).where(eq(revisions.id, revision.id))
+    }
     await db.insert(revisions).values([
       {
         entityType: 'place',
@@ -339,9 +371,11 @@ describe('initial content', () => {
 
     const directRow = await Editor.placeById(direct.id)
     const draftedRow = await Editor.placeById(publishedLater.id)
+    const editedRow = await Editor.placeById(editedDraft.id)
     const plainRow = await Editor.placeById(untouched.id)
-    expect(new Date(directRow?.firstPublishedAt ?? '').toISOString()).toBe('2026-04-01T12:00:00.000Z')
+    expect(directRow?.firstPublishedAt).toBe(direct.createdAt)
     expect(new Date(draftedRow?.firstPublishedAt ?? '').toISOString()).toBe('2026-03-01T00:00:00.000Z')
+    expect(new Date(editedRow?.firstPublishedAt ?? '').toISOString()).toBe('2026-03-15T00:00:00.000Z')
     expect(plainRow?.firstPublishedAt).toBe(plainRow?.createdAt)
     const [hubRow] = await db.select().from(categories).where(eq(categories.id, hub?.id ?? ''))
     expect(hubRow?.firstPublishedAt).toBe(hubRow?.createdAt)

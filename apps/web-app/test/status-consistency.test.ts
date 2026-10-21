@@ -28,10 +28,20 @@ describe('status consistency', () => {
   })
 
   it('ignores a tenant or a quoted name named before the closure', () => {
-    expect(statusChecks({ text: ROSGARTEN_BODY, mode: 'always', faq: ROSGARTEN_FAQ })).toEqual({
+    expect(statusChecks({
+      text: ROSGARTEN_BODY,
+      mode: 'always',
+      faq: ROSGARTEN_FAQ,
+      title: 'Росгартенские ворота',
+    })).toEqual({
       contradictions: [],
       warnings: [],
     })
+    expect(statusChecks({
+      text: 'Ресторан «Розенгартен» внутри временно закрыт.',
+      mode: 'always',
+      title: 'Росгартенские ворота',
+    })).toEqual({ contradictions: [], warnings: [] })
     for (const sentence of [
       'Кафе временно не работает.',
       'Магазин временно закрыт.',
@@ -41,6 +51,44 @@ describe('status consistency', () => {
       '«Солнечный камень» временно не работает.',
     ]) {
       expect(statusContradictions({ text: sentence, mode: 'always' })).toEqual([])
+    }
+  })
+
+  it('flags a closure of this place when the quoted name is the title', () => {
+    const cases = [
+      {
+        title: 'Музей «Фридландские ворота»',
+        text: 'Музей «Фридландские ворота» временно закрыт на реставрацию.',
+      },
+      {
+        title: 'Форт №5 «Король Фридрих Вильгельм III»',
+        text: 'Форт №5 «Король Фридрих Вильгельм III» сейчас закрыт для посещения.',
+      },
+      {
+        title: 'Кирха «Юдиттен»',
+        text: 'Фасад на месте.',
+        faq: [{ question: 'Идёт ремонт?', answer: 'Да, кирха «Юдиттен» сейчас закрыта на реставрацию' }],
+      },
+      {
+        title: 'Башня',
+        text: 'Выставка завершилась, а сама башня временно закрыта на ремонт.',
+      },
+      {
+        title: 'Здание биржи',
+        text: 'Здание временно закрыто на ремонт, работает только кафе на первом этаже.',
+      },
+      {
+        title: 'Башня',
+        text: 'Закрыт на реконструкцию до 2027 года, кафе «Башня» тоже не работает.',
+      },
+    ]
+    for (const item of cases) {
+      expect(statusChecks({
+        text: item.text,
+        mode: 'always',
+        title: item.title,
+        faq: item.faq,
+      }).contradictions).toEqual(['text says closed, schedule mode is always'])
     }
   })
 

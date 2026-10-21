@@ -573,6 +573,7 @@ function statusPoints(page: ScoreSource, text: string) {
     text: [text, page.hours ?? '', page.howToGet ?? ''].join('\n'),
     mode: page.scheduleMode,
     faq: page.faq,
+    title: page.title,
   })
   return {
     points: found.contradictions.length ? -15 : 0,
@@ -890,6 +891,11 @@ function goalHold(page: ScoreSource, now: Date, windowDays: number) {
 function scoreGoal(actual: number, goal: number | null, weight: number, label: string, missing: string, page: ScoreSource, now: Date, windowDays: number) {
   const hold = goalHold(page, now, windowDays)
   if (hold) {
+    // Already met: full weight. Half weight is the neutral point for a goal
+    // that is still missing or unmet, so an empty passport cannot score more.
+    if (goal != null && actual >= goal) {
+      return { points: weight, checks: [] as string[], pending: false }
+    }
     return { points: Math.round(weight / 2), checks: [`goal pending (${hold})`], pending: true }
   }
   if (goal == null) {
