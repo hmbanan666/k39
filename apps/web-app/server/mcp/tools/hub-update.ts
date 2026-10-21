@@ -38,7 +38,7 @@ export default defineMcpTool({
       ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
       noindex: input.noindex ?? current.noindex,
     }, {
-      parts: [title, description, body, seoTitle, seoDescription],
+      prose: [title, description, body, seoTitle, seoDescription],
       publishing: true,
     })
     await auditMcp('hub_update', 'hub', current.id)

@@ -1,12 +1,35 @@
+import { prepareSourceLinks, SOURCE_LINK_LIMIT, SourceInputError, sourceLimitMessage } from '@k39/database'
 import { z } from 'zod'
 
 export const publication = z.enum(['draft', 'review', 'published']).optional()
 export const visit = z.enum(['open', 'ruins', 'closed', 'unknown']).optional()
 export const license = z.enum(['own', 'cc-by', 'cc-by-sa', 'cc0', 'pd', 'permission'])
-export const sources = z.array(z.object({
+
+const sourceLink = z.object({
   title: z.string(),
   url: z.string(),
-})).optional()
+})
+
+/**
+ * Shared by places, collections, and venues.
+ * Rows are checked, then duplicate URLs merge, then `.max` counts what remains.
+ */
+export const sources = z.array(sourceLink)
+  .superRefine((rows, ctx) => {
+    try {
+      prepareSourceLinks(rows)
+    } catch (error) {
+      if (error instanceof SourceInputError) {
+        ctx.addIssue({ code: 'custom', message: error.message })
+        return
+      }
+      throw error
+    }
+  })
+  .transform((rows) => prepareSourceLinks(rows) ?? [])
+  .pipe(z.array(sourceLink).max(SOURCE_LINK_LIMIT, sourceLimitMessage()))
+  .optional()
+  .describe(`Up to ${SOURCE_LINK_LIMIT} sources. Duplicate URLs merge (trailing slash, www, and http/https) before the limit. Each row needs a title and an http(s) URL.`)
 
 export const orderedStop = z.object({
   placeSlug: z.string().describe('Slug of an existing place'),

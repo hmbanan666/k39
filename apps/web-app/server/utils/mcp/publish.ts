@@ -1,6 +1,6 @@
 import { db } from '@k39/database'
 import { collectionWritePlan } from '../../../shared/page-modules'
-import { saveCollectionContent, saveQuestContent, saveRouteContent } from '../content/save'
+import { contentGate, saveCollectionContent, saveQuestContent, saveRouteContent } from '../content/save'
 import { auditMcp } from './audit'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
 import { updatePlaceDraft } from './places'
@@ -33,10 +33,13 @@ export async function setPublication(input: {
       seoDescription: current.seoDescription,
       ogImage: current.ogImage,
       noindex: current.noindex,
-    }, null, {
-      parts: [current.title, current.summary, current.body, current.seoTitle, current.seoDescription],
-      publishing: publicationStatus === 'published',
-    })
+    }, null, contentGate('route', {
+      title: current.title,
+      summary: current.summary,
+      body: current.body,
+      seoTitle: current.seoTitle,
+      seoDescription: current.seoDescription,
+    }, publicationStatus === 'published'))
     await auditMcp('content_set_publication', 'route', current.id)
     return { id: row?.id, slug: row?.slug, publicationStatus: row?.publicationStatus, writingWarnings }
   }
@@ -64,10 +67,14 @@ export async function setPublication(input: {
       seoDescription: current.seoDescription,
       ogImage: current.ogImage,
       noindex: current.noindex,
-    }, null, {
-      parts: [current.title, current.summary, plan.copy, current.seoTitle, current.seoDescription, current.sources],
-      publishing: publicationStatus === 'published',
-    })
+    }, null, contentGate('collection', {
+      title: current.title,
+      summary: current.summary,
+      copy: plan.copy,
+      seoTitle: current.seoTitle,
+      seoDescription: current.seoDescription,
+      sources: current.sources,
+    }, publicationStatus === 'published'))
     await auditMcp('content_set_publication', 'collection', current.id)
     return {
       id: row?.id,
@@ -101,7 +108,7 @@ export async function setPublication(input: {
     noindex: current.noindex,
     routeId: current.routeId,
   }, null, {
-    parts: [current.title, current.summary, current.body, current.seoTitle, current.seoDescription],
+    prose: [current.title, current.summary, current.body, current.seoTitle, current.seoDescription],
     publishing: publicationStatus === 'published',
   })
   await auditMcp('content_set_publication', 'quest', current.id)

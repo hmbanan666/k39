@@ -5,7 +5,7 @@ import { db, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
 import { contentScope } from '../access'
-import { contentWarnings, createVenueContent, updateVenueContent } from '../content/save'
+import { contentGate, contentWarnings, createVenueContent, updateVenueContent } from '../content/save'
 import { hoursConflict, syncCoordinates, syncVenueContact } from '../facts/sync'
 import { auditMcp } from '../mcp/audit'
 import { parseFactsCheckedAt } from '../mcp/facts'
@@ -85,11 +85,7 @@ export async function createVenue(input: Parameters<typeof venueWriteFromInput>[
     const { row, writingWarnings } = await createVenueContent({
       ...venueWriteFromInput({ ...input, modules }),
       regionId: regionId === undefined ? input.regionId : regionId,
-    }, userId, {
-      parts: [input.name, input.description, input.address, input.phone, input.seoTitle, input.seoDescription, input.signatureDishes, modules, input.sources],
-      publishing: input.status === 'published',
-      venue: true,
-    })
+    }, userId, contentGate('venue', { ...input, modules }, input.status === 'published'))
     await syncVenueSchedule(row, input, actor)
     await syncVenueContact({
       venueId: row.id,
@@ -137,21 +133,24 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
     const regionId = await regionIdForSlug(input.regionSlug)
     const modules = input.modules ? await normalizeDishModules(current.id, input.modules as VenueModule[], 'editorial') : undefined
     const status = input.status ?? current.status
-    const gate = {
-      parts: [
-        input.name ?? current.name,
-        input.description === undefined ? current.description : input.description,
-        input.address === undefined ? current.address : input.address,
-        input.phone === undefined ? current.phone : input.phone,
-        input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-        input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-        input.signatureDishes === undefined ? current.signatureDishes : input.signatureDishes,
-        modules === undefined ? current.modules : modules,
-        input.sources === undefined ? current.sources : input.sources,
-      ],
-      publishing: status === 'published',
-      venue: true,
-    }
+    const gate = contentGate('venue', {
+      name: input.name === undefined ? current.name : input.name,
+      description: input.description === undefined ? current.description : input.description,
+      address: input.address === undefined ? current.address : input.address,
+      phone: input.phone === undefined ? current.phone : input.phone,
+      seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+      seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+      signatureDishes: input.signatureDishes === undefined ? current.signatureDishes : input.signatureDishes,
+      modules: modules === undefined ? current.modules : modules,
+      sources: input.sources === undefined ? current.sources : input.sources,
+      website: input.website === undefined ? current.website : input.website,
+      socials: input.socials === undefined ? current.socials : input.socials,
+      bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : input.bookingUrl,
+      orderUrl: input.orderUrl === undefined ? current.orderUrl : input.orderUrl,
+      deliveryUrl: input.deliveryUrl === undefined ? current.deliveryUrl : input.deliveryUrl,
+      menuUrl: input.menuUrl === undefined ? current.menuUrl : input.menuUrl,
+      contactEmail: input.contactEmail === undefined ? current.contactEmail : input.contactEmail,
+    }, status === 'published')
     contentWarnings(gate)
     const actor: FactActor = userId ? 'editor' : 'mcp'
     let hoursQueue: string | null = null

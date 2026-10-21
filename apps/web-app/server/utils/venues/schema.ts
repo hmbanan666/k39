@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { venueModulesSchema } from '../../../shared/venue-modules'
+import { sources } from '../mcp/schemas'
 
 const point = z.number()
 const day = z.object({
@@ -42,7 +43,7 @@ export const venueFields = {
   modules: venueModulesSchema.optional().describe('Page modules, replaces the list. Types: text, dishes, audience, practical, best-time, how-to-get, tips, prices, faq. dishes is a showcase of at most 8 items {id?, name, description?, priceRub?, mediaId?, updatedAt?}. note on an item is the old short text. A new mediaId must already be attached with origin own or commons. See docs/venue-modules.md. Original text only'),
   contactEmail: z.string().nullable().optional().describe('Official venue email used for a claim code. Not shown on the public page'),
   description: z.string().optional().describe('Russian description, 300-600 characters to publish. Archive and SEO source when modules are set'),
-  sources: z.array(z.object({ title: z.string(), url: z.string() })).optional(),
+  sources,
   status: z.enum(['draft', 'published', 'closed', 'archived']).optional(),
   lastVerifiedAt: z.string().nullable().optional().describe('ISO date of the last check. Null clears it. Omit to keep it'),
   osmId: z.string().nullable().optional(),

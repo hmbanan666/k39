@@ -5,7 +5,7 @@ import { createError } from 'h3'
 import { formatDraftUpdated, placeDraftChanges } from '../../../shared/place-draft-diff'
 import { slugError } from '../../../shared/seo'
 import { withContentScope } from '../access'
-import { savePlaceContent } from '../content/save'
+import { contentGate, savePlaceContent } from '../content/save'
 import { syncCoordinates, syncPlaceStatus } from '../facts/sync'
 import { setPublication } from '../mcp/publish'
 
@@ -181,19 +181,17 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
     publicationStatus,
     noindex: body.noindex ?? current.noindex,
     authorKind: asAuthor(body.authorKind, current.authorKind),
-  }, userId, {
-    parts: [
-      body.title ?? current.title,
-      body.summary ?? current.summary,
-      body.body ?? current.body,
-      body.hours ?? current.hours,
-      body.price ?? current.price,
-      body.howToGet ?? current.howToGet,
-      body.seoTitle ?? current.seoTitle,
-      body.seoDescription ?? current.seoDescription,
-    ],
-    publishing: publicationStatus === 'published',
-  })
+  }, userId, contentGate('place', {
+    title: body.title ?? current.title,
+    summary: body.summary ?? current.summary,
+    body: body.body ?? current.body,
+    hours: body.hours ?? current.hours,
+    price: body.price ?? current.price,
+    howToGet: body.howToGet ?? current.howToGet,
+    seoTitle: body.seoTitle ?? current.seoTitle,
+    seoDescription: body.seoDescription ?? current.seoDescription,
+    sources: Array.isArray(body.sources) ? body.sources : current.sources,
+  }, publicationStatus === 'published'))
   if (pending) {
     await db.editor.deleteContentDraft('place', id)
   }

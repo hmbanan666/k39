@@ -33,9 +33,9 @@ function files(dir: string, out: string[] = []) {
 
 describe('content save hook', () => {
   it('normalizes whitespace before the stop-list and rejects a publish', () => {
-    expect(contentWarnings({ parts: ['уютная   атмосфера'], publishing: false })).toEqual(['уютная атмосфера: уютная атмосфера'])
-    expect(contentWarnings({ parts: ['Форт у дороги.'], publishing: true })).toEqual([])
-    expect(() => contentWarnings({ parts: ['Форт — музей'], publishing: true })).toThrow(/Нельзя опубликовать/)
+    expect(contentWarnings({ prose: ['уютная   атмосфера'], publishing: false })).toEqual(['уютная атмосфера: уютная атмосфера'])
+    expect(contentWarnings({ prose: ['Форт у дороги.'], publishing: true })).toEqual([])
+    expect(() => contentWarnings({ prose: ['Форт — музей'], publishing: true })).toThrow(/Нельзя опубликовать/)
   })
 
   it('is the only server module that writes a content table', () => {

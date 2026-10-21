@@ -246,7 +246,7 @@ export async function writePassport(page: ResolvedPage, input: {
     notes: input.notes,
     ...(lengthOverride !== undefined ? { lengthOverride } : {}),
   }, {
-    parts: [input.notes, input.audience, input.targetQueries],
+    prose: [input.notes, input.audience, input.targetQueries],
     publishing: false,
   })
   return readPassport(page)

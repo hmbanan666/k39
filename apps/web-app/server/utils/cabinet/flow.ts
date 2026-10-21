@@ -4,7 +4,7 @@ import process from 'node:process'
 import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
-import { updateVenueContent } from '../content/save'
+import { contentGate, updateVenueContent } from '../content/save'
 import { readShownFacts, shownText } from '../facts/read'
 import { setVenuePrices, syncVenueContact } from '../facts/sync'
 import { normalizeDishModules } from '../venues/dishes'
@@ -291,11 +291,14 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     const updated = await updateVenueContent(venueId, {
       ...write,
       lastVerifiedAt: touchHours ? new Date().toISOString() : undefined,
-    }, userId, {
-      parts: [write.description, write.modules, write.address, write.phone, write.name],
-      publishing: current.status === 'published',
-      venue: true,
-    })
+    }, userId, contentGate('venue', {
+      description: write.description,
+      modules: write.modules,
+      address: write.address,
+      phone: write.phone,
+      name: write.name,
+      prices: ownerPrices,
+    }, current.status === 'published'))
     const saved = updated.row
     if (!saved) {
       fail(404, 'Заведение не найдено')

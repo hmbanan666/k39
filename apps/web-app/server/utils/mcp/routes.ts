@@ -1,7 +1,7 @@
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { slugError } from '../../../shared/seo'
-import { saveRouteContent } from '../content/save'
+import { contentGate, saveRouteContent } from '../content/save'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
@@ -62,10 +62,15 @@ export async function createRouteDraft(input: {
       seoDescription: input.seoDescription,
       points: input.points,
       path: input.path,
-    }, null, {
-      parts: [input.title, input.summary, input.body, input.sections, input.seoTitle, input.seoDescription, input.points],
-      publishing: publicationStatus === 'published',
-    })
+    }, null, contentGate('route', {
+      title: input.title,
+      summary: input.summary,
+      body: input.body,
+      sections: input.sections,
+      seoTitle: input.seoTitle,
+      seoDescription: input.seoDescription,
+      points: input.points,
+    }, publicationStatus === 'published'))
     await auditMcp('route_draft_create', 'route', row.id)
     return {
       id: row.id,
@@ -108,18 +113,15 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
       points: input.points,
       path: input.path,
-    }, null, {
-      parts: [
-        input.title || current.title,
-        input.summary ?? current.summary,
-        input.body ?? current.body,
-        input.sections,
-        input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-        input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-        input.points,
-      ],
-      publishing: publicationStatus === 'published',
-    })
+    }, null, contentGate('route', {
+      title: input.title || current.title,
+      summary: input.summary ?? current.summary,
+      body: input.body ?? current.body,
+      sections: input.sections,
+      seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+      seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+      points: input.points,
+    }, publicationStatus === 'published'))
     await auditMcp(auditTool, 'route', current.id)
     return {
       id: row.id,
