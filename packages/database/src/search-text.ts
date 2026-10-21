@@ -57,11 +57,17 @@ const TRANSLIT: Array<[string, string]> = [
   ['z', 'з'],
 ]
 
-/** Lower case, ё to е, punctuation to spaces, collapsed whitespace, capped length. */
+/**
+ * NFC, lower case, combining marks removed, ё folded to е.
+ * Punctuation stays, so a layout swap can still read `[`, `;` and `,`.
+ */
+function foldSearchMarks(input: string) {
+  return input.normalize('NFC').toLowerCase().replace(/\p{M}/gu, '').replace(/ё/g, 'е')
+}
+
+/** Folded text, punctuation to spaces, collapsed whitespace, capped length. */
 export function normalizeSearchQuery(input: unknown) {
-  return String(input ?? '')
-    .toLowerCase()
-    .replace(/ё/g, 'е')
+  return foldSearchMarks(String(input ?? ''))
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
     .slice(0, SEARCH_QUERY_MAX)
@@ -97,7 +103,7 @@ export function transliterate(text: string) {
 export function searchVariants(input: unknown) {
   const normalized = normalizeSearchQuery(input)
   const variants = normalized ? [normalized] : []
-  const raw = String(input ?? '').toLowerCase().trim().slice(0, SEARCH_QUERY_MAX)
+  const raw = foldSearchMarks(String(input ?? '')).trim().slice(0, SEARCH_QUERY_MAX)
   if (LATIN.test(normalized)) {
     variants.push(normalizeSearchQuery(swapKeyboardLayout(raw)))
     variants.push(normalizeSearchQuery(transliterate(normalized)))

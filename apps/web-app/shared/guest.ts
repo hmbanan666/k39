@@ -144,9 +144,28 @@ export function inspectGuestUrl(raw: string): { ok: true, url: URL } | { ok: fal
   return { ok: true, url }
 }
 
-function hasPhone(text: string) {
-  const matches = text.match(/\+?\d[\d\s().-]{8,}\d/g) ?? []
-  return matches.some((match) => match.replace(/\D/g, '').length >= 10)
+// Optional +7 / 8 / 7, then ten national digits, or ten digits with no prefix.
+// Spaces, dashes and parentheses are separators. A dot is not, so a date
+// (dd.mm.yyyy) cannot join into a number. A spaced hyphen is a range.
+const PHONE_RE = /(?<!\d)\+?\s*(?:\d[\s()-]*){9,10}\d(?!\d)/gu
+
+function phoneFragment(text: string) {
+  PHONE_RE.lastIndex = 0
+  for (const match of text.matchAll(PHONE_RE)) {
+    const fragment = match[0].trim()
+    if (/\d\s+-\s+\d/u.test(fragment) || /\d{1,2}\.\d{1,2}\.\d{4}/u.test(fragment)) {
+      continue
+    }
+    const digits = fragment.replace(/\D/g, '')
+    if (digits.length < 10 || digits.length > 11) {
+      continue
+    }
+    if (digits.length === 11 && digits[0] !== '7' && digits[0] !== '8') {
+      continue
+    }
+    return fragment
+  }
+  return ''
 }
 
 export function inspectGuestText(text: string, options?: { allowPhone?: boolean }): { ok: true, body: string } | { ok: false, message: string } {
@@ -154,8 +173,9 @@ export function inspectGuestText(text: string, options?: { allowPhone?: boolean 
   if (EMAIL_RE.test(body)) {
     return { ok: false, message: 'Уберите адрес электронной почты из текста.' }
   }
-  if (!options?.allowPhone && hasPhone(body)) {
-    return { ok: false, message: 'Уберите номер телефона из текста.' }
+  const phone = phoneFragment(body)
+  if (!options?.allowPhone && phone) {
+    return { ok: false, message: `Уберите номер телефона из текста: «${phone}».` }
   }
   if (WWW_RE.test(body)) {
     return { ok: false, message: 'В тексте можно оставить только одну ссылку https.' }

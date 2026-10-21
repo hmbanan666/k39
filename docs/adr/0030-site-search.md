@@ -18,7 +18,7 @@ Postgres full-text search with the `russian` configuration, plus `pg_trgm` for t
 
 Query handling, in `packages/database/src/search-text.ts`:
 
-- normalize: lower case, `ё` to `е`, punctuation to spaces, collapsed whitespace, at most 100 characters. The normalized query is what reports group by.
+- normalize: Unicode NFC, lower case, strip combining marks, `ё` to `е`, punctuation to spaces, collapsed whitespace, at most 100 characters. The normalized query is what reports group by. Indexed text uses the same fold (`search_fold`) before `to_tsvector`, because the Russian parser keeps a combining mark inside the lexeme.
 - variants: a query with Latin letters is also tried as the same keys on the Russian layout (`ащкен` style mistakes, `ащкеы` for «форты») and as a transliteration (`kenigsberg` to «кенигсберг»). Each variant is searched; a document keeps its best score.
 - every token becomes a prefix term (`форт:*`), so «замо» already finds «Замок Тапиау». Tokens are letters and digits only, so the text is safe for `to_tsquery`.
 - typo fallback: `word_similarity(variant, title) >= 0.45` matches a title even when the stemmed words do not.
