@@ -6,8 +6,9 @@
 const CLOSED = /(?:закрыт\p{L}*|не работает)\s+(?:на|для|в связи с)\s+(?:реставрац|ремонт|реконструкц|консервац|посещени)|временно\s+(?:закрыт|не работает|не принимает)|(?:сейчас|пока)\s+(?:закрыт|не работает)|на реставрации|на реконструкции|посещение невозможно|не открыт\p{L}* для посещени|не приспособлен\p{L}* (?:для|к) посещени|свободного доступа нет|(?:осмотр\s+)?только\s+(?:осмотр\s+)?снаружи|внутрь\s+(?:\p{L}+\s+)?не пускают|^закрыт/imu
 const APPOINTMENT = /по\s+(?:предварительн\p{L}*\s+)?(?:записи|договор[её]нност|заявк)/iu
 
-// Tenant words name someone else. A quoted name does too when it follows
-// one of those words, or when it is not this page's title. ADR 0045.
+// A tenant word names someone else. A «quoted name» does too only when it
+// follows one of those words. Any other quote that is not this page's title
+// is ambiguous, unless the words before it already name this page. ADR 0045.
 const TENANT_WORD = String.raw`ресторан\p{L}*|кафе|бар|магазин\p{L}*|выставк\p{L}*|экспозици\p{L}*`
 const TENANT = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})(?!\p{L})|музе\p{L}*\s+внутри`, 'iu')
 const TENANT_THEN_QUOTE = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})\s+$`, 'iu')
@@ -68,24 +69,45 @@ function quoteIsPageTitle(quote: string, title: string | null | undefined) {
   return page === name || ` ${page} `.includes(` ${name} `)
 }
 
-function quoteIsOtherSubject(quote: string, beforeQuote: string, title: string | null | undefined) {
-  if (TENANT_THEN_QUOTE.test(beforeQuote)) {
-    return true
+/** The words before a historic name are this page: «Форт №5 «Король …»». */
+function namesThisPage(text: string, title: string | null | undefined) {
+  const page = normalizeName(title ?? '')
+  const body = normalizeName(text)
+  if (!page || !body) {
+    return false
   }
-  return !quoteIsPageTitle(quote, title)
+  return body === page || ` ${body} `.includes(` ${page} `)
 }
 
-function hasOtherSubject(text: string, title: string | null | undefined) {
-  if (TENANT.test(text)) {
-    return true
+/**
+ * `other` ignores the closure. `ambiguous` is a warning and costs nothing.
+ * `null` means the quote is this page.
+ */
+function quotedSubject(quote: string, beforeQuote: string, title: string | null | undefined): 'other' | 'ambiguous' | null {
+  if (TENANT_THEN_QUOTE.test(beforeQuote)) {
+    return 'other'
   }
+  if (quoteIsPageTitle(quote, title) || namesThisPage(beforeQuote, title)) {
+    return null
+  }
+  return 'ambiguous'
+}
+
+function subjectKind(text: string, title: string | null | undefined): 'other' | 'ambiguous' | null {
+  if (TENANT.test(text)) {
+    return 'other'
+  }
+  let ambiguous = false
   for (const match of text.matchAll(/«([^»\n]{1,80})»/gu)) {
-    const index = match.index ?? 0
-    if (quoteIsOtherSubject(match[1] ?? '', text.slice(0, index), title)) {
-      return true
+    const role = quotedSubject(match[1] ?? '', text.slice(0, match.index ?? 0), title)
+    if (role === 'other') {
+      return 'other'
+    }
+    if (role === 'ambiguous') {
+      ambiguous = true
     }
   }
-  return false
+  return ambiguous ? 'ambiguous' : null
 }
 
 /** «, а», «, но», and сам/сама/само start a new subject. Earlier words do not apply. */
@@ -110,11 +132,12 @@ function closureKind(sentence: string, title: string | null | undefined): Closur
     const before = sentence.slice(scopeStart(sentence, index), index)
     // A tenant after a comma is another clause. It does not steal this closure.
     const after = (sentence.slice(index + match[0].length).split(',')[0] ?? '')
-    if (hasOtherSubject(before, title)) {
+    const beforeKind = subjectKind(before, title)
+    if (beforeKind === 'other') {
       other = true
       continue
     }
-    if (hasOtherSubject(after, title)) {
+    if (beforeKind === 'ambiguous' || subjectKind(after, title)) {
       ambiguous = true
       continue
     }

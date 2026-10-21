@@ -967,6 +967,22 @@ describe('goal grace and status scope', () => {
       const listed = scorePage(source({ scheduleMode: 'always', title: item.title, body: item.body }))
       expect(listed.quality).toBe(shut.quality - 15)
     }
+    const historic = 'Форт №5 «Король Фридрих Вильгельм III» сейчас закрыт для посещения.'
+    const historicShut = scorePage(source({ scheduleMode: 'closed', title: 'Форт №5', body: historic }))
+    const historicOpen = scorePage(source({ scheduleMode: 'always', title: 'Форт №5', body: historic }))
+    expect(historicOpen.checks.quality).toContain('status contradiction: text says closed, schedule mode is always')
+    expect(historicOpen.quality).toBe(historicShut.quality - 15)
+
+    const strayShut = scorePage(source({ body: '«Солнечный камень» временно не работает.' }))
+    const strayOpen = scorePage(source({
+      scheduleMode: 'always',
+      title: 'Росгартенские ворота',
+      body: '«Солнечный камень» временно не работает.',
+    }))
+    expect(strayOpen.checks.quality).toContain('status warning: closure may refer to another subject')
+    expect(strayOpen.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(false)
+    expect(strayOpen.quality).toBe(strayShut.quality)
+
     const judittenOpen = scorePage(source({
       scheduleMode: 'always',
       title: 'Кирха «Юдиттен»',

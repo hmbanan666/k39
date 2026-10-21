@@ -48,10 +48,30 @@ describe('status consistency', () => {
       'Выставка временно закрыта.',
       'Экспозиция временно не работает.',
       'Музей внутри временно закрыт.',
-      '«Солнечный камень» временно не работает.',
     ]) {
       expect(statusContradictions({ text: sentence, mode: 'always' })).toEqual([])
     }
+  })
+
+  it('warns on a quoted name that is not the title and not a tenant', () => {
+    expect(statusChecks({
+      text: '«Солнечный камень» временно не работает.',
+      mode: 'always',
+      title: 'Росгартенские ворота',
+    })).toEqual({
+      contradictions: [],
+      warnings: ['closure may refer to another subject'],
+    })
+  })
+
+  it('charges a historic name quoted inside this page\'s title', () => {
+    const found = statusChecks({
+      text: 'Форт №5 «Король Фридрих Вильгельм III» сейчас закрыт для посещения.',
+      mode: 'always',
+      title: 'Форт №5',
+    })
+    expect(found.warnings).toEqual([])
+    expect(found.contradictions).toEqual(['text says closed, schedule mode is always'])
   })
 
   it('flags a closure of this place when the quoted name is the title', () => {
