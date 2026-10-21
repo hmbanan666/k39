@@ -40,7 +40,7 @@
     <fieldset>
       <legend>Часы</legend>
       <p class="muted">
-        Сохранение часов отмечает расписание проверенным. Пустой день считается выходным.
+        Сохранение часов отмечает расписание проверенным. День без часов считается выходным. Если часы дня пока неизвестны, выберите «часы уточняйте».
       </p>
       <label
         v-for="day in form.days"
@@ -48,20 +48,27 @@
         class="day"
       >
         <span>{{ labels[day.weekday] }}</span>
-        <input
-          v-model="day.closed"
-          type="checkbox"
+        <select
+          v-model="day.state"
+          :aria-label="`${labels[day.weekday]}: часы`"
         >
-        выходной
+          <option
+            v-for="option in hoursStates"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
         <input
           v-model="day.opens"
           placeholder="09:00"
-          :disabled="day.closed"
+          :disabled="day.state !== 'open'"
         >
         <input
           v-model="day.closes"
           placeholder="21:00"
-          :disabled="day.closed"
+          :disabled="day.state !== 'open'"
         >
       </label>
       <UiField label="Заметка к часам">
@@ -591,9 +598,9 @@
 </template>
 
 <script setup lang="ts">
-import { ofetch } from 'ofetch'
 import { metaProductFromHref } from '~~/shared/meta-links'
 import { socialLabel } from '~~/shared/venue-actions'
+import { blankHoursDays, HOURS_DAY_STATES, hoursDaysPayload, hoursFormDays } from '~~/shared/venue-hours-form'
 import { AUDIENCE_ICONS, DISH_SHOWCASE_MAX, dishPriceIsFresh, isDishId, PRACTICAL_KEYS, VENUE_MODULE_TITLES } from '~~/shared/venue-modules'
 
 const props = defineProps<{ venueId: string }>()
@@ -607,14 +614,9 @@ const labels: Record<string, string> = {
   sat: 'сб',
   sun: 'вс',
 }
-const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
+const hoursStates = HOURS_DAY_STATES
+const requestFetch = useRequestFetch()
 
-interface Day {
-  weekday: string
-  closed: boolean
-  opens: string
-  closes: string
-}
 interface Photo {
   id: string
   alt: string
@@ -682,7 +684,7 @@ const form = reactive({
   prices: [] as Array<{ item: string, variant: string, priceRub: string }>,
   modules: [] as ModuleDraft[],
   dishes: [] as Array<{ name: string, priceRub: string, note: string }>,
-  days: weekdays.map((weekday) => ({ weekday, closed: true, opens: '', closes: '' })) as Day[],
+  days: blankHoursDays(),
 })
 
 const metaContacts = computed(() => {
@@ -704,10 +706,6 @@ const metaContacts = computed(() => {
   }
   return items
 })
-
-function blankDays() {
-  return weekdays.map((weekday) => ({ weekday, closed: true, opens: '', closes: '' }))
-}
 
 function moduleTitle(type: string) {
   return VENUE_MODULE_TITLES[type as keyof typeof VENUE_MODULE_TITLES] || type
@@ -909,7 +907,7 @@ function intOrNull(value: string) {
   return Number.isFinite(number) ? Math.round(number) : null
 }
 
-const loaded = await $fetch<{
+const loaded = await requestFetch<{
   venue: {
     name: string
     description: string
@@ -926,7 +924,7 @@ const loaded = await $fetch<{
     avgCheck: number | null
     modules: unknown[]
     signatureDishes: Array<{ name: string, note?: string | null, priceRub?: number | null }>
-    hours: { days: Array<{ weekday: string, closed: boolean, opens: string | null, closes: string | null }>, note: string | null }
+    hours: { days: Array<{ weekday: string, closed: boolean, unknown?: boolean, opens: string | null, closes: string | null }>, note: string | null }
   }
   prices: Array<{ item: string, variant: string, priceRub: number }>
   catalog: CatalogItem[]
@@ -964,12 +962,7 @@ form.dishes = loaded.venue.signatureDishes.map((row) => ({
   priceRub: row.priceRub == null ? '' : String(row.priceRub),
   note: row.note || '',
 }))
-form.days = blankDays().map((day) => {
-  const found = loaded.venue.hours?.days?.find((item) => item.weekday === day.weekday)
-  return found
-    ? { weekday: day.weekday, closed: found.closed, opens: found.opens || '', closes: found.closes || '' }
-    : day
-})
+form.days = hoursFormDays(loaded.venue.hours)
 photos.value = loaded.photos
 
 function payload() {
@@ -1011,12 +1004,7 @@ function payload() {
     }),
     hours: {
       note: form.hoursNote || null,
-      days: form.days.map((day) => ({
-        weekday: day.weekday,
-        closed: day.closed || !day.opens || !day.closes,
-        opens: day.closed ? null : day.opens || null,
-        closes: day.closed ? null : day.closes || null,
-      })),
+      days: hoursDaysPayload(form.days, { openEnded: false }),
     },
   }
 }
@@ -1026,7 +1014,9 @@ async function save() {
   saved.value = false
   busy.value = true
   try {
-    await ofetch(`/api/cabinet/venues/${props.venueId}`, { method: 'PATCH', body: payload() })
+    // Typed routes resolve this template to the [id] GET handler only, so widen it to reach [id].patch.ts.
+    const url: string = `/api/cabinet/venues/${props.venueId}`
+    await $fetch(url, { method: 'PATCH', body: payload() })
     saved.value = true
   } catch (reason) {
     error.value = problem(reason, 'Не удалось сохранить')
@@ -1134,11 +1124,12 @@ legend { padding: 0; font-weight: 700; }
 .grid { display: grid; gap: 0.6rem; }
 .day {
   display: grid;
-  grid-template-columns: 2rem auto 1fr 5.5rem 5.5rem;
+  grid-template-columns: 2rem minmax(0, 10.5rem) 4.6rem 4.6rem;
   gap: 0.4rem;
   align-items: center;
   margin: 0.35rem 0;
 }
+.day select, .day input { min-width: 0; font: inherit; padding: 0.4rem 0.35rem; }
 .muted { margin: 0.2rem 0 0.4rem; color: var(--muted); font-size: 0.92rem; }
 .socials { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin: 0.4rem 0 0; }
 .error { color: var(--color-danger, var(--color-brick)); }

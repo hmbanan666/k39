@@ -37,6 +37,8 @@ const emptyToNull = z.union([z.string(), z.null()]).optional().transform((value)
 const day = z.object({
   weekday: z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']),
   closed: z.boolean().optional(),
+  /** Hours for this day are unknown (ADR 0044): kept, never turned into a day off. */
+  unknown: z.boolean().optional(),
   opens: z.string().nullable().optional(),
   closes: z.string().nullable().optional(),
 })

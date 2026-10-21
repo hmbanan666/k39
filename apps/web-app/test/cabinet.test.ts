@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { claimCodesMatch, hashClaimCode } from '@k39/database'
+import { claimCodesMatch, hashClaimCode, normalizeHours } from '@k39/database'
 import { describe, expect, it } from 'vitest'
 import { postClaimCode } from '../server/utils/cabinet/deliver'
 import { limitClaimStart, resetCabinetSlots } from '../server/utils/cabinet/rate'
 import { asOwnerPrices, venuePricesWriteSchema } from '../server/utils/venues/prices'
 import { claimChannelPlan, maskEmail, maskPhone, ownerVenueSchema, pickOwnerFields, safeInternalPath, venueClaimPath } from '../shared/cabinet'
+import { describeSchedule, rulesFromVenueHours } from '../shared/schedule'
+import { HOURS_DAY_STATES, hoursDaysPayload, hoursFormDays } from '../shared/venue-hours-form'
 
 describe('cabinet claim helpers', () => {
   it('masks a mailbox and a phone and hides a short number', () => {
@@ -130,5 +132,56 @@ describe('cabinet claim helpers', () => {
       body: { channel: 'email', to: 'a@b.c', code: '1', venue: 'X' },
       fetchImpl: async () => new Response('no'),
     })).rejects.toThrow(/delivery_url/)
+  })
+})
+
+describe('cabinet hours keep days whose hours are unknown (ADR 0044)', () => {
+  const stored = normalizeHours({
+    note: null,
+    days: [
+      ...['mon', 'tue', 'wed', 'thu', 'fri'].map((weekday) => ({ weekday, closed: false, opens: '10:00', closes: '19:00' })),
+      { weekday: 'sat', unknown: true },
+      { weekday: 'sun', unknown: true },
+    ],
+  })
+
+  it('loads an unknown day as its own state, not as an empty open day', () => {
+    const days = hoursFormDays(stored)
+    expect(days.find((day) => day.weekday === 'sat')).toEqual({ weekday: 'sat', state: 'unknown', opens: '', closes: '' })
+    expect(days.find((day) => day.weekday === 'mon')).toEqual({ weekday: 'mon', state: 'open', opens: '10:00', closes: '19:00' })
+    expect(HOURS_DAY_STATES.map((option) => option.label)).toEqual(['часы', 'выходной', 'часы уточняйте'])
+  })
+
+  it('keeps unknownDays through an owner save that edits an unrelated field', () => {
+    const body = { name: 'Новое название', hours: { note: null, days: hoursDaysPayload(hoursFormDays(stored), { openEnded: false }) } }
+    const parsed = ownerVenueSchema.parse(pickOwnerFields(body))
+    const saved = normalizeHours(parsed.hours)
+    expect(saved.days.filter((day) => day.unknown).map((day) => day.weekday)).toEqual(['sat', 'sun'])
+    const rules = rulesFromVenueHours(saved)
+    expect(rules?.seasons[0]).toEqual({ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }], unknownDays: [6, 0] })
+    expect(describeSchedule(rules)).toEqual(['Пн–пт 10:00–19:00; сб, вс: часы уточняйте'])
+  })
+
+  it('keeps the cabinet rule that an open day needs both times', () => {
+    const days = hoursDaysPayload([
+      { weekday: 'mon', state: 'open', opens: '10:00', closes: '' },
+      { weekday: 'tue', state: 'closed', opens: '10:00', closes: '19:00' },
+    ], { openEnded: false })
+    expect(days).toEqual([
+      { weekday: 'mon', closed: true, opens: null, closes: null },
+      { weekday: 'tue', closed: true, opens: null, closes: null },
+    ])
+    expect(hoursDaysPayload([{ weekday: 'mon', state: 'open', opens: '12:00', closes: '' }], { openEnded: true })).toEqual([{ weekday: 'mon', closed: false, opens: '12:00', closes: null }])
+  })
+})
+
+describe('cabinet editor page', () => {
+  it('renders the prefixed editor and saves hours through the shared helper', () => {
+    // Nuxt registers components/cabinet/VenueEditor.vue as CabinetVenueEditor; a bare <VenueEditor> renders nothing.
+    const page = readFileSync(resolve(__dirname, '../app/pages/kabinet/zavedeniya/[id].vue'), 'utf8')
+    expect(page).toContain('<CabinetVenueEditor')
+    const editor = readFileSync(resolve(__dirname, '../app/components/cabinet/VenueEditor.vue'), 'utf8')
+    expect(editor).toContain('hoursFormDays(loaded.venue.hours)')
+    expect(editor).toContain('hoursDaysPayload(form.days, { openEnded: false })')
   })
 })

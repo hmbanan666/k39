@@ -63,9 +63,13 @@
         >
           <span>{{ day.weekday }}</span>
           <select v-model="day.state">
-            <option value="open">часы</option>
-            <option value="closed">выходной</option>
-            <option value="unknown">не указано</option>
+            <option
+              v-for="option in HOURS_DAY_STATES"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
           </select>
           <input
             v-model="day.opens"
@@ -80,7 +84,7 @@
         </label>
         <p class="hint">
           Источник называет только время открытия? Оставьте закрытие пустым: на сайте будет «с 12:00, закрытие уточняйте».
-          Источник молчит про день? Выберите «не указано»: на сайте будет «часы уточняйте», а не «выходной».
+          Источник молчит про день? Выберите «часы уточняйте»: на сайте день не станет выходным.
         </p>
         <label>Заметка <input v-model="form.hoursNote"></label>
       </fieldset>
@@ -177,10 +181,11 @@
 </template>
 
 <script setup lang="ts">
+import { blankHoursDays, HOURS_DAY_STATES, hoursDaysPayload, hoursFormDays } from '~~/shared/venue-hours-form'
+
 const props = defineProps<{ venueId?: string }>()
 const requestFetch = useRequestFetch()
 const kinds = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other']
-const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 const regions = ref<Array<{ id: string, slug: string, title: string }>>([])
 const error = ref('')
 const historyError = ref('')
@@ -188,12 +193,6 @@ const revisions = ref<Array<{ id: string, createdAt: string, actorEmail: string 
 const audits = ref<Array<{ id: string, createdAt: string, action: string, actorEmail: string | null }>>([])
 const file = ref<File | null>(null)
 const photo = reactive({ alt: '', author: '', license: 'own', sourceUrl: '' })
-
-type DayState = 'open' | 'closed' | 'unknown'
-
-function blankDays() {
-  return weekdays.map((weekday) => ({ weekday, state: 'closed' as DayState, opens: '', closes: '' }))
-}
 
 const form = reactive({
   name: '',
@@ -213,7 +212,7 @@ const form = reactive({
   hoursNote: '',
   description: '',
   sources: '',
-  days: blankDays(),
+  days: blankHoursDays(),
 })
 
 const meta = await requestFetch<{ regions: Array<{ id: string, slug: string, title: string }> }>('/api/admin/meta')
@@ -259,12 +258,7 @@ if (props.venueId) {
   form.hoursNote = venue.hours?.note || ''
   form.description = venue.description
   form.sources = (venue.sources || []).map((item) => `${item.title} | ${item.url}`).join('\n')
-  form.days = blankDays().map((day) => {
-    const found = venue.hours?.days?.find((item) => item.weekday === day.weekday)
-    return found
-      ? { weekday: day.weekday, state: (found.unknown ? 'unknown' : found.closed ? 'closed' : 'open') as DayState, opens: found.opens || '', closes: found.closes || '' }
-      : day
-  })
+  form.days = hoursFormDays(venue.hours)
 }
 
 function numberOrNull(value: string) {
@@ -298,13 +292,7 @@ function payload() {
     }),
     hours: {
       note: form.hoursNote || null,
-      days: form.days.map((day) => ({
-        weekday: day.weekday,
-        closed: day.state === 'closed',
-        unknown: day.state === 'unknown',
-        opens: day.state === 'open' ? day.opens || null : null,
-        closes: day.state === 'open' ? day.closes || null : null,
-      })),
+      days: hoursDaysPayload(form.days, { openEnded: true }),
     },
   }
 }
@@ -384,7 +372,7 @@ async function upload() {
 form { display: grid; gap: 0.7rem; }
 label { display: grid; gap: 0.25rem; }
 input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; }
-.day { grid-template-columns: 2.5rem 9rem 5.5rem 7.5rem; align-items: center; justify-content: start; }
+.day { grid-template-columns: 2.5rem 11rem 5.5rem 7.5rem; align-items: center; justify-content: start; }
 .hint, .error { margin: 0; }
 .error { color: var(--color-danger); }
 .photo, .history { margin-top: 2rem; }
