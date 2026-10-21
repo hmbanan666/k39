@@ -1,14 +1,18 @@
+import { isSocialWebsite } from '@k39/database'
+import { isSocialHost } from '@k39/types/social-hosts'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import CheaperPage from '../app/components/CheaperPage.vue'
 import PriceListing from '../app/components/PriceListing.vue'
 import Sticker from '../app/components/Sticker.vue'
 import VenueModules from '../app/components/VenueModules.vue'
+import { classifySourceUrl } from '../shared/facts'
 import { TABLER_ICONS } from '../shared/icons'
 import {
   buildPublicPrices,
   byTown,
   cheaperCityMeta,
+  classifyMenuUrl,
   compareVenuePrice,
   formatTownRange,
   groupCheaperSamples,
@@ -43,6 +47,7 @@ import {
   safePriceImage,
   sharedPriceSource,
   showsPriceSample,
+  vkMenuMatchesSocial,
 } from '../shared/price-compare'
 import { collectionDocument, schemaProblems } from '../shared/seo'
 import { presentVenueBlocks, toPublicVenueModules } from '../shared/venue-modules'
@@ -943,5 +948,240 @@ describe('where cheaper samples', () => {
     expect(page.text()).toContain('180–320 ₽, 6 мест')
     expect(page.get('a[href="/ceny/cappuccino/svetlogorsk"]').exists()).toBe(true)
     expect(page.text()).not.toContain('—')
+  })
+})
+
+describe('menu url classifier', () => {
+  it('accepts a venue site and official document hosts', () => {
+    const accepted = [
+      ['https://cafe.example/menu.pdf', 'menu'],
+      ['http://cafe.example/menu', 'menu'],
+      ['https://www.cafe.example/menu.pdf', 'menu'],
+      ['https://DRIVE.google.com/file/d/abc/view', 'document'],
+      ['https://drive.google.com/uc?id=abc', 'document'],
+      ['https://docs.google.com/document/d/abc/edit', 'document'],
+      ['https://docs.google.com/spreadsheets/d/abc', 'document'],
+      ['https://disk.yandex.ru/i/abc', 'document'],
+      ['https://disk.yandex.com/d/abc', 'document'],
+      ['https://www.disk.yandex.kz/i/abc', 'document'],
+      ['https://disk.yandex.by/i/abc', 'document'],
+      ['https://yadi.sk/i/abc', 'document'],
+      ['https://www.yadi.sk/d/abc', 'document'],
+    ] as const
+    for (const [url, kind] of accepted) {
+      expect(classifyMenuUrl(url), url).toBe(kind)
+      expect(isMenuUrl(url), url).toBe(true)
+    }
+  })
+
+  it('rejects maps, aggregators, social networks, and other company services', () => {
+    const rejected = [
+      ['https://maps.google.com/?q=cafe', 'map'],
+      ['https://www.google.com/maps/place/Brikas', 'map'],
+      ['https://google.ru/maps/search/cafe', 'map'],
+      ['https://maps.google.co.uk/maps?q=cafe', 'map'],
+      ['https://maps.app.goo.gl/abc123', 'map'],
+      ['https://goo.gl/maps/abc123', 'map'],
+      ['https://goo.gl/not-maps', 'map'],
+      ['https://yandex.ru/maps/org/1', 'map'],
+      ['https://maps.yandex.ru/213/kaliningrad', 'map'],
+      ['https://yandex.com/maps/org/1', 'map'],
+      ['https://ya.ru/maps/org/1', 'map'],
+      ['https://2gis.ru/kaliningrad/firm/1', 'map'],
+      ['https://2gis.com/firm/1', 'map'],
+      ['https://www.openstreetmap.org/node/1', 'map'],
+      ['https://osm.org/node/1', 'map'],
+      ['https://eda.yandex.ru/restaurant/cafe', 'aggregator'],
+      ['https://eda.yandex.by/restaurant/cafe', 'aggregator'],
+      ['https://yandex.ru/eda/r/cafe', 'aggregator'],
+      ['https://www.delivery-club.ru/srv/cafe', 'aggregator'],
+      ['https://kaliningrad.tomesto.ru/places/cafe', 'aggregator'],
+      ['https://vk.com/cafe', 'social'],
+      ['https://m.vk.com/cafe', 'social'],
+      ['https://vk.ru/othergroup', 'social'],
+      ['https://m.vk.ru/othergroup', 'social'],
+      ['https://vk.com/market-123', 'social'],
+      ['https://instagram.com/cafe', 'social'],
+      ['https://t.me/cafe', 'social'],
+      ['https://wa.me/79990001122', 'social'],
+      ['https://x.com/cafe', 'social'],
+      ['https://twitter.com/cafe', 'social'],
+      ['https://www.google.com/search?q=menu', 'service'],
+      ['https://market.yandex.ru/product/1', 'service'],
+      ['https://music.yandex.ru/album/1', 'service'],
+      ['notaurl', 'invalid'],
+      ['ftp://cafe.example/menu.pdf', 'invalid'],
+      ['', 'invalid'],
+    ] as const
+    for (const [url, kind] of rejected) {
+      expect(classifyMenuUrl(url), url).toBe(kind)
+      expect(isMenuUrl(url), url).toBe(false)
+    }
+    expect(isMenuUrl(null)).toBe(false)
+    expect(isMenuUrl(undefined)).toBe(false)
+  })
+})
+
+describe('social hosts', () => {
+  it('uses one list for menu class, source kind, and website', () => {
+    const urls = [
+      'https://vk.com/cafe',
+      'https://www.vk.ru/cafe',
+      'https://m.vk.ru/othergroup',
+      'https://t.me/cafe',
+      'https://telegram.me/cafe',
+      'https://telegram.org/cafe',
+      'https://ok.ru/group',
+      'https://instagram.com/cafe',
+      'https://facebook.com/cafe',
+      'https://fb.com/cafe',
+      'https://fb.me/cafe',
+      'https://threads.net/cafe',
+      'https://youtube.com/cafe',
+      'https://youtu.be/abc',
+      'https://dzen.ru/cafe',
+      'https://tiktok.com/@cafe',
+      'https://whatsapp.com/send',
+      'https://wa.me/79990001122',
+      'https://x.com/cafe',
+      'https://twitter.com/cafe',
+    ]
+    for (const url of urls) {
+      expect(isSocialHost(new URL(url).hostname), url).toBe(true)
+      expect(isSocialWebsite(url), url).toBe(true)
+      expect(classifyMenuUrl(url), url).toBe('social')
+      expect(classifySourceUrl(url), url).toBe('official_social')
+      expect(isMenuUrl(url), url).toBe(false)
+    }
+    expect(isSocialHost('cafe.example')).toBe(false)
+    expect(classifySourceUrl('https://cafe.example/menu')).toBe('official')
+  })
+})
+
+describe('vk menu rule', () => {
+  const column = {
+    venueId: 'v',
+    item: 'cappuccino',
+    variant: '300 мл',
+    priceRub: 200,
+    checkedAt: '2026-10-01',
+    sourceKind: 'official',
+    sourceTitle: 'Меню во ВКонтакте',
+    sourceUrl: 'https://vk.com/cafe',
+  }
+  const cutoff = '2025-10-01'
+  const own = [{ url: 'https://vk.com/cafe' }]
+  const vkFact = {
+    confidence: 'stated',
+    sourceKind: 'official_social',
+    sourceUrl: 'https://vk.com/market-10',
+    sourceTitle: 'Меню во ВКонтакте',
+    checkedAt: '2026-10-01',
+    value: { priceRub: 210, variant: '300 мл' },
+  }
+
+  it('counts a vk price only when its community matches socials and the venue has no website', () => {
+    expect(vkMenuMatchesSocial('https://vk.com/cafe', own)).toBe(true)
+    expect(vkMenuMatchesSocial('https://m.vk.com/Cafe', own)).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/club10', [{ url: 'https://vk.com/public10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/wall-10_3', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/album-10_4', [{ url: 'https://vk.com/market-10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/album-10', [{ url: 'https://vk.ru/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/club10', [{ url: 'https://vk.com/cafe?w=wall-10_1' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe?w=wall-999_5', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe?z=photo-999_1', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe?w=wall-999_5', [{ url: 'https://vk.com/club999' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe?z=photo-999_1', [{ url: 'https://vk.com/public999' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/event10', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/photo-10_2', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/doc-10_3', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/topic-10_4', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/video-10_5', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/feed', [{ url: 'https://vk.com/feed' }])).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/away.php', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/search', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/im', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/feed?w=wall-10_1', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/feed?w=wall-10_1', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/id5', [{ url: 'https://vk.com/wall5_9' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe', [{ url: 'https://vk.com/club10' }])).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/id5', [{ url: 'https://vk.com/club5' }])).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/other', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://instagram.com/cafe', own)).toBe(false)
+
+    const fromFact = resolveMenuPrice(column, vkFact, cutoff, { website: null, socials: [{ url: 'https://vk.com/club10' }] })
+    expect(fromFact?.comparable).toBe(true)
+    expect(fromFact?.row.priceRub).toBe(210)
+    expect(fromFact?.row.sourceKind).toBe('official_social')
+    expect(resolveMenuPrice(column, null, cutoff, { website: '', socials: own })?.comparable).toBe(true)
+    expect(resolveMenuPrice(column, null, cutoff, { website: '   ', socials: own })?.comparable).toBe(true)
+    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://m.vk.com/cafe' }, null, cutoff, { website: null, socials: own })?.comparable).toBe(true)
+    expect(resolveMenuPrice(column, vkFact, cutoff, { website: 'https://cafe.example', socials: own })).toBeNull()
+    expect(resolveMenuPrice(column, null, cutoff, { website: 'https://vk.com/cafe', socials: own })).toBeNull()
+    expect(resolveMenuPrice({
+      ...column,
+      sourceUrl: 'https://vk.ru/othergroup',
+    }, null, cutoff, { website: 'https://cafe.example', socials: [{ url: 'https://vk.ru/othergroup' }] })).toBeNull()
+    expect(resolveMenuPrice({
+      ...column,
+      sourceUrl: 'https://vk.ru/cafe',
+    }, null, cutoff, { website: null, socials: [{ url: 'https://vk.ru/cafe' }] })?.comparable).toBe(true)
+    expect(resolveMenuPrice(column, null, cutoff, { website: null, socials: [] })).toBeNull()
+    expect(resolveMenuPrice(column, null, cutoff)).toBeNull()
+    expect(resolveMenuPrice(column, {
+      ...vkFact,
+      sourceUrl: 'https://instagram.com/cafe',
+    }, cutoff, { website: null, socials: own })).toBeNull()
+    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://drive.google.com/file/d/abc/view' }, null, cutoff, { website: 'https://cafe.example', socials: own })?.comparable).toBe(true)
+    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://yandex.ru/maps/org/1' }, null, cutoff, { website: null, socials: own })).toBeNull()
+    const owner = resolveMenuPrice({ ...column, sourceKind: 'owner', sourceUrl: 'https://vk.com/cafe' }, null, cutoff, { website: null, socials: own })
+    expect(owner?.comparable).toBe(false)
+    expect(owner?.row.priceRub).toBe(200)
+  })
+})
+
+describe('price band from a Drive menu', () => {
+  it('assigns a band when three fresh official prices come from a Drive PDF', () => {
+    const drive = 'https://drive.google.com/file/d/menu-pdf/view'
+    const items = [
+      { item: 'cappuccino', title: 'Капучино', category: 'coffee' },
+      { item: 'borscht', title: 'Борщ', category: 'soup' },
+      { item: 'caesar', title: 'Цезарь', category: 'salad' },
+    ]
+    const resolved = items.map((row) => resolveMenuPrice({
+      venueId: 'drive-cafe',
+      item: row.item,
+      variant: '300 мл',
+      priceRub: 200,
+      checkedAt: '2026-10-01',
+      sourceKind: 'official',
+      sourceTitle: 'Меню PDF на Google Drive',
+      sourceUrl: drive,
+    }, null, '2025-10-01'))
+    expect(resolved.every((row) => row?.comparable)).toBe(true)
+    const cards = buildPublicPrices({
+      venueId: 'drive-cafe',
+      venueSlug: 'drive-cafe',
+      regionId: REGION,
+      regionSlug: 'svetlogorsk',
+      rows: resolved.map((row, index) => ({
+        item: items[index]!.item,
+        title: items[index]!.title,
+        category: items[index]!.category,
+        variant: row!.row.variant,
+        priceRub: row!.row.priceRub,
+        checkedAt: row!.row.checkedAt,
+        sourceTitle: row!.row.sourceTitle,
+        sourceUrl: row!.row.sourceUrl,
+      })),
+      peersByItem: {
+        cappuccino: [250, 320].map((priceRub, index) => peer(`cap-${index}`, priceRub)),
+        borscht: [250, 320].map((priceRub, index) => peer(`bor-${index}`, priceRub)),
+        caesar: [250, 320].map((priceRub, index) => peer(`cae-${index}`, priceRub)),
+      },
+    })
+    expect(cards.map((card) => card.comparison.band)).toEqual(['cheap', 'cheap', 'cheap'])
+    expect(cards.every((card) => card.sourceUrl === drive)).toBe(true)
+    expect(priceBandFromBands(cards.map((card) => card.comparison.band))).toEqual({ level: 'low', basis: 3 })
   })
 })

@@ -1,4 +1,5 @@
 import type { FoodStickerSlug } from './food-stickers'
+import { isSocialHost } from '@k39/types/social-hosts'
 import { inTown } from './eat-now'
 import { isFoodStickerSlug } from './food-stickers'
 import { pageTitle } from './seo'
@@ -326,27 +327,330 @@ export function isPackagedJuice(slug: string, variant: string | null | undefined
   return /пакет|бутыл|тетра[\s-]*пак|упаков/.test(text)
 }
 
-const NOT_A_MENU_HOST = /(?:^|\.)(?:vk\.com|t\.me|telegram\.me|ok\.ru|instagram\.com|facebook\.com|fb\.com|threads\.net|youtube\.com|youtu\.be|dzen\.ru|tiktok\.com|2gis\.(?:ru|com|kz|uz)|yandex\.(?:ru|com|by|kz|uz)|ya\.ru|openstreetmap\.org|osm\.org|google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)|maps\.google\.com|goo\.gl|maps\.app\.goo\.gl)$/
+/**
+ * What a price URL is.
+ * `menu` is a page on the venue's own site, including a PDF served there.
+ * `document` is that menu on an official file host.
+ * Maps, delivery aggregators, social networks, and other Google or Yandex
+ * services are not a menu. VK is `social` here; `resolveMenuPrice` applies
+ * the separate ownership rule.
+ */
+export type MenuUrlClass = 'menu' | 'document' | 'map' | 'aggregator' | 'social' | 'service' | 'invalid'
 
-/** A page on the venue's own site, including a PDF. Maps and social posts are not a menu. */
-export function isMenuUrl(url: string | null | undefined) {
+const GOOGLE_SITE = /(?:^|\.)google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)$/
+const YANDEX_SITE = /(?:^|\.)yandex\.(?:ru|com|by|kz|uz)$/
+
+function parsedHttpUrl(url: string | null | undefined) {
   const text = url?.trim() ?? ''
   if (!text) {
-    return false
+    return null
   }
   try {
     const parsed = new URL(text)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return false
+      return null
     }
-    const host = parsed.hostname.replace(/^www\./, '')
-    if (NOT_A_MENU_HOST.test(host) || host.startsWith('maps.')) {
-      return false
+    const host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+    if (!host) {
+      return null
     }
-    return true
+    return { host, pathname: parsed.pathname }
   } catch {
+    return null
+  }
+}
+
+function isYandexHost(host: string) {
+  return YANDEX_SITE.test(host) || host === 'ya.ru' || host.endsWith('.ya.ru')
+}
+
+/** Drive, Docs, and Yandex Disk. Checked before the Google and Yandex service ban. */
+function isDocumentHost(host: string) {
+  if (host === 'drive.google.com' || host.endsWith('.drive.google.com')) {
+    return true
+  }
+  if (host === 'docs.google.com' || host.endsWith('.docs.google.com')) {
+    return true
+  }
+  if (host === 'yadi.sk' || host.endsWith('.yadi.sk')) {
+    return true
+  }
+  return /(?:^|\.)disk\.yandex\.[a-z0-9-]+(?:\.[a-z0-9-]+)?$/.test(host)
+}
+
+function isMapUrl(host: string, pathname: string) {
+  if (host.startsWith('maps.') || host === 'goo.gl' || host.endsWith('.goo.gl')) {
+    return true
+  }
+  if (/(?:^|\.)2gis\.(?:ru|com|kz|uz)$/.test(host)) {
+    return true
+  }
+  if (/(?:^|\.)openstreetmap\.org$/.test(host) || host === 'osm.org' || host.endsWith('.osm.org')) {
+    return true
+  }
+  if (GOOGLE_SITE.test(host) && (pathname === '/maps' || pathname.startsWith('/maps/'))) {
+    return true
+  }
+  return isYandexHost(host) && pathname.includes('/maps')
+}
+
+/** Yandex Eda, Delivery Club, and tomesto. */
+function isDeliveryAggregator(host: string, pathname: string) {
+  if (/(?:^|\.)eda\.yandex\.(?:ru|com|by|kz|uz)$/.test(host)) {
+    return true
+  }
+  if (/(?:^|\.)delivery-club\.ru$/.test(host) || /(?:^|\.)tomesto\.ru$/.test(host)) {
+    return true
+  }
+  return isYandexHost(host) && (pathname === '/eda' || pathname.startsWith('/eda/'))
+}
+
+/** Classifies a price URL. Document hosts are accepted. Map and aggregator hosts and paths are rejected. */
+export function classifyMenuUrl(url: string | null | undefined): MenuUrlClass {
+  const parsed = parsedHttpUrl(url)
+  if (!parsed) {
+    return 'invalid'
+  }
+  if (isDocumentHost(parsed.host)) {
+    return 'document'
+  }
+  if (isMapUrl(parsed.host, parsed.pathname)) {
+    return 'map'
+  }
+  if (isDeliveryAggregator(parsed.host, parsed.pathname)) {
+    return 'aggregator'
+  }
+  if (isSocialHost(parsed.host)) {
+    return 'social'
+  }
+  if (isYandexHost(parsed.host) || GOOGLE_SITE.test(parsed.host)) {
+    return 'service'
+  }
+  return 'menu'
+}
+
+/** A page on the venue's own site, or a document on Drive, Docs, or Yandex Disk. */
+export function isMenuUrl(url: string | null | undefined) {
+  const kind = classifyMenuUrl(url)
+  return kind === 'menu' || kind === 'document'
+}
+
+/**
+ * The venue's own VK page. The price column stores `official` because it
+ * only allows `official` and `owner`. A VK URL is recorded on the fact as
+ * `official_social`. Both shapes are that claim. It counts when
+ * `venues.website` is empty and the price community matches a VK link in
+ * `socials`. A `w=` or `z=` object is that owner, and the path name is
+ * ignored. A section path such as `feed` is not a screen name.
+ */
+function isComparableVkMenu(
+  sourceKind: string,
+  sourceUrl: string | null,
+  venue: { website: string | null, socials?: Array<{ url: string }> },
+) {
+  if (venue.website?.trim()) {
     return false
   }
+  if (sourceKind !== 'official' && sourceKind !== 'official_social') {
+    return false
+  }
+  return vkMenuMatchesSocial(sourceUrl, venue.socials ?? [])
+}
+
+interface VkKeys {
+  names: Set<string>
+  communities: Set<string>
+  users: Set<string>
+}
+
+function emptyVkKeys(): VkKeys {
+  return { names: new Set(), communities: new Set(), users: new Set() }
+}
+
+/** VK section paths. They are not a community screen name. */
+const VK_SYSTEM_PATH = new Set([
+  'about',
+  'ads',
+  'album',
+  'albums',
+  'app',
+  'apps',
+  'audio',
+  'audios',
+  'away.php',
+  'board',
+  'bookmarks',
+  'calls',
+  'camera',
+  'clips',
+  'club',
+  'dev',
+  'doc',
+  'docs',
+  'event',
+  'events',
+  'faq',
+  'fav',
+  'fave',
+  'feed',
+  'friends',
+  'games',
+  'groups',
+  'help',
+  'id',
+  'im',
+  'invite',
+  'join',
+  'login',
+  'mail',
+  'market',
+  'notifications',
+  'pages',
+  'photo',
+  'photos',
+  'public',
+  'restore',
+  'search',
+  'settings',
+  'stats',
+  'stories',
+  'support',
+  'topic',
+  'topics',
+  'video',
+  'videos',
+  'wall',
+  'write',
+])
+
+function absorbVkToken(keys: VkKeys, token: string) {
+  const text = token.trim().replace(/^@/, '')
+  if (!text) {
+    return
+  }
+  const community = /^(?:club|public|event)(\d+)$/i.exec(text)
+  if (community?.[1]) {
+    keys.communities.add(community[1])
+    return
+  }
+  const user = /^id(\d+)$/i.exec(text)
+  if (user?.[1]) {
+    keys.users.add(user[1])
+    return
+  }
+  const wall = /^wall(-)?(\d+)(?:_\d+)?$/i.exec(text)
+  if (wall?.[2]) {
+    if (wall[1]) {
+      keys.communities.add(wall[2])
+    } else {
+      keys.users.add(wall[2])
+    }
+    return
+  }
+  const market = /^market-(\d+)(?:_\d+)?$/i.exec(text)
+  if (market?.[1]) {
+    keys.communities.add(market[1])
+    return
+  }
+  const album = /^album-(\d+)(?:_\d+)?$/i.exec(text)
+  if (album?.[1]) {
+    keys.communities.add(album[1])
+    return
+  }
+  const attachment = /^(?:photo|doc|topic|video)-(\d+)_\d+/i.exec(text)
+  if (attachment?.[1]) {
+    keys.communities.add(attachment[1])
+    return
+  }
+  if (/\.php$/i.test(text) || VK_SYSTEM_PATH.has(text.toLowerCase())) {
+    return
+  }
+  if (/^[a-z][\w.-]{0,63}$/i.test(text)) {
+    keys.names.add(text.toLowerCase())
+  }
+}
+
+/** Parts of `w` or `z` that name an object. Those owners replace the path. */
+function vkObjectTokens(parsed: URL) {
+  const tokens: string[] = []
+  for (const name of ['w', 'z']) {
+    const raw = parsed.searchParams.get(name)
+    if (!raw) {
+      continue
+    }
+    for (const part of raw.split('/')) {
+      const probe = emptyVkKeys()
+      absorbVkToken(probe, part)
+      if (probe.communities.size || probe.users.size) {
+        tokens.push(part)
+      }
+    }
+  }
+  return tokens
+}
+
+function vkKeys(url: string | null | undefined): VkKeys | null {
+  const text = url?.trim() ?? ''
+  if (!text) {
+    return null
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(text)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return null
+  }
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  if (host !== 'vk.com' && !host.endsWith('.vk.com') && host !== 'vk.ru' && !host.endsWith('.vk.ru')) {
+    return null
+  }
+  const keys = emptyVkKeys()
+  const objects = vkObjectTokens(parsed)
+  if (objects.length) {
+    for (const token of objects) {
+      absorbVkToken(keys, token)
+    }
+  } else {
+    absorbVkToken(keys, parsed.pathname.split('/').filter(Boolean)[0] ?? '')
+  }
+  if (!keys.names.size && !keys.communities.size && !keys.users.size) {
+    return null
+  }
+  return keys
+}
+
+function vkKeysOverlap(left: VkKeys, right: VkKeys) {
+  for (const name of left.names) {
+    if (right.names.has(name)) {
+      return true
+    }
+  }
+  for (const id of left.communities) {
+    if (right.communities.has(id)) {
+      return true
+    }
+  }
+  for (const id of left.users) {
+    if (right.users.has(id)) {
+      return true
+    }
+  }
+  return false
+}
+
+/** True when the price URL and one stored social link name the same VK community. */
+export function vkMenuMatchesSocial(priceUrl: string | null | undefined, socials: Array<{ url: string }>) {
+  const price = vkKeys(priceUrl)
+  if (!price) {
+    return false
+  }
+  return socials.some((row) => {
+    const social = vkKeys(row.url)
+    return Boolean(social && vkKeysOverlap(price, social))
+  })
 }
 
 /** A stored menu row before the fact overlay. */
@@ -386,10 +690,20 @@ function readFactPrice(value: unknown) {
 
 /**
  * The fact wins when it is cited. A gap hides the price. An owner price stays
- * on the venue card and is not comparable. Only a fresh official menu row
- * is comparable. `cutoff` is `YYYY-MM-DD` from `PRICE_FRESH_DAYS`.
+ * on the venue card and is not comparable. A fresh official menu row is
+ * comparable: the venue site, or a document on Drive, Docs, or Yandex Disk.
+ * The venue's own VK page is comparable only when `venue.website` is empty
+ * and the price community matches a VK link in `venue.socials`. A `w=` or
+ * `z=` object is that owner, and the path name is ignored.
+ * Omit `venue` when the caller has not loaded those fields: VK stays out.
+ * `cutoff` is `YYYY-MM-DD` from `PRICE_FRESH_DAYS`.
  */
-export function resolveMenuPrice<T extends MenuColumn>(row: T, fact: MenuFact | null | undefined, cutoff: string): { row: T, comparable: boolean } | null {
+export function resolveMenuPrice<T extends MenuColumn>(
+  row: T,
+  fact: MenuFact | null | undefined,
+  cutoff: string,
+  venue?: { website: string | null, socials?: Array<{ url: string }> },
+): { row: T, comparable: boolean } | null {
   if (fact?.confidence === 'gap') {
     return null
   }
@@ -422,6 +736,9 @@ export function resolveMenuPrice<T extends MenuColumn>(row: T, fact: MenuFact | 
     return { row: next, comparable: false }
   }
   if (sourceKind === 'official' && isMenuUrl(sourceUrl)) {
+    return { row: next, comparable: true }
+  }
+  if (venue && isComparableVkMenu(sourceKind, sourceUrl, venue)) {
     return { row: next, comparable: true }
   }
   return null

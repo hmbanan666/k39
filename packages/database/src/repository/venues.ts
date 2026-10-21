@@ -13,6 +13,7 @@ import {
   haversineKm,
   isBlockedVenueSlug,
   isFoodKind,
+  isSocialWebsite,
   NEARBY_MAX_DAYS,
   NEARBY_RADIUS_KM,
   normalizeHours,
@@ -95,6 +96,14 @@ function cleanSocials(rows: VenueSocial[] | undefined) {
     .map((row) => ({ network: row.network.trim().toLowerCase().slice(0, 24), url: row.url.trim().slice(0, 300) }))
     .filter((row) => row.network && /^https?:\/\//.test(row.url))
     .slice(0, 8)
+}
+
+function cleanWebsite(value: string | null | undefined) {
+  const text = cleanText(value, 300)
+  if (text && isSocialWebsite(text)) {
+    throw new VenueInputError('В поле «Сайт» укажите только собственный сайт заведения. Ссылку на соцсеть добавьте в «Соцсети».')
+  }
+  return text
 }
 
 function cleanUrl(value: string | null | undefined) {
@@ -357,7 +366,7 @@ export class Venues {
         avgCheck: input.avgCheck ?? null,
         hours,
         phone: cleanText(input.phone, PHONE_TEXT_MAX),
-        website: cleanText(input.website, 300),
+        website: cleanWebsite(input.website),
         socials: cleanSocials(input.socials) ?? [],
         bookingUrl: cleanUrl(input.bookingUrl),
         orderUrl: cleanUrl(input.orderUrl),
@@ -442,7 +451,7 @@ export class Venues {
         avgCheck,
         hours,
         phone: input.phone === undefined ? current.phone : cleanText(input.phone, PHONE_TEXT_MAX),
-        website: input.website === undefined ? current.website : cleanText(input.website, 300),
+        website: input.website === undefined ? current.website : cleanWebsite(input.website),
         socials: cleanSocials(input.socials) ?? current.socials,
         bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : cleanUrl(input.bookingUrl),
         orderUrl: input.orderUrl === undefined ? current.orderUrl : cleanUrl(input.orderUrl),
@@ -493,6 +502,19 @@ export class Venues {
     }
     await useDatabase().delete(venues).where(eq(venues.id, current.id))
     return { id: current.id, slug: current.slug, action: 'deleted' as const }
+  }
+
+  /** Website and social links for the VK menu rule. A missing id is omitted. */
+  static async menuLinksFor(ids: string[]) {
+    const unique = [...new Set(ids)]
+    if (!unique.length) {
+      return []
+    }
+    return useDatabase().select({
+      id: venues.id,
+      website: venues.website,
+      socials: venues.socials,
+    }).from(venues).where(inArray(venues.id, unique))
   }
 
   /** Every venue in a town, including drafts. A null region is its own group. */
