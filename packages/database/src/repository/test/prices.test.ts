@@ -118,4 +118,21 @@ describe('price catalog', () => {
     const cleared = await Prices.upsertItem({ slug: 'latte', title: 'Латте', category: 'coffee', image: null })
     expect(cleared?.image).toBeNull()
   })
+
+  it('rejects a price written into the variant', async () => {
+    const venue = await Venues.create({ name: 'Вариант с ценой', slug: 'variant-price', kind: 'cafe' })
+    created.push(venue.id)
+    const row = {
+      item: 'cappuccino',
+      priceRub: 200,
+      checkedAt: '2026-10-01',
+      sourceKind: 'official' as const,
+      sourceTitle: 'Меню',
+      sourceUrl: 'https://cafe.example/menu',
+    }
+    await expect(Prices.setForVenue(venue.id, [{ ...row, variant: '350 руб' }])).rejects.toThrow(/Цену пишите/)
+    await expect(Prices.setForVenue(venue.id, [{ ...row, variant: '200 ₽' }])).rejects.toThrow(/Цену пишите/)
+    const saved = await Prices.setForVenue(venue.id, [{ ...row, variant: '250 мл' }])
+    expect(saved.map((item) => item.variant)).toEqual(['250 мл'])
+  })
 })

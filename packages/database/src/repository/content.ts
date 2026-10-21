@@ -6,6 +6,7 @@ import { composeBody, readSections, splitBody } from '../body-sections'
 import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
 import { REDIRECT_HOP_LIMIT } from '../redirects'
+import { prepareSourceLinks, SourceInputError } from '../sources'
 import { categories, collectionItems, collectionMedia, collections, contentDrafts, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
@@ -28,6 +29,17 @@ function syncedBody(data: { body?: string, sections?: unknown }): { body?: strin
 }
 
 type ContentTx = Parameters<Parameters<ReturnType<typeof useDatabase>['transaction']>[0]>[0]
+
+/** Cap, dedupe, and validate source rows. The same rules as a venue. */
+function pageSources(rows: unknown): SourceLink[] {
+  if (rows == null) {
+    return []
+  }
+  if (!Array.isArray(rows)) {
+    throw new SourceInputError('Источники: нужен список')
+  }
+  return prepareSourceLinks(rows) ?? []
+}
 
 function kept<T>(payload: Record<string, unknown>, key: string, fallback: T): T {
   if (!Object.hasOwn(payload, key)) {
@@ -57,7 +69,7 @@ function placeFromPending(existing: typeof places.$inferSelect, payload: Record<
     longitude: kept(payload, 'longitude', existing.longitude),
     categoryId: kept(payload, 'categoryId', existing.categoryId),
     regionId: kept(payload, 'regionId', existing.regionId),
-    sources: kept(payload, 'sources', existing.sources),
+    sources: Object.hasOwn(payload, 'sources') ? pageSources(payload.sources) : existing.sources,
     seoTitle: kept(payload, 'seoTitle', existing.seoTitle),
     seoDescription: kept(payload, 'seoDescription', existing.seoDescription),
     ogImage: kept(payload, 'ogImage', existing.ogImage),
@@ -624,6 +636,9 @@ export class Editor {
 
   static async savePlace(input: PlaceDraft & { slug: string }, userId?: string | null) {
     const data = { ...input, ...syncedBody(input) }
+    if (input.sources !== undefined) {
+      data.sources = pageSources(input.sources)
+    }
     const db = useDatabase()
     const existing = data.id ? await this.placeById(data.id) : await this.placeBySlug(data.slug)
     if (existing) {
@@ -765,6 +780,7 @@ export class Editor {
   }
 
   static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[], kind?: CollectionKind, month?: number | null, sources?: SourceLink[], modules?: StoredPageModule[] }, userId?: string | null) {
+    const sources = data.sources === undefined ? undefined : pageSources(data.sources)
     const resolvedItems = data.items ? await resolveStops(data.items) : null
     const db = useDatabase()
     const [existing] = data.id
@@ -786,7 +802,7 @@ export class Editor {
       noindex: data.noindex ?? existing?.noindex ?? false,
       kind: data.kind ?? existing?.kind ?? 'theme',
       month: data.month !== undefined ? data.month : existing?.month ?? null,
-      sources: data.sources ?? existing?.sources ?? [],
+      sources: sources === undefined ? existing?.sources ?? [] : sources,
       modules: data.modules ?? existing?.modules ?? [],
       updatedBy: userId ?? null,
       updatedAt: new Date().toISOString(),

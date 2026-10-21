@@ -2,6 +2,7 @@ import type { MediaLicense } from '@k39/database'
 import type { Buffer } from 'node:buffer'
 import { db } from '@k39/database'
 import { createId } from '@paralleldrive/cuid2'
+import { bannedSiteProblem } from '../../shared/writing'
 import { processImage, uploadProblem, uploadStatus } from './process'
 import { withMediaSlot } from './semaphore'
 import { createLocalMediaStorage } from './storage'
@@ -46,6 +47,10 @@ export async function ingestImage(input: {
   collectionId?: string | null
   isCover?: boolean
 }) {
+  const banned = bannedSiteProblem(input.sourceUrl)
+  if (banned) {
+    return { error: banned, statusCode: 400 }
+  }
   // Client MIME is not a format. uploadProblem reads the header.
   const problem = await uploadProblem(input.bytes, input.filename)
   if (problem) {

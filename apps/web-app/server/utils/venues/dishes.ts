@@ -1,5 +1,5 @@
 import type { VenueModule } from '../../../shared/venue-modules'
-import { db, VenueInputError } from '@k39/database'
+import { db, priceInName, priceInNameMessage, VenueInputError } from '@k39/database'
 import { dishLinks, dishPhotoProblem, stampDishModules } from '../../../shared/venue-modules'
 
 /**
@@ -9,6 +9,16 @@ import { dishLinks, dishPhotoProblem, stampDishModules } from '../../../shared/v
  * that dish is kept, so one side does not strip the other's photo.
  */
 export async function normalizeDishModules(venueId: string | null, modules: VenueModule[], actor: 'owner' | 'editorial') {
+  for (const mod of modules) {
+    if (mod.type !== 'dishes') {
+      continue
+    }
+    for (const item of mod.items) {
+      if (priceInName(item.name)) {
+        throw new VenueInputError(`${priceInNameMessage()}: ${item.name}`)
+      }
+    }
+  }
   const current = venueId ? await db.venues.byId(venueId) : null
   const stamped = stampDishModules(modules, current?.modules ?? [])
   const links = dishLinks(stamped)

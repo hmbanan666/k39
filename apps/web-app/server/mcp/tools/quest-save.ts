@@ -9,7 +9,7 @@ const step = z.object({
 
 export default defineMcpTool({
   name: 'quest_save',
-  description: 'Create or update a quest in place. Omitting publicationStatus leaves a published quest published. Optional steps replace the existing steps. A slug rename writes a 301 from /kvesty/old. routeSlug points the quest at a route, including a draft. null clears the link so content_archive can delete that draft. Omit routeSlug to keep the current link.',
+  description: 'Create or update a quest in place. Omitting publicationStatus leaves a published quest published. Optional steps replace the existing steps. A slug rename writes a 301 from /kvesty/old. routeSlug points the quest at a route, including a draft. null clears the link so content_archive can delete that draft. Omit routeSlug to keep the current link. A banned site in the text or a URL is rejected.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string(),

@@ -278,6 +278,17 @@ export function bannedSiteHits(text: string): WritingHit[] {
   return hits
 }
 
+/** A banned site anywhere in the value, including a nested URL. Null when clean. */
+export function bannedSiteProblem(value: unknown): string | null {
+  const text = writingCopy([value]).replace(/\s+/g, ' ').trim()
+  const hits = bannedSiteHits(text)
+  if (!hits.length) {
+    return null
+  }
+  const sites = [...new Set(hits.map((hit) => hit.phrase))].join(', ')
+  return `Нельзя использовать: ${sites}`
+}
+
 /** Stop-list, pattern, and (for a venue) price-copy hits. One hit per rule. */
 export function writingHits(text: string, options?: { venue?: boolean }): WritingHit[] {
   const rules: readonly WritingStop[] = options?.venue

@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
+import { priceInName } from '../../price-label'
 import { SOURCE_LINK_LIMIT } from '../../sources'
 import { businesses, offerCodes, offers, regions, slugRedirects, venues } from '../../tables'
 import {
@@ -43,6 +44,22 @@ async function wipe() {
 }
 
 describe('venue policy', () => {
+  it('treats a ruble sign or a ruble word as a price in a name', () => {
+    expect(priceInName('Борщ')).toBe(false)
+    expect(priceInName('Пельмени по-домашнему')).toBe(false)
+    expect(priceInName('250 мл')).toBe(false)
+    expect(priceInName('0,3 л')).toBe(false)
+    expect(priceInName('8 шт.')).toBe(false)
+    expect(priceInName('рублевый')).toBe(false)
+    expect(priceInName('Борщ 350 ₽')).toBe(true)
+    expect(priceInName('350₽')).toBe(true)
+    expect(priceInName('350 руб')).toBe(true)
+    expect(priceInName('350 руб.')).toBe(true)
+    expect(priceInName('1 000 рублей')).toBe(true)
+    expect(priceInName('350р.')).toBe(true)
+    expect(priceInName('350 р')).toBe(true)
+  })
+
   it('formats metres and kilometres', () => {
     expect(formatVenueDistance(0.4)).toBe('400 м')
     expect(formatVenueDistance(1.23)).toBe('1,2 км')
@@ -653,6 +670,23 @@ describe('venue repository', () => {
       sources: atCap,
     })
     expect(kept.sources).toHaveLength(SOURCE_LINK_LIMIT)
+  })
+
+  it('rejects a price written into a dish name', async () => {
+    await expect(Venues.create({
+      name: 'Цена в названии',
+      slug: 'price-in-name',
+      kind: 'cafe',
+      signatureDishes: [{ name: 'Борщ 350 ₽', priceRub: 350 }],
+    })).rejects.toThrow(/Цену пишите/)
+    expect(await Venues.bySlug('price-in-name')).toBeNull()
+    const kept = await Venues.create({
+      name: 'Название без цены',
+      slug: 'name-without-price',
+      kind: 'cafe',
+      signatureDishes: [{ name: 'Борщ', priceRub: 350 }],
+    })
+    expect(kept.signatureDishes).toEqual([{ name: 'Борщ', note: null, priceRub: 350 }])
   })
 
   it('skips a revision when the update changes nothing and writes one when it does', async () => {

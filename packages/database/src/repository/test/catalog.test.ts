@@ -6,6 +6,7 @@ import { useDatabase } from '../../database'
 import { applyInitialContent, INITIAL_CONTENT_IMPORT_ID } from '../../seed/apply'
 import { CASTLE_REGIONS } from '../../seed/castle-regions'
 import seed from '../../seed/initial-content.json'
+import { SOURCE_LINK_LIMIT } from '../../sources'
 import { categories, collectionItems, collections, contentDrafts, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../../tables'
 import { Content, Editor } from '../content'
 
@@ -406,3 +407,73 @@ function migrationStatement(startsWith: string) {
   }
   return statement
 }
+
+describe('page source limits', () => {
+  it('merges and caps place and collection sources, and a pending apply', async () => {
+    const merged = await Editor.savePlace({
+      slug: 'place-source-merge',
+      title: 'Страница',
+      summary: '',
+      body: 'Текст страницы.',
+      sources: [
+        { title: 'Сайт', url: 'https://www.Example.com/menu/' },
+        { title: 'Дубль', url: 'http://example.com/menu' },
+      ],
+    })
+    expect(merged.sources).toEqual([{ title: 'Сайт', url: 'https://www.Example.com/menu/' }])
+    const kept = await Editor.savePlace({
+      id: merged.id,
+      slug: merged.slug,
+      title: 'Страница',
+      summary: '',
+      body: 'Текст страницы длиннее.',
+    })
+    expect(kept.sources).toEqual(merged.sources)
+
+    await expect(Editor.savePlace({
+      slug: 'place-source-blank',
+      title: 'Страница',
+      summary: '',
+      body: 'Текст.',
+      sources: [{ title: '  ', url: 'https://example.com/x' }],
+    })).rejects.toThrow(/Источник 1/)
+    expect(await Editor.placeBySlug('place-source-blank')).toBeFalsy()
+
+    const tooMany = Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+      title: `Источник ${index + 1}`,
+      url: `https://example.com/p/${index}`,
+    }))
+    await expect(Editor.saveCollection({
+      slug: 'collection-source-cap',
+      title: 'Подборка',
+      sources: tooMany,
+    })).rejects.toThrow(/Не больше/)
+    const collection = await Editor.saveCollection({
+      slug: 'collection-source-merge',
+      title: 'Подборка',
+      sources: [
+        { title: 'Сайт', url: 'https://www.Example.com/oct/' },
+        { title: 'Дубль', url: 'http://example.com/oct' },
+      ],
+    })
+    expect(collection.sources).toEqual([{ title: 'Сайт', url: 'https://www.Example.com/oct/' }])
+
+    const live = await Editor.savePlace({
+      slug: 'place-source-apply',
+      title: 'Живая',
+      summary: '',
+      body: 'Было.',
+      publicationStatus: 'published',
+      sources: [],
+    })
+    await Editor.saveContentDraft({
+      entityType: 'place',
+      entityId: live.id,
+      publicationStatus: 'review',
+      payload: { sources: tooMany },
+    })
+    await expect(Editor.applyPendingPlace(live.id)).rejects.toThrow(/Не больше/)
+    expect((await Editor.placeById(live.id))?.sources).toEqual([])
+    expect(await Editor.contentDraft('place', live.id)).toBeTruthy()
+  })
+})

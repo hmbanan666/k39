@@ -1,5 +1,5 @@
 import { createError } from 'h3'
-import { bannedSiteHits, writingHits } from '../../../shared/writing'
+import { bannedSiteHits, bannedSiteProblem, writingHits } from '../../../shared/writing'
 
 /**
  * Draft and review saves return the messages and still store the row.
@@ -26,4 +26,12 @@ export function writingGate(input: { prose: string, names?: string, publishing: 
     })
   }
   return writingWarnings
+}
+
+/** Banned sites are rejected on every save, including a draft. */
+export function rejectBannedSites(value: unknown) {
+  const problem = bannedSiteProblem(value)
+  if (problem) {
+    throw createError({ statusCode: 400, statusMessage: problem })
+  }
 }

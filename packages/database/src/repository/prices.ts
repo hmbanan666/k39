@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte } from 'drizzle-orm'
 import { useDatabase } from '../database'
+import { priceInName, priceInNameMessage } from '../price-label'
 import { priceItems, venuePrices, venues } from '../tables'
 
 export type PriceSourceKind = 'official' | 'owner'
@@ -142,10 +143,14 @@ export class Prices {
       if (row.sourceKind === 'official' && !row.sourceUrl?.trim()) {
         throw new Error(`Нужна ссылка на официальный источник: ${row.item}`)
       }
+      const variant = row.variant?.trim() || item.defaultVariant || ''
+      if (priceInName(variant)) {
+        throw new Error(`${priceInNameMessage()}: ${variant}`)
+      }
       return {
         venueId,
         itemId: item.id,
-        variant: row.variant?.trim() || item.defaultVariant || '',
+        variant,
         priceRub: Math.round(row.priceRub),
         checkedAt: row.checkedAt.slice(0, 10),
         sourceKind: row.sourceKind,

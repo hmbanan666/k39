@@ -4,6 +4,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
 import { PHONE_TEXT_MAX } from '../phone'
+import { priceInName, priceInNameMessage } from '../price-label'
 import { prepareSourceLinks, SourceInputError } from '../sources'
 import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import {
@@ -135,11 +136,17 @@ function cleanDishes(rows: VenueDish[] | undefined) {
     return undefined
   }
   return rows
-    .map((row) => ({
-      name: row.name.trim().slice(0, 80),
-      note: row.note?.trim().slice(0, 160) || null,
-      priceRub: row.priceRub != null && Number.isFinite(row.priceRub) && row.priceRub >= 0 ? Math.round(row.priceRub) : null,
-    }))
+    .map((row) => {
+      const name = row.name.trim().slice(0, 80)
+      if (name && priceInName(name)) {
+        throw new VenueInputError(`${priceInNameMessage()}: ${name}`)
+      }
+      return {
+        name,
+        note: row.note?.trim().slice(0, 160) || null,
+        priceRub: row.priceRub != null && Number.isFinite(row.priceRub) && row.priceRub >= 0 ? Math.round(row.priceRub) : null,
+      }
+    })
     .filter((row) => row.name)
     .slice(0, SIGNATURE_DISHES_MAX)
 }

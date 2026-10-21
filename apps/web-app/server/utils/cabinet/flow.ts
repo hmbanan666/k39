@@ -23,6 +23,11 @@ function fail(statusCode: number, statusMessage: string): never {
   throw createError({ statusCode, statusMessage })
 }
 
+function formProblem(issues: Array<{ message: string }>, fallback: string) {
+  const issue = issues.find((item) => item.message.startsWith('Цену пишите') || item.message.startsWith('Нельзя использовать'))
+  return issue?.message ?? fallback
+}
+
 function pepper() {
   const value = process.env.NUXT_SESSION_PASSWORD
   if (!value || value.length < 32) {
@@ -262,14 +267,14 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
   await requireVenueMember(userId, venueId)
   const parsed = ownerVenueSchema.safeParse(pickOwnerFields(body))
   if (!parsed.success) {
-    fail(400, 'Проверьте поля формы')
+    fail(400, formProblem(parsed.error.issues, 'Проверьте поля формы'))
   }
   const write = parsed.data
   let ownerPrices: ReturnType<typeof asOwnerPrices> | undefined
   if (Object.prototype.hasOwnProperty.call(body, 'prices')) {
     const prices = venuePricesWriteSchema.safeParse(body.prices)
     if (!prices.success) {
-      fail(400, 'Проверьте ориентиры цен')
+      fail(400, formProblem(prices.error.issues, 'Проверьте ориентиры цен'))
     }
     ownerPrices = asOwnerPrices(prices.data)
   }

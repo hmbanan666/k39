@@ -9,7 +9,7 @@ const step = z.object({
 
 export default defineMcpTool({
   name: 'quest_update',
-  description: 'Update a quest in place. Does not create one. routeSlug points the quest at a route, including a draft. null clears the link so content_archive can delete that draft. Omit routeSlug to keep the current link. Omitting publicationStatus leaves a published quest published.',
+  description: 'Update a quest in place. Does not create one. routeSlug points the quest at a route, including a draft. null clears the link so content_archive can delete that draft. Omit routeSlug to keep the current link. Omitting publicationStatus leaves a published quest published. A banned site in the text or a URL is rejected.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string().optional(),

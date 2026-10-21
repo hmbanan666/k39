@@ -1,3 +1,4 @@
+import { priceInName, priceInNameMessage } from '@k39/database/price-label'
 import { z } from 'zod'
 import { venueModulesSchema } from '../../../shared/venue-modules'
 import { sources } from '../mcp/schemas'
@@ -36,10 +37,10 @@ export const venueFields = {
   takeaway: z.boolean().nullable().optional(),
   delivery: z.boolean().nullable().optional(),
   signatureDishes: z.array(z.object({
-    name: z.string(),
+    name: z.string().refine((value) => !priceInName(value), { message: priceInNameMessage() }),
     note: z.string().nullable().optional(),
     priceRub: z.number().int().min(0).nullable().optional(),
-  })).max(5).optional().describe('Up to 5 dishes worth ordering, in our own words, from a visit or the venue. Replaces the list'),
+  })).max(5).optional().describe('Up to 5 dishes worth ordering, in our own words, from a visit or the venue. The name is not a price: no ₽ and no руб. Replaces the list'),
   modules: venueModulesSchema.optional().describe('Page modules, replaces the list. Types: text, dishes, audience, practical, best-time, how-to-get, tips, prices, faq. dishes is a showcase of at most 8 items {id?, name, description?, priceRub?, mediaId?, updatedAt?}. note on an item is the old short text. A new mediaId must already be attached with origin own or commons. See docs/venue-modules.md. Original text only'),
   contactEmail: z.string().nullable().optional().describe('Official venue email used for a claim code. Not shown on the public page'),
   description: z.string().optional().describe('Russian description, 300-600 characters to publish. Archive and SEO source when modules are set'),
