@@ -74,7 +74,7 @@
           >
           <input
             v-model="day.closes"
-            placeholder="21:00"
+            placeholder="уточняйте"
             :disabled="day.closed"
           >
         </label>

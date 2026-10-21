@@ -347,8 +347,9 @@ export function normalizeHours(value: unknown): VenueHours {
       const closed = day.closed === true
       const opens = typeof day.opens === 'string' && CLOCK.test(day.opens) ? day.opens : null
       const closes = typeof day.closes === 'string' && (CLOCK.test(day.closes) || day.closes === '24:00') ? day.closes : null
-      if (!closed && (!opens || !closes)) {
-        throw new VenueInputError(`Часы ${weekday}: нужны opens и closes, либо closed`)
+      // An opening time without a closing time is an open-ended day (ADR 0042).
+      if (!closed && !opens) {
+        throw new VenueInputError(`Часы ${weekday}: нужно opens, либо closed`)
       }
       given.set(weekday, { weekday, closed: closed || !opens, opens: closed ? null : opens, closes: closed ? null : closes })
     }
