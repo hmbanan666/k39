@@ -4,7 +4,7 @@
 
 Accepted.
 
-ADR 0004 still governs `POST /api/events`: that table stores a consented session id and nothing else. This record adds page analytics in Postgres. No third-party tracker is loaded.
+ADR 0004 still requires `consent: true` on `POST /api/events` and still forbids an IP address and a user id on that table. ADR 0043 supersedes the session cookie and the consent buttons: `events.session_id` is a new random value on every row, and that handler sets no cookie. This record adds page analytics in Postgres. No third-party tracker is loaded.
 
 ## Context
 
