@@ -18,7 +18,9 @@ Never copy another site's content: not the sentences, not the photos, and not th
 ## Allowed
 
 - The official site of the place, museum, administration, or venue (pages and menus).
-- The venue's own official social account, for a fact that page states.
+- The venue's own official social account, for a fact that page states. For menu prices only VK (`vk.com` or `vk.ru`) counts, and only when `website` is empty and the price community matches a VK link in `socials` (`k39-price-anchors`). The editor still confirms that community is the venue's own and active before adding it to `socials`.
+- The venue's own menu document on Google Drive, Google Docs, or Yandex Disk (`drive.google.com`, `docs.google.com`, `disk.yandex.*`, `yadi.sk`) when the venue's site or its own social page links to it. Google Drive and Yandex Disk count as file hosts here. They are not "Google" or "Yandex" sources.
+- `website` is the venue's own site only. A VK, Telegram, Instagram, or other social page goes in `socials`. A social host in `website` is rejected with `В поле «Сайт» укажите только собственный сайт заведения. Ссылку на соцсеть добавьте в «Соцсети».` A VK price counts only when `website` is empty and its community matches the VK link in `socials`. The editor still confirms the community is the venue's own and active before adding it to `socials`. Taplink is absent from `packages/types/src/social-hosts.ts`, so `website` accepts it. Leave Taplink out of `website`: a filled `website` stops a VK menu from counting. Put that link in `socials`.
 - OpenStreetMap, including `venue_import_osm`. Import creates a draft. It does not publish and it does not set `lastVerifiedAt`. For a venue, OSM does not outrank the official site. See Venue facts.
 - Yandex Maps and 2GIS, only for a venue that really exists and operates, and only for the fact fields in Venue facts. Store the card in `sources` the same way as any other source.
 - Wikimedia Commons, through `commons_search` and `commons_import`. Licenses: `cc-by`, `cc-by-sa`, `cc0`, `pd`.
@@ -36,7 +38,7 @@ Do not take facts, hours, prices, reviews, ratings, or photos from:
 - Photos hosted on the venue's own website (use our shot, Commons, or a file they sent)
 - Delivery apps
 
-Yandex Maps and 2GIS are not a content source. From those cards, do not take texts, descriptions, photos, reviews, ratings, an average check, or prices. Prices stay the official menu only (`k39-price-anchors`).
+Yandex Maps and 2GIS are not a content source. From those cards, do not take texts, descriptions, photos, reviews, ratings, an average check, or prices. Prices stay the official menu only: the venue site, an official menu document on Drive, Docs, or Yandex Disk, or the venue's own VK (`vk.com` or `vk.ru`) when `website` is empty and the community matches a VK link in `socials` (`k39-price-anchors`).
 
 Never name `kgdmore.ru`. The ban lives in `WRITING_BANNED_SITES` (`apps/web-app/shared/writing.ts`).
 
@@ -56,7 +58,7 @@ For a venue, take address, hours, phone, whether it is open or operating, and co
 
 On a conflict, the official site wins. Do not replace a site address, hour, phone, operating status, or coordinate with a map or OSM value. Maps and OSM fill a gap. They do not override the site. If two maps disagree and the site is silent, do not blend the two values. Record one of them with its URL, or write «уточняйте». Do not take the pin from a guessed point.
 
-Menu lines and prices stay the official menu: a page on the venue's site or a PDF on that site. Yandex Maps, 2GIS, Google Maps, aggregators, and delivery apps do not supply them.
+Menu lines and prices stay the official menu: a page or PDF on the venue's site, or the venue's menu document on `drive.google.com`, `docs.google.com`, `disk.yandex.*`, or `yadi.sk`. When `website` is empty, its own VK page on `vk.com` or `vk.ru` counts (`sourceKind: official` with that URL; the fact is `official_social`). The server counts that price only when its community matches a VK link in `socials`. The editor still confirms the community is the venue's own and active before adding it to `socials`. Yandex Maps, 2GIS, Google Maps, OSM, aggregators, and delivery apps (Yandex Eda, Delivery Club, tomesto) do not supply them. Neither do other social networks or other Google and Yandex services.
 
 Use «уточняйте» only when the official site says nothing about that field and neither a map card nor OSM states it. If the site states the fact, write the fact. An empty hours week still renders «Часы уточняйте» (ADR 0018). That is the empty state, not a reason to ignore the site or a map card that states the hours.
 
@@ -112,13 +114,17 @@ Good: store 10:00–22:00 from the site, with that page as the source. Keep coor
 
 Bad: a price row whose `sourceUrl` is a Yandex Maps or 2GIS page.
 
+Bad: a price row on `vk.com` or `vk.ru` for a venue that has a website, or whose community is not a VK link in `socials`. The row can be saved. It is then hidden and does not count. Take the price from the site, or add the venue's own active community to `socials` first when there is no website.
+
+Good: a price row on `disk.yandex.ru/i/...` that the venue's site links as «Меню».
+
 ## Checklist
 
 - Verification of a stored fact started at `queue_list`.
 - Every number, name, date, and hour traces to an allowed source URL in `sources`.
 - Yandex Maps, 2GIS, and Google Maps, when used, are only for a venue that exists and operates, and only for hours, phone, address, operating status, and coordinates. The card URL is in `sources`. No text, description, photo, review, rating, average check, or price comes from them. Google Maps is `map_google`, below the official site, same as the other map cards.
 - Yandex Business, Yandex food cards, aggregators, delivery apps, and venue-site photos are unused.
-- A venue address, hours, phone, operating status, and coordinates come from the official site first. Maps and OSM fill a fact the site does not state. A conflict keeps the site. Then «уточняйте». Prices and menu lines stay the official menu.
+- A venue address, hours, phone, operating status, and coordinates come from the official site first. Maps and OSM fill a fact the site does not state. A conflict keeps the site. Then «уточняйте». Prices and menu lines stay the official menu. Menu documents on Drive, Docs, or Yandex Disk count. VK (`vk.com` or `vk.ru`) counts only when `website` is empty and the community matches a VK link in `socials`.
 - «уточняйте» is the last step. Nothing is guessed.
 - `sources` and `factsCheckedAt` or `lastVerifiedAt` match this check.
 - Photo `alt`, `author`, `license`, and `sourceUrl` are set. The credit is in JSON-LD and «Источники», not in the article.
