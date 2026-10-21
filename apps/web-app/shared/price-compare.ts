@@ -326,27 +326,134 @@ export function isPackagedJuice(slug: string, variant: string | null | undefined
   return /пакет|бутыл|тетра[\s-]*пак|упаков/.test(text)
 }
 
-const NOT_A_MENU_HOST = /(?:^|\.)(?:vk\.com|t\.me|telegram\.me|ok\.ru|instagram\.com|facebook\.com|fb\.com|threads\.net|youtube\.com|youtu\.be|dzen\.ru|tiktok\.com|2gis\.(?:ru|com|kz|uz)|yandex\.(?:ru|com|by|kz|uz)|ya\.ru|openstreetmap\.org|osm\.org|google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)|maps\.google\.com|goo\.gl|maps\.app\.goo\.gl)$/
+/**
+ * What a price URL is.
+ * `menu` is a page on the venue's own site, including a PDF served there.
+ * `document` is that menu on an official file host.
+ * Maps, delivery aggregators, social networks, and other Google or Yandex
+ * services are not a menu. VK is `social` here; `resolveMenuPrice` applies
+ * the separate no-website rule.
+ */
+export type MenuUrlClass = 'menu' | 'document' | 'map' | 'aggregator' | 'social' | 'service' | 'invalid'
 
-/** A page on the venue's own site, including a PDF. Maps and social posts are not a menu. */
-export function isMenuUrl(url: string | null | undefined) {
+const GOOGLE_SITE = /(?:^|\.)google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)$/
+const YANDEX_SITE = /(?:^|\.)yandex\.(?:ru|com|by|kz|uz)$/
+const SOCIAL_HOST = /(?:^|\.)(?:vk\.com|t\.me|telegram\.me|ok\.ru|instagram\.com|facebook\.com|fb\.com|threads\.net|youtube\.com|youtu\.be|dzen\.ru|tiktok\.com)$/
+
+function parsedHttpUrl(url: string | null | undefined) {
   const text = url?.trim() ?? ''
   if (!text) {
-    return false
+    return null
   }
   try {
     const parsed = new URL(text)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return false
+      return null
     }
-    const host = parsed.hostname.replace(/^www\./, '')
-    if (NOT_A_MENU_HOST.test(host) || host.startsWith('maps.')) {
-      return false
+    const host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+    if (!host) {
+      return null
     }
-    return true
+    return { host, pathname: parsed.pathname }
   } catch {
+    return null
+  }
+}
+
+function isYandexHost(host: string) {
+  return YANDEX_SITE.test(host) || host === 'ya.ru' || host.endsWith('.ya.ru')
+}
+
+/** Drive, Docs, and Yandex Disk. Checked before the Google and Yandex service ban. */
+function isDocumentHost(host: string) {
+  if (host === 'drive.google.com' || host.endsWith('.drive.google.com')) {
+    return true
+  }
+  if (host === 'docs.google.com' || host.endsWith('.docs.google.com')) {
+    return true
+  }
+  if (host === 'yadi.sk' || host.endsWith('.yadi.sk')) {
+    return true
+  }
+  return /(?:^|\.)disk\.yandex\.[a-z0-9-]+(?:\.[a-z0-9-]+)?$/.test(host)
+}
+
+function isMapUrl(host: string, pathname: string) {
+  if (host.startsWith('maps.') || host === 'goo.gl' || host.endsWith('.goo.gl')) {
+    return true
+  }
+  if (/(?:^|\.)2gis\.(?:ru|com|kz|uz)$/.test(host)) {
+    return true
+  }
+  if (/(?:^|\.)openstreetmap\.org$/.test(host) || host === 'osm.org' || host.endsWith('.osm.org')) {
+    return true
+  }
+  if (GOOGLE_SITE.test(host) && (pathname === '/maps' || pathname.startsWith('/maps/'))) {
+    return true
+  }
+  return isYandexHost(host) && pathname.includes('/maps')
+}
+
+/** Yandex Eda, Delivery Club, and tomesto. */
+function isDeliveryAggregator(host: string, pathname: string) {
+  if (/(?:^|\.)eda\.yandex\.(?:ru|com|by|kz|uz)$/.test(host)) {
+    return true
+  }
+  if (/(?:^|\.)delivery-club\.ru$/.test(host) || /(?:^|\.)tomesto\.ru$/.test(host)) {
+    return true
+  }
+  return isYandexHost(host) && (pathname === '/eda' || pathname.startsWith('/eda/'))
+}
+
+/** Classifies a price URL. Document hosts are accepted. Map and aggregator hosts and paths are rejected. */
+export function classifyMenuUrl(url: string | null | undefined): MenuUrlClass {
+  const parsed = parsedHttpUrl(url)
+  if (!parsed) {
+    return 'invalid'
+  }
+  if (isDocumentHost(parsed.host)) {
+    return 'document'
+  }
+  if (isMapUrl(parsed.host, parsed.pathname)) {
+    return 'map'
+  }
+  if (isDeliveryAggregator(parsed.host, parsed.pathname)) {
+    return 'aggregator'
+  }
+  if (SOCIAL_HOST.test(parsed.host)) {
+    return 'social'
+  }
+  if (isYandexHost(parsed.host) || GOOGLE_SITE.test(parsed.host)) {
+    return 'service'
+  }
+  return 'menu'
+}
+
+/** A page on the venue's own site, or a document on Drive, Docs, or Yandex Disk. */
+export function isMenuUrl(url: string | null | undefined) {
+  const kind = classifyMenuUrl(url)
+  return kind === 'menu' || kind === 'document'
+}
+
+/**
+ * The venue's own VK page. The price column stores `official` because it
+ * only allows `official` and `owner`. A vk.com URL is recorded on the fact
+ * as `official_social`. Both shapes are that claim. The host identifies the
+ * network. The path is not an ownership check. Comparable only when
+ * `venues.website` is empty.
+ */
+function isComparableVkMenu(sourceKind: string, sourceUrl: string | null, website: string | null) {
+  if (website?.trim()) {
     return false
   }
+  if (sourceKind !== 'official' && sourceKind !== 'official_social') {
+    return false
+  }
+  const parsed = parsedHttpUrl(sourceUrl)
+  if (!parsed) {
+    return false
+  }
+  return parsed.host === 'vk.com' || parsed.host.endsWith('.vk.com')
 }
 
 /** A stored menu row before the fact overlay. */
@@ -386,10 +493,18 @@ function readFactPrice(value: unknown) {
 
 /**
  * The fact wins when it is cited. A gap hides the price. An owner price stays
- * on the venue card and is not comparable. Only a fresh official menu row
- * is comparable. `cutoff` is `YYYY-MM-DD` from `PRICE_FRESH_DAYS`.
+ * on the venue card and is not comparable. A fresh official menu row is
+ * comparable: the venue site, or a document on Drive, Docs, or Yandex Disk.
+ * The venue's own VK page is comparable only when `venue.website` is empty.
+ * Omit `venue` when the caller has not loaded that field: VK stays out.
+ * `cutoff` is `YYYY-MM-DD` from `PRICE_FRESH_DAYS`.
  */
-export function resolveMenuPrice<T extends MenuColumn>(row: T, fact: MenuFact | null | undefined, cutoff: string): { row: T, comparable: boolean } | null {
+export function resolveMenuPrice<T extends MenuColumn>(
+  row: T,
+  fact: MenuFact | null | undefined,
+  cutoff: string,
+  venue?: { website: string | null },
+): { row: T, comparable: boolean } | null {
   if (fact?.confidence === 'gap') {
     return null
   }
@@ -422,6 +537,9 @@ export function resolveMenuPrice<T extends MenuColumn>(row: T, fact: MenuFact | 
     return { row: next, comparable: false }
   }
   if (sourceKind === 'official' && isMenuUrl(sourceUrl)) {
+    return { row: next, comparable: true }
+  }
+  if (venue && isComparableVkMenu(sourceKind, sourceUrl, venue.website)) {
     return { row: next, comparable: true }
   }
   return null

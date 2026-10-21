@@ -106,8 +106,15 @@ tell, in one glance, whether this place is cheap or expensive.
   Omitting it on an update keeps the stored picture.
 - `venue_prices` holds one row per venue, item and variant: `price_rub`,
   `checked_at`, `source_kind` (`official` with a URL to the venue's own menu,
-  site or socials, or `owner`), `source_title`, `source_url`. Set with
-  `venue_prices_set` (replaces the list); `venue_get` returns them.
+  or `owner`), `source_title`, `source_url`. The menu URL is a page or PDF on
+  the venue site, or a document on `drive.google.com`, `docs.google.com`,
+  `disk.yandex.*`, or `yadi.sk`. VK uses one rule: the fact source kind is
+  `official_social` and the host is `vk.com`. This column stays `official`
+  because it cannot store `official_social`. Comparison treats that column,
+  before the fact overlay, as the same claim. It counts only when
+  `venues.website` is empty. The path is not an ownership check. Other social
+  networks are not a menu. Set with `venue_prices_set` (replaces the list);
+  `venue_get` returns them.
 - Prices are never invented or taken from aggregators. Rows older than 365
   days are not shown. Without fresh rows the module is hidden.
 
@@ -134,9 +141,11 @@ Without a known town it says «региона».
 The comparison is computed on the server from `db.prices.forItem`, then the
 price fact when that row is cited (ADR 0033). Published venues only (drafts,
 closed and archived are out), checked within a year, in the same region.
-Peers are official menu rows: `sourceKind` official and a menu URL on the
-venue's site. An owner price stays on this card and is not a peer. Packaged
-or bottled orange juice is not the catalog row. One price per venue: the
+Peers are official menu rows: `sourceKind` official and a menu URL (the
+venue site, or a document on Drive, Google Docs, or Yandex Disk), or the
+venue's own VK page under the rule above when that venue has no website.
+An owner price stays on this card and is not a peer. Packaged or bottled
+orange juice is not the catalog row. One price per venue: the
 same portion when that venue has it, otherwise its cheapest fresh official
 price. The card uses its own price. `/ceny` and `/gde-deshevle` use that
 sample. A listing is omitted below three venues (`PRICE_COMPARE_MIN`) and

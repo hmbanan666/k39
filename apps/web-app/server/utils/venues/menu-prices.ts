@@ -43,6 +43,7 @@ function pickFact(rows: Array<MenuFact & { path: string }>, item: string, varian
 /**
  * Overlay cited price facts on menu columns. A missing fact keeps the column.
  * Callers that build «Где дешевле» keep `comparable` rows only.
+ * The venue website is loaded here so a vk.com menu counts only when that field is empty.
  */
 export async function projectMenuPrices<T extends MenuColumn>(rows: T[], now = new Date()) {
   if (!rows.length) {
@@ -50,7 +51,11 @@ export async function projectMenuPrices<T extends MenuColumn>(rows: T[], now = n
   }
   const cutoff = priceFreshCutoff(now)
   const ids = [...new Set(rows.map((row) => row.venueId))]
-  const cited = await db.facts.forConsumers('venue', ids, ['price'])
+  const [cited, siteRows] = await Promise.all([
+    db.facts.forConsumers('venue', ids, ['price']),
+    db.venues.websitesFor(ids),
+  ])
+  const sites = new Map(siteRows.map((row) => [row.id, row.website]))
   const byVenue = new Map<string, Array<MenuFact & { path: string }>>()
   for (const fact of cited) {
     const list = byVenue.get(fact.consumerId) ?? []
@@ -58,7 +63,8 @@ export async function projectMenuPrices<T extends MenuColumn>(rows: T[], now = n
     byVenue.set(fact.consumerId, list)
   }
   return rows.flatMap((row) => {
-    const resolved = resolveMenuPrice(row, pickFact(byVenue.get(row.venueId) ?? [], row.item, row.variant), cutoff)
+    const venue = sites.has(row.venueId) ? { website: sites.get(row.venueId) ?? null } : undefined
+    const resolved = resolveMenuPrice(row, pickFact(byVenue.get(row.venueId) ?? [], row.item, row.variant), cutoff, venue)
     return resolved ? [resolved] : []
   })
 }

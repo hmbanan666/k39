@@ -495,6 +495,18 @@ export class Venues {
     return { id: current.id, slug: current.slug, action: 'deleted' as const }
   }
 
+  /** `venues.website` for the VK menu rule. A missing id is omitted. */
+  static async websitesFor(ids: string[]) {
+    const unique = [...new Set(ids)]
+    if (!unique.length) {
+      return []
+    }
+    return useDatabase().select({
+      id: venues.id,
+      website: venues.website,
+    }).from(venues).where(inArray(venues.id, unique))
+  }
+
   /** Every venue in a town, including drafts. A null region is its own group. */
   static async inRegion(regionId: string | null) {
     const where = regionId == null ? isNull(venues.regionId) : eq(venues.regionId, regionId)

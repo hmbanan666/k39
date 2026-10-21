@@ -16,7 +16,7 @@ ADR 0033 stores a price as a fact beside `venue_prices`. The public reader for p
 
 `/gde-deshevle` lists cities that have at least one comparable item. `/gde-deshevle/{region}` lists those items. `/ceny/{item}` and `/ceny/{item}/{region}` list the venues, cheapest first, with the portion, the median, the range, the check dates, and one menu link. The link is the URL used by the most prices on that page. A tie goes to the newer URL. The line ends with «Цены могли измениться».
 
-A price counts when it is an official menu row: `sourceKind` official, a menu URL on the venue's site, checked within `PRICE_FRESH_DAYS`, on a published venue that is not operating closed. Owner prices stay on the venue card and are not peers. Packaged or bottled orange juice is not the catalog item. One price per venue: the cheapest remaining official variant.
+A price counts when it is an official menu row checked within `PRICE_FRESH_DAYS`, on a published venue that is not operating closed. The menu is a page or PDF on the venue's site, or a document on Google Drive, Google Docs, or Yandex Disk (`drive.google.com`, `docs.google.com`, `disk.yandex.*`, `yadi.sk`). The venue's own VK page counts only when `venues.website` is empty: the fact is `official_social` with a `vk.com` URL (the price column stays `official`, because it cannot store `official_social`). The path is not an ownership check. Owner prices stay on the venue card and are not peers. Packaged or bottled orange juice is not the catalog item. One price per venue: the cheapest remaining official variant.
 
 The page is rendered from three venues (`PRICE_COMPARE_MIN`) and is indexable from five (`PRICE_INDEX_MIN`). A city is indexable from five venues that have any comparable price, even when no single item has five. Counts come from the rows. They are not a fixed list of towns.
 
@@ -28,4 +28,4 @@ The phone visitors see is the phone fact. `venues.phone` stores the same text, u
 
 A town with fewer than three comparable prices for every item has no city page. Yantarny and Pionersky stay absent while they have no such prices. Adding a sixth venue can move a page from `noindex` into the sitemap without a code change.
 
-An owner price no longer moves the town median. A social or map URL stored as official does not count as a menu.
+An owner price no longer moves the town median. A map URL, a delivery aggregator, or a social URL other than the venue's own VK page (and only when the venue has no website) does not count as a menu. A PDF on Google Drive, Google Docs, or Yandex Disk does.

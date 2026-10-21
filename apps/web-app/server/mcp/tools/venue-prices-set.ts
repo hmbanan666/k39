@@ -8,7 +8,7 @@ import { venuePricesWriteSchema } from '../../utils/venues/prices'
 
 export default defineMcpTool({
   name: 'venue_prices_set',
-  description: 'Replace a venue\'s «Ориентиры цен»: prices for items from the shared catalog (price_items_list). Only prices from the venue\'s official public menu, site or socials (sourceKind official, with sourceUrl), or sent by the owner (sourceKind owner). Never invent a price or take one from Yandex Maps, 2GIS, aggregators, or delivery apps. Prices stay the official menu. An empty list clears them; the module hides without prices. Prices older than a year are not shown.',
+  description: 'Replace a venue\'s «Ориентиры цен»: prices for items from the shared catalog (price_items_list). Only prices from the venue\'s official menu (sourceKind official, with sourceUrl) or sent by the owner (sourceKind owner). An official menu is a page or PDF on the venue site, or a document on drive.google.com, docs.google.com, disk.yandex.*, or yadi.sk. The venue\'s own VK page counts only when the venue has no website: sourceKind official and a vk.com URL, stored on the fact as official_social. Do not infer ownership from the VK path. Never invent a price or take one from Yandex Maps, 2GIS, Google Maps, OSM, aggregators, or delivery apps (Yandex Eda, Delivery Club, tomesto). An empty list clears them; the module hides without prices. Prices older than a year are not shown.',
   inputSchema: {
     venueId: z.string().optional(),
     slug: z.string().optional(),
