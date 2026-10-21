@@ -1,3 +1,7 @@
+import { REDIRECT_HOP_LIMIT } from '@k39/database'
+
+export { REDIRECT_HOP_LIMIT }
+
 export interface StoredRedirect {
   fromPath: string
   toPath: string | null
@@ -48,7 +52,7 @@ function followRedirects(path: string, redirects: StoredRedirect[]) {
   const byPath = new Map(redirects.map((item) => [item.fromPath, item]))
   const seen = new Set<string>()
   let current = path
-  for (let hop = 0; hop < 10; hop++) {
+  for (let hop = 0; hop < REDIRECT_HOP_LIMIT; hop++) {
     const row = byPath.get(current)
     if (!row || seen.has(current)) {
       break

@@ -3,6 +3,10 @@ import { useDatabase } from '../../database'
 import { collectionItems, collections, offers, places, quests, questSteps, routePoints, routes, slugRedirects } from '../../tables'
 import { Content, Editor } from '../content'
 
+async function storedRedirects() {
+  return useDatabase().select().from(slugRedirects)
+}
+
 async function resetStops() {
   const db = useDatabase()
   await db.delete(questSteps)
@@ -137,7 +141,7 @@ describe('ordered stops and archive', () => {
     expect(archived).toMatchObject({ action: 'archived', slug: 'ordered-route', publicationStatus: 'archived' })
     expect(await Content.publishedRoute('ordered-route')).toBeNull()
     expect((await Content.sitemapRows()).routes.some((item) => item.loc === '/marshruty/ordered-route')).toBe(false)
-    expect(await Content.redirects()).toEqual(expect.arrayContaining([
+    expect(await storedRedirects()).toEqual(expect.arrayContaining([
       expect.objectContaining({ fromPath: '/marshruty/ordered-route', toPath: null, statusCode: 410 }),
     ]))
     expect(await Editor.routePoints(route.id)).toHaveLength(1)
@@ -150,7 +154,7 @@ describe('ordered stops and archive', () => {
     })
     expect(republished.publicationStatus).toBe('published')
     expect(await Content.publishedRoute('ordered-route')).not.toBeNull()
-    expect((await Content.redirects()).some((item) => item.fromPath === '/marshruty/ordered-route')).toBe(false)
+    expect((await storedRedirects()).some((item) => item.fromPath === '/marshruty/ordered-route')).toBe(false)
 
     const draft = await Editor.saveRoute({
       slug: 'draft-route',
@@ -159,7 +163,7 @@ describe('ordered stops and archive', () => {
     })
     expect((await Editor.archiveOrDeleteRoute(draft.id))?.action).toBe('deleted')
     expect((await Editor.listRoutes()).some((item) => item.id === draft.id)).toBe(false)
-    expect((await Content.redirects()).some((item) => item.fromPath === '/marshruty/draft-route')).toBe(false)
+    expect((await storedRedirects()).some((item) => item.fromPath === '/marshruty/draft-route')).toBe(false)
 
     const linked = await Editor.saveRoute({ slug: 'linked-route', title: 'Связан' })
     const quest = await Editor.saveQuest({ slug: 'linked-quest', title: 'Квест', routeId: linked.id })
@@ -198,7 +202,7 @@ describe('ordered stops and archive', () => {
       publicationStatus: 'review',
     })
     expect((await Editor.archiveOrDeleteRoute(review.id))?.action).toBe('archived')
-    expect((await Content.redirects()).some((item) => item.fromPath === '/marshruty/review-route' && item.statusCode === 410)).toBe(true)
+    expect((await storedRedirects()).some((item) => item.fromPath === '/marshruty/review-route' && item.statusCode === 410)).toBe(true)
   })
 
   it('stores collection items and archives a published collection', async () => {
@@ -263,7 +267,7 @@ describe('ordered stops and archive', () => {
     expect(await Content.publishedCollection('live-collection')).toBeNull()
     expect((await Content.sitemapRows()).collections.some((item) => item.loc === '/podborki/live-collection')).toBe(false)
     expect(await Editor.collectionItems(live.id)).toHaveLength(1)
-    expect((await Content.redirects()).some((item) => item.fromPath === '/podborki/live-collection' && item.statusCode === 410)).toBe(true)
+    expect((await storedRedirects()).some((item) => item.fromPath === '/podborki/live-collection' && item.statusCode === 410)).toBe(true)
   })
 
   it('returns quest task text and only a published route', async () => {

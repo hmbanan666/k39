@@ -1,5 +1,5 @@
-import { db, isDatabaseReady } from '@k39/database'
-import { decideRedirect } from '../../shared/redirects'
+import { db, isDatabaseReady, REDIRECT_HOP_LIMIT } from '@k39/database'
+import { decideRedirect, rewritePath } from '../../shared/redirects'
 
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
@@ -7,11 +7,7 @@ export default defineEventHandler(async (event) => {
     return
   }
   const stored = isDatabaseReady()
-    ? (await db.content.redirects()).map((row) => ({
-        fromPath: row.fromPath,
-        toPath: row.toPath,
-        statusCode: row.statusCode,
-      }))
+    ? await db.content.redirectChain(rewritePath(url.pathname), REDIRECT_HOP_LIMIT)
     : []
   const decision = decideRedirect({
     hostHeader: getRequestHeader(event, 'x-forwarded-host') ?? getRequestHeader(event, 'host'),

@@ -42,6 +42,38 @@ function rowsOf<T>(result: unknown): T[] {
   return (result as { rows?: T[] }).rows ?? []
 }
 
+interface PathSubject {
+  placeId: string | null
+  routeId: string | null
+  venueId: string | null
+}
+
+function emptySubject(): PathSubject {
+  return { placeId: null, routeId: null, venueId: null }
+}
+
+function textArray(values: string[]) {
+  if (!values.length) {
+    return sql`array[]::varchar[]`
+  }
+  return sql`array[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::varchar[]`
+}
+
+function classifyPath(path: string) {
+  const clean = path.split('?')[0] || '/'
+  const parts = clean.split('/').filter(Boolean)
+  if (parts.length === 1 && parts[0]) {
+    return { path, kind: 'place' as const, slug: parts[0] }
+  }
+  if (parts[0] === 'marshruty' && parts[1]) {
+    return { path, kind: 'route' as const, slug: parts[1] }
+  }
+  if (parts[0] === 'zavedeniya' && parts[1] && !parts[2]) {
+    return { path, kind: 'venue' as const, slug: parts[1] }
+  }
+  return { path, kind: 'none' as const, slug: '' }
+}
+
 function num(value: unknown) {
   const parsed = Number(value ?? 0)
   return Number.isFinite(parsed) ? parsed : 0
@@ -65,7 +97,7 @@ export class Analytics {
       placeId: row.placeId ?? null,
       routeId: row.routeId ?? null,
       venueId: row.venueId ?? null,
-      referrer: row.referrer?.slice(0, 1000) ?? null,
+      referrer: row.referrer?.slice(0, 500) ?? null,
       referrerHost: row.referrerHost ?? null,
       utmSource: row.utmSource ?? null,
       utmMedium: row.utmMedium ?? null,
@@ -82,7 +114,7 @@ export class Analytics {
       isExit: row.isExit ?? false,
       engagedMs: row.engagedMs ?? null,
       scrollBucket: row.scrollBucket ?? null,
-      target: row.target ?? null,
+      target: row.target?.slice(0, 300) ?? null,
     }))).returning({ id: analyticsHits.id })
   }
 
@@ -117,25 +149,69 @@ export class Analytics {
   }
 
   static async resolvePath(path: string) {
-    const clean = path.split('?')[0] || '/'
-    const parts = clean.split('/').filter(Boolean)
-    const empty = { placeId: null as string | null, routeId: null as string | null, venueId: null as string | null }
-    if (parts.length === 1 && parts[0]) {
-      const result = await useDatabase().execute(sql`select id from places where slug = ${parts[0]} limit 1`)
-      const id = rowsOf<{ id: string }>(result)[0]?.id ?? null
-      return { ...empty, placeId: id }
+    const found = await Analytics.resolvePaths([path])
+    return found.get(path) ?? emptySubject()
+  }
+
+  /**
+   * One query for every path in the batch. Place, route, and venue slugs are
+   * looked up together (`= any(...)`), so the query count does not grow with
+   * the number of events. Paths that are not a place, route, or venue page
+   * are answered from memory.
+   */
+  static async resolvePaths(paths: string[]) {
+    const unique = [...new Set(paths)]
+    const found = new Map<string, PathSubject>()
+    if (!unique.length) {
+      return found
     }
-    if (parts[0] === 'marshruty' && parts[1]) {
-      const result = await useDatabase().execute(sql`select id from routes where slug = ${parts[1]} limit 1`)
-      const id = rowsOf<{ id: string }>(result)[0]?.id ?? null
-      return { ...empty, routeId: id }
+    const placeSlugs = new Set<string>()
+    const routeSlugs = new Set<string>()
+    const venueSlugs = new Set<string>()
+    const parsed = unique.map((path) => {
+      const item = classifyPath(path)
+      if (item.kind === 'place') {
+        placeSlugs.add(item.slug)
+      } else if (item.kind === 'route') {
+        routeSlugs.add(item.slug)
+      } else if (item.kind === 'venue') {
+        venueSlugs.add(item.slug)
+      }
+      return item
+    })
+    const byPlace = new Map<string, string>()
+    const byRoute = new Map<string, string>()
+    const byVenue = new Map<string, string>()
+    if (placeSlugs.size || routeSlugs.size || venueSlugs.size) {
+      const result = await useDatabase().execute(sql`
+        select 'place' as kind, id, slug from places where slug = any(${textArray([...placeSlugs])})
+        union all
+        select 'route' as kind, id, slug from routes where slug = any(${textArray([...routeSlugs])})
+        union all
+        select 'venue' as kind, id, slug from venues where slug = any(${textArray([...venueSlugs])})
+      `)
+      for (const row of rowsOf<{ kind: string, id: string, slug: string }>(result)) {
+        if (row.kind === 'place') {
+          byPlace.set(row.slug, row.id)
+        } else if (row.kind === 'route') {
+          byRoute.set(row.slug, row.id)
+        } else if (row.kind === 'venue') {
+          byVenue.set(row.slug, row.id)
+        }
+      }
     }
-    if (parts[0] === 'zavedeniya' && parts[1] && !parts[2]) {
-      const result = await useDatabase().execute(sql`select id from venues where slug = ${parts[1]} limit 1`)
-      const id = rowsOf<{ id: string }>(result)[0]?.id ?? null
-      return { ...empty, venueId: id }
+    for (const item of parsed) {
+      const subject = emptySubject()
+      if (item.kind === 'place') {
+        subject.placeId = byPlace.get(item.slug) ?? null
+      } else if (item.kind === 'route') {
+        subject.routeId = byRoute.get(item.slug) ?? null
+      } else if (item.kind === 'venue') {
+        subject.venueId = byVenue.get(item.slug) ?? null
+      }
+      found.set(item.path, subject)
     }
-    return empty
+    return found
   }
 
   static async venueStats(venueId: string | null, from: Date, to: Date) {

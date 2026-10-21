@@ -251,7 +251,7 @@ describe('initial content', () => {
       body: '',
       publicationStatus: 'published',
     })
-    const redirects = await Content.redirects()
+    const redirects = await useDatabase().select().from(slugRedirects)
     expect(redirects).toEqual(expect.arrayContaining([
       expect.objectContaining({ fromPath: '/mcp-fort', toPath: '/mcp-fort-new', statusCode: 301 }),
     ]))

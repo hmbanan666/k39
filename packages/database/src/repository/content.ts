@@ -4,6 +4,7 @@ import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, Publicati
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { composeBody, readSections, splitBody } from '../body-sections'
 import { useDatabase } from '../database'
+import { REDIRECT_HOP_LIMIT } from '../redirects'
 import { categories, collectionItems, collectionMedia, collections, contentDrafts, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
@@ -72,8 +73,32 @@ function placeFromPending(existing: typeof places.$inferSelect, payload: Record<
 }
 
 export class Content {
-  static async redirects() {
-    return useDatabase().select().from(slugRedirects)
+  /**
+   * Rows along one redirect chain, oldest hop first. A path with no row is one
+   * indexed read and an empty list. Stops on a miss, a 410, a repeated path, or
+   * REDIRECT_HOP_LIMIT hops, matching followRedirects in the web app.
+   */
+  static async redirectChain(startPath: string, hopLimit = REDIRECT_HOP_LIMIT) {
+    const hops = Math.min(REDIRECT_HOP_LIMIT, Math.max(1, Math.floor(hopLimit)))
+    const rows: Array<{ fromPath: string, toPath: string | null, statusCode: number }> = []
+    const seen = new Set<string>()
+    let current = startPath
+    for (let hop = 0; hop < hops; hop++) {
+      if (seen.has(current)) {
+        break
+      }
+      const row = await redirectByPath(current)
+      if (!row) {
+        break
+      }
+      rows.push(row)
+      seen.add(current)
+      if (row.statusCode === 410 || !row.toPath) {
+        break
+      }
+      current = row.toPath
+    }
+    return rows
   }
 
   static async categories() {
@@ -1220,6 +1245,19 @@ async function writeCollectionItems(collectionId: string, stops: ResolvedStop[])
       note: stop.note,
     })))
   })
+}
+
+async function redirectByPath(fromPath: string) {
+  const [row] = await useDatabase()
+    .select({
+      fromPath: slugRedirects.fromPath,
+      toPath: slugRedirects.toPath,
+      statusCode: slugRedirects.statusCode,
+    })
+    .from(slugRedirects)
+    .where(eq(slugRedirects.fromPath, fromPath))
+    .limit(1)
+  return row ?? null
 }
 
 async function markGone(fromPath: string) {

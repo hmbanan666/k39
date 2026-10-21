@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { REDIRECT_HOP_LIMIT } from '@k39/database'
 import { createHead, renderSSRHead } from 'unhead/server'
 import { describe, expect, it } from 'vitest'
 import seed from '../../../packages/database/src/seed/initial-content.json'
@@ -592,6 +593,30 @@ describe('redirects', () => {
       ],
     })
     expect(chain).toEqual({ kind: 'redirect', location: 'https://k39.online/c' })
+
+    const loop = decideRedirect({
+      hostHeader: 'k39.online',
+      protoHeader: 'https',
+      path: '/loop-a',
+      redirects: [
+        { fromPath: '/loop-a', toPath: '/loop-b', statusCode: 301 },
+        { fromPath: '/loop-b', toPath: '/loop-a', statusCode: 301 },
+      ],
+    })
+    expect(loop.kind).toBe('none')
+
+    const hops = Array.from({ length: REDIRECT_HOP_LIMIT + 2 }, (_, index) => ({
+      fromPath: `/hop-${index}`,
+      toPath: `/hop-${index + 1}`,
+      statusCode: 301,
+    }))
+    const capped = decideRedirect({
+      hostHeader: 'k39.online',
+      protoHeader: 'https',
+      path: '/hop-0',
+      redirects: hops,
+    })
+    expect(capped).toEqual({ kind: 'redirect', location: `https://k39.online/hop-${REDIRECT_HOP_LIMIT}` })
   })
 })
 
