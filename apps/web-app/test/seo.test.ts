@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { REDIRECT_HOP_LIMIT } from '@k39/database'
 import { createHead, renderSSRHead } from 'unhead/server'
 import { describe, expect, it } from 'vitest'
 import seed from '../../../packages/database/src/seed/initial-content.json'
@@ -604,7 +605,7 @@ describe('redirects', () => {
     })
     expect(loop.kind).toBe('none')
 
-    const hops = Array.from({ length: 12 }, (_, index) => ({
+    const hops = Array.from({ length: REDIRECT_HOP_LIMIT + 2 }, (_, index) => ({
       fromPath: `/hop-${index}`,
       toPath: `/hop-${index + 1}`,
       statusCode: 301,
@@ -615,7 +616,7 @@ describe('redirects', () => {
       path: '/hop-0',
       redirects: hops,
     })
-    expect(capped).toEqual({ kind: 'redirect', location: 'https://k39.online/hop-10' })
+    expect(capped).toEqual({ kind: 'redirect', location: `https://k39.online/hop-${REDIRECT_HOP_LIMIT}` })
   })
 })
 

@@ -1,3 +1,7 @@
+import { REDIRECT_HOP_LIMIT } from '@k39/database'
+
+export { REDIRECT_HOP_LIMIT }
+
 export interface StoredRedirect {
   fromPath: string
   toPath: string | null
@@ -16,12 +20,6 @@ export type RedirectDecision
   = | { kind: 'none' }
     | { kind: 'redirect', location: string }
     | { kind: 'gone' }
-
-/**
- * In-memory hop cap. `Content.redirectChain` uses the same number and is what
- * the page middleware loads, one indexed `from_path` lookup per hop.
- */
-export const REDIRECT_HOP_LIMIT = 10
 
 const QUEST_SLUGS: Record<string, string> = {
   'five-forts': 'pyat-fortov',

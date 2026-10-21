@@ -4,6 +4,7 @@ import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, Publicati
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { composeBody, readSections, splitBody } from '../body-sections'
 import { useDatabase } from '../database'
+import { REDIRECT_HOP_LIMIT } from '../redirects'
 import { categories, collectionItems, collectionMedia, collections, contentDrafts, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
@@ -71,19 +72,11 @@ function placeFromPending(existing: typeof places.$inferSelect, payload: Record<
   return { ...next, ...syncedBody({ ...next, ...sections }) }
 }
 
-/** Same cap as REDIRECT_HOP_LIMIT in apps/web-app/shared/redirects.ts. */
-const REDIRECT_HOP_LIMIT = 10
-
 export class Content {
-  /** Full table. Archive checks and tests only. Page requests use redirectChain. */
-  static async redirects() {
-    return useDatabase().select().from(slugRedirects)
-  }
-
   /**
    * Rows along one redirect chain, oldest hop first. A path with no row is one
    * indexed read and an empty list. Stops on a miss, a 410, a repeated path, or
-   * 10 hops, matching followRedirects in the web app.
+   * REDIRECT_HOP_LIMIT hops, matching followRedirects in the web app.
    */
   static async redirectChain(startPath: string, hopLimit = REDIRECT_HOP_LIMIT) {
     const hops = Math.min(REDIRECT_HOP_LIMIT, Math.max(1, Math.floor(hopLimit)))

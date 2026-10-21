@@ -1,9 +1,11 @@
+import { REDIRECT_HOP_LIMIT } from '@k39/database'
 import { inArray } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { slugRedirects } from '../../tables'
 import { Content } from '../content'
 
+const HOPS = REDIRECT_HOP_LIMIT + 2
 const PATHS = [
   '/hotpath-hit',
   '/hotpath-a',
@@ -13,7 +15,7 @@ const PATHS = [
   '/hotpath-loop-b',
   '/hotpath-gone',
   '/hotpath-gone-next',
-  ...Array.from({ length: 12 }, (_, index) => `/hotpath-h${index}`),
+  ...Array.from({ length: HOPS }, (_, index) => `/hotpath-h${index}`),
   ...Array.from({ length: 20 }, (_, index) => `/hotpath-noise-${index}`),
 ]
 
@@ -37,7 +39,7 @@ describe('slug redirect lookup', () => {
       { fromPath: '/hotpath-loop-b', toPath: '/hotpath-loop-a', statusCode: 301 },
       { fromPath: '/hotpath-gone', toPath: '/hotpath-gone-next', statusCode: 410 },
       { fromPath: '/hotpath-gone-next', toPath: '/hotpath-after', statusCode: 301 },
-      ...Array.from({ length: 12 }, (_, index) => ({
+      ...Array.from({ length: HOPS }, (_, index) => ({
         fromPath: `/hotpath-h${index}`,
         toPath: `/hotpath-h${index + 1}`,
         statusCode: 301,
@@ -68,10 +70,10 @@ describe('slug redirect lookup', () => {
     ])
 
     const capped = await Content.redirectChain('/hotpath-h0')
-    expect(capped).toHaveLength(10)
+    expect(capped).toHaveLength(REDIRECT_HOP_LIMIT)
     expect(capped[0]?.fromPath).toBe('/hotpath-h0')
-    expect(capped[9]?.toPath).toBe('/hotpath-h10')
-    expect(capped.some((row) => row.fromPath === '/hotpath-h10')).toBe(false)
+    expect(capped[REDIRECT_HOP_LIMIT - 1]?.toPath).toBe(`/hotpath-h${REDIRECT_HOP_LIMIT}`)
+    expect(capped.some((row) => row.fromPath === `/hotpath-h${REDIRECT_HOP_LIMIT}`)).toBe(false)
     expect(capped.some((row) => row.fromPath.startsWith('/hotpath-noise'))).toBe(false)
   })
 })

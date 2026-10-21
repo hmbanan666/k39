@@ -1,4 +1,4 @@
-import { sendNoContent } from 'h3'
+import { defineEventHandler, sendNoContent } from 'h3'
 import { readCollectJson } from '../utils/analytics/collect'
 import { ingest } from '../utils/analytics/ingest'
 

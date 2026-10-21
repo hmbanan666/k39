@@ -168,7 +168,6 @@ export async function resolveCollectSubjects(
 
 export async function readCollectJson(event: H3Event): Promise<unknown> {
   if (collectBodyDeclaredTooLarge(getRequestHeader(event, 'content-length'))) {
-    event.node.req.destroy()
     throw createError({ statusCode: 413, statusMessage: 'Payload Too Large' })
   }
   const raw = await readBoundedUtf8(event, COLLECT_BODY_MAX)
@@ -198,7 +197,9 @@ function readBoundedUtf8(event: H3Event, max: number): Promise<string | undefine
         return
       }
       settled = true
-      req.destroy()
+      // Stop buffering. The 413 response closes the socket; destroying it here
+      // would drop that status on a chunked upload.
+      req.pause()
       reject(error)
     }
     req.on('error', (error) => {

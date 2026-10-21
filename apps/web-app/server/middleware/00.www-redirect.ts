@@ -1,5 +1,5 @@
-import { db, isDatabaseReady } from '@k39/database'
-import { decideRedirect, REDIRECT_HOP_LIMIT, rewritePath } from '../../shared/redirects'
+import { db, isDatabaseReady, REDIRECT_HOP_LIMIT } from '@k39/database'
+import { decideRedirect, rewritePath } from '../../shared/redirects'
 
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
