@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { execFileSync } from 'node:child_process'
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -13,6 +13,7 @@ function repoRoot() {
 }
 
 const syncScript = resolve(repoRoot(), 'scripts/git/sync-branch.sh')
+const bootScript = resolve(repoRoot(), 'scripts/env/check-boot.sh')
 const dirs: string[] = []
 
 function scratch() {
@@ -33,6 +34,7 @@ const gitEnv = {
   GIT_AUTHOR_EMAIL: 'dev@localhost',
   GIT_COMMITTER_NAME: 'K39',
   GIT_COMMITTER_EMAIL: 'dev@localhost',
+  GIT_TERMINAL_PROMPT: '0',
 }
 
 function git(cwd: string, args: string[]) {
@@ -113,7 +115,7 @@ describe('hook links', () => {
   })
 })
 
-describe('sync branch', () => {
+describe('sync branch', { timeout: 60_000 }, () => {
   it('fast-forwards when origin is ahead', () => {
     const { seed, work } = seedPair()
     writeFileSync(join(seed, 'readme.txt'), 'two\n')
@@ -143,5 +145,92 @@ describe('sync branch', () => {
     execFileSync('bash', [syncScript], { cwd: work, env: gitEnv, encoding: 'utf8' })
     expect(git(work, ['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('cursor/local-only')
     expect(git(work, ['rev-parse', 'HEAD'])).toBe(before)
+  })
+
+  it('fast-forwards a branch with no commits of its own to the base ref', () => {
+    const { seed, work } = seedPair()
+    git(work, ['checkout', '-b', 'cursor/stale'])
+    writeFileSync(join(seed, 'readme.txt'), 'two\n')
+    git(seed, ['commit', '-am', 'feat: two'])
+    git(seed, ['push', 'origin', 'main'])
+    execFileSync('bash', [syncScript, 'origin/main'], { cwd: work, env: gitEnv, encoding: 'utf8' })
+    expect(git(work, ['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('cursor/stale')
+    expect(git(work, ['rev-parse', 'HEAD'])).toBe(git(seed, ['rev-parse', 'HEAD']))
+  })
+
+  it('does not reset a branch that has its own commits', () => {
+    const { seed, work } = seedPair()
+    git(work, ['checkout', '-b', 'cursor/stale'])
+    writeFileSync(join(work, 'local.txt'), 'local\n')
+    git(work, ['add', 'local.txt'])
+    git(work, ['commit', '-m', 'feat: local'])
+    const before = git(work, ['rev-parse', 'HEAD'])
+    writeFileSync(join(seed, 'readme.txt'), 'two\n')
+    git(seed, ['commit', '-am', 'feat: two'])
+    git(seed, ['push', 'origin', 'main'])
+    execFileSync('bash', [syncScript, 'origin/main'], { cwd: work, env: gitEnv, encoding: 'utf8' })
+    expect(git(work, ['rev-parse', 'HEAD'])).toBe(before)
+  })
+
+  it('does not move a dirty worktree onto the base ref', () => {
+    const { seed, work } = seedPair()
+    git(work, ['checkout', '-b', 'cursor/stale'])
+    const before = git(work, ['rev-parse', 'HEAD'])
+    writeFileSync(join(seed, 'readme.txt'), 'two\n')
+    git(seed, ['commit', '-am', 'feat: two'])
+    git(seed, ['push', 'origin', 'main'])
+    writeFileSync(join(work, 'dirty.txt'), 'dirty\n')
+    execFileSync('bash', [syncScript, 'origin/main'], { cwd: work, env: gitEnv, encoding: 'utf8' })
+    expect(git(work, ['rev-parse', 'HEAD'])).toBe(before)
+    expect(existsSync(join(work, 'dirty.txt'))).toBe(true)
+  })
+})
+
+describe('boot self-check', () => {
+  function executable(dir: string, name: string, body: string) {
+    const path = join(dir, name)
+    writeFileSync(path, body)
+    chmodSync(path, 0o755)
+    return path
+  }
+
+  function runBoot(pathDir: string, profile: string) {
+    try {
+      const stdout = execFileSync('/bin/bash', [bootScript], {
+        cwd: repoRoot(),
+        env: { ...process.env, PATH: pathDir, K39_BOOT_PROFILE: profile },
+        encoding: 'utf8',
+      })
+      return { status: 0, stdout }
+    } catch (error) {
+      const failed = error as { status?: number, stdout?: string }
+      return { status: failed.status ?? 1, stdout: failed.stdout ?? '' }
+    }
+  }
+
+  it('names a missing node, postgres, and profile', () => {
+    const bin = scratch()
+    const version = readFileSync(resolve(repoRoot(), '.nvmrc'), 'utf8').trim()
+    executable(bin, 'node', '#!/bin/sh\necho v22.0.0\n')
+    const profile = join(scratch(), 'k39.sh')
+    const result = runBoot(bin, profile)
+    expect(result.status).not.toBe(0)
+    expect(result.stdout).toContain('boot check failed:')
+    expect(result.stdout).toContain(`want v${version} from .nvmrc`)
+    expect(result.stdout).toContain('pg_isready is not on PATH')
+    expect(result.stdout).toContain(`${profile} is missing`)
+  })
+
+  it('passes when node, postgres 18, and the profile are present', () => {
+    const bin = scratch()
+    const version = readFileSync(resolve(repoRoot(), '.nvmrc'), 'utf8').trim()
+    executable(bin, 'node', `#!/bin/sh\necho v${version}\n`)
+    executable(bin, 'pg_isready', '#!/bin/sh\nexit 0\n')
+    executable(bin, 'pg_lsclusters', '#!/bin/sh\necho "18 main 5432 online postgres /tmp /tmp"\n')
+    const profile = join(scratch(), 'k39.sh')
+    writeFileSync(profile, 'export PATH="/usr/local/bin:$PATH"\n')
+    const result = runBoot(bin, profile)
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain(`boot check passed: node v${version}, postgres 18, ${profile}`)
   })
 })

@@ -138,6 +138,106 @@ function specifier(fromFile: string, target: string) {
   return rel
 }
 
+const SERVER_DIR = join(ROOT, 'server')
+const NITRO_IMPORTS = join(ROOT, '.nuxt/types/nitro-imports.d.ts')
+
+interface NitroBinding {
+  name: string
+  target: string
+}
+
+let nitroBindings: NitroBinding[] | undefined
+
+function loadNitroBindings() {
+  if (nitroBindings) {
+    return nitroBindings
+  }
+  let text = ''
+  try {
+    text = readFileSync(NITRO_IMPORTS, 'utf8')
+  } catch {
+    throw new Error(`${NITRO_IMPORTS} is missing. Run pnpm --filter @k39/web-app exec nuxt prepare`)
+  }
+  const typesDir = dirname(NITRO_IMPORTS)
+  const bindings: NitroBinding[] = []
+  for (const match of text.matchAll(/const (\w+): typeof import\('([^']+)'\)/g)) {
+    const name = match[1]
+    const spec = match[2]
+    if (!name || !spec) {
+      continue
+    }
+    bindings.push({ name, target: resolve(typesDir, spec) })
+  }
+  if (!bindings.length) {
+    throw new Error(`${NITRO_IMPORTS} has no Nitro auto-imports`)
+  }
+  nitroBindings = bindings
+  return bindings
+}
+
+function stripLiterals(code: string) {
+  return code
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1 ')
+    .replace(/`(?:\\[\s\S]|[^`\\])*`/g, ' ')
+    .replace(/'(?:\\.|[^'\\])*'/g, ' ')
+    .replace(/"(?:\\.|[^"\\])*"/g, ' ')
+}
+
+function declaredLocally(code: string, name: string) {
+  return new RegExp(`\\b(?:async\\s+function|function|const|let|class)\\s+${name}\\b`).test(code)
+}
+
+function bindingSpecifier(fromFile: string, target: string) {
+  if (target.includes('/node_modules/h3/')) {
+    return 'h3'
+  }
+  if (target.startsWith(ROOT)) {
+    return specifier(fromFile, target)
+  }
+  return target
+}
+
+function sameModule(file: string, target: string) {
+  return file.replace(/\.[cm]?[jt]s$/, '') === target.replace(/\.[cm]?[jt]s$/, '')
+}
+
+/**
+ * Nitro injects h3 and server/utils into route files. Explicit imports in every
+ * handler would fight that and collide with other edits, so Vitest injects the
+ * same names from the prepare output. Nitropack and nuxt-auth-utils helpers stay
+ * out: those packages import virtual ids that exist only inside the Nitro build.
+ * A call or `instanceof` counts. A word in prose does not pull a module in.
+ */
+export function serverNitroPreamble(file: string, code: string) {
+  const scanned = stripLiterals(code)
+  const groups = new Map<string, string[]>()
+  for (const binding of loadNitroBindings()) {
+    const local = binding.target.startsWith(`${SERVER_DIR}/`) || binding.target === SERVER_DIR
+    const h3 = binding.target.includes('/node_modules/h3/')
+    // nitropack and nuxt-auth-utils import virtual ids that exist only in the Nitro build.
+    if ((!local && !h3) || sameModule(file, binding.target) || imported(code, binding.name) || declaredLocally(code, binding.name)) {
+      continue
+    }
+    const call = new RegExp(`(?<![.\\w$])${binding.name}\\s*(?:\\(|<)`)
+    const instance = new RegExp(`\\binstanceof\\s+${binding.name}\\b`)
+    if (!call.test(scanned) && !instance.test(scanned)) {
+      continue
+    }
+    const from = bindingSpecifier(file, binding.target)
+    const names = groups.get(from) ?? []
+    names.push(binding.name)
+    groups.set(from, names)
+  }
+  if (!groups.size) {
+    return ''
+  }
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([from, names]) => `import { ${names.sort().join(', ')} } from '${from}'`)
+    .join('\n')
+}
+
 /** Give Vitest the Vue and component imports Nuxt would inject, so a page can SSR without a database. */
 export function nuxtSfcTestPlugin(): Plugin {
   const components = componentNames()
@@ -147,6 +247,12 @@ export function nuxtSfcTestPlugin(): Plugin {
     enforce: 'pre',
     transform(code, id) {
       const file = id.split('?')[0] ?? id
+      if (file.endsWith('.ts') && !file.endsWith('.d.ts') && file.startsWith(`${SERVER_DIR}/`)) {
+        const preamble = serverNitroPreamble(file, code)
+        if (preamble) {
+          return { code: `${preamble}\n${code}`, map: null }
+        }
+      }
       if (file.endsWith('.ts') && AUTO_DIRS.some((dir) => file.startsWith(dir))) {
         return transformTypeScript(file, code)
       }

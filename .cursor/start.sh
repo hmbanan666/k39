@@ -39,3 +39,4 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 -tc "select 1 from pg_database where da
 
 install -m 0755 scripts/git/post-commit .git/hooks/post-commit
 node scripts/git/chain-hooks.mjs
+bash scripts/env/check-boot.sh
