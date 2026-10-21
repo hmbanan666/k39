@@ -21,7 +21,7 @@ Exceptions (`exceptions[]`) keep their current shape: an exception without `clos
 
 ### Intervals
 
-`expandIntervals` stores an open-ended day as an interval from `opens` to the end of that local day (00:00 the next day), with `openEnded` set. Breaks split it as usual, and every part keeps the flag. `schedule_intervals` gains `open_ended boolean not null default false` (migration 0039). `ends_at` stays not null, so the index and every existing query keep working. For an open-ended row, `ends_at` is the limit of what the schedule claims, not a closing time.
+`expandIntervals` stores an open-ended day as an interval from `opens` to the end of that local day (00:00 the next day), with `openEnded` set. Breaks split it as usual, and every part keeps the flag. `schedule_intervals` gains `open_ended boolean not null default false` (migration 0040). `ends_at` stays not null, so the index and every existing query keep working. For an open-ended row, `ends_at` is the limit of what the schedule claims, not a closing time.
 
 ### Status
 
@@ -42,4 +42,4 @@ schema.org `OpeningHoursSpecification` has no "unknown" closing time, and search
 - Stored rules are unchanged. Every existing entry has `closes`, so its intervals, status, text and markup are the same as before.
 - `schedule_set` documents `closes` as optional. Agents omit it only when the source states an opening time and no closing time.
 - A venue with one open-ended day loses all opening-hours markup until its closing time is known. That is the cost of not inventing one.
-- Migration 0039 adds a column with a default. The daily interval refresh fills the flag for new rows; existing rows read as `false`, which is correct for every rule stored today.
+- Migration 0040 adds a column with a default. The daily interval refresh fills the flag for new rows; existing rows read as `false`, which is correct for every rule stored today.
