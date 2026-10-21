@@ -132,6 +132,8 @@ describe('price catalog', () => {
     }
     await expect(Prices.setForVenue(venue.id, [{ ...row, variant: '350 руб' }])).rejects.toThrow(/Цену пишите/)
     await expect(Prices.setForVenue(venue.id, [{ ...row, variant: '200 ₽' }])).rejects.toThrow(/Цену пишите/)
+    await expect(Prices.setForVenue(venue.id, [{ ...row, variant: '350 rub' }])).rejects.toThrow(/Цену пишите/)
+    await expect(Prices.setForVenue(venue.id, [{ ...row, variant: '350 rub.' }])).rejects.toThrow(/Цену пишите/)
     const saved = await Prices.setForVenue(venue.id, [{ ...row, variant: '250 мл' }])
     expect(saved.map((item) => item.variant)).toEqual(['250 мл'])
   })

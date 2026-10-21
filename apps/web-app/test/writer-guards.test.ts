@@ -102,10 +102,12 @@ describe('prices in names', () => {
       sourceTitle: 'Меню',
       sourceUrl: 'https://cafe.example/menu',
     }
-    const prices = venuePricesWriteSchema.safeParse([{ ...priceRow, variant: '350 руб' }])
-    expect(prices.success).toBe(false)
-    if (!prices.success) {
-      expect(prices.error.issues.map((issue) => issue.message).join(' ')).toMatch(/Цену пишите/)
+    for (const variant of ['350 руб', '350 rub', '350 rub.']) {
+      const prices = venuePricesWriteSchema.safeParse([{ ...priceRow, variant }])
+      expect(prices.success).toBe(false)
+      if (!prices.success) {
+        expect(prices.error.issues.map((issue) => issue.message).join(' ')).toMatch(/Цену пишите/)
+      }
     }
     expect(venuePricesWriteSchema.safeParse([{ ...priceRow, variant: '250 мл' }]).success).toBe(true)
     const banned = venuePricesWriteSchema.safeParse([{ ...priceRow, sourceUrl: 'https://kgdmore.ru/menu' }])

@@ -58,6 +58,12 @@ describe('venue policy', () => {
     expect(priceInName('1 000 рублей')).toBe(true)
     expect(priceInName('350р.')).toBe(true)
     expect(priceInName('350 р')).toBe(true)
+    expect(priceInName('5 раз')).toBe(false)
+    expect(priceInName('350 rubber')).toBe(false)
+    expect(priceInName('Борщ 350 rub')).toBe(true)
+    expect(priceInName('350 rub.')).toBe(true)
+    expect(priceInName('350 RUB')).toBe(true)
+    expect(priceInName('350 rubles')).toBe(true)
   })
 
   it('formats metres and kilometres', () => {
@@ -679,6 +685,13 @@ describe('venue repository', () => {
       kind: 'cafe',
       signatureDishes: [{ name: 'Борщ 350 ₽', priceRub: 350 }],
     })).rejects.toThrow(/Цену пишите/)
+    await expect(Venues.create({
+      name: 'Латинская цена',
+      slug: 'price-in-name-rub',
+      kind: 'cafe',
+      signatureDishes: [{ name: 'Борщ 350 rub.', priceRub: 350 }],
+    })).rejects.toThrow(/Цену пишите/)
+    expect(await Venues.bySlug('price-in-name-rub')).toBeNull()
     expect(await Venues.bySlug('price-in-name')).toBeNull()
     const kept = await Venues.create({
       name: 'Название без цены',

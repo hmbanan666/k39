@@ -5,7 +5,7 @@ import { bannedSiteProblem } from '../../../shared/writing'
 /** One «Ориентиры цен» row. Shared by venue_prices_set and the owner cabinet. */
 export const venuePriceWriteSchema = z.object({
   item: z.string().describe('Catalog slug, e.g. cappuccino'),
-  variant: z.string().max(40).nullable().optional().describe('Size as on the menu, e.g. 250 мл. Not a price: no ₽ and no руб. Omitted: the catalog default'),
+  variant: z.string().max(40).nullable().optional().describe('Size as on the menu, e.g. 250 мл. Not a price: no ₽, no руб, and no rub. Omitted: the catalog default'),
   priceRub: z.number().int().min(1).max(100000),
   checkedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}/).describe('ISO date the price was seen'),
   sourceKind: z.enum(['official', 'owner']),

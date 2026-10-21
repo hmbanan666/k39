@@ -40,7 +40,7 @@ export const venueFields = {
     name: z.string().refine((value) => !priceInName(value), { message: priceInNameMessage() }),
     note: z.string().nullable().optional(),
     priceRub: z.number().int().min(0).nullable().optional(),
-  })).max(5).optional().describe('Up to 5 dishes worth ordering, in our own words, from a visit or the venue. The name is not a price: no ₽ and no руб. Replaces the list'),
+  })).max(5).optional().describe('Up to 5 dishes worth ordering, in our own words, from a visit or the venue. The name is not a price: no ₽, no руб, and no rub. Replaces the list'),
   modules: venueModulesSchema.optional().describe('Page modules, replaces the list. Types: text, dishes, audience, practical, best-time, how-to-get, tips, prices, faq. dishes is a showcase of at most 8 items {id?, name, description?, priceRub?, mediaId?, updatedAt?}. note on an item is the old short text. A new mediaId must already be attached with origin own or commons. See docs/venue-modules.md. Original text only'),
   contactEmail: z.string().nullable().optional().describe('Official venue email used for a claim code. Not shown on the public page'),
   description: z.string().optional().describe('Russian description, 300-600 characters to publish. Archive and SEO source when modules are set'),
