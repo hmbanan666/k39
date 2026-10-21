@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { coverageConfigDefaults, defineConfig } from 'vitest/config'
-import { nuxtSfcTestPlugin } from './apps/web-app/test/nuxt-sfc-plugin'
+import { nuxtSfcTestPlugin } from './apps/web-app/test/nuxt-sfc-plugin.ts'
 
 export default defineConfig({
   test: {
