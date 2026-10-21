@@ -38,9 +38,17 @@ Match the standard dish, not a house special that only shares a word. Put the me
 
 ## Source
 
-Editorial rows are `sourceKind: official` and need `sourceUrl` of the venue's own menu: a page on its site or a PDF on that site. No social posts. `sourceTitle` is a short label such as «Меню на сайте заведения». `checkedAt` is the day you read that page (`YYYY-MM-DD`). The repository rejects an official row with no URL.
+Editorial rows are `sourceKind: official` and need `sourceUrl` of the venue's own menu. That is one of:
 
-Prices stay the official menu only. Do not take a price or an average check from Yandex Maps, 2GIS, aggregators, or delivery apps (`k39-sources-and-facts`). Those maps may supply hours, phone, address, operating status, and coordinates for a venue that exists and operates. They never supply a price. Do not invent a price from neighbouring venues.
+- a page or a PDF on the venue's site;
+- the venue's menu document on `drive.google.com`, `docs.google.com`, `disk.yandex.*`, or `yadi.sk`;
+- the venue's own VK page (a menu post, album, or market) on `vk.com` or `vk.ru`, including `m.vk.com` and `m.vk.ru`, only when `website` is empty.
+
+The server counts any `drive.google.com`, `docs.google.com`, `disk.yandex.*`, or `yadi.sk` URL, with or without `website`. Use a file the venue's site or its own social page links to. Send `sourceKind: official` with the `vk.com` or `vk.ru` URL. The price column stays `official` (it cannot store `official_social`). The fact stores `official_social` (`classifySourceUrl` in `shared/facts.ts`). The server counts a VK price only when `website` is empty and its community matches a VK link in `socials`: the same screen name, or the same numeric id from `club`, `public`, `event`, `wall-`, `market-`, `album-`, `photo-`, `doc-`, `topic-`, or `video-`. A personal page matches on that numeric id (`id5` with `wall5_9`). A `w=` or `z=` object is that owner, and the path name is ignored. A section path such as `feed` is not a screen name. The editor still confirms the community is the venue's own and active before adding it to `socials`. Once `website` is set, a VK price is hidden and stops counting. Take the price from the site.
+
+Instagram, Telegram, OK, Facebook, YouTube, Dzen, TikTok, and every other host in `packages/types/src/social-hosts.ts` except `vk.com` and `vk.ru` are never a price source. Neither is any other Google or Yandex page. `sourceTitle` is a short label such as «Меню на сайте заведения», «Меню (PDF на Яндекс Диске)», or «Меню во ВКонтакте». `checkedAt` is the day you read that page (`YYYY-MM-DD`). The repository rejects an official row with no URL.
+
+Prices stay the official menu only. Do not take a price or an average check from Yandex Maps, 2GIS, Google Maps (including `maps.app.goo.gl` and `goo.gl/maps` links), OpenStreetMap, aggregators, or delivery apps (Yandex Eda, Delivery Club, tomesto) (`k39-sources-and-facts`). A row with one of those URLs can be saved. It is hidden on the card and never counts toward the band, «Где дешевле», or the town median. Those maps may supply hours, phone, address, operating status, and coordinates for a venue that exists and operates. They never supply a price. Do not invent a price from neighbouring venues.
 
 The public grid prints one source line under the cards (`sharedPriceSource` in `shared/price-compare.ts`, rendered in `VenueModules.vue`): one link, the URL used by the most prices, then the latest date among the prices that use that URL, then «Цены могли измениться». A tie goes to the newer URL. Do not write that sentence into the description. Details: `docs/venue-modules.md`.
 
@@ -78,7 +86,13 @@ Bad: `{ item: 'orange-juice', variant: 'из пакета', priceRub: 150 }` for
 
 Good beer: `{ item: 'beer', variant: 'разливное, 0,5 л', priceRub: 280, sourceKind: 'official', sourceUrl: 'https://cafe.example/menu.pdf' }`.
 
-Bad: a menu price taken from an Instagram post or a VK album.
+Good: `{ item: 'cappuccino', variant: '300 мл', priceRub: 220, sourceKind: 'official', sourceTitle: 'Меню (PDF на Google Диске)', sourceUrl: 'https://drive.google.com/file/d/.../view' }`, where the venue's site or its own VK links to that file.
+
+Good: a venue with an empty `website` and `socials` that include `https://vk.com/club123456`: `{ item: 'shawarma', priceRub: 290, sourceKind: 'official', sourceTitle: 'Меню во ВКонтакте', sourceUrl: 'https://vk.com/market-123456' }`. The same community on `vk.ru` counts the same way.
+
+Bad: a menu price from an Instagram or Telegram post, from a VK page that is not the venue's own (a fan group, a city public, a reseller), or from the venue's VK when the venue has a website.
+
+Bad: a Google Drive file found by search that no official page of the venue links to.
 
 Bad: a thirteenth row, or a price you filled in because other cafes in town charge about that.
 
@@ -87,6 +101,6 @@ Bad: a thirteenth row, or a price you filled in because other cafes in town char
 - The slug is one of the 32, and `price_items_list` has it.
 - Caesar, tea, and juice follow the matching rules. Packaged and bottled drinks are omitted.
 - `variant` is the menu text, or omitted for the catalog default.
-- Official URL, title, and `checkedAt` are set. The price was not guessed.
+- Official URL, title, and `checkedAt` are set. The URL is the venue site, a Drive / Docs / Yandex Disk menu document, or (empty `website` only) the venue's own VK on `vk.com` or `vk.ru` whose community matches a VK link in `socials`. The price was not guessed.
 - The venue has at most 12 rows.
 - The town was recomputed. A null band with basis under 3 is left null.
