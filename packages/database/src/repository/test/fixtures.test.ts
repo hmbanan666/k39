@@ -43,6 +43,9 @@ describe('ui fixtures', () => {
     const openEnded = await Venues.bySlug(FIXTURE_SLUGS.cafeOpenEnded)
     const openEndedSchedule = await Schedules.get('venue', openEnded!.id)
     expect((openEndedSchedule?.rules as { seasons: Array<{ week: Array<Record<string, unknown>> }> }).seasons[0]?.week[0]).toEqual({ days: [0, 1, 2, 3, 4, 5, 6], opens: '12:00', breaks: [] })
+    const unknownDays = await Venues.bySlug(FIXTURE_SLUGS.cafeUnknownDays)
+    const unknownDaysSchedule = await Schedules.get('venue', unknownDays!.id)
+    expect((unknownDaysSchedule?.rules as { seasons: Array<{ unknownDays?: number[] }> }).seasons[0]?.unknownDays).toEqual([6, 0])
 
     const hub = await Editor.placeBySlug(FIXTURE_SLUGS.placeHub)
     const covers = await useDatabase().select().from(placeMedia).where(eq(placeMedia.placeId, hub!.id))

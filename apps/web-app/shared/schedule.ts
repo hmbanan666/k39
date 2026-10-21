@@ -48,6 +48,21 @@ export const scheduleRulesSchema = z.object({
     from: monthDay.optional(),
     to: monthDay.optional(),
     week: z.array(daySchema).max(7),
+    /**
+     * Weekdays the source gives no hours for (ADR 0044): neither open nor
+     * closed. A weekday in neither `week` nor this list is closed.
+     */
+    unknownDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
+  }).superRefine((season, ctx) => {
+    const listed = new Set(season.week.flatMap((entry) => entry.days))
+    for (const [index, day] of (season.unknownDays ?? []).entries()) {
+      if (listed.has(day)) {
+        ctx.addIssue({ code: 'custom', path: ['unknownDays', index], message: 'A day cannot have hours in week and be unknown' })
+      }
+      if (season.unknownDays!.indexOf(day) !== index) {
+        ctx.addIssue({ code: 'custom', path: ['unknownDays', index], message: 'Duplicate unknown day' })
+      }
+    }
   })).max(6).default([]),
   closures: z.array(z.object({
     weekday: z.number().int().min(0).max(6),
@@ -195,32 +210,46 @@ export interface DayHours {
   lastEntry?: string
 }
 
-/** Regular hours on a calendar day, or null when closed. Not for events. */
-export function hoursOn(rules: ScheduleRules, date: string): DayHours | null {
+export type DayState = { kind: 'hours', hours: DayHours } | { kind: 'closed' } | { kind: 'unknown' }
+
+const CLOSED_DAY: DayState = { kind: 'closed' }
+
+/** What the rules say about a calendar day: hours, closed, or unknown (ADR 0044). Not for events. */
+export function dayStateOn(rules: ScheduleRules, date: string): DayState {
   if (rules.mode === 'always') {
-    return { opens: '00:00', closes: '00:00', breaks: [] }
+    return { kind: 'hours', hours: { opens: '00:00', closes: '00:00', breaks: [] } }
   }
   if (rules.mode !== 'hours' && rules.mode !== 'slots') {
-    return null
+    return CLOSED_DAY
   }
   const exception = rules.exceptions.find((item) => item.date === date)
   if (exception) {
-    return exception.closed || !exception.opens || !exception.closes ? null : { opens: exception.opens, closes: exception.closes, breaks: [] }
+    return exception.closed || !exception.opens || !exception.closes ? CLOSED_DAY : { kind: 'hours', hours: { opens: exception.opens, closes: exception.closes, breaks: [] } }
   }
   if (closureOn(rules, date)) {
-    return null
+    return CLOSED_DAY
   }
   let day = weekday(date)
   if (RU_HOLIDAYS.has(date.slice(5))) {
     if (rules.holidays === 'closed') {
-      return null
+      return CLOSED_DAY
     }
     if (rules.holidays === 'sunday') {
       day = 0
     }
   }
-  const entry = seasonFor(rules, date)?.week.find((item) => item.days.includes(day))
-  return entry ? { opens: entry.opens, closes: entry.closes ?? null, breaks: entry.breaks ?? [], lastEntry: entry.lastEntry } : null
+  const season = seasonFor(rules, date)
+  const entry = season?.week.find((item) => item.days.includes(day))
+  if (entry) {
+    return { kind: 'hours', hours: { opens: entry.opens, closes: entry.closes ?? null, breaks: entry.breaks ?? [], lastEntry: entry.lastEntry } }
+  }
+  return season?.unknownDays?.includes(day) ? { kind: 'unknown' } : CLOSED_DAY
+}
+
+/** Regular hours on a calendar day, or null when closed or unknown. Not for events. */
+export function hoursOn(rules: ScheduleRules, date: string): DayHours | null {
+  const state = dayStateOn(rules, date)
+  return state.kind === 'hours' ? state.hours : null
 }
 
 // --- materialised intervals ------------------------------------------------
@@ -293,6 +322,50 @@ export function expandIntervals(rules: ScheduleRules, from: string, days: number
   return out
 }
 
+export interface UnknownSpan {
+  start: Date
+  end: Date
+}
+
+/**
+ * Local days with unknown hours (ADR 0044) for `days` local days starting at
+ * `from`, consecutive days merged. Intervals store nothing for these days.
+ */
+export function unknownSpans(rules: ScheduleRules, from: string, days: number): UnknownSpan[] {
+  const out: UnknownSpan[] = []
+  if ((rules.mode !== 'hours' && rules.mode !== 'slots') || !rules.seasons.some((season) => season.unknownDays?.length)) {
+    return out
+  }
+  for (let offset = 0; offset < days; offset++) {
+    const date = addDays(from, offset)
+    if (dayStateOn(rules, date).kind !== 'unknown') {
+      continue
+    }
+    const start = zonedTime(date, '00:00')
+    const end = zonedTime(addDays(date, 1), '00:00')
+    const last = out.at(-1)
+    if (last && last.end.getTime() === start.getTime()) {
+      last.end = end
+    } else {
+      out.push({ start, end })
+    }
+  }
+  return out
+}
+
+/** Where `at` stands against unknown days: inside one, or one comes before `next`. */
+function unknownGate(spans: UnknownSpan[], at: Date, next: Date | null) {
+  const now = at.getTime()
+  if (spans.some((span) => span.start.getTime() <= now && now < span.end.getTime())) {
+    return 'inside' as const
+  }
+  const ahead = spans.find((span) => span.start.getTime() > now)
+  if (ahead && (!next || ahead.start.getTime() < next.getTime())) {
+    return 'before-next' as const
+  }
+  return null
+}
+
 // --- status ------------------------------------------------------------------
 
 export type AvailabilityStatus = 'open' | 'closing_soon' | 'opening_soon' | 'closed' | 'appointment' | 'unknown'
@@ -312,6 +385,10 @@ export interface Availability {
   /** Open since `openedAt` on a day with no known closing time (ADR 0042). */
   openEnded?: boolean
   openedAt?: string
+  /** Status unknown because today's hours are unknown (ADR 0044), not because the schedule is unverified. */
+  unknownDay?: boolean
+  /** Closed now; the next opening is not named because a day with unknown hours comes first (ADR 0044). */
+  nextUnknown?: boolean
 }
 
 export const SOON_MINUTES = 60
@@ -324,8 +401,17 @@ function temporarilyClosed(closure: ScheduleRules['closure']): Availability {
   return { status: 'closed', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, closure }
 }
 
-/** Slots: never «открыто до», only the next start. */
-function nextSlot(label: string, start: string | null, at: Date): Availability {
+const UNKNOWN_DAY: Availability = { status: 'unknown', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, unknownDay: true }
+
+/** Slots: never «открыто до», only the next start, and never one across an unknown day. */
+function nextSlot(label: string, start: string | null, at: Date, unknownDays: UnknownSpan[] = []): Availability {
+  const gate = unknownGate(unknownDays, at, start ? new Date(start) : null)
+  if (gate === 'inside') {
+    return UNKNOWN_DAY
+  }
+  if (gate === 'before-next') {
+    return { status: 'closed', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, slot: label, nextUnknown: true }
+  }
   const minutesToOpen = start ? Math.round((new Date(start).getTime() - at.getTime()) / 60_000) : null
   return { status: minutesToOpen != null && minutesToOpen <= SOON_MINUTES ? 'opening_soon' : 'closed', closesAt: null, opensAt: start, minutesLeft: null, minutesToOpen, slot: label }
 }
@@ -340,8 +426,12 @@ export function closureText(closure: NonNullable<ScheduleRules['closure']>) {
 
 const ALWAYS_OPEN: Availability = { status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, alwaysOpen: true }
 
-/** Status at `at` from sorted intervals. `verified` false always gives unknown. */
-export function availabilityAt(intervals: OpenInterval[], at: Date, verified: boolean): Availability {
+/**
+ * Status at `at` from sorted intervals. `verified` false always gives
+ * unknown. Outside an interval, `unknown` days (ADR 0044) are neither open
+ * nor closed, and no opening is named across one.
+ */
+export function availabilityAt(intervals: OpenInterval[], at: Date, verified: boolean, unknownDays: UnknownSpan[] = []): Availability {
   const unknown: Availability = { status: 'unknown', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null }
   if (!verified) {
     return unknown
@@ -361,6 +451,13 @@ export function availabilityAt(intervals: OpenInterval[], at: Date, verified: bo
     return { status: minutesLeft <= SOON_MINUTES ? 'closing_soon' : 'open', closesAt: current.end.toISOString(), opensAt: null, minutesLeft, minutesToOpen: null }
   }
   const next = intervals.find((item) => item.start.getTime() > now)
+  const gate = unknownGate(unknownDays, at, next?.start ?? null)
+  if (gate === 'inside') {
+    return UNKNOWN_DAY
+  }
+  if (gate === 'before-next') {
+    return { ...unknown, status: 'closed', nextUnknown: true }
+  }
   if (!next) {
     return { ...unknown, status: 'closed' }
   }
@@ -376,7 +473,7 @@ function clockOf(iso: string) {
 /** «Открыто до 19:00 · ещё 2 ч», «Закрыто, откроется завтра в 10:00». */
 export function availabilityText(value: Availability, at: Date) {
   if (value.status === 'unknown') {
-    return ''
+    return value.unknownDay ? 'Сегодня часы уточняйте' : ''
   }
   if (value.alwaysOpen) {
     return 'Доступно круглосуточно'
@@ -386,7 +483,7 @@ export function availabilityText(value: Availability, at: Date) {
   }
   if (value.slot) {
     if (!value.opensAt) {
-      return 'Ближайших сеансов нет'
+      return value.nextUnknown ? 'Закрыто' : 'Ближайших сеансов нет'
     }
     const today = localNow(at).date
     const day = localNow(new Date(value.opensAt)).date
@@ -434,11 +531,12 @@ export function statusFromRules(record: { rules: ScheduleRules | null, verifiedA
     return temporarilyClosed(record.rules.closure)
   }
   const today = localNow(at).date
+  const unknown = unknownSpans(record.rules, addDays(today, -1), 16)
   if (record.rules.mode === 'slots' && record.rules.slots) {
     const next = expandIntervals(record.rules, today, 16).find((item) => item.start.getTime() > at.getTime())
-    return nextSlot(record.rules.slots.label, next?.start.toISOString() ?? null, at)
+    return nextSlot(record.rules.slots.label, next?.start.toISOString() ?? null, at, unknown)
   }
-  return availabilityAt(expandIntervals(record.rules, addDays(today, -1), 16), at, true)
+  return availabilityAt(expandIntervals(record.rules, addDays(today, -1), 16), at, true, unknown)
 }
 
 // --- text and markup ---------------------------------------------------------
@@ -498,11 +596,17 @@ export function describeSchedule(rules: ScheduleRules | null): string[] {
   } else if (rules.mode === 'hours' || rules.mode === 'slots') {
     for (const season of rules.seasons) {
       const open = new Set(season.week.flatMap((entry) => entry.days))
-      const off = WEEK_ORDER.filter((day) => !open.has(day))
-      let text = season.week.length ? season.week.map(dayLine).join('; ') : 'закрыто'
-      if (season.week.length && off.length) {
-        text += `; ${off.map((day) => SHORT[day]).join(', ')} ${off.length > 1 ? 'выходные' : 'выходной'}`
+      const unknown = WEEK_ORDER.filter((day) => !open.has(day) && season.unknownDays?.includes(day))
+      const off = WEEK_ORDER.filter((day) => !open.has(day) && !unknown.includes(day))
+      const parts = season.week.map(dayLine)
+      // An unknown day is never «выходной» (ADR 0044).
+      if (unknown.length) {
+        parts.push(unknown.length === 7 ? 'часы уточняйте' : `${dayRange(unknown)}: часы уточняйте`)
       }
+      if (parts.length && off.length) {
+        parts.push(`${off.map((day) => SHORT[day]).join(', ')} ${off.length > 1 ? 'выходные' : 'выходной'}`)
+      }
+      const text = parts.length ? parts.join('; ') : 'закрыто'
       lines.push(season.from && season.to ? `С ${mdLabel(season.from)} по ${mdLabel(season.to)}: ${text}` : capitalize(text))
     }
     for (const rule of rules.closures) {
@@ -636,12 +740,13 @@ export function rulesFromText(text: string | null | undefined): ScheduleRules | 
 const VENUE_DAY: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
 
 /** OSM-style venue hours as rules (unverified until checked). */
-export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, closed: boolean, opens: string | null, closes: string | null }>, note: string | null } | null): ScheduleRules | null {
+export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, closed: boolean, unknown?: boolean, opens: string | null, closes: string | null }>, note: string | null } | null): ScheduleRules | null {
   // A day with an opening and no closing time is open-ended (ADR 0042).
-  const open = (hours?.days ?? []).filter((day) => !day.closed && day.opens && VENUE_DAY[day.weekday] !== undefined)
+  const open = (hours?.days ?? []).filter((day) => !day.closed && !day.unknown && day.opens && VENUE_DAY[day.weekday] !== undefined)
   if (!open.length) {
     return null
   }
+  const unknownDays = (hours?.days ?? []).filter((day) => day.unknown && VENUE_DAY[day.weekday] !== undefined).map((day) => VENUE_DAY[day.weekday]!)
   const groups = new Map<string, number[]>()
   for (const day of open) {
     const key = `${day.opens}|${day.closes ?? ''}`
@@ -651,14 +756,14 @@ export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, clos
     seasons: [{ week: [...groups].map(([key, days]) => {
       const [opens, closes] = key.split('|')
       return { days, opens: opens === '24:00' ? '00:00' : opens, ...(closes ? { closes: closes === '24:00' ? '00:00' : closes } : {}) }
-    }) }],
+    }), ...(unknownDays.length ? { unknownDays } : {}) }],
     note: hours?.note || undefined,
   })
   return parsed.success ? parsed.data : null
 }
 
 /** Status from the materialised window: the interval open at `at`, if any, and the next start. */
-export function availabilityFromWindow(input: { currentEnd: string | null, currentStart?: string | null, currentOpenEnded?: boolean, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean, closed?: boolean, closure?: ScheduleRules['closure'], slot?: string }, at: Date): Availability {
+export function availabilityFromWindow(input: { currentEnd: string | null, currentStart?: string | null, currentOpenEnded?: boolean, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean, closed?: boolean, closure?: ScheduleRules['closure'], slot?: string, unknownDays?: UnknownSpan[] }, at: Date): Availability {
   if (input.verified && input.appointment) {
     return BY_APPOINTMENT
   }
@@ -666,7 +771,7 @@ export function availabilityFromWindow(input: { currentEnd: string | null, curre
     return temporarilyClosed(input.closure)
   }
   if (input.verified && input.slot) {
-    return nextSlot(input.slot, input.nextStart, at)
+    return nextSlot(input.slot, input.nextStart, at, input.unknownDays)
   }
   if (input.verified && input.alwaysOpen) {
     return ALWAYS_OPEN
@@ -679,7 +784,7 @@ export function availabilityFromWindow(input: { currentEnd: string | null, curre
   if (input.nextStart) {
     intervals.push({ start: new Date(input.nextStart), end: new Date(new Date(input.nextStart).getTime() + 60_000), lastEntry: null })
   }
-  return availabilityAt(intervals, at, input.verified)
+  return availabilityAt(intervals, at, input.verified, input.unknownDays)
 }
 
 /** Kaliningrad calendar date of an editor check, as schedules.verified_at stores it. */

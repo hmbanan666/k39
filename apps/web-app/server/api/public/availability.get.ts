@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
-import { availabilityFromWindow, availabilityText, scheduleRulesSchema } from '../../../shared/schedule'
+import { availabilityFromWindow, availabilityText, readRules, scheduleRulesSchema } from '../../../shared/schedule'
+import { unknownSpansFor } from '../../utils/schedule'
 
 // One availability query for the map and lists (ADR 0028). Never cached:
 // the answer depends on the minute.
@@ -26,7 +27,9 @@ export default defineEventHandler(async (event) => {
   const rows = await db.schedules.availability(at.toISOString(), { types, bbox })
   const items = rows.map((row) => {
     const verified = Boolean(row.verifiedAt) && !row.needsCheck
-    const value = availabilityFromWindow({ currentEnd: row.currentEnd, currentStart: row.currentStart, currentOpenEnded: row.currentOpenEnded, nextStart: row.nextStart, verified, alwaysOpen: row.mode === 'always', appointment: row.mode === 'appointment', closed: row.mode === 'closed', closure: readClosure(row.closure), slot: row.mode === 'slots' ? row.slotLabel ?? 'Экскурсия' : undefined }, at)
+    const unknownRules = verified && row.unknownDayRules ? readRules(row.unknownDayRules) : null
+    const unknownDays = unknownRules ? unknownSpansFor(unknownRules, at) : undefined
+    const value = availabilityFromWindow({ currentEnd: row.currentEnd, currentStart: row.currentStart, currentOpenEnded: row.currentOpenEnded, nextStart: row.nextStart, verified, alwaysOpen: row.mode === 'always', appointment: row.mode === 'appointment', closed: row.mode === 'closed', closure: readClosure(row.closure), slot: row.mode === 'slots' ? row.slotLabel ?? 'Экскурсия' : undefined, unknownDays }, at)
     return {
       type: row.entityType,
       slug: row.slug,

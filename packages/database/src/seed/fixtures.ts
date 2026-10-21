@@ -23,6 +23,7 @@ export const FIXTURE_SLUGS = {
   cafePeer: 'fixture-cafe-peer',
   cafeNoCoords: 'fixture-cafe-nocoords',
   cafeOpenEnded: 'fixture-cafe-open',
+  cafeUnknownDays: 'fixture-cafe-weekdays',
   collection: 'fixture-modules',
 } as const
 
@@ -68,6 +69,19 @@ function openEndedRules() {
   return {
     mode: 'hours',
     seasons: [{ week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '12:00', breaks: [] }] }],
+    closures: [],
+    holidays: 'as-usual',
+    exceptions: [],
+    occurrences: [],
+    needsCheck: false,
+  }
+}
+
+/** Weekday hours; the source says nothing about the weekend (ADR 0044). */
+function unknownDaysRules() {
+  return {
+    mode: 'hours',
+    seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }], unknownDays: [6, 0] }],
     closures: [],
     holidays: 'as-usual',
     exceptions: [],
@@ -267,6 +281,13 @@ export async function applyFixtures(now = new Date()) {
     latitude: 54.724,
     longitude: 20.505,
   })
+  const unknownDays = await ensureVenue({
+    slug: FIXTURE_SLUGS.cafeUnknownDays,
+    name: 'Фикстура: кафе без часов на выходные',
+    regionId: town.id,
+    latitude: 54.7245,
+    longitude: 20.506,
+  })
   await ensureCover({ venueId: photo.id }, 'Фикстура кафе')
 
   const day = now.toISOString().slice(0, 10)
@@ -301,6 +322,13 @@ export async function applyFixtures(now = new Date()) {
     sourceUrl: HOURS_URL,
     verifiedAt: day,
   }, [])
+  await Schedules.save({
+    entityType: 'venue',
+    entityId: unknownDays.id,
+    rules: unknownDaysRules(),
+    sourceUrl: HOURS_URL,
+    verifiedAt: day,
+  }, [])
 
   await Editor.saveCollection({
     slug: FIXTURE_SLUGS.collection,
@@ -316,6 +344,6 @@ export async function applyFixtures(now = new Date()) {
   return {
     slugs: FIXTURE_SLUGS,
     catalog: PRICE_CATALOG.length,
-    venues: [photo.slug, quiet.slug, peer.slug, nowhere.slug, openEnded.slug],
+    venues: [photo.slug, quiet.slug, peer.slug, nowhere.slug, openEnded.slug, unknownDays.slug],
   }
 }

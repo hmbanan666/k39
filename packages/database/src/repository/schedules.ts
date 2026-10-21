@@ -34,6 +34,11 @@ export interface AvailabilityEntity {
   /** The current interval has no known closing time; currentEnd is only the end of that day. */
   currentOpenEnded: boolean
   nextStart: string | null
+  /**
+   * The rules, only when a season has days with unknown hours (ADR 0044).
+   * Intervals store nothing for those days, so the caller reads them here.
+   */
+  unknownDayRules: Record<string, unknown> | null
 }
 
 // Schedules and their materialised intervals (ADR 0028).
@@ -97,6 +102,7 @@ export class Schedules {
         cur.ends_at as current_end,
         cur.starts_at as current_start,
         coalesce(cur.open_ended, false) as current_open_ended,
+        case when jsonb_path_exists(s.rules, '$.seasons[*].unknownDays[*]') then s.rules end as unknown_day_rules,
         (select i.starts_at from schedule_intervals i
           where i.entity_type = e.entity_type and i.entity_id = e.entity_id and i.starts_at > ${at}::timestamptz
           order by i.starts_at limit 1) as next_start
@@ -126,6 +132,7 @@ export class Schedules {
       currentStart: row.current_start ? new Date(String(row.current_start)).toISOString() : null,
       currentOpenEnded: row.current_open_ended === true || row.current_open_ended === 't',
       nextStart: row.next_start ? new Date(String(row.next_start)).toISOString() : null,
+      unknownDayRules: row.unknown_day_rules && typeof row.unknown_day_rules === 'object' ? row.unknown_day_rules as Record<string, unknown> : null,
     }))
   }
 

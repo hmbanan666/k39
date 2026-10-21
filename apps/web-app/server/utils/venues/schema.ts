@@ -7,6 +7,7 @@ const point = z.number()
 const day = z.object({
   weekday: z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']),
   closed: z.boolean().optional(),
+  unknown: z.boolean().optional().describe('The source gives no hours for this day: «часы уточняйте», never «выходной» (ADR 0044)'),
   opens: z.string().nullable().optional(),
   closes: z.string().nullable().optional(),
 })

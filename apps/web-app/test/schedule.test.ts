@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { availabilityFromWindow, availabilityText, describeSchedule, expandIntervals, rulesFromText, rulesFromVenueHours, scheduleDetails, scheduleMarkup, scheduleRulesSchema, statusFromRules } from '../shared/schedule'
+import { availabilityFromWindow, availabilityText, dayStateOn, describeSchedule, expandIntervals, hoursOn, rulesFromText, rulesFromVenueHours, scheduleDetails, scheduleMarkup, scheduleRulesSchema, statusFromRules, unknownSpans } from '../shared/schedule'
 
 const market = scheduleRulesSchema.parse({
   seasons: [{ week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '08:00', closes: '19:00' }] }],
@@ -211,5 +211,139 @@ describe('open-ended days (ADR 0042)', () => {
       { days: [6], opens: '12:00', breaks: [] },
       { days: [1], opens: '09:00', closes: '22:00', breaks: [] },
     ])
+  })
+})
+
+describe('days with unknown hours (ADR 0044)', () => {
+  // 2026-10-16 is a Friday, 17 a Saturday, 18 a Sunday, 19 a Monday.
+  const weekdays = scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00' }], unknownDays: [6, 0] }] })
+  const shop = { rules: weekdays, sourceUrl: null, verifiedAt: '2026-10-14' }
+  const sundayOff = { ...shop, rules: scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00' }], unknownDays: [6] }] }) }
+  const plain = { ...shop, rules: scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00' }] }] }) }
+  const text = (record: typeof shop, local: string) => availabilityText(statusFromRules(record, at(local)), at(local))
+
+  it('validates the list and rejects a day that also has hours', () => {
+    expect(weekdays.seasons[0]?.unknownDays).toEqual([6, 0])
+    const season = (unknownDays: number[]) => scheduleRulesSchema.safeParse({ seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00' }], unknownDays }] }).success
+    expect(season([6])).toBe(true)
+    expect(season([5, 6])).toBe(false)
+    expect(season([6, 6])).toBe(false)
+    expect(season([7])).toBe(false)
+    expect(scheduleRulesSchema.safeParse({ seasons: [{ week: [], unknownDays: [0, 1, 2, 3, 4, 5, 6] }] }).success).toBe(true)
+  })
+
+  it('leaves stored rules without the field as they were', () => {
+    expect(Object.keys(plain.rules.seasons[0]!)).toEqual(['week'])
+    expect(dayStateOn(plain.rules, '2026-10-17')).toEqual({ kind: 'closed' })
+    expect(describeSchedule(plain.rules)).toEqual(['Пн–пт 10:00–19:00; сб, вс выходные'])
+    expect(text(plain, '2026-10-17T12:00')).toBe('Закрыто, откроется в понедельник в 10:00')
+  })
+
+  it('tells unknown from closed per day', () => {
+    expect(dayStateOn(weekdays, '2026-10-16').kind).toBe('hours')
+    expect(dayStateOn(weekdays, '2026-10-17')).toEqual({ kind: 'unknown' })
+    expect(hoursOn(weekdays, '2026-10-17')).toBeNull()
+    expect(dayStateOn(sundayOff.rules, '2026-10-18')).toEqual({ kind: 'closed' })
+    const withRules = (extra: Record<string, unknown>) => scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00' }], unknownDays: [6, 0] }], ...extra })
+    // An exception or a recurring closure is stated by the source: it wins.
+    expect(dayStateOn(withRules({ exceptions: [{ date: '2026-10-17', closed: false, opens: '11:00', closes: '15:00' }] }), '2026-10-17').kind).toBe('hours')
+    expect(dayStateOn(withRules({ exceptions: [{ date: '2026-10-17' }] }), '2026-10-17').kind).toBe('closed')
+    expect(dayStateOn(withRules({ closures: [{ weekday: 6, nth: 3 }] }), '2026-10-17').kind).toBe('closed')
+    // 4 November is a public holiday on a Wednesday.
+    expect(dayStateOn(withRules({ holidays: 'sunday' }), '2026-11-04').kind).toBe('unknown')
+    expect(dayStateOn(withRules({ holidays: 'closed' }), '2026-11-04').kind).toBe('closed')
+  })
+
+  it('stores no interval for an unknown day and returns the days as spans', () => {
+    expect(expandIntervals(weekdays, '2026-10-16', 4).map((item) => item.start.toISOString())).toEqual(['2026-10-16T08:00:00.000Z', '2026-10-19T08:00:00.000Z'])
+    expect(unknownSpans(weekdays, '2026-10-16', 4)).toEqual([{ start: new Date('2026-10-16T22:00:00.000Z'), end: new Date('2026-10-18T22:00:00.000Z') }])
+    expect(unknownSpans(plain.rules, '2026-10-16', 4)).toEqual([])
+    expect(unknownSpans(scheduleRulesSchema.parse({ mode: 'always', seasons: [{ week: [], unknownDays: [6] }] }), '2026-10-16', 4)).toEqual([])
+  })
+
+  it('reports open and closed on known days and unknown on unknown days', () => {
+    expect(statusFromRules(shop, at('2026-10-14T12:00')).status).toBe('open')
+    expect(statusFromRules(shop, at('2026-10-16T18:30')).status).toBe('closing_soon')
+    expect(statusFromRules(shop, at('2026-10-15T21:00'))).toMatchObject({ status: 'closed', opensAt: '2026-10-16T08:00:00.000Z' })
+    for (const time of ['2026-10-17T00:00', '2026-10-17T12:00', '2026-10-18T23:30']) {
+      expect(statusFromRules(shop, at(time))).toMatchObject({ status: 'unknown', unknownDay: true, opensAt: null, closesAt: null })
+      expect(text(shop, time)).toBe('Сегодня часы уточняйте')
+    }
+    expect(statusFromRules(shop, at('2026-10-19T09:30'))).toMatchObject({ status: 'opening_soon', opensAt: '2026-10-19T08:00:00.000Z' })
+  })
+
+  it('never names an opening across an unknown day', () => {
+    const friday = at('2026-10-16T21:00')
+    expect(statusFromRules(shop, friday)).toMatchObject({ status: 'closed', opensAt: null, minutesToOpen: null, nextUnknown: true })
+    expect(text(shop, '2026-10-16T21:00')).toBe('Закрыто')
+    expect(text(shop, '2026-10-16T23:30')).toBe('Закрыто')
+    // A known day off followed by known hours still names the opening.
+    expect(text(sundayOff, '2026-10-18T12:00')).toBe('Закрыто, откроется завтра в 10:00')
+    expect(text(sundayOff, '2026-10-17T12:00')).toBe('Сегодня часы уточняйте')
+  })
+
+  it('keeps an overnight interval open into an unknown day until its close', () => {
+    const bar = { ...shop, rules: scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [5], opens: '18:00', closes: '02:00' }], unknownDays: [6] }] }) }
+    expect(statusFromRules(bar, at('2026-10-17T01:00'))).toMatchObject({ status: 'closing_soon', closesAt: '2026-10-17T00:00:00.000Z' })
+    expect(statusFromRules(bar, at('2026-10-17T03:00'))).toMatchObject({ status: 'unknown', unknownDay: true })
+    expect(statusFromRules(bar, at('2026-10-16T17:30'))).toMatchObject({ status: 'opening_soon', opensAt: '2026-10-16T16:00:00.000Z' })
+  })
+
+  it('stays unknown, not «today unknown», while unverified', () => {
+    const value = statusFromRules({ ...shop, verifiedAt: null }, at('2026-10-16T12:00'))
+    expect(value.status).toBe('unknown')
+    expect(value.unknownDay).toBeUndefined()
+  })
+
+  it('reads unknown days next to the availability window', () => {
+    const spans = unknownSpans(weekdays, '2026-10-15', 6)
+    const saturday = availabilityFromWindow({ currentEnd: null, nextStart: '2026-10-19T08:00:00.000Z', verified: true, unknownDays: spans }, at('2026-10-17T12:00'))
+    expect(saturday).toMatchObject({ status: 'unknown', unknownDay: true })
+    const friday = availabilityFromWindow({ currentEnd: null, nextStart: '2026-10-19T08:00:00.000Z', verified: true, unknownDays: spans }, at('2026-10-16T21:00'))
+    expect(friday).toMatchObject({ status: 'closed', opensAt: null, nextUnknown: true })
+    const open = availabilityFromWindow({ currentEnd: '2026-10-16T17:00:00.000Z', nextStart: '2026-10-19T08:00:00.000Z', verified: true, unknownDays: spans }, at('2026-10-16T12:00'))
+    expect(open).toMatchObject({ status: 'open', closesAt: '2026-10-16T17:00:00.000Z' })
+    const unverified = availabilityFromWindow({ currentEnd: null, nextStart: null, verified: false, unknownDays: spans }, at('2026-10-17T12:00'))
+    expect(unverified.unknownDay).toBeUndefined()
+  })
+
+  it('names no slot across an unknown day', () => {
+    const tours = { ...shop, rules: scheduleRulesSchema.parse({ mode: 'slots', seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '09:00', closes: '18:00' }], unknownDays: [6, 0] }], slots: { times: ['15:00'] } }) }
+    expect(text(tours, '2026-10-16T12:00')).toBe('Ближайшая экскурсия в 15:00')
+    expect(text(tours, '2026-10-16T16:00')).toBe('Закрыто')
+    expect(text(tours, '2026-10-17T12:00')).toBe('Сегодня часы уточняйте')
+  })
+
+  it('describes unknown days as «часы уточняйте», never «выходной»', () => {
+    expect(describeSchedule(weekdays)).toEqual(['Пн–пт 10:00–19:00; сб, вс: часы уточняйте'])
+    expect(scheduleDetails(weekdays)).toEqual(['Пн–пт 10:00–19:00; сб, вс: часы уточняйте'])
+    expect(describeSchedule(sundayOff.rules)).toEqual(['Пн–пт 10:00–19:00; сб: часы уточняйте; вс выходной'])
+    const midweek = scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [1, 5], opens: '10:00', closes: '19:00' }], unknownDays: [2, 3, 4] }] })
+    expect(describeSchedule(midweek)).toEqual(['Пн, пт 10:00–19:00; вт–чт: часы уточняйте; сб, вс выходные'])
+    expect(describeSchedule(scheduleRulesSchema.parse({ seasons: [{ week: [], unknownDays: [0, 1, 2, 3, 4, 5, 6] }] }))).toEqual(['Часы уточняйте'])
+    expect(describeSchedule(weekdays).join(' ')).not.toContain('выходн')
+  })
+
+  it('emits schema.org hours for known days only', () => {
+    expect(scheduleMarkup(shop, at('2026-10-14T12:00'))).toEqual({
+      regular: [{
+        '@type': 'OpeningHoursSpecification',
+        'dayOfWeek': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day) => `https://schema.org/${day}`),
+        'opens': '10:00',
+        'closes': '19:00',
+      }],
+      special: [],
+    })
+  })
+
+  it('reads venue hours with a day marked unknown', () => {
+    const rules = rulesFromVenueHours({ days: [
+      { weekday: 'mon', closed: false, opens: '10:00', closes: '19:00' },
+      { weekday: 'sat', closed: false, unknown: true, opens: null, closes: null },
+      { weekday: 'sun', closed: true, opens: null, closes: null },
+    ], note: null })
+    expect(rules?.seasons[0]).toEqual({ week: [{ days: [1], opens: '10:00', closes: '19:00', breaks: [] }], unknownDays: [6] })
+    expect(rulesFromVenueHours({ days: [{ weekday: 'sat', closed: false, unknown: true, opens: null, closes: null }], note: null })).toBeNull()
+    expect(Object.keys(rulesFromVenueHours({ days: [{ weekday: 'mon', closed: false, opens: '10:00', closes: '19:00' }], note: null })!.seasons[0]!)).toEqual(['week'])
   })
 })

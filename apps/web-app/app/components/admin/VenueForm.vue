@@ -62,24 +62,25 @@
           class="day"
         >
           <span>{{ day.weekday }}</span>
-          <input
-            v-model="day.closed"
-            type="checkbox"
-          >
-          выходной
+          <select v-model="day.state">
+            <option value="open">часы</option>
+            <option value="closed">выходной</option>
+            <option value="unknown">не указано</option>
+          </select>
           <input
             v-model="day.opens"
             placeholder="09:00"
-            :disabled="day.closed"
+            :disabled="day.state !== 'open'"
           >
           <input
             v-model="day.closes"
             placeholder="уточняйте"
-            :disabled="day.closed"
+            :disabled="day.state !== 'open'"
           >
         </label>
         <p class="hint">
           Источник называет только время открытия? Оставьте закрытие пустым: на сайте будет «с 12:00, закрытие уточняйте».
+          Источник молчит про день? Выберите «не указано»: на сайте будет «часы уточняйте», а не «выходной».
         </p>
         <label>Заметка <input v-model="form.hoursNote"></label>
       </fieldset>
@@ -188,8 +189,10 @@ const audits = ref<Array<{ id: string, createdAt: string, action: string, actorE
 const file = ref<File | null>(null)
 const photo = reactive({ alt: '', author: '', license: 'own', sourceUrl: '' })
 
+type DayState = 'open' | 'closed' | 'unknown'
+
 function blankDays() {
-  return weekdays.map((weekday) => ({ weekday, closed: true, opens: '', closes: '' }))
+  return weekdays.map((weekday) => ({ weekday, state: 'closed' as DayState, opens: '', closes: '' }))
 }
 
 const form = reactive({
@@ -235,7 +238,7 @@ if (props.venueId) {
       lastVerifiedAt: string | null
       description: string
       sources: Array<{ title: string, url: string }>
-      hours: { days: Array<{ weekday: string, closed: boolean, opens: string | null, closes: string | null }>, note: string | null }
+      hours: { days: Array<{ weekday: string, closed: boolean, unknown?: boolean, opens: string | null, closes: string | null }>, note: string | null }
     }
   }>(`/api/admin/venues/${props.venueId}`)
   const venue = loaded.venue
@@ -259,7 +262,7 @@ if (props.venueId) {
   form.days = blankDays().map((day) => {
     const found = venue.hours?.days?.find((item) => item.weekday === day.weekday)
     return found
-      ? { weekday: day.weekday, closed: found.closed, opens: found.opens || '', closes: found.closes || '' }
+      ? { weekday: day.weekday, state: (found.unknown ? 'unknown' : found.closed ? 'closed' : 'open') as DayState, opens: found.opens || '', closes: found.closes || '' }
       : day
   })
 }
@@ -297,9 +300,10 @@ function payload() {
       note: form.hoursNote || null,
       days: form.days.map((day) => ({
         weekday: day.weekday,
-        closed: day.closed,
-        opens: day.closed ? null : day.opens || null,
-        closes: day.closed ? null : day.closes || null,
+        closed: day.state === 'closed',
+        unknown: day.state === 'unknown',
+        opens: day.state === 'open' ? day.opens || null : null,
+        closes: day.state === 'open' ? day.closes || null : null,
       })),
     },
   }
@@ -380,7 +384,7 @@ async function upload() {
 form { display: grid; gap: 0.7rem; }
 label { display: grid; gap: 0.25rem; }
 input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; }
-.day { grid-template-columns: 2.5rem auto auto 5.5rem 7.5rem; align-items: center; }
+.day { grid-template-columns: 2.5rem auto 5.5rem 7.5rem; align-items: center; }
 .hint, .error { margin: 0; }
 .error { color: var(--color-danger); }
 .photo, .history { margin-top: 2rem; }
