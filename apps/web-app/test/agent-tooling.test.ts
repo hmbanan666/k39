@@ -14,6 +14,7 @@ function repoRoot() {
 
 const syncScript = resolve(repoRoot(), 'scripts/git/sync-branch.sh')
 const bootScript = resolve(repoRoot(), 'scripts/env/check-boot.sh')
+const migrateScript = resolve(repoRoot(), 'scripts/env/migrate-dev.sh')
 const dirs: string[] = []
 
 function scratch() {
@@ -227,10 +228,71 @@ describe('boot self-check', () => {
     executable(bin, 'node', `#!/bin/sh\necho v${version}\n`)
     executable(bin, 'pg_isready', '#!/bin/sh\nexit 0\n')
     executable(bin, 'pg_lsclusters', '#!/bin/sh\necho "18 main 5432 online postgres /tmp /tmp"\n')
+    executable(bin, 'psql', '#!/bin/sh\ncase "$*" in *public.places*) echo places ;; esac\nexit 0\n')
     const profile = join(scratch(), 'k39.sh')
     writeFileSync(profile, 'export PATH="/usr/local/bin:$PATH"\n')
     const result = runBoot(bin, profile)
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain(`boot check passed: node v${version}, postgres 18, ${profile}`)
+    expect(result.stdout).toContain(`boot check passed: node v${version}, postgres 18, public.places, ${profile}`)
+  })
+
+  it('names a dev database that has no places table', () => {
+    const bin = scratch()
+    const version = readFileSync(resolve(repoRoot(), '.nvmrc'), 'utf8').trim()
+    executable(bin, 'node', `#!/bin/sh\necho v${version}\n`)
+    executable(bin, 'pg_isready', '#!/bin/sh\nexit 0\n')
+    executable(bin, 'pg_lsclusters', '#!/bin/sh\necho "18 main 5432 online postgres /tmp /tmp"\n')
+    executable(bin, 'psql', '#!/bin/sh\nexit 0\n')
+    const profile = join(scratch(), 'k39.sh')
+    writeFileSync(profile, 'export PATH="/usr/local/bin:$PATH"\n')
+    const result = runBoot(bin, profile)
+    expect(result.status).not.toBe(0)
+    expect(result.stdout).toContain('has no public.places')
+    expect(result.stdout).toContain('scripts/env/migrate-dev.sh')
+  })
+})
+
+describe('dev database migrate', () => {
+  function executable(dir: string, name: string, body: string) {
+    const path = join(dir, name)
+    writeFileSync(path, body)
+    chmodSync(path, 0o755)
+    return path
+  }
+
+  function runMigrate(databaseUrl: string, pathDir: string) {
+    try {
+      execFileSync('/bin/bash', [migrateScript], {
+        cwd: repoRoot(),
+        env: { ...process.env, PATH: pathDir, DATABASE_URL: databaseUrl },
+        encoding: 'utf8',
+      })
+      return { status: 0, stderr: '' }
+    } catch (error) {
+      const failed = error as { status?: number, stderr?: string }
+      return { status: failed.status ?? 1, stderr: failed.stderr ?? '' }
+    }
+  }
+
+  it('refuses a remote host and a test database name', () => {
+    const bin = scratch()
+    const record = join(bin, 'called')
+    executable(bin, 'corepack', `#!/bin/sh\necho called >> '${record}'\nexit 0\n`)
+    const remote = runMigrate('postgres://k39:k39@db.example.com:5432/k39', bin)
+    expect(remote.status).not.toBe(0)
+    expect(remote.stderr).toContain('refusing host db.example.com')
+    const testDb = runMigrate('postgres://k39:k39@127.0.0.1:5432/k39_test', bin)
+    expect(testDb.status).not.toBe(0)
+    expect(testDb.stderr).toContain('refusing database k39_test')
+    expect(existsSync(record)).toBe(false)
+  })
+
+  it('runs drizzle-kit migrate for the local dev database', () => {
+    const bin = scratch()
+    const record = join(bin, 'called')
+    executable(bin, 'corepack', `#!/bin/sh\necho "$@" >> '${record}'\nexit 0\n`)
+    const result = runMigrate('postgres://k39:k39@127.0.0.1:5432/k39', bin)
+    expect(result.status).toBe(0)
+    expect(readFileSync(record, 'utf8')).toContain('--filter @k39/database db:migrate')
   })
 })

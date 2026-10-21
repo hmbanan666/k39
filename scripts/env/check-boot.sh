@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fail when the committed Cloud Agent image did not come up.
 # Prints every miss, then exits non-zero. Agents can run this by hand.
-# .cursor/start.sh runs it after Node, git, and Postgres setup.
+# .cursor/start.sh runs it after Node, git, Postgres, and the dev migration.
 set -u
 script_dir=${0%/*}
 root=$(CDPATH= cd -- "${script_dir}/../.." && pwd)
@@ -56,6 +56,17 @@ else
   else
     missing+=("postgres: accepting connections but the version is unknown (no pg_lsclusters or psql); want 18")
   fi
+
+  url=${DATABASE_URL:-postgres://k39:k39@127.0.0.1:5432/k39}
+  if ! command -v psql >/dev/null 2>&1; then
+    missing+=("dev database: psql is not on PATH, so public.places was not checked")
+  else
+    places=$(psql "$url" -tAc "select to_regclass('public.places')" 2>/dev/null || true)
+    places=${places//[[:space:]]/}
+    if [ "$places" != "places" ]; then
+      missing+=("dev database: ${url} has no public.places (bash scripts/env/migrate-dev.sh; app boot is not required)")
+    fi
+  fi
 fi
 
 if [ ! -e "$profile" ]; then
@@ -72,4 +83,4 @@ if [ "${#missing[@]}" -gt 0 ]; then
   exit 1
 fi
 
-echo "boot check passed: node v${want}, postgres 18, ${profile}"
+echo "boot check passed: node v${want}, postgres 18, public.places, ${profile}"

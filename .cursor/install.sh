@@ -17,5 +17,5 @@ sudo -n corepack pnpm exec playwright install-deps chromium
 # because a build goes stale. The platform does not wait for start.sh.
 bash scripts/git/sync-branch.sh
 
-chmod 0755 scripts/git/strip-coauthor.sh scripts/git/post-commit scripts/git/sync-branch.sh scripts/env/node-path.sh scripts/env/check-boot.sh
+chmod 0755 scripts/git/strip-coauthor.sh scripts/git/post-commit scripts/git/sync-branch.sh scripts/env/node-path.sh scripts/env/check-boot.sh scripts/env/migrate-dev.sh
 install -m 0755 scripts/git/post-commit .git/hooks/post-commit
