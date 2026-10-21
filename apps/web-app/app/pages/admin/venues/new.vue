@@ -1,5 +1,5 @@
 <template>
-  <VenueForm />
+  <AdminVenueForm />
 </template>
 
 <script setup lang="ts">

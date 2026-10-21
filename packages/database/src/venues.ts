@@ -347,8 +347,9 @@ export function normalizeHours(value: unknown): VenueHours {
       const closed = day.closed === true
       const opens = typeof day.opens === 'string' && CLOCK.test(day.opens) ? day.opens : null
       const closes = typeof day.closes === 'string' && (CLOCK.test(day.closes) || day.closes === '24:00') ? day.closes : null
-      if (!closed && (!opens || !closes)) {
-        throw new VenueInputError(`Часы ${weekday}: нужны opens и closes, либо closed`)
+      // An opening time without a closing time is an open-ended day (ADR 0042).
+      if (!closed && !opens) {
+        throw new VenueInputError(`Часы ${weekday}: нужно opens, либо closed`)
       }
       given.set(weekday, { weekday, closed: closed || !opens, opens: closed ? null : opens, closes: closed ? null : closes })
     }
@@ -359,14 +360,15 @@ export function normalizeHours(value: unknown): VenueHours {
   }
 }
 
+/** An opening time alone counts: the closing time may be unknown (ADR 0042). */
 export function hoursAreSet(hours: VenueHours) {
-  return Boolean(hours.note?.trim()) || hours.days.some((day) => !day.closed && day.opens && day.closes)
+  return Boolean(hours.note?.trim()) || hours.days.some((day) => !day.closed && day.opens)
 }
 
 export const HOURS_UNKNOWN = 'Часы уточняйте'
 
 export function formatHoursLines(hours: VenueHours) {
-  const open = hours.days.some((day) => !day.closed && day.opens && day.closes)
+  const open = hours.days.some((day) => !day.closed && day.opens)
   if (!open) {
     const note = hours.note?.trim()
     return [note || HOURS_UNKNOWN]
@@ -388,7 +390,7 @@ export function formatHoursLines(hours: VenueHours) {
     const label = index === end
       ? WEEKDAY_LABEL[day.weekday]
       : `${WEEKDAY_LABEL[day.weekday]}-${WEEKDAY_LABEL[hours.days[end]!.weekday]}`
-    lines.push(day.closed ? `${label} выходной` : `${label} ${day.opens}-${day.closes}`)
+    lines.push(day.closed ? `${label} выходной` : day.closes ? `${label} ${day.opens}-${day.closes}` : `${label} с ${day.opens}, закрытие уточняйте`)
     index = end + 1
   }
   if (hours.note?.trim()) {

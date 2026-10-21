@@ -1,5 +1,5 @@
 <template>
-  <VenueForm :venue-id="id" />
+  <AdminVenueForm :venue-id="id" />
 </template>
 
 <script setup lang="ts">

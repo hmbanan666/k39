@@ -46,3 +46,4 @@ Add the row in the same commit as the SQL file. A `reserved` row holds a number 
 | 0037 | 0037_consent_method.sql | applied |
 | 0038 | 0038_guest_submissions.sql | applied |
 | 0039 | 0039_search_fold.sql | applied |
+| 0040 | 0040_open_ended_intervals.sql | applied |

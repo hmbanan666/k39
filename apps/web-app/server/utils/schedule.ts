@@ -14,6 +14,7 @@ function intervalsFor(rules: ScheduleRules, at = new Date()) {
     startsAt: item.start.toISOString(),
     endsAt: item.end.toISOString(),
     lastEntryAt: item.lastEntry ? item.lastEntry.toISOString() : null,
+    openEnded: Boolean(item.openEnded),
   }))
 }
 

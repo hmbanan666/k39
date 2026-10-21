@@ -125,3 +125,91 @@ describe('details row never repeats the status', () => {
     expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'hours', seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '18:00' }] }] })).join(' ')).toContain('10:00')
   })
 })
+
+describe('open-ended days (ADR 0042)', () => {
+  const daily = scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '12:00' }] }] })
+  const villa = { rules: daily, sourceUrl: null, verifiedAt: '2026-10-14' }
+
+  it('validates an entry without closes and checks its breaks and last entry', () => {
+    expect(daily.seasons[0]?.week[0]?.closes).toBeUndefined()
+    const day = (entry: Record<string, unknown>) => scheduleRulesSchema.safeParse({ seasons: [{ week: [{ days: [1], opens: '12:00', ...entry }] }] }).success
+    expect(day({ breaks: [{ from: '15:00', to: '16:00' }], lastEntry: '21:00' })).toBe(true)
+    expect(day({ breaks: [{ from: '11:00', to: '12:30' }] })).toBe(false)
+    expect(day({ breaks: [{ from: '16:00', to: '15:00' }] })).toBe(false)
+    expect(day({ lastEntry: '01:00' })).toBe(false)
+    expect(day({ closes: '02:00', lastEntry: '01:00' })).toBe(true)
+  })
+
+  it('expands to the end of the local day, flagged as open-ended', () => {
+    expect(expandIntervals(daily, '2026-10-14', 2)).toEqual([
+      { start: new Date('2026-10-14T10:00:00.000Z'), end: new Date('2026-10-14T22:00:00.000Z'), lastEntry: null, openEnded: true },
+      { start: new Date('2026-10-15T10:00:00.000Z'), end: new Date('2026-10-15T22:00:00.000Z'), lastEntry: null, openEnded: true },
+    ])
+    const paused = scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [3], opens: '12:00', breaks: [{ from: '15:00', to: '16:00' }], lastEntry: '21:00' }] }] })
+    expect(expandIntervals(paused, '2026-10-14', 1).map((item) => [item.start.toISOString(), item.end.toISOString(), item.lastEntry?.toISOString() ?? null, item.openEnded])).toEqual([
+      ['2026-10-14T10:00:00.000Z', '2026-10-14T13:00:00.000Z', null, true],
+      ['2026-10-14T14:00:00.000Z', '2026-10-14T22:00:00.000Z', '2026-10-14T19:00:00.000Z', true],
+    ])
+  })
+
+  it('may say it opens at 12:00 before opening', () => {
+    const now = at('2026-10-14T11:30')
+    const value = statusFromRules(villa, now)
+    expect(value).toMatchObject({ status: 'opening_soon', opensAt: '2026-10-14T10:00:00.000Z' })
+    expect(availabilityText(value, now)).toBe('Закрыто, откроется сегодня в 12:00')
+  })
+
+  it('never says closed after opening that day, and never computes a close', () => {
+    for (const time of ['12:00', '18:00', '23:30', '23:59']) {
+      const now = at(`2026-10-14T${time}`)
+      const value = statusFromRules(villa, now)
+      expect(value).toMatchObject({ status: 'open', openEnded: true, openedAt: '2026-10-14T10:00:00.000Z', closesAt: null, minutesLeft: null })
+      expect(availabilityText(value, now)).toBe('Открыто с 12:00, закрытие уточняйте')
+    }
+  })
+
+  it('a break on an open-ended day never reads as closing soon', () => {
+    const paused = { ...villa, rules: scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [3], opens: '12:00', breaks: [{ from: '15:00', to: '16:00' }] }] }] }) }
+    expect(statusFromRules(paused, at('2026-10-14T14:30'))).toMatchObject({ status: 'open', closesAt: null, minutesLeft: null })
+    expect(availabilityText(statusFromRules(paused, at('2026-10-14T16:30')), at('2026-10-14T16:30'))).toBe('Открыто с 16:00, закрытие уточняйте')
+  })
+
+  it('starts a new day after midnight', () => {
+    const now = at('2026-10-15T00:30')
+    const value = statusFromRules(villa, now)
+    expect(value).toMatchObject({ status: 'closed', closesAt: null, opensAt: '2026-10-15T10:00:00.000Z' })
+    expect(availabilityText(value, now)).toBe('Закрыто, откроется сегодня в 12:00')
+  })
+
+  it('stays unknown while unverified', () => {
+    expect(statusFromRules({ ...villa, verifiedAt: null }, at('2026-10-14T13:00')).status).toBe('unknown')
+  })
+
+  it('reads the open-ended flag from the availability window', () => {
+    const now = at('2026-10-14T23:00')
+    const value = availabilityFromWindow({ currentEnd: '2026-10-14T22:00:00.000Z', currentStart: '2026-10-14T10:00:00.000Z', currentOpenEnded: true, nextStart: '2026-10-15T10:00:00.000Z', verified: true }, at('2026-10-14T19:00'))
+    expect(value).toMatchObject({ status: 'open', closesAt: null, minutesLeft: null, openEnded: true })
+    expect(availabilityText(value, now)).toBe('Открыто с 12:00, закрытие уточняйте')
+  })
+
+  it('describes the day without a closing time', () => {
+    expect(describeSchedule(daily)).toEqual(['Ежедневно с 12:00, закрытие уточняйте'])
+    const mixed = scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '22:00' }, { days: [0, 6], opens: '12:00', lastEntry: '21:00' }] }] })
+    expect(describeSchedule(mixed)).toEqual(['Пн–пт 10:00–22:00; сб, вс с 12:00, вход и касса до 21:00, закрытие уточняйте'])
+    expect(scheduleDetails(daily)).toEqual(['Ежедневно с 12:00, закрытие уточняйте'])
+  })
+
+  it('emits no schema.org hours rather than an invented close', () => {
+    expect(scheduleMarkup(villa, at('2026-10-14T12:00'))).toEqual({ regular: [], special: [] })
+    const mixed = scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '22:00' }, { days: [0, 6], opens: '12:00' }] }] })
+    expect(scheduleMarkup({ ...villa, rules: mixed }, at('2026-10-14T12:00'))).toEqual({ regular: [], special: [] })
+  })
+
+  it('reads venue hours with an opening and no closing time', () => {
+    const rules = rulesFromVenueHours({ days: [{ weekday: 'sat', closed: false, opens: '12:00', closes: null }, { weekday: 'mon', closed: false, opens: '09:00', closes: '22:00' }], note: null })
+    expect(rules?.seasons[0]?.week).toEqual([
+      { days: [6], opens: '12:00', breaks: [] },
+      { days: [1], opens: '09:00', closes: '22:00', breaks: [] },
+    ])
+  })
+})

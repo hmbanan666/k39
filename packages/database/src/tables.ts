@@ -791,6 +791,8 @@ export const scheduleIntervals = pgTable('schedule_intervals', {
   startsAt: timestamp('starts_at', { precision: 0, withTimezone: true, mode: 'string' }).notNull(),
   endsAt: timestamp('ends_at', { precision: 0, withTimezone: true, mode: 'string' }).notNull(),
   lastEntryAt: timestamp('last_entry_at', { precision: 0, withTimezone: true, mode: 'string' }),
+  /** No known closing time (ADR 0042): `ends_at` is the end of that local day, not a close. */
+  openEnded: boolean('open_ended').notNull().default(false),
 }, (table) => [
   index('schedule_intervals_entity').on(table.entityType, table.entityId),
   index('schedule_intervals_time').on(table.startsAt, table.endsAt),

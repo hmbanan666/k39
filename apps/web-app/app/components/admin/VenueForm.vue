@@ -74,10 +74,13 @@
           >
           <input
             v-model="day.closes"
-            placeholder="21:00"
+            placeholder="уточняйте"
             :disabled="day.closed"
           >
         </label>
+        <p class="hint">
+          Источник называет только время открытия? Оставьте закрытие пустым: на сайте будет «с 12:00, закрытие уточняйте».
+        </p>
         <label>Заметка <input v-model="form.hoursNote"></label>
       </fieldset>
       <label>Описание
@@ -173,9 +176,8 @@
 </template>
 
 <script setup lang="ts">
-import { ofetch } from 'ofetch'
-
 const props = defineProps<{ venueId?: string }>()
+const requestFetch = useRequestFetch()
 const kinds = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other']
 const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 const regions = ref<Array<{ id: string, slug: string, title: string }>>([])
@@ -211,11 +213,11 @@ const form = reactive({
   days: blankDays(),
 })
 
-const meta = await ofetch<{ regions: Array<{ id: string, slug: string, title: string }> }>('/api/admin/meta')
+const meta = await requestFetch<{ regions: Array<{ id: string, slug: string, title: string }> }>('/api/admin/meta')
 regions.value = meta.regions
 
 if (props.venueId) {
-  const loaded = await ofetch<{
+  const loaded = await requestFetch<{
     venue: {
       name: string
       slug: string
@@ -307,10 +309,10 @@ async function save() {
   error.value = ''
   try {
     if (props.venueId) {
-      await ofetch(`/api/admin/venues/${props.venueId}`, { method: 'PATCH', body: payload() })
+      await requestFetch(`/api/admin/venues/${props.venueId}`, { method: 'PATCH', body: payload() })
       return
     }
-    const created = await ofetch<{ id: string }>('/api/admin/venues', { method: 'POST', body: payload() })
+    const created = await requestFetch<{ id: string }>('/api/admin/venues', { method: 'POST', body: payload() })
     await navigateTo(`/admin/venues/${created.id}`)
   } catch (reason) {
     error.value = (reason as { data?: { message?: string }, statusMessage?: string }).data?.message
@@ -327,7 +329,7 @@ async function loadHistory() {
   if (!props.venueId) {
     return
   }
-  const history = await ofetch<{
+  const history = await requestFetch<{
     revisions: typeof revisions.value
     audits: typeof audits.value
   }>(`/api/admin/venues/${props.venueId}/revisions`)
@@ -344,7 +346,7 @@ if (props.venueId) {
 async function revert(revisionId: string) {
   historyError.value = ''
   try {
-    await ofetch(`/api/admin/venues/${props.venueId}/revert`, { method: 'POST', body: { revisionId } })
+    await requestFetch(`/api/admin/venues/${props.venueId}/revert`, { method: 'POST', body: { revisionId } })
     window.location.reload()
   } catch (reason) {
     historyError.value = (reason as { data?: { message?: string, statusMessage?: string } }).data?.statusMessage
@@ -366,7 +368,7 @@ async function upload() {
   body.set('sourceUrl', photo.sourceUrl)
   body.set('isCover', 'true')
   try {
-    await ofetch(`/api/admin/venues/${props.venueId}/media`, { method: 'POST', body })
+    await requestFetch(`/api/admin/venues/${props.venueId}/media`, { method: 'POST', body })
   } catch (reason) {
     error.value = (reason as { data?: { message?: string } }).data?.message || 'Не удалось загрузить фото'
   }
@@ -378,7 +380,7 @@ async function upload() {
 form { display: grid; gap: 0.7rem; }
 label { display: grid; gap: 0.25rem; }
 input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; }
-.day { grid-template-columns: 2.5rem auto auto 5.5rem 5.5rem; align-items: center; }
+.day { grid-template-columns: 2.5rem auto auto 5.5rem 7.5rem; align-items: center; }
 .hint, .error { margin: 0; }
 .error { color: var(--color-danger); }
 .photo, .history { margin-top: 2rem; }
