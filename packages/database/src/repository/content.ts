@@ -28,7 +28,7 @@ function syncedBody(data: { body?: string, sections?: unknown }): { body?: strin
   return {}
 }
 
-type ContentTx = Parameters<Parameters<ReturnType<typeof useDatabase>['transaction']>[0]>[0]
+export type ContentTx = Parameters<Parameters<ReturnType<typeof useDatabase>['transaction']>[0]>[0]
 
 /** Cap, dedupe, and validate source rows. The same rules as a venue. */
 function pageSources(rows: unknown): SourceLink[] {
@@ -864,6 +864,23 @@ export class Editor {
     return useDatabase().select().from(collections).orderBy(asc(collections.title))
   }
 
+  static async collectionById(id: string) {
+    const [row] = await useDatabase().select().from(collections).where(eq(collections.id, id)).limit(1)
+    return row ?? null
+  }
+
+  static transaction<T>(run: (tx: ContentTx) => Promise<T>) {
+    return useDatabase().transaction(run)
+  }
+
+  /** Deletes the draft only when it is still the row the caller checked. */
+  static async deleteContentDraftIfUnchanged(id: string, updatedAt: string, tx: ContentTx) {
+    await tx.delete(contentDrafts).where(and(
+      eq(contentDrafts.id, id),
+      eq(contentDrafts.updatedAt, updatedAt),
+    ))
+  }
+
   static async collectionItems(collectionId: string) {
     return useDatabase().select({
       placeSlug: places.slug,
@@ -893,15 +910,15 @@ export class Editor {
     ))
   }
 
-  static async saveRoute(input: { id?: string, slug: string, title: string, summary?: string | null, body?: string, sections?: unknown, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null) {
+  static async saveRoute(input: { id?: string, slug: string, title: string, summary?: string | null, body?: string, sections?: unknown, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null, tx?: ContentTx) {
     const data = { ...input, ...syncedBody(input) }
-    const resolvedPoints = data.points ? await resolveStops(data.points) : null
-    const db = useDatabase()
+    const resolvedPoints = data.points ? await resolveStops(data.points, tx) : null
+    const db = tx ?? useDatabase()
     const [existing] = data.id
       ? await db.select().from(routes).where(eq(routes.id, data.id)).limit(1)
       : await db.select().from(routes).where(eq(routes.slug, data.slug)).limit(1)
     if (existing && existing.slug !== data.slug) {
-      await upsertRedirect(`/marshruty/${existing.slug}`, `/marshruty/${data.slug}`)
+      await upsertRedirect(`/marshruty/${existing.slug}`, `/marshruty/${data.slug}`, tx)
     }
     const values = {
       slug: data.slug,
@@ -926,21 +943,21 @@ export class Editor {
       throw new Error('Route insert failed')
     }
     if (resolvedPoints) {
-      await writeRoutePoints(row.id, resolvedPoints)
+      await writeRoutePoints(row.id, resolvedPoints, tx)
     }
-    await syncGonePath(`/marshruty/${row.slug}`, row.publicationStatus)
+    await syncGonePath(`/marshruty/${row.slug}`, row.publicationStatus, tx)
     return row
   }
 
-  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[], kind?: CollectionKind, month?: number | null, sources?: SourceLink[], modules?: StoredPageModule[] }, userId?: string | null) {
+  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[], kind?: CollectionKind, month?: number | null, sources?: SourceLink[], modules?: StoredPageModule[] }, userId?: string | null, tx?: ContentTx) {
     const sources = data.sources === undefined ? undefined : pageSources(data.sources)
-    const resolvedItems = data.items ? await resolveStops(data.items) : null
-    const db = useDatabase()
+    const resolvedItems = data.items ? await resolveStops(data.items, tx) : null
+    const db = tx ?? useDatabase()
     const [existing] = data.id
       ? await db.select().from(collections).where(eq(collections.id, data.id)).limit(1)
       : await db.select().from(collections).where(eq(collections.slug, data.slug)).limit(1)
     if (existing && existing.slug !== data.slug) {
-      await upsertRedirect(`/podborki/${existing.slug}`, `/podborki/${data.slug}`)
+      await upsertRedirect(`/podborki/${existing.slug}`, `/podborki/${data.slug}`, tx)
     }
     const values = {
       slug: data.slug,
@@ -967,9 +984,9 @@ export class Editor {
       throw new Error('Collection insert failed')
     }
     if (resolvedItems) {
-      await writeCollectionItems(row.id, resolvedItems)
+      await writeCollectionItems(row.id, resolvedItems, tx)
     }
-    await syncGonePath(`/podborki/${row.slug}`, row.publicationStatus)
+    await syncGonePath(`/podborki/${row.slug}`, row.publicationStatus, tx)
     return row
   }
 

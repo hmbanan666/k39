@@ -6,12 +6,28 @@ import { refusePendingLiveEdit, resolvePublication } from './draft'
 import { updatePlaceDraft } from './places'
 import { updateRouteDraft } from './routes'
 
-export async function setPublication(input: {
-  entity: 'place' | 'route' | 'collection' | 'quest'
+type PublicationInput = {
   id?: string
   slug?: string
   publicationStatus: string
-}) {
+}
+
+type PublicationEntity = 'place' | 'route' | 'collection' | 'quest'
+
+type QuestPublication = { id: string, slug: string, publicationStatus: string, writingWarnings: string[] }
+
+type AnyPublication
+  = | Awaited<ReturnType<typeof updatePlaceDraft>>
+    | Awaited<ReturnType<typeof updateRouteDraft>>
+    | Awaited<ReturnType<typeof saveCollectionDraft>>
+    | QuestPublication
+
+export function setPublication(input: { entity: 'place' } & PublicationInput): ReturnType<typeof updatePlaceDraft>
+export function setPublication(input: { entity: 'route' } & PublicationInput): ReturnType<typeof updateRouteDraft>
+export function setPublication(input: { entity: 'collection' } & PublicationInput): ReturnType<typeof saveCollectionDraft>
+export function setPublication(input: { entity: 'quest' } & PublicationInput): Promise<QuestPublication>
+export function setPublication(input: { entity: PublicationEntity } & PublicationInput): Promise<AnyPublication>
+export async function setPublication(input: { entity: PublicationEntity } & PublicationInput): Promise<AnyPublication> {
   if (input.entity === 'place') {
     return updatePlaceDraft({ id: input.id, slug: input.slug, publicationStatus: input.publicationStatus }, 'content_set_publication')
   }

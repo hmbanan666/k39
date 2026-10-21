@@ -54,3 +54,14 @@ export function refusePendingLiveEdit(status: ResolvedPublication, label: string
     })
   }
 }
+
+/** Draft scope on a live row. The caller has not written yet. */
+export function refuseDraftLivePage(action: string, status: string | null | undefined, live: readonly string[] = ['published', 'archived']) {
+  if (contentScope() !== 'draft' || !status || !live.includes(status)) {
+    return
+  }
+  throw createError({
+    statusCode: 409,
+    statusMessage: `Draft token cannot ${action}. The live page was not changed.`,
+  })
+}

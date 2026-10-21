@@ -6,23 +6,18 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope, requireEditorContent } from '../../../../../apps/web-app/server/utils/access'
 import { applyAdminContentDraft, collectionDraftNotice, discardAdminContentDraft, routeDraftNotice, withPendingGuard } from '../../../../../apps/web-app/server/utils/admin/content-draft'
 import { readCollection, saveCollectionDraft } from '../../../../../apps/web-app/server/utils/mcp/collections'
+import { attachCollectionPhoto, attachPlacePhoto, detachCollectionPhoto, refuseIncomingPhoto, refuseVenuePhoto } from '../../../../../apps/web-app/server/utils/mcp/photos'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { writeQuest } from '../../../../../apps/web-app/server/utils/mcp/quests'
 import { readRoute, updateRouteDraft } from '../../../../../apps/web-app/server/utils/mcp/routes'
+import { assertScheduleWritable } from '../../../../../apps/web-app/server/utils/mcp/schedule-target'
 import { updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
 import { renderMarkdown } from '../../../../../apps/web-app/shared/markdown'
 import { toPublicModules } from '../../../../../apps/web-app/shared/page-modules'
 import { bodyOf } from '../../body-sections'
 import { useDatabase } from '../../database'
-import { collections, contentDrafts, mcpAudits, pageReviews, places, quests, revisions, routes, slugRedirects, venues, verificationQueue } from '../../tables'
+import { collections, contentDrafts, mcpAudits, media, pageReviews, places, quests, revisions, routes, schedules, slugRedirects, venues, verificationQueue } from '../../tables'
 import { Content, Editor } from '../content'
-
-function expectApplied(result: object) {
-  if (!('pendingReview' in result)) {
-    throw new Error('publish response omitted pendingReview')
-  }
-  expect(result.pendingReview).toBe(false)
-}
 
 function draftFields(result: object) {
   if (!('renderedFields' in result) || !Array.isArray(result.renderedFields)) {
@@ -45,6 +40,7 @@ const routeIds: string[] = []
 const collectionIds: string[] = []
 const questIds: string[] = []
 const venueIds: string[] = []
+const mediaIds: string[] = []
 const redirectPaths: string[] = []
 
 afterEach(async () => {
@@ -56,6 +52,10 @@ afterEach(async () => {
     await database.delete(contentDrafts).where(eq(contentDrafts.entityId, id))
     await database.delete(revisions).where(eq(revisions.entityId, id))
     await database.delete(mcpAudits).where(eq(mcpAudits.entityId, id))
+    await database.delete(schedules).where(eq(schedules.entityId, id))
+  }
+  for (const id of mediaIds) {
+    await database.delete(media).where(eq(media.id, id))
   }
   for (const path of redirectPaths) {
     await database.delete(slugRedirects).where(eq(slugRedirects.fromPath, path))
@@ -80,6 +80,7 @@ afterEach(async () => {
   collectionIds.length = 0
   questIds.length = 0
   venueIds.length = 0
+  mediaIds.length = 0
   redirectPaths.length = 0
 })
 
@@ -119,6 +120,27 @@ async function publishedRoute(slug: string) {
     path: [[20.5, 54.7]],
   })
   routeIds.push(row.id)
+  return row
+}
+
+const liveUnchanged = {
+  statusCode: 409,
+  statusMessage: expect.stringContaining('The live page was not changed'),
+}
+
+async function storedPhoto(name: string, caption?: string) {
+  const row = await Editor.saveMedia({
+    filename: `${name}.webp`,
+    mime: 'image/webp',
+    bytes: 1,
+    width: 10,
+    height: 10,
+    alt: name,
+    caption: caption ?? null,
+    author: 'Автор',
+    license: 'own',
+  })
+  mediaIds.push(row.id)
   return row
 }
 
@@ -194,7 +216,7 @@ describe('pending collection and route drafts', () => {
       id: live.id,
       publicationStatus: 'published',
     })
-    expectApplied(published)
+    expect(published.pendingReview).toBe(false)
     const row = (await Editor.listCollections()).find((item) => item.id === live.id)
     expect(row?.slug).toBe('pending-collection-next')
     expect(row?.title).toBe('Новая подборка')
@@ -278,7 +300,7 @@ describe('pending collection and route drafts', () => {
 
     enterContentScope('editor')
     const published = await setPublication({ entity: 'route', id: live.id, publicationStatus: 'published' })
-    expectApplied(published)
+    expect(published.pendingReview).toBe(false)
     const row = (await Editor.listRoutes()).find((item) => item.id === live.id)
     expect(row?.title).toBe('Новый маршрут')
     expect(row?.body).toBe('Новый текст маршрута про ров.')
@@ -338,20 +360,20 @@ describe('pending collection and route drafts', () => {
     })).rejects.toMatchObject({ statusCode: 409 })
     expect((await Editor.listCollections()).find((item) => item.id === collection.id)?.title).toBe('Старая подборка')
 
-    await withPendingGuard('route', route.id, 'discard', async () => {
-      await Editor.saveRoute({
+    await withPendingGuard('route', route.id, 'discard', async (tx) => {
+      return Editor.saveRoute({
         id: route.id,
         slug: route.slug,
         title: 'Правка редактора',
         body: 'Текст формы редактора на живой странице.',
         publicationStatus: 'published',
-      })
+      }, null, tx)
     })
     expect((await Editor.listRoutes()).find((item) => item.id === route.id)?.title).toBe('Правка редактора')
     expect(await Editor.contentDraft('route', route.id)).toBeNull()
 
     const applied = await applyAdminContentDraft('collection', collection.id)
-    expectApplied(applied)
+    expect(applied.pendingReview).toBe(false)
     expect((await Editor.listCollections()).find((item) => item.id === collection.id)?.title).toBe('Новая подборка')
     expect(await collectionDraftNotice(collection.id)).toBeNull()
 
@@ -411,5 +433,145 @@ describe('pending collection and route drafts', () => {
     expect((await Editor.questById(quest.id))?.body).toBe('Старый текст квеста.')
     expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
     expect(await Editor.contentDraft('route', route.id)).toBeNull()
+  })
+
+  it('keeps a draft that changed while the admin save discarded the one it checked', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const collection = await publishedCollection('pending-race-collection')
+    enterContentScope('draft')
+    await saveCollectionDraft({
+      id: collection.id,
+      slug: collection.slug,
+      title: 'Черновик до правки',
+      body: 'Текст черновика про ров.',
+    })
+    const checked = await Editor.contentDraft('collection', collection.id)
+    enterContentScope('editor')
+    await withPendingGuard('collection', collection.id, 'discard', async (tx) => {
+      await useDatabase().update(contentDrafts).set({
+        payload: { title: 'Свежий черновик', body: 'Текст, который пришёл во время сохранения.' },
+        updatedAt: '2099-01-01T00:00:00.000Z',
+      }).where(eq(contentDrafts.id, checked!.id))
+      return Editor.saveCollection({
+        id: collection.id,
+        slug: collection.slug,
+        title: 'Правка редактора',
+        body: 'Текст формы на живой странице.',
+        publicationStatus: 'published',
+      }, null, tx)
+    })
+    const kept = await Editor.contentDraft('collection', collection.id)
+    expect(kept?.id).toBe(checked?.id)
+    expect(kept?.updatedAt).not.toBe(checked?.updatedAt)
+    expect(kept?.payload).toMatchObject({ title: 'Свежий черновик' })
+    expect((await Editor.listCollections()).find((item) => item.id === collection.id)?.title).toBe('Правка редактора')
+  })
+})
+
+describe('draft token leaves a live gallery and schedule unchanged', () => {
+  it('refuses a published or archived place and still lets the editor attach', async () => {
+    const live = await place('pending-photo-place', 'Место с фото')
+    const cover = await storedPhoto('place-cover')
+    const extra = await storedPhoto('place-extra')
+    enterContentScope('editor')
+    await attachPlacePhoto({ placeId: live.id, mediaId: cover.id, isCover: true })
+
+    enterContentScope('draft')
+    await expect(attachPlacePhoto({ placeId: live.id, mediaId: extra.id, isCover: true })).rejects.toMatchObject(liveUnchanged)
+    await expect(refuseIncomingPhoto(live.id)).rejects.toMatchObject(liveUnchanged)
+    expect((await Content.galleryFor(live.id)).map((item) => ({ id: item.media.id, isCover: item.isCover }))).toEqual([
+      { id: cover.id, isCover: true },
+    ])
+
+    enterContentScope('editor')
+    await attachPlacePhoto({ placeId: live.id, mediaId: extra.id })
+    expect((await Content.galleryFor(live.id)).map((item) => item.media.id).sort()).toEqual([cover.id, extra.id].sort())
+    expect((await Content.galleryFor(live.id)).find((item) => item.isCover)?.media.id).toBe(cover.id)
+
+    await Editor.savePlace({
+      id: live.id,
+      slug: live.slug,
+      title: live.title,
+      summary: live.summary,
+      body: live.body,
+      publicationStatus: 'archived',
+    })
+    enterContentScope('draft')
+    await expect(attachPlacePhoto({ placeId: live.id, mediaId: extra.id, sortOrder: 4 })).rejects.toMatchObject(liveUnchanged)
+    expect((await Content.galleryFor(live.id))).toHaveLength(2)
+  })
+
+  it('refuses a published collection cover, caption, and detach, and still lets the editor attach', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const live = await publishedCollection('pending-photo-collection')
+    const cover = await storedPhoto('collection-cover', 'Старая подпись')
+    const extra = await storedPhoto('collection-extra')
+    enterContentScope('editor')
+    await attachCollectionPhoto({ collectionId: live.id, mediaId: cover.id, caption: 'Старая подпись' })
+
+    enterContentScope('draft')
+    await expect(attachCollectionPhoto({
+      collectionId: live.id,
+      mediaId: extra.id,
+      isCover: true,
+      caption: 'Новая подпись',
+    })).rejects.toMatchObject(liveUnchanged)
+    await expect(detachCollectionPhoto({ collectionId: live.id, mediaId: cover.id })).rejects.toMatchObject(liveUnchanged)
+    await expect(refuseIncomingPhoto(undefined, live.id)).rejects.toMatchObject(liveUnchanged)
+    const blocked = await Content.collectionGallery(live.id)
+    expect(blocked.map((item) => ({ id: item.media.id, isCover: item.isCover, caption: item.media.caption }))).toEqual([
+      { id: cover.id, isCover: true, caption: 'Старая подпись' },
+    ])
+
+    enterContentScope('editor')
+    await attachCollectionPhoto({ collectionId: live.id, mediaId: extra.id })
+    const opened = await Content.collectionGallery(live.id)
+    expect(opened.map((item) => item.media.id).sort()).toEqual([cover.id, extra.id].sort())
+    expect(opened.find((item) => item.isCover)?.media.id).toBe(cover.id)
+
+    await Editor.saveCollection({
+      id: live.id,
+      slug: live.slug,
+      title: live.title,
+      body: live.body,
+      publicationStatus: 'archived',
+    })
+    enterContentScope('draft')
+    await expect(detachCollectionPhoto({ collectionId: live.id, mediaId: extra.id })).rejects.toMatchObject(liveUnchanged)
+    expect(await Content.collectionGallery(live.id)).toHaveLength(2)
+
+    const draftRow = await Editor.saveCollection({
+      slug: 'pending-photo-draft-collection',
+      title: 'Черновик подборки',
+      body: 'Текст черновика подборки.',
+      publicationStatus: 'draft',
+    })
+    collectionIds.push(draftRow.id)
+    const draftPhoto = await storedPhoto('collection-draft')
+    const attached = await attachCollectionPhoto({ collectionId: draftRow.id, mediaId: draftPhoto.id })
+    expect(attached.isCover).toBe(true)
+    expect(await Content.collectionGallery(draftRow.id)).toHaveLength(1)
+  })
+
+  it('refuses schedule and venue photo writes on a live page', async () => {
+    const live = await place('pending-hours-place', 'Место с часами')
+    const [venue] = await useDatabase().insert(venues).values({
+      slug: 'pending-hours-venue',
+      name: 'Кафе с часами',
+      kind: 'cafe',
+      description: 'Короткое описание.',
+      status: 'published',
+    }).returning()
+    venueIds.push(venue!.id)
+    enterContentScope('draft')
+    await expect(assertScheduleWritable('place', live.id)).rejects.toMatchObject(liveUnchanged)
+    await expect(assertScheduleWritable('venue', undefined, venue!.slug)).rejects.toMatchObject(liveUnchanged)
+    await expect(refuseVenuePhoto(venue!.id)).rejects.toMatchObject(liveUnchanged)
+    expect(await useDatabase().select().from(schedules).where(eq(schedules.entityId, live.id))).toEqual([])
+    expect(await useDatabase().select().from(schedules).where(eq(schedules.entityId, venue!.id))).toEqual([])
+
+    enterContentScope('editor')
+    await expect(assertScheduleWritable('place', live.id)).resolves.toMatchObject({ id: live.id, slug: live.slug })
+    await expect(refuseVenuePhoto(venue!.id)).resolves.toMatchObject({ id: venue!.id })
   })
 })

@@ -2,12 +2,13 @@ import { z } from 'zod'
 import { ingestImage } from '../../media/ingest'
 import { fetchPublicImage } from '../../media/public-url'
 import { auditMcp } from '../../utils/mcp/audit'
+import { refuseIncomingPhoto } from '../../utils/mcp/photos'
 import { license } from '../../utils/mcp/schemas'
 import { rejectBannedSites } from '../../utils/mcp/writing-guard'
 
 export default defineMcpTool({
   name: 'media_upload_from_url',
-  description: 'Download an https image from a public host, run the photo pipeline, and store it. Alt, author, license, and sourceUrl are required. License is own or a Commons license. permission is the cabinet owner upload only. url and sourceUrl must not name a banned site.',
+  description: 'Download an https image from a public host, run the photo pipeline, and store it. Alt, author, license, and sourceUrl are required. License is own or a Commons license. permission is the cabinet owner upload only. url and sourceUrl must not name a banned site. A draft token cannot attach the file to a published or archived place or collection. That answer is 409 and the live page stays.',
   inputSchema: {
     url: z.string().describe('https URL of a JPEG, PNG, or WebP'),
     alt: z.string(),
@@ -24,6 +25,7 @@ export default defineMcpTool({
       throw createError({ statusCode: 400, statusMessage: 'Лицензия permission только для загрузки владельца в кабинете' })
     }
     rejectBannedSites({ url: input.url, sourceUrl: input.sourceUrl })
+    await refuseIncomingPhoto(input.placeId, input.collectionId)
     const file = await fetchPublicImage(input.url)
     const saved = await ingestImage({
       bytes: file.bytes,

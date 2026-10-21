@@ -32,6 +32,7 @@ export interface ContentGate {
 type PlaceWrite = Parameters<typeof db.editor.savePlace>[0]
 type RouteWrite = Parameters<typeof db.editor.saveRoute>[0]
 type CollectionWrite = Parameters<typeof db.editor.saveCollection>[0]
+type EditorTx = NonNullable<Parameters<typeof db.editor.saveCollection>[2]>
 type QuestWrite = Parameters<typeof db.editor.saveQuest>[0]
 type HubWrite = Parameters<typeof db.editor.saveCategory>[1]
 type DraftWrite = Parameters<typeof db.editor.saveContentDraft>[0]
@@ -66,6 +67,11 @@ function sourceWriteError(error: unknown): never {
   throw error
 }
 
+/** Section sync after the save transaction commits. */
+export async function syncSavedPage(pageType: string, entityId: string | undefined) {
+  await afterPage(pageType, entityId)
+}
+
 export async function savePlaceContent(input: PlaceWrite, userId: string | null | undefined, gate: ContentGate) {
   const writingWarnings = contentWarnings(gate)
   try {
@@ -77,18 +83,22 @@ export async function savePlaceContent(input: PlaceWrite, userId: string | null 
   }
 }
 
-export async function saveRouteContent(input: RouteWrite, userId: string | null | undefined, gate: ContentGate) {
+export async function saveRouteContent(input: RouteWrite, userId: string | null | undefined, gate: ContentGate, tx?: EditorTx) {
   const writingWarnings = contentWarnings(gate)
-  const row = await db.editor.saveRoute(input, userId)
-  await afterPage('route', row.id)
+  const row = await db.editor.saveRoute(input, userId, tx)
+  if (!tx) {
+    await afterPage('route', row.id)
+  }
   return { row, writingWarnings }
 }
 
-export async function saveCollectionContent(input: CollectionWrite, userId: string | null | undefined, gate: ContentGate) {
+export async function saveCollectionContent(input: CollectionWrite, userId: string | null | undefined, gate: ContentGate, tx?: EditorTx) {
   const writingWarnings = contentWarnings(gate)
   try {
-    const row = await db.editor.saveCollection(input, userId)
-    await afterPage('collection', row.id)
+    const row = await db.editor.saveCollection(input, userId, tx)
+    if (!tx) {
+      await afterPage('collection', row.id)
+    }
     return { row, writingWarnings }
   } catch (error) {
     sourceWriteError(error)

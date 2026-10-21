@@ -3,12 +3,13 @@ import { z } from 'zod'
 import { downloadWikimedia } from '../../media/commons'
 import { ingestImage } from '../../media/ingest'
 import { auditMcp } from '../../utils/mcp/audit'
+import { refuseIncomingPhoto } from '../../utils/mcp/photos'
 import { license } from '../../utils/mcp/schemas'
 import { rejectBannedSites } from '../../utils/mcp/writing-guard'
 
 export default defineMcpTool({
   name: 'commons_import',
-  description: 'Import one allowed Wikimedia Commons file into the photo pipeline and attach it to a place or a collection (pass exactly one of placeId or collectionId). The same pageUrl or fileUrl on that target returns the existing photo. The first photo on an empty target becomes the cover. A later import stays in the gallery unless isCover is true. caption is shown under the photo on collection pages.',
+  description: 'Import one allowed Wikimedia Commons file into the photo pipeline and attach it to a place or a collection (pass exactly one of placeId or collectionId). The same pageUrl or fileUrl on that target returns the existing photo. The first photo on an empty target becomes the cover. A later import stays in the gallery unless isCover is true. caption is shown under the photo on collection pages. fileUrl, pageUrl, and caption must not name a banned site. A draft token cannot import onto a published or archived place or collection. That answer is 409 and the live page stays.',
   annotations: { openWorldHint: true },
   inputSchema: {
     placeId: z.string().optional(),
@@ -29,6 +30,7 @@ export default defineMcpTool({
       throw createError({ statusCode: 400, statusMessage: 'Нужен ровно один из placeId или collectionId' })
     }
     rejectBannedSites({ fileUrl: input.fileUrl, pageUrl: input.pageUrl, caption: input.caption })
+    await refuseIncomingPhoto(input.placeId, input.collectionId)
     const urls = [input.pageUrl, input.fileUrl]
     const existing = input.placeId
       ? await db.editor.mediaForPlaceSource(input.placeId, urls)

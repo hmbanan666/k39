@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: problem })
   }
   const id = String(getRouterParam(event, 'id'))
-  return withPendingGuard('route', id, body?.pendingDraft, async () => {
+  return withPendingGuard('route', id, body?.pendingDraft, async (tx) => {
     const { row, writingWarnings } = await saveRouteContent({ ...body, id }, user.id, contentGate('route', {
       title: body.title,
       summary: body.summary,
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
       sections: body.sections,
       seoTitle: body.seoTitle,
       seoDescription: body.seoDescription,
-    }, body.publicationStatus === 'published'))
+    }, body.publicationStatus === 'published'), tx)
     return { ...row, writingWarnings }
   })
 })

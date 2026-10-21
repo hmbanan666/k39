@@ -21,7 +21,7 @@ Two bearer secrets, compared in constant time:
 - `CONTENT_API_TOKEN` is the editor token. It can publish, unpublish, and edit a live row. Same rights as ADR 0012.
 - `CONTENT_DRAFT_TOKEN` is the agent token. It can read. It can create and update a draft or a review. It cannot set `published`. A write against a published or archived place is stored in `content_drafts` and the live row stays. `place_get` returns that row as `pendingReview`. An editor publish (`content_set_publication` with `published`, and no other fields) applies the pending payload and then deletes it. An editor write of the live row discards the pending payload.
 
-The draft token cannot archive, edit a hub or a region, delete media, change the price catalog, migrate schedules, or edit a published venue, quest, or listing. Those actions answer 403 or 409 and do not change the live page. A published route or collection is a pending draft under ADR 0041. Publishing stays the reviewer step in `k39-publish-review`.
+The draft token cannot archive, edit a hub or a region, delete media, change the price catalog, migrate schedules, or edit a published venue, quest, or listing. Photo and schedule writes on a live page are the same 409 under ADR 0041. Those actions answer 403 or 409 and do not change the live page. A published route or collection is a pending draft under ADR 0041. Publishing stays the reviewer step in `k39-publish-review`.
 
 `/mcp` answers a missing or wrong token with HTTP 401, `WWW-Authenticate: Bearer realm="k39"` (no `resource_metadata`), and a JSON-RPC error body. Unset tokens are still 503. The same 401 challenge is on the REST content routes. Sixty calls a minute are counted per presented secret.
 

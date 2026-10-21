@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   if (plan.rejectBody) {
     throw createError({ statusCode: 400, statusMessage: COLLECTION_BODY_REJECTED })
   }
-  return withPendingGuard('collection', id, body?.pendingDraft, async () => {
+  return withPendingGuard('collection', id, body?.pendingDraft, async (tx) => {
     const { row, writingWarnings } = await saveCollectionContent({ ...body, body: plan.body, modules, id }, user.id, contentGate('collection', {
       title: body.title,
       summary: body.summary,
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
       seoDescription: body.seoDescription,
       sources: body.sources === undefined ? current?.sources : body.sources,
       items: body.items,
-    }, body.publicationStatus === 'published'))
+    }, body.publicationStatus === 'published'), tx)
     return { ...row, writingWarnings, article: plan.article, renderedFields: plan.renderedFields }
   })
 })

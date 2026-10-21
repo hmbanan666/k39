@@ -4,7 +4,10 @@ import { createError } from 'h3'
 import { collectionDraftChanges, routeDraftChanges } from '../../../shared/content-draft-diff'
 import { formatDraftUpdated } from '../../../shared/place-draft-diff'
 import { withContentScope } from '../access'
+import { syncSavedPage } from '../content/save'
 import { setPublication } from '../mcp/publish'
+
+type EditorTx = NonNullable<Parameters<typeof db.editor.saveCollection>[2]>
 
 type Stop = { placeSlug: string, note?: string | null }
 
@@ -146,31 +149,31 @@ export async function attachDraftNotices<T extends { id: string }>(
 
 /**
  * A pending draft blocks an admin save until the body sets `pendingDraft`
- * to `discard`. Returns true when the save should delete the draft afterwards.
+ * to `discard`. The discard deletes only the draft that was checked, in the
+ * same transaction as the save, so a newer draft written in between stays.
  */
-export async function guardPendingDraft(entity: 'collection' | 'route', id: string, pendingDraft: unknown) {
+export async function withPendingGuard<T extends { id: string }>(
+  entity: 'collection' | 'route',
+  id: string,
+  pendingDraft: unknown,
+  write: (tx: EditorTx) => Promise<T>,
+) {
   const pending = await db.editor.contentDraft(entity, id)
-  if (!pending) {
-    return false
-  }
-  if (pendingDraft !== 'discard') {
+  if (pending && pendingDraft !== 'discard') {
     throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
   }
-  return true
-}
-
-export async function dropPendingDraft(entity: 'collection' | 'route', id: string) {
-  await db.editor.deleteContentDraft(entity, id)
-}
-
-/** Runs an admin save. A pending draft blocks it unless `pendingDraft` is `discard`. */
-export async function withPendingGuard<T>(entity: 'collection' | 'route', id: string, pendingDraft: unknown, write: () => Promise<T>) {
-  const drop = await guardPendingDraft(entity, id, pendingDraft)
-  const result = await write()
-  if (drop) {
-    await dropPendingDraft(entity, id)
-  }
-  return result
+  const stamp = pending && pendingDraft === 'discard'
+    ? { id: pending.id, updatedAt: pending.updatedAt }
+    : null
+  const saved = await db.editor.transaction(async (tx) => {
+    const result = await write(tx)
+    if (stamp) {
+      await db.editor.deleteContentDraftIfUnchanged(stamp.id, stamp.updatedAt, tx)
+    }
+    return result
+  })
+  await syncSavedPage(entity, saved.id)
+  return saved
 }
 
 export async function applyAdminContentDraft(entity: 'collection' | 'route', id: string) {
@@ -178,8 +181,15 @@ export async function applyAdminContentDraft(entity: 'collection' | 'route', id:
   if (!pending) {
     throw createError({ statusCode: 409, statusMessage: 'Черновика нет' })
   }
+  if (entity === 'collection') {
+    return withContentScope('editor', () => setPublication({
+      entity: 'collection',
+      id,
+      publicationStatus: 'published',
+    }))
+  }
   return withContentScope('editor', () => setPublication({
-    entity,
+    entity: 'route',
     id,
     publicationStatus: 'published',
   }))
