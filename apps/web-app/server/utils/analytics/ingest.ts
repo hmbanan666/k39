@@ -1,25 +1,14 @@
 import type { H3Event } from 'h3'
 import process from 'node:process'
 import { db } from '@k39/database'
-import { classifyChannel, COLLECT_TYPES, isBotUserAgent, mergeHitEntities, parseUserAgent, screenBucket, scrollBucket, utmFromPath } from '../../../shared/analytics'
+import { classifyChannel, isBotUserAgent, mergeHitEntities, parseUserAgent, screenBucket, scrollBucket, utmFromPath } from '../../../shared/analytics'
+import { collectsPageSubject, entityLookupPath, normalizeCollectEvents, resolveCollectSubjects } from './collect'
 import { analyticsSalt, dailyVisitorKey, newVisitorKey } from './identity'
+import { collectRateKey, takeCollectSlot } from './rate'
 
 const SESSION_MS = 30 * 60 * 1000
 const YEAR = 60 * 60 * 24 * 400
-const TYPES = new Set<string>(COLLECT_TYPES)
-const ENTITY_TYPES = new Set(['impression', 'directions', 'pin_impression', 'pin_click'])
-
-interface ClientEvent {
-  type?: string
-  path?: string
-  ref?: string
-  w?: string | number
-  lang?: string
-  ms?: number
-  scroll?: number | string
-  target?: string
-  entity?: string
-}
+const EMPTY_SUBJECT = { placeId: null, routeId: null, venueId: null }
 
 function cookie(event: H3Event, name: string, value: string) {
   setCookie(event, name, value, {
@@ -41,9 +30,18 @@ export async function editorRequest(event: H3Event) {
   }
 }
 
-export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'beacon' | 'noscript' | 'server') {
+export async function ingest(event: H3Event, incoming: unknown, source: 'beacon' | 'noscript' | 'server') {
+  // The server bot path is one hit per HTML document. Public beacons are limited
+  // before any analytics query so a flood returns without touching the database.
+  if (source !== 'server' && !takeCollectSlot(collectRateKey(event))) {
+    return { ok: true, skipped: 'rate' as const }
+  }
+  const events = normalizeCollectEvents(incoming)
+  if (!events.length) {
+    return { ok: true, stored: 0 }
+  }
   if (await editorRequest(event)) {
-    return { ok: true, skipped: 'admin' }
+    return { ok: true, skipped: 'admin' as const }
   }
   const ua = getHeader(event, 'user-agent') || ''
   const parsed = parseUserAgent(ua)
@@ -82,19 +80,17 @@ export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'b
     landingPath = fresh && latest ? latest.landingPath : null
     knownChannel = fresh && latest ? latest.channel : ''
   }
-  const events = incoming.slice(0, 20).filter((item) => TYPES.has(item.type || ''))
-  if (!events.length) {
-    return { ok: true, stored: 0 }
-  }
   const hasPage = events.some((item) => item.type === 'pageview')
   const seenPage = hasPage ? await db.analytics.sessionHasPageview(sessionKey) : false
   if (hasPage && seenPage) {
     await db.analytics.markExit(sessionKey)
   }
+  const fallbackPath = getRequestURL(event).pathname
+  const subjects = await resolveCollectSubjects(events, fallbackPath, (paths) => db.analytics.resolvePaths(paths))
   const rows = []
   let entryTaken = seenPage
   for (const item of events) {
-    const path = (item.path || getRequestURL(event).pathname).slice(0, 500)
+    const path = (item.path || fallbackPath).slice(0, 500)
     const utm = utmFromPath(path)
     const classified = classifyChannel({
       referrer: item.ref || '',
@@ -103,16 +99,15 @@ export async function ingest(event: H3Event, incoming: ClientEvent[], source: 'b
     })
     const channel = item.ref ? classified.channel : (knownChannel || classified.channel)
     const kind = item.type || ''
-    const emptyEntity = { placeId: null, routeId: null, venueId: null }
-    const pageSubject = kind === 'pageview' || ENTITY_TYPES.has(kind)
-      ? await db.analytics.resolvePath(path)
-      : emptyEntity
+    const pageSubject = collectsPageSubject(kind)
+      ? (subjects.get(path) ?? EMPTY_SUBJECT)
+      : EMPTY_SUBJECT
     const shown = kind === 'impression' && item.target
-      ? await db.analytics.resolvePath(item.target)
+      ? (subjects.get(item.target) ?? EMPTY_SUBJECT)
       : null
-    const entityPath = (item.entity || '').trim().split('?')[0] || ''
-    const entitySubject = entityPath.startsWith('/')
-      ? await db.analytics.resolvePath(entityPath)
+    const entityPath = entityLookupPath(item.entity)
+    const entitySubject = entityPath
+      ? (subjects.get(entityPath) ?? EMPTY_SUBJECT)
       : null
     const ids = mergeHitEntities(pageSubject, entitySubject, shown)
     const entry = item.type === 'pageview' && !entryTaken

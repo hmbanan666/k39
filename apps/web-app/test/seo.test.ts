@@ -592,6 +592,30 @@ describe('redirects', () => {
       ],
     })
     expect(chain).toEqual({ kind: 'redirect', location: 'https://k39.online/c' })
+
+    const loop = decideRedirect({
+      hostHeader: 'k39.online',
+      protoHeader: 'https',
+      path: '/loop-a',
+      redirects: [
+        { fromPath: '/loop-a', toPath: '/loop-b', statusCode: 301 },
+        { fromPath: '/loop-b', toPath: '/loop-a', statusCode: 301 },
+      ],
+    })
+    expect(loop.kind).toBe('none')
+
+    const hops = Array.from({ length: 12 }, (_, index) => ({
+      fromPath: `/hop-${index}`,
+      toPath: `/hop-${index + 1}`,
+      statusCode: 301,
+    }))
+    const capped = decideRedirect({
+      hostHeader: 'k39.online',
+      protoHeader: 'https',
+      path: '/hop-0',
+      redirects: hops,
+    })
+    expect(capped).toEqual({ kind: 'redirect', location: 'https://k39.online/hop-10' })
   })
 })
 

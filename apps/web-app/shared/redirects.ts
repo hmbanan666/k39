@@ -17,6 +17,12 @@ export type RedirectDecision
     | { kind: 'redirect', location: string }
     | { kind: 'gone' }
 
+/**
+ * In-memory hop cap. `Content.redirectChain` uses the same number and is what
+ * the page middleware loads, one indexed `from_path` lookup per hop.
+ */
+export const REDIRECT_HOP_LIMIT = 10
+
 const QUEST_SLUGS: Record<string, string> = {
   'five-forts': 'pyat-fortov',
 }
@@ -48,7 +54,7 @@ function followRedirects(path: string, redirects: StoredRedirect[]) {
   const byPath = new Map(redirects.map((item) => [item.fromPath, item]))
   const seen = new Set<string>()
   let current = path
-  for (let hop = 0; hop < 10; hop++) {
+  for (let hop = 0; hop < REDIRECT_HOP_LIMIT; hop++) {
     const row = byPath.get(current)
     if (!row || seen.has(current)) {
       break

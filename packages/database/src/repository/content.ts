@@ -71,9 +71,41 @@ function placeFromPending(existing: typeof places.$inferSelect, payload: Record<
   return { ...next, ...syncedBody({ ...next, ...sections }) }
 }
 
+/** Same cap as REDIRECT_HOP_LIMIT in apps/web-app/shared/redirects.ts. */
+const REDIRECT_HOP_LIMIT = 10
+
 export class Content {
+  /** Full table. Archive checks and tests only. Page requests use redirectChain. */
   static async redirects() {
     return useDatabase().select().from(slugRedirects)
+  }
+
+  /**
+   * Rows along one redirect chain, oldest hop first. A path with no row is one
+   * indexed read and an empty list. Stops on a miss, a 410, a repeated path, or
+   * 10 hops, matching followRedirects in the web app.
+   */
+  static async redirectChain(startPath: string, hopLimit = REDIRECT_HOP_LIMIT) {
+    const hops = Math.min(REDIRECT_HOP_LIMIT, Math.max(1, Math.floor(hopLimit)))
+    const rows: Array<{ fromPath: string, toPath: string | null, statusCode: number }> = []
+    const seen = new Set<string>()
+    let current = startPath
+    for (let hop = 0; hop < hops; hop++) {
+      if (seen.has(current)) {
+        break
+      }
+      const row = await redirectByPath(current)
+      if (!row) {
+        break
+      }
+      rows.push(row)
+      seen.add(current)
+      if (row.statusCode === 410 || !row.toPath) {
+        break
+      }
+      current = row.toPath
+    }
+    return rows
   }
 
   static async categories() {
@@ -1220,6 +1252,19 @@ async function writeCollectionItems(collectionId: string, stops: ResolvedStop[])
       note: stop.note,
     })))
   })
+}
+
+async function redirectByPath(fromPath: string) {
+  const [row] = await useDatabase()
+    .select({
+      fromPath: slugRedirects.fromPath,
+      toPath: slugRedirects.toPath,
+      statusCode: slugRedirects.statusCode,
+    })
+    .from(slugRedirects)
+    .where(eq(slugRedirects.fromPath, fromPath))
+    .limit(1)
+  return row ?? null
 }
 
 async function markGone(fromPath: string) {
