@@ -3,7 +3,7 @@ import { articleBody } from './address'
 import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, lengthOverrideApplies, lengthOverrideIsStale, longPageFiller } from './length-override'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
 import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, pageFaq, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
-import { statusContradictions } from './status-consistency'
+import { statusChecks } from './status-consistency'
 
 export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest' | 'venue'
 export type PrimaryAction = 'build_route' | 'buy_ticket' | 'go_next_place' | 'claim_offer' | 'read'
@@ -68,6 +68,8 @@ export interface ScoreSource {
   faq?: Array<{ question: string, answer: string }>
   publicationStatus: 'draft' | 'review' | 'published'
   noindex: boolean
+  /** First publish. Null on a live indexable page means the goals are judged now. */
+  firstPublishedAt?: string | null
   seoTitle: string | null
   seoDescription: string | null
   factsCheckedAt: string | null
@@ -567,8 +569,18 @@ function statusPoints(page: ScoreSource, text: string) {
   if (page.kind !== 'place' || page.scheduleMode === undefined) {
     return { points: 0, checks: [] as string[] }
   }
-  const checks = statusContradictions({ text: [text, page.hours ?? '', page.howToGet ?? ''].join('\n'), mode: page.scheduleMode })
-  return { points: checks.length ? -15 : 0, checks: checks.map((check) => `status contradiction: ${check}`) }
+  const found = statusChecks({
+    text: [text, page.hours ?? '', page.howToGet ?? ''].join('\n'),
+    mode: page.scheduleMode,
+    faq: page.faq,
+  })
+  return {
+    points: found.contradictions.length ? -15 : 0,
+    checks: [
+      ...found.contradictions.map((check) => `status contradiction: ${check}`),
+      ...found.warnings.map((check) => `status warning: ${check}`),
+    ],
+  }
 }
 
 function passportPoints(passport: PassportFields | null) {
@@ -860,22 +872,49 @@ function indexingPoints(page: ScoreSource) {
   }
 }
 
-function goalPoints(actual: number, goal: number | null, weight: number, label: string) {
-  if (goal == null || actual >= goal) {
-    return { points: weight, checks: [] as string[] }
+function goalHold(page: ScoreSource, now: Date, windowDays: number) {
+  if (page.publicationStatus !== 'published') {
+    return 'unpublished'
+  }
+  if (page.noindex) {
+    return 'not indexable'
+  }
+  const age = page.firstPublishedAt ? ageDays(page.firstPublishedAt, now) : null
+  // No stored instant: judge now. A missing column must not grant an open grace.
+  if (age == null || age >= windowDays) {
+    return null
+  }
+  return `${windowDays - age} days`
+}
+
+function scoreGoal(actual: number, goal: number | null, weight: number, label: string, missing: string, page: ScoreSource, now: Date, windowDays: number) {
+  const hold = goalHold(page, now, windowDays)
+  if (hold) {
+    return { points: Math.round(weight / 2), checks: [`goal pending (${hold})`], pending: true }
+  }
+  if (goal == null) {
+    return { points: 0, checks: [missing], pending: false }
+  }
+  if (actual >= goal) {
+    return { points: weight, checks: [] as string[], pending: false }
   }
   return {
     points: Math.round(weight * actual / Math.max(goal, 1)),
     checks: [`${label}: ${actual}, goal ${goal}`],
+    pending: false,
   }
 }
 
-function resultsPoints(page: ScoreSource) {
+function resultsPoints(page: ScoreSource, now: Date) {
   const row = page.results
   const checks: string[] = []
-  const month = goalPoints(row.organic30d, page.passport?.goal30d ?? null, 35, 'organic 30d')
-  const quarter = goalPoints(row.organic90d, page.passport?.goal90d ?? null, 25, 'organic 90d')
-  checks.push(...month.checks, ...quarter.checks)
+  const month = scoreGoal(row.organic30d, page.passport?.goal30d ?? null, 35, 'organic 30d', 'no 30-day goal', page, now, 30)
+  const quarter = scoreGoal(row.organic90d, page.passport?.goal90d ?? null, 25, 'organic 90d', 'no 90-day goal', page, now, 90)
+  for (const check of [...month.checks, ...quarter.checks]) {
+    if (!checks.includes(check)) {
+      checks.push(check)
+    }
+  }
   let queryPoints = 15
   if (row.searchImported && !row.queries.length) {
     queryPoints = 0
@@ -903,7 +942,12 @@ function resultsPoints(page: ScoreSource) {
     next = 0
     checks.push('no clicks to the next page')
   }
-  return { points: clamp(month.points + quarter.points + queryPoints + engagement + next), checks }
+  return {
+    points: clamp(month.points + quarter.points + queryPoints + engagement + next),
+    checks,
+    goal30Pending: month.pending,
+    goal90Pending: quarter.pending,
+  }
 }
 
 export function scorePage(page: ScoreSource, now = new Date()): PageScore {
@@ -911,7 +955,7 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
     const quality = venueQuality(page, now)
     const linking = linkingPoints(page)
     const indexing = indexingPoints(page)
-    const results = resultsPoints(page)
+    const results = resultsPoints(page, now)
     const checks: ScoreChecks = {
       quality: quality.checks,
       linking: linking.checks,
@@ -951,6 +995,8 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
         organic90d: page.results.organic90d,
         goal30d: page.passport?.goal30d ?? null,
         goal90d: page.passport?.goal90d ?? null,
+        goal30Pending: results.goal30Pending,
+        goal90Pending: results.goal90Pending,
         queries: page.results.queries,
         searchImported: page.results.searchImported,
         scrollMax: page.results.scrollMax,
@@ -989,7 +1035,7 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
   const quality = clamp(length.points + sections.points + photos.points + fresh.points + passport.points + status.points + filler.points)
   const linking = linkingPoints(page)
   const indexing = indexingPoints(page)
-  const results = resultsPoints(page)
+  const results = resultsPoints(page, now)
   if (stale) {
     results.checks.push(LENGTH_OVERRIDE_STALE)
     results.points = clamp(results.points - 10)
@@ -1033,6 +1079,8 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
       organic90d: page.results.organic90d,
       goal30d: page.passport?.goal30d ?? null,
       goal90d: page.passport?.goal90d ?? null,
+      goal30Pending: results.goal30Pending,
+      goal90Pending: results.goal90Pending,
       queries: page.results.queries,
       searchImported: page.results.searchImported,
       scrollMax: page.results.scrollMax,
@@ -1113,6 +1161,10 @@ export function issueLabel(check: string) {
     [/^canonical (.+)$/, () => 'Канонический адрес не совпадает'],
     [/^not in Yandex$/, () => 'Нет в индексе Яндекса'],
     [/^not in Google$/, () => 'Нет в индексе Google'],
+    [/^goal pending \((\d+) days\)$/, (match) => `Цель ещё не оценивается (${match[1]} дн.)`],
+    [/^goal pending \(not indexable\)$/, () => 'Цель не оценивается: страница закрыта от индекса'],
+    [/^goal pending \(unpublished\)$/, () => 'Цель не оценивается: страница не опубликована'],
+    [/^status warning: closure may refer to another subject$/, () => 'Фраза про закрытие может относиться к другому месту'],
     [/^organic 30d: (\d+), goal (\d+)$/, (match) => `Поиск за 30 дней: ${match[1]}, цель ${match[2]}`],
     [/^organic 90d: (\d+), goal (\d+)$/, (match) => `Поиск за 90 дней: ${match[1]}, цель ${match[2]}`],
     [/^no search queries$/, () => 'Нет поисковых запросов'],
@@ -1239,8 +1291,8 @@ export function buildWeeklyReport(current: WeeklyScore[], previous: WeeklyScore[
   const top = [...current].sort((a, b) => b.total - a.total || a.path.localeCompare(b.path)).slice(0, 5)
   const bottom = [...current].sort((a, b) => a.total - b.total || a.path.localeCompare(b.path)).slice(0, 5)
   const missingGoals = current.filter((row) => (
-    (row.goal30d != null && row.organic30d < row.goal30d)
-    || (row.goal90d != null && row.organic90d < row.goal90d)
+    (row.goal30d != null && row.organic30d < row.goal30d && row.signals?.goal30Pending !== true)
+    || (row.goal90d != null && row.organic90d < row.goal90d && row.signals?.goal90Pending !== true)
   )).map((row) => ({
     path: row.path,
     title: row.title,

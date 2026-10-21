@@ -4,6 +4,7 @@ import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, Publicati
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { composeBody, readSections, splitBody } from '../body-sections'
 import { useDatabase } from '../database'
+import { firstPublishedStamp } from '../first-published'
 import { REDIRECT_HOP_LIMIT } from '../redirects'
 import { categories, collectionItems, collectionMedia, collections, contentDrafts, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
@@ -592,6 +593,7 @@ export class Editor {
       }
       const [updated] = await tx.update(places).set({
         ...next,
+        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
         updatedBy: null,
         updatedAt: new Date().toISOString(),
       }).where(eq(places.id, existing.id)).returning()
@@ -634,8 +636,10 @@ export class Editor {
       if (existing.slug !== data.slug) {
         await upsertRedirect(`/${existing.slug}`, `/${data.slug}`)
       }
+      const status = data.publicationStatus ?? existing.publicationStatus
       const [updated] = await db.update(places).set({
         ...data,
+        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, status),
         updatedBy: userId ?? null,
         updatedAt: new Date().toISOString(),
       }).where(eq(places.id, existing.id)).returning()
@@ -643,6 +647,7 @@ export class Editor {
     }
     const [created] = await db.insert(places).values({
       ...data,
+      firstPublishedAt: firstPublishedStamp(null, data.publicationStatus ?? 'draft'),
       updatedBy: userId ?? null,
     }).returning()
     if (!created) {
@@ -737,6 +742,7 @@ export class Editor {
       body: data.body ?? existing?.body ?? '',
       ...(data.sections !== undefined ? { sections: data.sections as BodySection[] } : {}),
       publicationStatus: data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
+      firstPublishedAt: firstPublishedStamp(existing?.firstPublishedAt, data.publicationStatus ?? existing?.publicationStatus ?? 'draft'),
       seoTitle: data.seoTitle ?? existing?.seoTitle ?? null,
       seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,
       ogImage: data.ogImage ?? existing?.ogImage ?? null,
@@ -773,6 +779,7 @@ export class Editor {
       summary: data.summary ?? existing?.summary ?? null,
       body: data.body ?? existing?.body ?? '',
       publicationStatus: data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
+      firstPublishedAt: firstPublishedStamp(existing?.firstPublishedAt, data.publicationStatus ?? existing?.publicationStatus ?? 'draft'),
       seoTitle: data.seoTitle ?? existing?.seoTitle ?? null,
       seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,
       ogImage: data.ogImage ?? existing?.ogImage ?? null,
@@ -878,6 +885,7 @@ export class Editor {
       summary: data.summary ?? existing?.summary ?? null,
       body: data.body ?? existing?.body ?? '',
       publicationStatus: data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
+      firstPublishedAt: firstPublishedStamp(existing?.firstPublishedAt, data.publicationStatus ?? existing?.publicationStatus ?? 'draft'),
       seoTitle: data.seoTitle ?? existing?.seoTitle ?? null,
       seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,
       ogImage: data.ogImage ?? existing?.ogImage ?? null,

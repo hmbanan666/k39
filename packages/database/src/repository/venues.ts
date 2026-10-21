@@ -2,6 +2,7 @@ import type { SourceLink } from '../types/entities'
 import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
+import { firstPublishedStamp } from '../first-published'
 import { PHONE_TEXT_MAX } from '../phone'
 import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import {
@@ -381,6 +382,7 @@ export class Venues {
         description,
         sources: cleanSources(input.sources) ?? [],
         status,
+        firstPublishedAt: firstPublishedStamp(null, status),
         lastVerifiedAt: input.lastVerifiedAt ?? null,
         osmId: cleanText(input.osmId, 80),
         seoTitle: cleanText(input.seoTitle, 180),
@@ -466,6 +468,7 @@ export class Venues {
         description: nextDescription,
         sources: cleanSources(input.sources) ?? current.sources,
         status: nextStatus,
+        firstPublishedAt: firstPublishedStamp(current.firstPublishedAt, nextStatus),
         lastVerifiedAt: input.lastVerifiedAt === undefined ? current.lastVerifiedAt : input.lastVerifiedAt,
         osmId: input.osmId === undefined ? current.osmId : cleanText(input.osmId, 80),
         seoTitle: input.seoTitle === undefined ? current.seoTitle : cleanText(input.seoTitle, 180),

@@ -787,6 +787,11 @@ describe('weekly report', () => {
     expect(report.bottom[0]?.path).toBe('/fort-a')
     expect(report.top[0]?.path).toBe('/fort-b')
     expect(report.missingGoals.map((row) => row.path)).toEqual(['/fort-a'])
+    const pending = buildWeeklyReport([{
+      ...current[0]!,
+      signals: { goal30Pending: true, goal90Pending: true },
+    }], null, { current: '2026-10-12', previous: null })
+    expect(pending.missingGoals).toEqual([])
     expect(report.drops[0]).toMatchObject({ path: '/fort-a', delta: -15 })
     expect(report.lengthOverrides).toEqual([])
   })
@@ -830,6 +835,118 @@ describe('weekly report', () => {
   it('filters by block threshold and sorts the worst quality first', () => {
     const rows = filterScores(current, { block: 'quality', below: 50, order: 'asc' })
     expect(rows.map((row) => row.path)).toEqual(['/fort-a'])
+  })
+})
+
+describe('goal grace and status scope', () => {
+  const now = new Date('2026-10-21T00:00:00.000Z')
+  const quiet = { ...emptyResults(), organic30d: 0, organic90d: 0 }
+  const goals = {
+    targetQueries: ['форт а'],
+    audience: 'семьи',
+    primaryAction: 'read' as const,
+    goal30d: 5,
+    goal90d: 50,
+    notes: null,
+  }
+
+  function daysBefore(days: number) {
+    return new Date(now.getTime() - days * 86_400_000).toISOString()
+  }
+
+  function at(days: number, patch: Partial<ScoreSource> = {}) {
+    return scorePage(source({
+      results: quiet,
+      passport: goals,
+      firstPublishedAt: daysBefore(days),
+      ...patch,
+    }), now)
+  }
+
+  it('keeps both goals pending at day 5, judges 30 days at day 40, and both at day 100', () => {
+    const day5 = at(5)
+    expect(day5.checks.results).toEqual(['goal pending (25 days)', 'goal pending (85 days)'])
+    expect(day5.results).toBe(71)
+    expect(day5.signals.goal30Pending).toBe(true)
+    expect(day5.signals.goal90Pending).toBe(true)
+
+    const day40 = at(40)
+    expect(day40.checks.results).toEqual(['organic 30d: 0, goal 5', 'goal pending (50 days)'])
+    expect(day40.results).toBe(53)
+    expect(day40.signals.goal30Pending).toBe(false)
+    expect(day40.signals.goal90Pending).toBe(true)
+
+    const day100 = at(100)
+    expect(day100.checks.results).toEqual(['organic 30d: 0, goal 5', 'organic 90d: 0, goal 50'])
+    expect(day100.results).toBe(40)
+    expect(day100.signals.goal30Pending).toBe(false)
+    expect(day100.signals.goal90Pending).toBe(false)
+
+    const met = at(100, { results: { ...quiet, organic30d: 5, organic90d: 50 } })
+    expect(met.checks.results).toEqual([])
+    expect(met.results).toBe(100)
+  })
+
+  it('does not let an empty passport outscore a page that has goals', () => {
+    const youngEmpty = at(5, { passport: null })
+    const youngGoals = at(5)
+    expect(youngEmpty.results).toBe(youngGoals.results)
+    expect(youngEmpty.checks.results).toEqual(['goal pending (25 days)', 'goal pending (85 days)'])
+
+    const oldEmpty = at(100, { passport: null })
+    const oldUnmet = at(100)
+    expect(oldEmpty.checks.results).toEqual(['no 30-day goal', 'no 90-day goal'])
+    expect(oldEmpty.results).toBe(oldUnmet.results)
+    expect(oldEmpty.results).toBeLessThan(at(100, { results: { ...quiet, organic30d: 5, organic90d: 50 } }).results)
+
+    const partial = at(100, {
+      passport: { ...goals, goal30d: 10 },
+      results: { ...quiet, organic30d: 4, organic90d: 0 },
+    })
+    const missing = at(100, {
+      passport: null,
+      results: { ...quiet, organic30d: 4, organic90d: 0 },
+    })
+    expect(missing.results).toBeLessThanOrEqual(partial.results)
+  })
+
+  it('holds goals while the page is hidden from the index', () => {
+    const hidden = at(100, { noindex: true })
+    expect(hidden.checks.results).toEqual(['goal pending (not indexable)'])
+    expect(hidden.results).toBe(71)
+    expect(issueLabel('goal pending (25 days)')).toBe('Цель ещё не оценивается (25 дн.)')
+    expect(issueLabel('goal pending (not indexable)')).toBe('Цель не оценивается: страница закрыта от индекса')
+    expect(issueLabel('goal pending (unpublished)')).toBe('Цель не оценивается: страница не опубликована')
+    expect(issueLabel('status warning: closure may refer to another subject')).toBe('Фраза про закрытие может относиться к другому месту')
+  })
+
+  it('does not charge 15 points for a tenant closure, and still charges a real one', () => {
+    const body = 'Ворота временно закрыты на реставрацию.'
+    const closed = scorePage(source({ scheduleMode: 'closed', body }))
+    const open = scorePage(source({ scheduleMode: 'always', body }))
+    expect(open.checks.quality).toContain('status contradiction: text says closed, schedule mode is always')
+    expect(open.quality).toBe(closed.quality - 15)
+
+    const tenant = 'Фасад доступен для осмотра круглосуточно, а ресторан «Солнечный камень» внутри, по данным Яндекс Карт, временно не работает.'
+    const page = scorePage(source({
+      scheduleMode: 'always',
+      body: tenant,
+      faq: [{ question: 'Можно ли поесть внутри?', answer: 'Сейчас нет: ресторан в казематах временно не работает.' }],
+    }))
+    expect(page.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(false)
+
+    const fromFaq = scorePage(source({
+      scheduleMode: 'always',
+      body: 'Фасад доступен для осмотра круглосуточно.',
+      faq: [{ question: 'Идут ли работы?', answer: 'Ворота временно закрыты на реставрацию.' }],
+    }))
+    expect(fromFaq.checks.quality).toContain('status contradiction: text says closed, schedule mode is always')
+
+    const ambiguous = 'Временно закрыт ресторан внутри.'
+    const warned = scorePage(source({ scheduleMode: 'always', body: ambiguous }))
+    const skipped = scorePage(source({ body: ambiguous }))
+    expect(warned.checks.quality).toContain('status warning: closure may refer to another subject')
+    expect(warned.quality).toBe(skipped.quality)
   })
 })
 

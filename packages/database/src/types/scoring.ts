@@ -33,6 +33,7 @@ export interface ScorePlace {
   regionId: string | null
   regionTitle: string | null
   updatedAt: string
+  firstPublishedAt?: string | null
 }
 
 export interface CatalogArticle {
@@ -50,6 +51,7 @@ export interface CatalogArticle {
   /** Page modules (collections only, ADR 0023); empty elsewhere. */
   modules: StoredPageModule[]
   sourcesCount: number
+  firstPublishedAt?: string | null
 }
 
 export interface CatalogStop {
@@ -70,6 +72,7 @@ export interface CatalogHub {
   seoTitle: string | null
   seoDescription: string | null
   updatedAt: string
+  firstPublishedAt?: string | null
 }
 
 /** Stored passport override. Scoring rules: apps/web-app/shared/length-override.ts. */
@@ -113,6 +116,7 @@ export interface CatalogVenue {
   regionSlug: string | null
   regionTitle: string | null
   updatedAt: string
+  firstPublishedAt?: string | null
 }
 
 export interface ContentCatalog {

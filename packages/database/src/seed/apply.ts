@@ -1,6 +1,7 @@
 import type { AuthorKind, SourceLink, VisitStatus } from '../types/entities'
 import { and, eq } from 'drizzle-orm'
 import { useDatabase } from '../database'
+import { firstPublishedStamp } from '../first-published'
 import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects } from '../tables'
 import initialContent from './initial-content.json'
 
@@ -126,6 +127,7 @@ async function fillUntouchedDraft(place: SeedPlace, regionId: string, categoryId
     sources: place.sources,
     authorKind: place.authorKind,
     publicationStatus: 'published',
+    firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
     updatedAt: new Date().toISOString(),
   }).where(eq(places.id, existing.id))
   return true
@@ -209,6 +211,7 @@ async function insertCategory(data: SeedFile['categories'][number]) {
     body: data.body ?? '',
     seoTitle: data.seoTitle,
     seoDescription: data.seoDescription,
+    firstPublishedAt: firstPublishedStamp(null, 'published'),
   }).returning()
   if (!created) {
     throw new Error(`Category seed failed: ${data.slug}`)
@@ -238,6 +241,7 @@ async function insertPlace(place: SeedPlace, regionId: string, categoryId: strin
     sources: place.sources,
     authorKind: place.authorKind,
     publicationStatus: 'published',
+    firstPublishedAt: firstPublishedStamp(null, 'published'),
   }).returning()
   if (!created) {
     throw new Error(`Place seed failed: ${place.slug}`)
@@ -258,6 +262,7 @@ async function insertRoute(data: SeedFile['route'], regionId: string) {
     body: data.body,
     regionId,
     publicationStatus: 'published',
+    firstPublishedAt: firstPublishedStamp(null, 'published'),
   }).returning()
   if (!created) {
     throw new Error('Route seed failed')
@@ -277,6 +282,7 @@ async function insertCollection(data: SeedFile['collection']) {
     summary: data.summary,
     body: data.body,
     publicationStatus: 'published',
+    firstPublishedAt: firstPublishedStamp(null, 'published'),
   }).returning()
   if (!created) {
     throw new Error('Collection seed failed')
@@ -297,6 +303,7 @@ async function insertQuest(data: SeedFile['quest'], routeId: string) {
     body: data.body,
     routeId,
     publicationStatus: 'published',
+    firstPublishedAt: firstPublishedStamp(null, 'published'),
   }).returning()
   if (!created) {
     throw new Error('Quest seed failed')
