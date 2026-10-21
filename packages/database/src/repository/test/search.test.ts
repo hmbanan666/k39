@@ -5,7 +5,7 @@ import { normalizeSearchQuery, searchVariants } from '../../search-text'
 import { analyticsSearchQueries, places, searchEvents } from '../../tables'
 import { Search } from '../search'
 
-const SLUGS = ['search-fort-kenig', 'search-zamok-tapiau', 'search-draft']
+const SLUGS = ['search-fort-kenig', 'search-zamok-tapiau', 'search-draft', 'search-decomposed']
 
 describe('site search', () => {
   beforeAll(async () => {
@@ -31,6 +31,13 @@ describe('site search', () => {
         summary: 'Не опубликован.',
         publicationStatus: 'draft',
       },
+      {
+        slug: 'search-decomposed',
+        title: 'Музеи\u0306 у рва',
+        summary: 'Про замо\u0301к в подписи.',
+        body: 'Вои\u0306ска здесь не стоят.',
+        publicationStatus: 'published',
+      },
     ])
   })
 
@@ -43,6 +50,10 @@ describe('site search', () => {
     expect(await paths('rfybuc,thu')).toContain('/search-fort-kenig')
     expect(await paths('kenigsberg')).toContain('/search-fort-kenig')
     expect(await paths('капонир')).toContain('/search-fort-kenig')
+    expect(await paths('музей')).toContain('/search-decomposed')
+    expect(await paths('музеи\u0306')).toContain('/search-decomposed')
+    expect(await paths('замо\u0301к')).toContain('/search-decomposed')
+    expect(await paths('войска')).toContain('/search-decomposed')
     expect(await paths('черновик')).not.toContain('/search-draft')
     expect(await paths('')).toEqual([])
   })
@@ -82,5 +93,11 @@ describe('site search', () => {
     expect(searchVariants('Форт  №5!')).toEqual(['форт 5'])
     expect(searchVariants('ащкен')).toEqual(['ащкен'])
     expect(searchVariants('ajhn')).toEqual(['ajhn', 'форт', 'айхн'])
+    expect(normalizeSearchQuery('музеи\u0306')).toBe('музей')
+    expect(normalizeSearchQuery('вои\u0306ска')).toBe('войска')
+    expect(normalizeSearchQuery('замо\u0301к')).toBe('замок')
+    expect(normalizeSearchQuery('Музей ёлка')).toBe('музей елка')
+    expect(searchVariants('музеи\u0306')).toEqual(['музей'])
+    expect(normalizeSearchQuery('музеи\u0306')).toBe(normalizeSearchQuery('музей'))
   })
 })

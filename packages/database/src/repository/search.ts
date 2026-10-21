@@ -64,9 +64,9 @@ export class Search {
       ), scored as (
         select d.kind, d.path, d.title, d.label, d.region, d.snippet, d.boost,
           (case when d.doc @@ to_tsquery('russian', q.t) then ts_rank_cd(d.doc, to_tsquery('russian', q.t)) else 0 end)
-            + 0.6 * word_similarity(q.v, lower(translate(d.title, 'ёЁ', 'еЕ'))) as score,
+            + 0.6 * word_similarity(q.v, search_fold(d.title)) as score,
           d.doc @@ to_tsquery('russian', q.t) as hit,
-          word_similarity(q.v, lower(translate(d.title, 'ёЁ', 'еЕ'))) as sim
+          word_similarity(q.v, search_fold(d.title)) as sim
         from search_documents d cross join q
       )
       select kind, path, title, label, region, snippet, max(score) + max(boost) as score
