@@ -162,14 +162,33 @@ describe('cabinet hours keep days whose hours are unknown (ADR 0044)', () => {
     expect(describeSchedule(rules)).toEqual(['Пн–пт 10:00–19:00; сб, вс: часы уточняйте'])
   })
 
-  it('keeps the cabinet rule that an open day needs both times', () => {
+  it('keeps an open-ended day (ADR 0042) through an owner save that edits an unrelated field', () => {
+    const openEnded = normalizeHours({
+      note: null,
+      days: [
+        ...['mon', 'tue', 'wed', 'thu', 'fri'].map((weekday) => ({ weekday, closed: false, opens: '10:00', closes: '19:00' })),
+        { weekday: 'sat', closed: false, opens: '12:00', closes: null },
+        { weekday: 'sun', closed: true },
+      ],
+    })
+    const form = hoursFormDays(openEnded)
+    expect(form.find((day) => day.weekday === 'sat')).toEqual({ weekday: 'sat', state: 'open', opens: '12:00', closes: '', openEnded: true })
+    const body = { name: 'Новое название', hours: { note: null, days: hoursDaysPayload(form, { openEnded: false }) } }
+    const saved = normalizeHours(ownerVenueSchema.parse(pickOwnerFields(body)).hours)
+    expect(saved.days.find((day) => day.weekday === 'sat')).toMatchObject({ closed: false, opens: '12:00', closes: null })
+    expect(rulesFromVenueHours(saved)?.seasons[0]?.week).toContainEqual({ days: [6], opens: '12:00', breaks: [] })
+  })
+
+  it('closes a new open day without both times in the cabinet, but keeps a loaded open-ended day', () => {
     const days = hoursDaysPayload([
       { weekday: 'mon', state: 'open', opens: '10:00', closes: '' },
       { weekday: 'tue', state: 'closed', opens: '10:00', closes: '19:00' },
+      { weekday: 'sat', state: 'open', opens: '12:00', closes: '', openEnded: true },
     ], { openEnded: false })
     expect(days).toEqual([
       { weekday: 'mon', closed: true, opens: null, closes: null },
       { weekday: 'tue', closed: true, opens: null, closes: null },
+      { weekday: 'sat', closed: false, opens: '12:00', closes: null },
     ])
     expect(hoursDaysPayload([{ weekday: 'mon', state: 'open', opens: '12:00', closes: '' }], { openEnded: true })).toEqual([{ weekday: 'mon', closed: false, opens: '12:00', closes: null }])
   })

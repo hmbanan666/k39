@@ -67,10 +67,16 @@
         >
         <input
           v-model="day.closes"
-          placeholder="21:00"
+          :placeholder="day.openEnded ? '?' : '21:00'"
           :disabled="day.state !== 'open'"
         >
       </label>
+      <p
+        v-if="form.days.some((day) => day.openEnded)"
+        class="muted"
+      >
+        Пустое закрытие: на сайте «закрытие уточняйте». Впишите время, когда оно известно.
+      </p>
       <UiField label="Заметка к часам">
         <UiInput v-model="form.hoursNote" />
       </UiField>

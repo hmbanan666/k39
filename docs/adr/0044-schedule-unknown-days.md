@@ -55,7 +55,7 @@ Slots mode follows the same rule: no next slot is named across an unknown day, a
 
 ### Editing
 
-`schedule_set` documents the field. The admin venue form and the owner cabinet both offer a third state per day, «часы уточняйте», next to «часы» and «выходной». Both forms load and save `venues.hours` through `shared/venue-hours-form.ts`, so a save that does not touch the hours keeps an unknown day unknown. `venues.hours` days carry `unknown: true` for it, the owner schema (`ownerVenueSchema`) keeps the flag, and `rulesFromVenueHours` turns those days into `unknownDays`. The cabinet still requires a closing time on an open day (ADR 0042 is admin only).
+`schedule_set` documents the field. The admin venue form and the owner cabinet both offer a third state per day, «часы уточняйте», next to «часы» and «выходной». Both forms load and save `venues.hours` through `shared/venue-hours-form.ts`, so a save that does not touch the hours keeps an unknown day unknown. `venues.hours` days carry `unknown: true` for it, the owner schema (`ownerVenueSchema`) keeps the flag, and `rulesFromVenueHours` turns those days into `unknownDays`. The cabinet still requires both times on a day the owner opens, but carries a day loaded with an opening time and no closing time (ADR 0042) unchanged and shows the hint «закрытие уточняйте».
 
 ## Consequences
 

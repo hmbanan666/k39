@@ -17,6 +17,8 @@ export interface HoursFormDay {
   state: HoursDayState
   opens: string
   closes: string
+  /** Loaded with an opening time and no closing time (ADR 0042). */
+  openEnded?: boolean
 }
 
 interface StoredDay {
@@ -38,13 +40,15 @@ export function hoursFormDays(hours: { days?: StoredDay[] | null } | null | unde
       return day
     }
     const state: HoursDayState = found.unknown && !found.closed ? 'unknown' : found.closed ? 'closed' : 'open'
-    return { weekday: day.weekday, state, opens: found.opens || '', closes: found.closes || '' }
+    const openEnded = state === 'open' && Boolean(found.opens) && !found.closes
+    return { weekday: day.weekday, state, opens: found.opens || '', closes: found.closes || '', ...(openEnded ? { openEnded } : {}) }
   })
 }
 
 /**
- * Rows as `venues.hours` days. `openEnded` keeps an opening time without a
- * closing time (ADR 0042, admin only); otherwise such a day is closed.
+ * Rows as `venues.hours` days. `openEnded` lets any day keep an opening time
+ * without a closing time (ADR 0042, admin). Otherwise only a day loaded that
+ * way keeps it, and any other open day without both times is closed.
  */
 export function hoursDaysPayload(days: HoursFormDay[], options: { openEnded: boolean }): StoredDay[] {
   return days.map((day) => {
@@ -52,7 +56,7 @@ export function hoursDaysPayload(days: HoursFormDay[], options: { openEnded: boo
       return { weekday: day.weekday, closed: false, unknown: true, opens: null, closes: null }
     }
     // The admin writer rejects an open day without an opening time, so the editor sees the mistake.
-    if (day.state === 'open' && options.openEnded) {
+    if (day.state === 'open' && (options.openEnded || (day.openEnded && day.opens && !day.closes))) {
       return { weekday: day.weekday, closed: false, opens: day.opens || null, closes: day.closes || null }
     }
     if (day.state === 'open' && day.opens && day.closes) {
