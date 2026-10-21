@@ -139,13 +139,25 @@ export async function savePendingDraftContent(input: DraftWrite, gate: ContentGa
   return { row, writingWarnings }
 }
 
-export async function applyPendingPlaceContent(id: string, gate: ContentGate) {
+async function applyPending<T extends { id: string }>(pageType: string, gate: ContentGate, apply: () => Promise<T | null>) {
   const writingWarnings = contentWarnings(gate)
   try {
-    const row = await db.editor.applyPendingPlace(id)
-    await afterPage('place', row?.id)
+    const row = await apply()
+    await afterPage(pageType, row?.id)
     return { row, writingWarnings }
   } catch (error) {
     sourceWriteError(error)
   }
+}
+
+export async function applyPendingPlaceContent(id: string, gate: ContentGate) {
+  return applyPending('place', gate, () => db.editor.applyPendingPlace(id))
+}
+
+export async function applyPendingRouteContent(id: string, gate: ContentGate) {
+  return applyPending('route', gate, () => db.editor.applyPendingRoute(id))
+}
+
+export async function applyPendingCollectionContent(id: string, gate: ContentGate) {
+  return applyPending('collection', gate, () => db.editor.applyPendingCollection(id))
 }

@@ -109,7 +109,7 @@ export const places = pgTable('places', {
   index('places_category_idx').on(table.categoryId),
 ])
 
-/** Agent write against a live row. The public page keeps reading `places` until an editor publishes. */
+/** Agent write against a live place, route, or collection. The public page keeps reading the live row until an editor publishes. */
 export const contentDrafts = pgTable('content_drafts', {
   id: cuid2('id').defaultRandom().primaryKey(),
   createdAt: createdAt(),

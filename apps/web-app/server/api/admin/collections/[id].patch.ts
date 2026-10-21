@@ -2,6 +2,7 @@ import { db } from '@k39/database'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../../shared/page-modules'
 import { slugError } from '../../../../shared/seo'
 import { requireEditor } from '../../../utils/access'
+import { withPendingGuard } from '../../../utils/admin/content-draft'
 import { contentGate, saveCollectionContent } from '../../../utils/content/save'
 
 export default defineEventHandler(async (event) => {
@@ -22,14 +23,16 @@ export default defineEventHandler(async (event) => {
   if (plan.rejectBody) {
     throw createError({ statusCode: 400, statusMessage: COLLECTION_BODY_REJECTED })
   }
-  const { row, writingWarnings } = await saveCollectionContent({ ...body, body: plan.body, modules, id }, user.id, contentGate('collection', {
-    title: body.title,
-    summary: body.summary,
-    copy: plan.copy,
-    seoTitle: body.seoTitle,
-    seoDescription: body.seoDescription,
-    sources: body.sources === undefined ? current?.sources : body.sources,
-    items: body.items,
-  }, body.publicationStatus === 'published'))
-  return { ...row, writingWarnings, article: plan.article, renderedFields: plan.renderedFields }
+  return withPendingGuard('collection', id, body?.pendingDraft, async () => {
+    const { row, writingWarnings } = await saveCollectionContent({ ...body, body: plan.body, modules, id }, user.id, contentGate('collection', {
+      title: body.title,
+      summary: body.summary,
+      copy: plan.copy,
+      seoTitle: body.seoTitle,
+      seoDescription: body.seoDescription,
+      sources: body.sources === undefined ? current?.sources : body.sources,
+      items: body.items,
+    }, body.publicationStatus === 'published'))
+    return { ...row, writingWarnings, article: plan.article, renderedFields: plan.renderedFields }
+  })
 })
