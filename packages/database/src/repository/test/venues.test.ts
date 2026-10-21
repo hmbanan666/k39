@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
-import { businesses, offerCodes, offers, slugRedirects, venues } from '../../tables'
+import { businesses, offerCodes, offers, regions, slugRedirects, venues } from '../../tables'
 import {
   emptyHours,
   formatHoursLines,
@@ -19,6 +19,7 @@ import {
   rankNearby,
   resolveVenuePath,
   VenueInputError,
+  venueNameKey,
 } from '../../venues'
 import { Analytics } from '../analytics'
 import { Search } from '../search'
@@ -71,6 +72,14 @@ describe('venue policy', () => {
     expect(ranked.map((row) => row.id)).toEqual(['partner', 'near', 'mid', 'far-partner'])
     expect(ranked[0]?.partner).toBe(true)
     expect(ranked[1]?.partner).toBe(false)
+  })
+
+  it('folds case, ё, quotes, and a kind word into one venue name key', () => {
+    expect(venueNameKey('Кафе «Ёлка»')).toBe('елка')
+    expect(venueNameKey('"ЁЛКА"')).toBe('елка')
+    expect(venueNameKey('ресторан Елка')).toBe('елка')
+    expect(venueNameKey('Кафе')).toBe('')
+    expect(venueNameKey('Ёлки-палки')).toBe('елки палки')
   })
 
   it('maps OSM elements and skips a repeat id', () => {
@@ -448,5 +457,103 @@ describe('venue repository', () => {
     const town = await Venues.inRegion(null)
     expect(town.map((row) => row.id)).toContain(venue.id)
     await useDatabase().delete(venues).where(eq(venues.id, venue.id))
+  })
+
+  it('pages every venue once and matches a name with ё folded', async () => {
+    await Venues.create({ name: 'Гамма', slug: 'page-gamma', kind: 'bar', status: 'draft' })
+    await Venues.create({ name: 'Альфа', slug: 'page-alpha', kind: 'cafe', status: 'published', description: description() })
+    await Venues.create({ name: 'Бета', slug: 'page-beta', kind: 'cafe', status: 'closed' })
+    await Venues.create({ name: 'Кафе «Ёлка»', slug: 'page-yolka', kind: 'cafe', status: 'archived' })
+    const first = await Venues.listPage({ page: 1, pageSize: 2 })
+    const second = await Venues.listPage({ page: 2, pageSize: 2 })
+    const third = await Venues.listPage({ page: 3, pageSize: 2 })
+    expect(first.total).toBe(4)
+    expect(second.total).toBe(4)
+    expect(third).toMatchObject({ total: 4, items: [], page: 3, pageSize: 2 })
+    const slugs = [...first.items, ...second.items].map((row) => row.slug)
+    expect(slugs).toEqual(['page-alpha', 'page-beta', 'page-gamma', 'page-yolka'])
+    expect(new Set(slugs).size).toBe(4)
+    const cafes = await Venues.listPage({ kind: 'cafe', page: 1, pageSize: 50 })
+    expect(cafes.total).toBe(3)
+    expect(cafes.items.map((row) => row.slug)).toEqual(['page-alpha', 'page-beta', 'page-yolka'])
+    const found = await Venues.listPage({ query: 'елка' })
+    expect(found.total).toBe(1)
+    expect(found.items[0]?.slug).toBe('page-yolka')
+    const bySlug = await Venues.listPage({ query: 'page-gamma' })
+    expect(bySlug.items.map((row) => row.slug)).toEqual(['page-gamma'])
+  })
+
+  it('pages a nearby filter without dropping or repeating a row', async () => {
+    await Venues.create({ name: 'Рядом А', slug: 'near-a', kind: 'cafe', latitude: FORT.latitude, longitude: FORT.longitude, status: 'draft' })
+    await Venues.create({ name: 'Рядом Б', slug: 'near-b', kind: 'cafe', latitude: FORT.latitude + 0.001, longitude: FORT.longitude, status: 'draft' })
+    await Venues.create({ name: 'Далеко', slug: 'near-far', kind: 'cafe', latitude: FORT.latitude + 0.05, longitude: FORT.longitude, status: 'draft' })
+    const filter = { near: { latitude: FORT.latitude, longitude: FORT.longitude, radiusKm: 1 }, pageSize: 1 }
+    const first = await Venues.listPage({ ...filter, page: 1 })
+    const second = await Venues.listPage({ ...filter, page: 2 })
+    const third = await Venues.listPage({ ...filter, page: 3 })
+    expect(first.total).toBe(2)
+    expect([...first.items, ...second.items].map((row) => row.slug)).toEqual(['near-a', 'near-b'])
+    expect(third.items).toEqual([])
+    expect(first.items[0]?.distanceKm).toBe(0)
+  })
+
+  it('finds a duplicate by a name variant and by a nearby point, including archived', async () => {
+    const db = useDatabase()
+    await db.delete(regions).where(eq(regions.slug, 'dup-town'))
+    const [town] = await db.insert(regions).values({ slug: 'dup-town', title: 'Город дублей' }).returning()
+    try {
+      const tree = await Venues.create({
+        name: 'Кафе «Ёлка»',
+        slug: 'dup-yolka',
+        kind: 'cafe',
+        status: 'archived',
+        latitude: FORT.latitude,
+        longitude: FORT.longitude,
+        regionId: town!.id,
+      })
+      const neighbor = await Venues.create({
+        name: 'Соседняя пекарня',
+        slug: 'dup-neighbor',
+        kind: 'bakery',
+        status: 'closed',
+        latitude: FORT.latitude + 0.001,
+        longitude: FORT.longitude,
+        regionId: town!.id,
+      })
+      await Venues.create({
+        name: 'Дальняя Ёлка',
+        slug: 'dup-far',
+        kind: 'restaurant',
+        status: 'draft',
+        latitude: FORT.latitude + 0.05,
+        longitude: FORT.longitude,
+      })
+      const byName = await Venues.findDuplicates({ name: '"ЁЛКА"' })
+      expect(byName.map((row) => row.slug)).toEqual(['dup-yolka'])
+      expect(byName[0]).toMatchObject({
+        status: 'archived',
+        kind: 'cafe',
+        matched: ['name'],
+        distanceM: null,
+        region: { slug: 'dup-town', title: 'Город дублей' },
+      })
+      const byPoint = await Venues.findDuplicates({ latitude: FORT.latitude, longitude: FORT.longitude })
+      expect(byPoint.map((row) => row.slug)).toEqual(['dup-yolka', 'dup-neighbor'])
+      expect(byPoint[0]?.matched).toEqual(['coordinates'])
+      expect(byPoint[1]?.distanceM).toBeGreaterThan(100)
+      expect(byPoint[1]?.distanceM).toBeLessThanOrEqual(150)
+      const both = await Venues.findDuplicates({
+        name: 'ресторан Елка',
+        latitude: FORT.latitude,
+        longitude: FORT.longitude,
+      })
+      expect(both.find((row) => row.id === tree.id)?.matched).toEqual(['name', 'coordinates'])
+      expect(both.some((row) => row.id === neighbor.id && row.matched.includes('coordinates'))).toBe(true)
+      const inTown = await Venues.findDuplicates({ name: 'Ёлка', regionId: town!.id })
+      expect(inTown.map((row) => row.slug)).toEqual(['dup-yolka'])
+    } finally {
+      await db.delete(venues).where(eq(venues.regionId, town!.id))
+      await db.delete(regions).where(eq(regions.id, town!.id))
+    }
   })
 })

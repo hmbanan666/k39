@@ -183,6 +183,51 @@ export function kindLabel(kind: string) {
   return isFoodKind(kind) ? KIND_LABEL[kind] : kind
 }
 
+/**
+ * Kind words stripped from a duplicate-name comparison. «Другое» stays:
+ * it is a catalog bucket, not a word in a venue name.
+ */
+const VENUE_NAME_KIND_WORDS = new Set<string>([
+  'кафе',
+  'ресторан',
+  'ресторана',
+  'ресторане',
+  'кофейня',
+  'кофейни',
+  'кофейне',
+  'бар',
+  'бара',
+  'баре',
+  'пекарня',
+  'пекарни',
+  'пекарне',
+  'рынок',
+  'рынка',
+  'рынке',
+  'фастфуд',
+  'cafe',
+  'restaurant',
+  'coffee',
+  'bar',
+  'bakery',
+  'market',
+  'fastfood',
+])
+
+/**
+ * Comparison key for a venue name: lower case, ё folded to е, quotes and
+ * other punctuation removed, and a leading kind word such as «кафе» dropped.
+ * An empty key (the name was only a kind word) matches nothing.
+ */
+export function venueNameKey(name: string) {
+  const tokens = name
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token && !VENUE_NAME_KIND_WORDS.has(token))
+  return tokens.join(' ')
+}
+
 export function kindHeading(kind: string) {
   return isFoodKind(kind) ? KIND_HEADING[kind] : kind
 }

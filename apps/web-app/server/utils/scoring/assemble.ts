@@ -43,6 +43,11 @@ function demandTargets(passport: PassportFields | null) {
   ]
 }
 
+export interface ScoreInclude {
+  kind: PageKind
+  id: string
+}
+
 export function scoresFromCatalog(
   catalog: ContentCatalog,
   metrics: PageMetric[],
@@ -50,6 +55,7 @@ export function scoresFromCatalog(
   searchImported: boolean,
   now = new Date(),
   factRefs?: Map<string, { count: number, stale: number }>,
+  options?: { include?: ScoreInclude[] },
 ): PageScore[] {
   const linkCatalog: LinkCatalog = {
     places: catalog.places.map((place) => ({
@@ -378,7 +384,10 @@ export function scoresFromCatalog(
       }
     }),
   ]
-  return pages.filter((page) => page.publicationStatus === 'published').map((page) => scorePage(page, now))
+  const include = new Set((options?.include ?? []).map((row) => `${row.kind}:${row.id}`))
+  return pages
+    .filter((page) => page.publicationStatus === 'published' || include.has(`${page.kind}:${page.id}`))
+    .map((page) => scorePage(page, now))
 }
 
 export function toStored(score: PageScore): StoredScore {

@@ -3,7 +3,7 @@ import { auditedScore, getContentScore, normalizePath, refreshContentScores } fr
 
 export default defineMcpTool({
   name: 'content_score_get',
-  description: 'One page score with the failing checks in each block. refresh true recomputes every page first, then returns this path.',
+  description: 'The stored score of one published page, with the failing checks in each block. refresh true recomputes every page and writes content_scores, then returns this path. A draft, a review page, or a pending payload is not stored: content_score_preview scores those without writing.',
   inputSchema: {
     path: z.string(),
     refresh: z.boolean().optional(),

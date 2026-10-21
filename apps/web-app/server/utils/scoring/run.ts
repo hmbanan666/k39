@@ -7,6 +7,7 @@ import { savePassportContent } from '../content/save'
 import { syncVerificationQueue } from '../facts/queue'
 import { auditMcp } from '../mcp/audit'
 import { catalogPageRefs, scoresFromCatalog, toStored } from './assemble'
+import { catalogWithPendingPlace, findCatalogPage, scorePreview } from './preview'
 
 function dayStamp(date: Date) {
   return date.toISOString().slice(0, 10)
@@ -99,6 +100,72 @@ export async function weeklyContentReport() {
     },
     goalAndQueue,
   }
+}
+
+/**
+ * On-demand score for a draft, a review page, or a place's pending payload.
+ * Reads the same catalog and metrics as a refresh and does not write
+ * `content_scores` or `content_score_days`.
+ */
+export async function previewContentScore(path: string) {
+  const normalized = normalizePath(path)
+  const now = new Date()
+  const today = dayStamp(now)
+  const catalog = await db.scoring.loadCatalog()
+  const page = findCatalogPage(catalog, normalized)
+  if (!page) {
+    return null
+  }
+  let source: 'live' | 'draft' | 'pending' = page.publicationStatus === 'published' ? 'live' : 'draft'
+  let working = catalog
+  if (page.pageType === 'place') {
+    const draft = await db.editor.contentDraft('place', page.entityId)
+    const current = catalog.places.find((row) => row.id === page.entityId)
+    if (draft && current) {
+      const live = await db.editor.placeById(page.entityId)
+      if (live) {
+        const next = db.editor.pendingPlaceNext(live, draft.payload)
+        let categorySlug = current.categorySlug
+        let categoryTitle = current.categoryTitle
+        if (next.categoryId !== live.categoryId) {
+          const categories = await db.content.categories()
+          const category = categories.find((row) => row.id === next.categoryId)
+          categorySlug = category?.slug ?? null
+          categoryTitle = category?.title ?? null
+        }
+        let regionTitle = current.regionTitle
+        if (next.regionId !== live.regionId) {
+          const regionRows = await db.editor.listRegions()
+          regionTitle = regionRows.find((row) => row.id === next.regionId)?.title ?? null
+        }
+        source = 'pending'
+        working = catalogWithPendingPlace(catalog, page.entityId, next, {
+          categorySlug,
+          categoryTitle,
+          regionTitle,
+        })
+      }
+    }
+  }
+  const [metrics, queries, searchImported, freshness] = await Promise.all([
+    db.scoring.pageMetrics(now),
+    db.scoring.searchQueriesSince(shiftDay(today, -90)),
+    db.scoring.searchImported(),
+    db.facts.freshnessByConsumer(now.toISOString()),
+  ])
+  const factRefs = new Map(freshness.map((row) => [`${row.consumer_type}:${row.consumer_id}`, { count: Number(row.refs), stale: Number(row.stale) }]))
+  return scorePreview({
+    catalog: working,
+    pageType: page.pageType,
+    entityId: page.entityId,
+    source,
+    publicationStatus: page.publicationStatus,
+    metrics,
+    queries,
+    searchImported,
+    now,
+    factRefs,
+  })
 }
 
 export async function auditedScore<T>(tool: string, entityId: string | null, run: () => Promise<T>) {

@@ -1,54 +1,29 @@
-import { db, isStale } from '@k39/database'
-import { z } from 'zod'
+import { db } from '@k39/database'
 import { auditMcp } from '../../utils/mcp/audit'
+import { mcpStrictInput, venueListResult, venuesListInput } from '../../utils/mcp/venues'
 
 export default defineMcpTool({
   name: 'venues_list',
-  description: 'List venues. Filters: regionSlug, kind, status, stale (lastVerifiedAt missing or older than 180 days), and near { latitude, longitude, radiusKm }.',
+  description: 'List venues as { items, total, page, pageSize }. page is 1-based: the offset is (page - 1) * pageSize. pageSize defaults to 20 and stops at 50. There is no offset or limit argument; those keys are rejected. query matches the name or the slug (lowercase, ё and е are the same letter). Filters: regionSlug, kind, status (draft, published, closed, archived), stale (lastVerifiedAt missing or older than 180 days), and near { latitude, longitude, radiusKm }. Order is name, then id, so paging returns each venue once. total is the filtered count.',
   annotations: { readOnlyHint: true },
-  inputSchema: {
-    regionSlug: z.string().optional(),
-    kind: z.string().optional(),
-    status: z.enum(['draft', 'published', 'closed', 'archived']).optional(),
-    stale: z.boolean().optional(),
-    near: z.object({
-      latitude: z.number(),
-      longitude: z.number(),
-      radiusKm: z.number().positive().max(100),
-    }).optional(),
-    limit: z.number().int().min(1).max(200).optional(),
-  },
+  inputSchema: mcpStrictInput(venuesListInput),
   handler: async (input) => {
-    const region = input.regionSlug ? await db.venues.regionBySlug(input.regionSlug) : null
-    if (input.regionSlug && !region) {
+    const parsed = venuesListInput.parse(input)
+    const region = parsed.regionSlug ? await db.venues.regionBySlug(parsed.regionSlug) : null
+    if (parsed.regionSlug && !region) {
       throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
     }
-    const rows = await db.venues.list({
+    const page = await db.venues.listPage({
       regionId: region?.id,
-      kind: input.kind,
-      status: input.status,
-      stale: input.stale,
-      near: input.near,
-      limit: input.limit,
+      kind: parsed.kind,
+      status: parsed.status,
+      stale: parsed.stale,
+      near: parsed.near,
+      query: parsed.query,
+      page: parsed.page,
+      pageSize: parsed.pageSize,
     })
     await auditMcp('venues_list', 'venue', null)
-    const now = new Date()
-    return rows.map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      name: row.name,
-      kind: row.kind,
-      status: row.status,
-      regionId: row.regionId,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      lastVerifiedAt: row.lastVerifiedAt,
-      priceBand: row.priceBand,
-      priceBandComputedAt: row.priceBandComputedAt,
-      priceBandBasis: row.priceBandBasis,
-      stale: isStale(row.lastVerifiedAt, now),
-      distanceKm: row.distanceKm,
-      osmId: row.osmId,
-    }))
+    return venueListResult(page.items, page.total, page.page, page.pageSize)
   },
 })

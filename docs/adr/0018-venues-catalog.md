@@ -79,7 +79,7 @@ The venue URL is in the sitemap when it is published, not `noindex`, and the des
 
 ### Tools
 
-The content token (ADR 0012) can call `venue_create`, `venue_update`, `venue_get`, `venues_list`, `venue_import_osm`, `venue_listing_intro_set`, `venue_stats`, and `venue_delete`. Writes and the read-only stats call insert an `mcp_audits` row. The token still cannot manage users or settings. `venue_update` may set `status` and `lastVerifiedAt`. Omitting `status` leaves the current one, including `published`. `venue_delete` hard-deletes a draft or an archived row. A published or closed venue returns 409 and stays. An archived URL keeps the 410 recorded when it was archived.
+The content token (ADR 0012) can call `venue_create`, `venue_update`, `venue_get`, `venues_list`, `venue_find_duplicates`, `content_score_preview`, `venue_import_osm`, `venue_listing_intro_set`, `venue_stats`, and `venue_delete`. `venue_find_duplicates` is the read-only name and coordinate check before `venue_create`. `content_score_preview` scores a draft or a pending payload and does not write `content_scores`. Writes and the read-only stats call insert an `mcp_audits` row. The token still cannot manage users or settings. `venue_update` may set `status` and `lastVerifiedAt`. Omitting `status` leaves the current one, including `published`. `venue_delete` hard-deletes a draft or an archived row. A published or closed venue returns 409 and stays. An archived URL keeps the 410 recorded when it was archived.
 
 ## Consequences
 
