@@ -23,10 +23,30 @@ plan() {
   node "$root/scripts/env/node-path-plan.mjs" "$@"
 }
 
+# True when both paths are the same file. readlink -f follows a healthy
+# symlink. The directory check also catches a self-symlink, which readlink
+# cannot resolve, and a destination directory that is another name for the
+# source directory. ln -sfn on that pair replaces pnpm, npm, npx, and
+# corepack with a symlink to themselves.
+same_file() {
+  local left="$1"
+  local right="$2"
+  local left_real right_real
+  left_real=$(readlink -f "$left" 2>/dev/null || true)
+  right_real=$(readlink -f "$right" 2>/dev/null || true)
+  if [ -n "$left_real" ] && [ "$left_real" = "$right_real" ]; then
+    return 0
+  fi
+  left_real=$(readlink -f "$(dirname "$left")" 2>/dev/null || true)
+  right_real=$(readlink -f "$(dirname "$right")" 2>/dev/null || true)
+  [ -n "$left_real" ] && [ "$left_real" = "$right_real" ] && [ "$(basename "$left")" = "$(basename "$right")" ]
+}
+
 link_tools_into() {
   local dir="$1"
   local tool
   local target
+  local dest
   if [ ! -d "$dir" ]; then
     return 1
   fi
@@ -35,16 +55,26 @@ link_tools_into() {
   fi
   for tool in node npm npx corepack pnpm pnpx; do
     target="$node_bin/$tool"
+    dest="$dir/$tool"
     if [ ! -e "$target" ]; then
       continue
     fi
+    if same_file "$target" "$dest"; then
+      continue
+    fi
     if [ -w "$dir" ]; then
-      ln -sfn "$target" "$dir/$tool"
+      ln -sfn "$target" "$dest"
     else
-      sudo -n ln -sfn "$target" "$dir/$tool"
+      sudo -n ln -sfn "$target" "$dest"
     fi
   done
 }
+
+if [ "${1-}" = --link-into ]; then
+  node_bin=${2:?}
+  link_tools_into "${3:?}"
+  exit 0
+fi
 
 install_node() {
   local arch node_arch tmp url

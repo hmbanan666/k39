@@ -93,7 +93,6 @@ export default defineNuxtConfig({
     // NUXT_BASEMAP_SHA256 and BASEMAP_SHA256. The map uses the file only when this matches.
     basemapSha256: DEFAULT_BASEMAP_SHA256,
     public: {
-      featureMap: false,
       consentBanner: false,
       yandexVerification: '',
       googleVerification: '',

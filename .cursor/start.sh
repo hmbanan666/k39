@@ -37,5 +37,9 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 -tc "select 1 from pg_database where da
 sudo -u postgres psql -v ON_ERROR_STOP=1 -tc "select 1 from pg_database where datname='k39_test'" | grep -q 1 \
   || sudo -u postgres psql -v ON_ERROR_STOP=1 -c "create database k39_test owner k39"
 
+# Schema only. Content import stays in the Nitro plugin on app boot.
+bash scripts/env/migrate-dev.sh
+
 install -m 0755 scripts/git/post-commit .git/hooks/post-commit
 node scripts/git/chain-hooks.mjs
+bash scripts/env/check-boot.sh

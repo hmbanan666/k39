@@ -27,7 +27,7 @@ Proposed.
 | 0001 | [Place copy in Nuxt Content, operations in Postgres](0001-content-and-postgres.md) | Superseded by ADR 0007 |
 | 0002 | [Illustrated SVG maps, not tiles](0002-illustrated-svg-maps.md) | Superseded by ADR 0019 |
 | 0003 | [Apply Drizzle migrations on startup](0003-migrate-on-startup.md) | Accepted |
-| 0004 | [Consented anonymous events](0004-anonymous-events.md) | Accepted |
+| 0004 | [Consented anonymous events](0004-anonymous-events.md) | Accepted, partly superseded by ADR 0043 |
 | 0005 | [Optional OAuth and apex redirect](0005-optional-oauth-and-apex-redirect.md) | Accepted |
 | 0006 | [Corepack pnpm in the web image](0006-docker-pnpm.md) | Accepted |
 | 0007 | [Content in Postgres, admin in this app](0007-postgres-content-admin.md) | Accepted |
@@ -64,6 +64,7 @@ Proposed.
 | 0038 | [Photos on collections](0038-collection-media.md) | Accepted |
 | 0039 | [«Где дешевле»](0039-where-cheaper.md) | Accepted |
 | 0040 | [Editor token moderates guest rows](0040-guest-mcp-moderation.md) | Accepted |
+| 0043 | [Anonymous event rows are not a session](0043-anonymous-events-session.md) | Accepted |
 
 ## Redirects
 
