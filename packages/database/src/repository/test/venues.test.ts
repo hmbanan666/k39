@@ -3,6 +3,8 @@ import { resolve } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
+import { priceInName } from '../../price-label'
+import { SOURCE_LINK_LIMIT } from '../../sources'
 import { businesses, offerCodes, offers, regions, slugRedirects, venues } from '../../tables'
 import {
   emptyHours,
@@ -42,6 +44,28 @@ async function wipe() {
 }
 
 describe('venue policy', () => {
+  it('treats a ruble sign or a ruble word as a price in a name', () => {
+    expect(priceInName('Борщ')).toBe(false)
+    expect(priceInName('Пельмени по-домашнему')).toBe(false)
+    expect(priceInName('250 мл')).toBe(false)
+    expect(priceInName('0,3 л')).toBe(false)
+    expect(priceInName('8 шт.')).toBe(false)
+    expect(priceInName('рублевый')).toBe(false)
+    expect(priceInName('Борщ 350 ₽')).toBe(true)
+    expect(priceInName('350₽')).toBe(true)
+    expect(priceInName('350 руб')).toBe(true)
+    expect(priceInName('350 руб.')).toBe(true)
+    expect(priceInName('1 000 рублей')).toBe(true)
+    expect(priceInName('350р.')).toBe(true)
+    expect(priceInName('350 р')).toBe(true)
+    expect(priceInName('5 раз')).toBe(false)
+    expect(priceInName('350 rubber')).toBe(false)
+    expect(priceInName('Борщ 350 rub')).toBe(true)
+    expect(priceInName('350 rub.')).toBe(true)
+    expect(priceInName('350 RUB')).toBe(true)
+    expect(priceInName('350 rubles')).toBe(true)
+  })
+
   it('formats metres and kilometres', () => {
     expect(formatVenueDistance(0.4)).toBe('400 м')
     expect(formatVenueDistance(1.23)).toBe('1,2 км')
@@ -601,5 +625,129 @@ describe('venue repository', () => {
       await db.delete(venues).where(eq(venues.regionId, town!.id))
       await db.delete(regions).where(eq(regions.id, town!.id))
     }
+  })
+
+  it('merges duplicate source URLs and rejects an invalid or extra row', async () => {
+    const merged = await Venues.create({
+      name: 'Источники у вала',
+      slug: 'source-merge',
+      kind: 'cafe',
+      sources: [
+        { title: 'Сайт', url: 'https://www.Example.com/menu/' },
+        { title: 'Дубль', url: 'http://example.com/menu' },
+        { title: 'Карта', url: 'https://example.com/map' },
+      ],
+    })
+    expect(merged.sources).toEqual([
+      { title: 'Сайт', url: 'https://www.Example.com/menu/' },
+      { title: 'Карта', url: 'https://example.com/map' },
+    ])
+    await expect(Venues.create({
+      name: 'Пустая подпись',
+      slug: 'source-blank',
+      kind: 'cafe',
+      sources: [
+        { title: 'Сайт', url: 'https://example.com' },
+        { title: '  ', url: 'https://example.com/x' },
+      ],
+    })).rejects.toThrow(/Источник 2/)
+    expect(await Venues.bySlug('source-blank')).toBeNull()
+    await expect(Venues.create({
+      name: 'Чужая схема',
+      slug: 'source-ftp',
+      kind: 'cafe',
+      sources: [{ title: 'Меню', url: 'ftp://example.com/a' }],
+    })).rejects.toThrow(/Источник 1/)
+    const tooMany = Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+      title: `Источник ${index + 1}`,
+      url: `https://example.com/p/${index}`,
+    }))
+    await expect(Venues.create({
+      name: 'Много источников',
+      slug: 'source-cap',
+      kind: 'cafe',
+      sources: tooMany,
+    })).rejects.toThrow(/Не больше/)
+    const atCap = tooMany.slice(0, SOURCE_LINK_LIMIT)
+    const kept = await Venues.create({
+      name: 'Ровно лимит',
+      slug: 'source-cap-ok',
+      kind: 'cafe',
+      sources: atCap,
+    })
+    expect(kept.sources).toHaveLength(SOURCE_LINK_LIMIT)
+  })
+
+  it('rejects a price written into a dish name', async () => {
+    await expect(Venues.create({
+      name: 'Цена в названии',
+      slug: 'price-in-name',
+      kind: 'cafe',
+      signatureDishes: [{ name: 'Борщ 350 ₽', priceRub: 350 }],
+    })).rejects.toThrow(/Цену пишите/)
+    await expect(Venues.create({
+      name: 'Латинская цена',
+      slug: 'price-in-name-rub',
+      kind: 'cafe',
+      signatureDishes: [{ name: 'Борщ 350 rub.', priceRub: 350 }],
+    })).rejects.toThrow(/Цену пишите/)
+    expect(await Venues.bySlug('price-in-name-rub')).toBeNull()
+    expect(await Venues.bySlug('price-in-name')).toBeNull()
+    const kept = await Venues.create({
+      name: 'Название без цены',
+      slug: 'name-without-price',
+      kind: 'cafe',
+      signatureDishes: [{ name: 'Борщ', priceRub: 350 }],
+    })
+    expect(kept.signatureDishes).toEqual([{ name: 'Борщ', note: null, priceRub: 350 }])
+  })
+
+  it('skips a revision when the update changes nothing and writes one when it does', async () => {
+    const created = await Venues.create({
+      name: 'Тихая полка',
+      slug: 'noop-shelf',
+      kind: 'cafe',
+      description: description(),
+      status: 'published',
+      sources: [{ title: 'Меню', url: 'https://example.com/menu' }],
+    })
+    const computedAt = '2026-10-15T12:00:00.000Z'
+    await Venues.setPriceBand(created.id, { level: 'mid', basis: 3, computedAt })
+    const before = await Venues.byId(created.id)
+    const untouched = await Venues.update(created.id, {})
+    expect(untouched?.unchanged).toBe(true)
+    expect(untouched?.updatedAt).toBe(before?.updatedAt)
+    expect(untouched?.firstPublishedAt).toBe(created.firstPublishedAt)
+    expect(untouched?.priceBand).toBe('mid')
+    expect(await Venues.revisions(created.id)).toHaveLength(0)
+    const sameName = await Venues.update(created.id, { name: 'Тихая полка' })
+    expect(sameName?.unchanged).toBe(true)
+    expect(await Venues.revisions(created.id)).toHaveLength(0)
+    const edited = await Venues.update(created.id, { name: 'Тихая полка два' })
+    expect(edited?.unchanged).toBe(false)
+    expect(edited?.name).toBe('Тихая полка два')
+    expect(edited?.firstPublishedAt).toBe(created.firstPublishedAt)
+    expect(edited?.priceBand).toBe('mid')
+    expect(edited?.updatedAt).not.toBe(before?.updatedAt)
+    const revisions = await Venues.revisions(created.id)
+    expect(revisions).toHaveLength(1)
+    expect((revisions[0]?.snapshot as { name?: string } | null)?.name).toBe('Тихая полка')
+  })
+
+  it('stamps first publication once and a later no-op keeps that instant', async () => {
+    const created = await Venues.create({
+      name: 'Черновик полки',
+      slug: 'stamp-shelf',
+      kind: 'cafe',
+      description: description(),
+    })
+    expect(created.firstPublishedAt).toBeNull()
+    const published = await Venues.update(created.id, { status: 'published' })
+    expect(published?.unchanged).toBe(false)
+    expect(published?.firstPublishedAt).toBeTruthy()
+    const again = await Venues.update(created.id, { status: 'published' })
+    expect(again?.unchanged).toBe(true)
+    expect(again?.firstPublishedAt).toBe(published?.firstPublishedAt)
+    expect(await Venues.revisions(created.id)).toHaveLength(1)
   })
 })

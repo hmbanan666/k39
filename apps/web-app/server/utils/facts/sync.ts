@@ -4,6 +4,7 @@ import type { ScheduleRecord, ScheduleRules } from '../../../shared/schedule'
 import { db } from '@k39/database'
 import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
+import { rejectBannedSites } from '../mcp/writing-guard'
 import { commitFact, retireFactSlot } from './commit'
 
 export async function hoursConflict(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor) {
@@ -111,6 +112,7 @@ function hoursClaim(rules: ScheduleRules, record: ScheduleRecord): {
 }
 
 export async function setVenuePrices(venueId: string, prices: VenuePriceInput[], actor: FactActor, pageStatus?: string | null) {
+  rejectBannedSites(prices.map((row) => ({ sourceUrl: row.sourceUrl, sourceTitle: row.sourceTitle })))
   const catalog = new Map((await db.prices.items()).map((item) => [item.slug, item]))
   const current = await db.prices.forVenue(venueId)
   const incoming = new Map(prices.map((row) => [priceKey(row.item, row.variant), row]))

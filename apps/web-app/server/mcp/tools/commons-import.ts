@@ -4,6 +4,7 @@ import { downloadWikimedia } from '../../media/commons'
 import { ingestImage } from '../../media/ingest'
 import { auditMcp } from '../../utils/mcp/audit'
 import { license } from '../../utils/mcp/schemas'
+import { rejectBannedSites } from '../../utils/mcp/writing-guard'
 
 export default defineMcpTool({
   name: 'commons_import',
@@ -27,6 +28,7 @@ export default defineMcpTool({
     if (Boolean(input.placeId) === Boolean(input.collectionId)) {
       throw createError({ statusCode: 400, statusMessage: 'Нужен ровно один из placeId или collectionId' })
     }
+    rejectBannedSites({ fileUrl: input.fileUrl, pageUrl: input.pageUrl, caption: input.caption })
     const urls = [input.pageUrl, input.fileUrl]
     const existing = input.placeId
       ? await db.editor.mediaForPlaceSource(input.placeId, urls)

@@ -68,12 +68,12 @@ describe('writing stop-list', () => {
   })
 
   it('warns on a draft save and rejects a publish', () => {
-    expect(writingGate('Форт у дороги.', false)).toEqual([])
-    expect(writingGate('уютная атмосфера', false)).toEqual(['уютная атмосфера: уютная атмосфера'])
-    expect(() => writingGate('уютная атмосфера', true)).toThrow(/Нельзя опубликовать/)
+    expect(writingGate({ prose: 'Форт у дороги.', publishing: false })).toEqual([])
+    expect(writingGate({ prose: 'уютная атмосфера', publishing: false })).toEqual(['уютная атмосфера: уютная атмосфера'])
+    expect(() => writingGate({ prose: 'уютная атмосфера', publishing: true })).toThrow(/Нельзя опубликовать/)
     expect(readFileSync(resolve(import.meta.dirname, '../server/utils/content/save.ts'), 'utf8')).toContain('writingGate(')
     try {
-      writingGate('Форт — музей', true)
+      writingGate({ prose: 'Форт — музей', publishing: true })
       expect.unreachable()
     } catch (error) {
       expect((error as { statusCode?: number }).statusCode).toBe(400)

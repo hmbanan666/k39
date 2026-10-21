@@ -1,6 +1,7 @@
 import type { MediaLicense } from '@k39/database'
 import { db } from '@k39/database'
 import { requireEditor } from '../../../utils/access'
+import { rejectBannedSites } from '../../../utils/mcp/writing-guard'
 
 const LICENSES = new Set(['own', 'cc-by', 'cc-by-sa', 'cc0', 'pd', 'permission'])
 
@@ -25,6 +26,12 @@ export default defineEventHandler(async (event) => {
   if (alt !== undefined && !alt) {
     throw createError({ statusCode: 400, statusMessage: 'Нужен alt' })
   }
+  rejectBannedSites({
+    sourceUrl: typeof body.sourceUrl === 'string' ? body.sourceUrl : undefined,
+    alt,
+    author: typeof body.author === 'string' ? body.author : undefined,
+    caption: typeof body.caption === 'string' ? body.caption : undefined,
+  })
   const updated = await db.editor.updateMedia(id, {
     alt,
     author: typeof body.author === 'string' ? body.author : undefined,

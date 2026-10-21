@@ -97,7 +97,7 @@ export async function writeQuest(input: QuestWriteInput, auditTool: string, opti
       routeId,
       steps: input.steps,
     }, null, {
-      parts: [
+      prose: [
         title,
         input.summary === undefined ? current?.summary : input.summary,
         input.body === undefined ? current?.body : input.body,

@@ -3,6 +3,7 @@ import type { ScheduleRecord, ScheduleRules } from '~~/shared/schedule'
 import { db } from '@k39/database'
 import { addDays, expandIntervals, localNow, readRules } from '~~/shared/schedule'
 import { hoursConflict, writeHoursFact } from './facts/sync'
+import { rejectBannedSites } from './mcp/writing-guard'
 
 // Materialised window (ADR 0028): yesterday to 30 days ahead, so overnight
 // intervals that started yesterday still answer "open now".
@@ -19,6 +20,7 @@ function intervalsFor(rules: ScheduleRules, at = new Date()) {
 }
 
 export async function saveSchedule(entityType: string, entityId: string, record: ScheduleRecord, options?: { actor?: FactActor, syncFacts?: boolean, pageStatus?: string | null }) {
+  rejectBannedSites(record.sourceUrl)
   const syncFacts = options?.syncFacts !== false
   const actor = options?.actor ?? 'mcp'
   if (syncFacts && (entityType === 'place' || entityType === 'venue')) {

@@ -1,5 +1,6 @@
 import type { PublicMedia } from './media'
 import type { PriceSummary, PublicPriceCard, SharedPriceSource, StoredPriceBand } from './price-compare'
+import { priceInName, priceInNameMessage } from '@k39/database/price-label'
 import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
 import { priceBadgeFromBand, priceCompareLead, sharedPriceSource } from './price-compare'
@@ -101,6 +102,20 @@ export const venueModulesSchema = z.array(venueModuleSchema).max(16).superRefine
       ctx.addIssue({ code: 'custom', message: `At most one ${unique} module` })
     }
   }
+  modules.forEach((mod, index) => {
+    if (mod.type !== 'dishes') {
+      return
+    }
+    mod.items.forEach((item, itemIndex) => {
+      if (priceInName(item.name)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: priceInNameMessage(),
+          path: [index, 'items', itemIndex, 'name'],
+        })
+      }
+    })
+  })
 })
 
 export type VenueModule = z.infer<typeof venueModuleSchema>

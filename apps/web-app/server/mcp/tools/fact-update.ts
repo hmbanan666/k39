@@ -6,7 +6,7 @@ import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
   name: 'fact_update',
-  description: 'Replace one fact after the kind schema accepts the value. Writes a revision and closes that fact\'s queue rows. Does not change publication and does not mark prose reviewed. If the latest revision actor is owner, the value is not written: the conflict waits for an editor in /admin. Writes an mcp_audits row.',
+  description: 'Replace one fact after the kind schema accepts the value. Writes a revision and closes that fact\'s queue rows. Does not change publication and does not mark prose reviewed. sourceUrl must not name a banned site. If the latest revision actor is owner, the value is not written: the conflict waits for an editor in /admin. Writes an mcp_audits row.',
   inputSchema: {
     id: z.string(),
     value: z.unknown(),

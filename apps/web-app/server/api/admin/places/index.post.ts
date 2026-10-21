@@ -1,7 +1,7 @@
 import { db } from '@k39/database'
 import { slugError } from '../../../../shared/seo'
 import { requireEditor } from '../../../utils/access'
-import { savePlaceContent } from '../../../utils/content/save'
+import { contentGate, savePlaceContent } from '../../../utils/content/save'
 import { syncCoordinates, syncPlaceStatus } from '../../../utils/facts/sync'
 
 export default defineEventHandler(async (event) => {
@@ -34,10 +34,17 @@ export default defineEventHandler(async (event) => {
     publicationStatus,
     noindex: Boolean(body.noindex),
     authorKind: body.authorKind || 'human',
-  }, user.id, {
-    parts: [body.title, body.summary, body.body, body.hours, body.price, body.howToGet, body.seoTitle, body.seoDescription],
-    publishing: publicationStatus === 'published',
-  })
+  }, user.id, contentGate('place', {
+    title: body.title,
+    summary: body.summary,
+    body: body.body,
+    hours: body.hours,
+    price: body.price,
+    howToGet: body.howToGet,
+    seoTitle: body.seoTitle,
+    seoDescription: body.seoDescription,
+    sources: body.sources,
+  }, publicationStatus === 'published'))
   const status = body.status || 'unknown'
   await syncCoordinates({
     subjectType: 'place',

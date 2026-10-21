@@ -1,8 +1,8 @@
-import { db } from '@k39/database'
+import { db, SOURCE_LINK_LIMIT } from '@k39/database'
 import { z } from 'zod'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan, pageModulesSchema } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
-import { saveCollectionContent } from '../../utils/content/save'
+import { contentGate, saveCollectionContent } from '../../utils/content/save'
 import { auditMcp } from '../../utils/mcp/audit'
 import { rethrowContentWrite } from '../../utils/mcp/content-error'
 import { refusePendingLiveEdit, resolvePublication } from '../../utils/mcp/draft'
@@ -25,7 +25,7 @@ export default defineMcpTool({
     noindex: z.boolean().optional(),
     kind: z.enum(['theme', 'month']).optional(),
     month: z.number().int().min(1).max(12).nullable().optional(),
-    sources: sources.describe('Replacement source list. Omit to keep the current one.'),
+    sources: sources.describe(`Replacement source list, at most ${SOURCE_LINK_LIMIT}. Duplicate URLs merge. Omit to keep the current one.`),
     items: orderedStops.describe('Replacement ordered places. Omit to keep the current list.'),
     modules: pageModulesSchema.optional().describe('Replacement ordered page modules: text, month-stats, picker, ideas, plans, places, months. Omit to keep them.'),
   },
@@ -66,18 +66,15 @@ export default defineMcpTool({
         month: input.kind === 'theme' ? null : input.month,
         sources: input.sources,
         modules: input.modules,
-      }, null, {
-        parts: [
-          input.title,
-          input.summary === undefined ? current?.summary : input.summary,
-          plan.copy,
-          input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
-          input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
-          input.items,
-          input.sources === undefined ? current?.sources : input.sources,
-        ],
-        publishing: publicationStatus === 'published',
-      })
+      }, null, contentGate('collection', {
+        title: input.title,
+        summary: input.summary === undefined ? current?.summary : input.summary,
+        copy: plan.copy,
+        seoTitle: input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
+        seoDescription: input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
+        items: input.items,
+        sources: input.sources === undefined ? current?.sources : input.sources,
+      }, publicationStatus === 'published'))
       await auditMcp('collection_save', 'collection', row.id)
       return {
         id: row.id,

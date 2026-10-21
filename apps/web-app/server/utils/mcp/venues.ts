@@ -65,11 +65,15 @@ export interface VenueListRow {
   priceBandBasis: number | null
   osmId: string | null
   distanceKm: number | null
+  createdAt: string
+  updatedAt: string
 }
 
 export function venueListItem(row: VenueListRow, now = new Date()) {
   return {
     id: row.id,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
     slug: row.slug,
     name: row.name,
     kind: row.kind,

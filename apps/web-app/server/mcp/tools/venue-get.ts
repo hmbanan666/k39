@@ -6,7 +6,7 @@ import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
   name: 'venue_get',
-  description: 'Load one venue by id or slug, including photos (author, license, source, origin), hours, action links, signature dishes, sources, and whether the facts are stale.',
+  description: 'Load one venue by id or slug, including photos (author, license, source, origin), hours, action links, signature dishes, sources, createdAt, updatedAt, and whether the facts are stale.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -23,6 +23,8 @@ export default defineMcpTool({
     await auditMcp('venue_get', 'venue', venue.id)
     return {
       id: venue.id,
+      createdAt: venue.createdAt,
+      updatedAt: venue.updatedAt,
       slug: venue.slug,
       name: venue.name,
       kind: venue.kind,

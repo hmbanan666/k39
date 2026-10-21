@@ -4,7 +4,7 @@ import process from 'node:process'
 import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
-import { updateVenueContent } from '../content/save'
+import { contentGate, updateVenueContent } from '../content/save'
 import { readShownFacts, shownText } from '../facts/read'
 import { setVenuePrices, syncVenueContact } from '../facts/sync'
 import { normalizeDishModules } from '../venues/dishes'
@@ -21,6 +21,11 @@ async function venuePhone(venue: { id: string, phone: string | null, address: st
 
 function fail(statusCode: number, statusMessage: string): never {
   throw createError({ statusCode, statusMessage })
+}
+
+function formProblem(issues: Array<{ message: string }>, fallback: string) {
+  const issue = issues.find((item) => item.message.startsWith('Цену пишите') || item.message.startsWith('Нельзя использовать'))
+  return issue?.message ?? fallback
 }
 
 function pepper() {
@@ -262,14 +267,14 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
   await requireVenueMember(userId, venueId)
   const parsed = ownerVenueSchema.safeParse(pickOwnerFields(body))
   if (!parsed.success) {
-    fail(400, 'Проверьте поля формы')
+    fail(400, formProblem(parsed.error.issues, 'Проверьте поля формы'))
   }
   const write = parsed.data
   let ownerPrices: ReturnType<typeof asOwnerPrices> | undefined
   if (Object.prototype.hasOwnProperty.call(body, 'prices')) {
     const prices = venuePricesWriteSchema.safeParse(body.prices)
     if (!prices.success) {
-      fail(400, 'Проверьте ориентиры цен')
+      fail(400, formProblem(prices.error.issues, 'Проверьте ориентиры цен'))
     }
     ownerPrices = asOwnerPrices(prices.data)
   }
@@ -291,11 +296,14 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     const updated = await updateVenueContent(venueId, {
       ...write,
       lastVerifiedAt: touchHours ? new Date().toISOString() : undefined,
-    }, userId, {
-      parts: [write.description, write.modules, write.address, write.phone, write.name],
-      publishing: current.status === 'published',
-      venue: true,
-    })
+    }, userId, contentGate('venue', {
+      description: write.description,
+      modules: write.modules,
+      address: write.address,
+      phone: write.phone,
+      name: write.name,
+      prices: ownerPrices,
+    }, current.status === 'published'))
     const saved = updated.row
     if (!saved) {
       fail(404, 'Заведение не найдено')

@@ -1,7 +1,9 @@
 import type { FactRefWrite } from '@k39/database'
 import type { FactActor, FactConfidence, FactKind, FactProposal, FactSubject, SourceKind } from '../../../shared/facts'
 import { db } from '@k39/database'
+import { createError } from 'h3'
 import { defaultTtl, mapSourceAllowed, ownerBlocksToken, parseFactValue, priorityFor, queueMayOpen, valueHash, watchableSource } from '../../../shared/facts'
+import { rejectBannedSites } from '../mcp/writing-guard'
 
 export interface CommitFactInput {
   kind: FactKind
@@ -25,6 +27,7 @@ export interface CommitFactInput {
 }
 
 export async function commitFact(input: CommitFactInput) {
+  rejectBannedSites({ sourceUrl: input.sourceUrl, sourceTitle: input.sourceTitle })
   if (!mapSourceAllowed(input.subjectType, input.kind, input.sourceKind)) {
     throw createError({ statusCode: 400, statusMessage: 'Карта подходит только заведению и только для адреса, часов, телефона, статуса и координат' })
   }

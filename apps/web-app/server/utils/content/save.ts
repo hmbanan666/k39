@@ -1,9 +1,12 @@
 import type { PassportWrite, VenueWrite } from '@k39/database'
-import { db } from '@k39/database'
+import type { WritingEntity } from '../../../shared/writing-split'
+import { db, SourceInputError } from '@k39/database'
+import { createError } from 'h3'
 import { normalizeProse } from '../../../shared/facts'
 import { writingCopy } from '../../../shared/writing'
+import { writingSplit } from '../../../shared/writing-split'
 import { syncPageSections } from '../facts/queue'
-import { writingGate } from '../mcp/writing-guard'
+import { rejectBannedSites, writingGate } from '../mcp/writing-guard'
 
 /**
  * Every content-table write from MCP, REST, admin, and the cabinet goes
@@ -16,11 +19,13 @@ import { writingGate } from '../mcp/writing-guard'
  */
 
 export interface ContentGate {
-  /** Prose and structured copy the stop-list reads. */
-  parts: unknown[]
-  /** A published result rejects stop-list hits before the write. */
+  /** Prose we write. The stop-list and venue copy rules read this. */
+  prose: unknown[]
+  /** Official names and URLs. Banned sites read this; the stop-list does not. */
+  names?: unknown[]
+  /** A published result rejects hits before the write. */
   publishing: boolean
-  /** Venue copy also checks price retelling. */
+  /** Venue copy also checks price retelling in prose. */
   venue?: boolean
 }
 
@@ -31,8 +36,21 @@ type QuestWrite = Parameters<typeof db.editor.saveQuest>[0]
 type HubWrite = Parameters<typeof db.editor.saveCategory>[1]
 type DraftWrite = Parameters<typeof db.editor.saveContentDraft>[0]
 
+/** Classifies one entity and builds the gate. The split lives in `writingSplit`. */
+export function contentGate(entity: WritingEntity, input: object, publishing: boolean): ContentGate {
+  const split = writingSplit(entity, input as Record<string, unknown>)
+  return {
+    prose: split.prose,
+    names: split.names,
+    publishing,
+    venue: entity === 'venue',
+  }
+}
+
 export function contentWarnings(gate: ContentGate) {
-  return writingGate(normalizeProse(writingCopy(gate.parts)), gate.publishing, Boolean(gate.venue))
+  const prose = normalizeProse(writingCopy(gate.prose))
+  const names = normalizeProse(writingCopy(gate.names ?? []))
+  return writingGate({ prose, names, publishing: gate.publishing, venue: Boolean(gate.venue) })
 }
 
 async function afterPage(pageType: string, entityId: string | undefined) {
@@ -41,11 +59,22 @@ async function afterPage(pageType: string, entityId: string | undefined) {
   }
 }
 
+function sourceWriteError(error: unknown): never {
+  if (error instanceof SourceInputError) {
+    throw createError({ statusCode: 400, statusMessage: error.message })
+  }
+  throw error
+}
+
 export async function savePlaceContent(input: PlaceWrite, userId: string | null | undefined, gate: ContentGate) {
   const writingWarnings = contentWarnings(gate)
-  const row = await db.editor.savePlace(input, userId)
-  await afterPage('place', row.id)
-  return { row, writingWarnings }
+  try {
+    const row = await db.editor.savePlace(input, userId)
+    await afterPage('place', row.id)
+    return { row, writingWarnings }
+  } catch (error) {
+    sourceWriteError(error)
+  }
 }
 
 export async function saveRouteContent(input: RouteWrite, userId: string | null | undefined, gate: ContentGate) {
@@ -57,12 +86,17 @@ export async function saveRouteContent(input: RouteWrite, userId: string | null 
 
 export async function saveCollectionContent(input: CollectionWrite, userId: string | null | undefined, gate: ContentGate) {
   const writingWarnings = contentWarnings(gate)
-  const row = await db.editor.saveCollection(input, userId)
-  await afterPage('collection', row.id)
-  return { row, writingWarnings }
+  try {
+    const row = await db.editor.saveCollection(input, userId)
+    await afterPage('collection', row.id)
+    return { row, writingWarnings }
+  } catch (error) {
+    sourceWriteError(error)
+  }
 }
 
 export async function saveQuestContent(input: QuestWrite, userId: string | null | undefined, gate: ContentGate) {
+  rejectBannedSites(input)
   const writingWarnings = contentWarnings(gate)
   const row = await db.editor.saveQuest(input, userId)
   await afterPage('quest', row.id)
@@ -70,6 +104,7 @@ export async function saveQuestContent(input: QuestWrite, userId: string | null 
 }
 
 export async function saveHubContent(id: string, input: HubWrite, gate: ContentGate) {
+  rejectBannedSites(input)
   const writingWarnings = contentWarnings(gate)
   const row = await db.editor.saveCategory(id, input)
   await afterPage('hub', row?.id)
@@ -106,7 +141,11 @@ export async function savePendingDraftContent(input: DraftWrite, gate: ContentGa
 
 export async function applyPendingPlaceContent(id: string, gate: ContentGate) {
   const writingWarnings = contentWarnings(gate)
-  const row = await db.editor.applyPendingPlace(id)
-  await afterPage('place', row?.id)
-  return { row, writingWarnings }
+  try {
+    const row = await db.editor.applyPendingPlace(id)
+    await afterPage('place', row?.id)
+    return { row, writingWarnings }
+  } catch (error) {
+    sourceWriteError(error)
+  }
 }

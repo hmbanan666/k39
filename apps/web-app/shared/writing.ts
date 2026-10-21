@@ -2,7 +2,9 @@
  * Banned Russian copy. `writingGuideSection()` is what `content_guide` prints.
  * `.cursor/skills/k39-writing/SKILL.md` must contain every `phrase`.
  * `apps/web-app/test/writing.test.ts` fails when the two diverge.
- * Saves call `writingHits`. A draft keeps the row and returns the hits.
+ * Saves call `writingHits` on prose. Official names skip the stop-list
+ * (`writingSplit` in `shared/writing-split.ts`). Banned sites still apply
+ * to names and URLs. A draft keeps the row and returns the hits.
  * Publishing throws.
  *
  * Inflected forms are a stem plus a closed list of endings, with a letter
@@ -260,6 +262,33 @@ function matchRule(text: string, rule: WritingStop) {
   return found?.[0] ?? null
 }
 
+/** Banned-site hits. One hit per site. Matching is case-insensitive. */
+export function bannedSiteHits(text: string): WritingHit[] {
+  if (!text) {
+    return []
+  }
+  const lower = text.toLowerCase()
+  const hits: WritingHit[] = []
+  for (const site of WRITING_BANNED_SITES) {
+    const index = lower.indexOf(site)
+    if (index >= 0) {
+      hits.push({ phrase: site, match: text.slice(index, index + site.length) })
+    }
+  }
+  return hits
+}
+
+/** A banned site anywhere in the value, including a nested URL. Null when clean. */
+export function bannedSiteProblem(value: unknown): string | null {
+  const text = writingCopy([value]).replace(/\s+/g, ' ').trim()
+  const hits = bannedSiteHits(text)
+  if (!hits.length) {
+    return null
+  }
+  const sites = [...new Set(hits.map((hit) => hit.phrase))].join(', ')
+  return `Нельзя использовать: ${sites}`
+}
+
 /** Stop-list, pattern, and (for a venue) price-copy hits. One hit per rule. */
 export function writingHits(text: string, options?: { venue?: boolean }): WritingHit[] {
   const rules: readonly WritingStop[] = options?.venue
@@ -304,6 +333,6 @@ export function writingGuideSection() {
     `Never name ${sites}. Never paste another site's sentences, photos, or structure. Write from the sources, in our words.`,
     'Do not pad a page to reach a length minimum. A longer ceiling is only the passport length override in .cursor/skills/k39-writing/SKILL.md (ADR 0034).',
     'Inflected forms are a stem plus a closed list of endings, with a letter boundary on each side. A short stem does not match a longer word: самый does not match самовар, самолёт, or самостоятельно. The comparative лучше is not banned.',
-    'A draft save returns writingWarnings and still stores the row. Publishing rejects when writingHits is not empty. The check reads the prose that renders, including collection module text.',
+    'A draft save returns writingWarnings and still stores the row. Publishing rejects when writingHits is not empty. The check reads the prose that renders, including collection module text. A venue name, a dish name, a source title, and a price-item name are official names: the stop-list and the venue price rules skip them. Banned sites still apply to those names and to every URL.',
   ].join('\n')
 }

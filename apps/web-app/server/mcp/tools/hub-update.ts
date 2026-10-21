@@ -7,7 +7,7 @@ import { auditMcp } from '../../utils/mcp/audit'
 
 export default defineMcpTool({
   name: 'hub_update',
-  description: 'Update an editable hub (category): title, description, markdown body, SEO, and noindex. A "## Частые вопросы" section in body becomes FAQPage. A question is **…?** or a ### heading. Omitting a field keeps the stored value. Hubs have no publication status. The response lists renderedFields; body is the article. Does not change users or settings.',
+  description: 'Update an editable hub (category): title, description, markdown body, SEO, and noindex. A "## Частые вопросы" section in body becomes FAQPage. A question is **…?** or a ### heading. Omitting a field keeps the stored value. Hubs have no publication status. A banned site in the text or a URL is rejected. The response lists renderedFields; body is the article. Does not change users or settings.',
   inputSchema: {
     slug: z.string().describe('Hub slug: forty, zamki, plyazhi, kurorty, muzei, eda'),
     title: z.string().optional(),
@@ -38,7 +38,7 @@ export default defineMcpTool({
       ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
       noindex: input.noindex ?? current.noindex,
     }, {
-      parts: [title, description, body, seoTitle, seoDescription],
+      prose: [title, description, body, seoTitle, seoDescription],
       publishing: true,
     })
     await auditMcp('hub_update', 'hub', current.id)

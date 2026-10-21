@@ -4,6 +4,8 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
 import { PHONE_TEXT_MAX } from '../phone'
+import { priceInName, priceInNameMessage } from '../price-label'
+import { prepareSourceLinks, SourceInputError } from '../sources'
 import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import {
   assertKind,
@@ -134,23 +136,30 @@ function cleanDishes(rows: VenueDish[] | undefined) {
     return undefined
   }
   return rows
-    .map((row) => ({
-      name: row.name.trim().slice(0, 80),
-      note: row.note?.trim().slice(0, 160) || null,
-      priceRub: row.priceRub != null && Number.isFinite(row.priceRub) && row.priceRub >= 0 ? Math.round(row.priceRub) : null,
-    }))
+    .map((row) => {
+      const name = row.name.trim().slice(0, 80)
+      if (name && priceInName(name)) {
+        throw new VenueInputError(`${priceInNameMessage()}: ${name}`)
+      }
+      return {
+        name,
+        note: row.note?.trim().slice(0, 160) || null,
+        priceRub: row.priceRub != null && Number.isFinite(row.priceRub) && row.priceRub >= 0 ? Math.round(row.priceRub) : null,
+      }
+    })
     .filter((row) => row.name)
     .slice(0, SIGNATURE_DISHES_MAX)
 }
 
 function cleanSources(rows: SourceLink[] | undefined) {
-  if (!rows) {
-    return undefined
+  try {
+    return prepareSourceLinks(rows)
+  } catch (error) {
+    if (error instanceof SourceInputError) {
+      throw new VenueInputError(error.message)
+    }
+    throw error
   }
-  return rows
-    .map((row) => ({ title: row.title.trim().slice(0, 160), url: row.url.trim().slice(0, 500) }))
-    .filter((row) => row.title && /^https?:\/\//.test(row.url))
-    .slice(0, 12)
 }
 
 function assertMoney(priceLevel: number | null | undefined, avgCheck: number | null | undefined) {
@@ -430,6 +439,46 @@ export class Venues {
     const avgCheck = input.avgCheck === undefined ? current.avgCheck : input.avgCheck
     assertMoney(priceLevel, avgCheck)
     const hours = input.hours === undefined ? current.hours : normalizeHours(input.hours)
+    const next = {
+      slug: nextSlug,
+      name: input.name === undefined ? current.name : input.name.trim().slice(0, 160),
+      kind: input.kind ?? current.kind,
+      cuisineTags: cleanTags(input.cuisineTags) ?? current.cuisineTags,
+      regionId: input.regionId === undefined ? current.regionId : input.regionId,
+      address: input.address === undefined ? current.address : cleanText(input.address, 300),
+      latitude,
+      longitude,
+      priceLevel,
+      avgCheck,
+      hours,
+      phone: input.phone === undefined ? current.phone : cleanText(input.phone, PHONE_TEXT_MAX),
+      website: input.website === undefined ? current.website : cleanWebsite(input.website),
+      socials: cleanSocials(input.socials) ?? current.socials,
+      bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : cleanUrl(input.bookingUrl),
+      orderUrl: input.orderUrl === undefined ? current.orderUrl : cleanUrl(input.orderUrl),
+      deliveryUrl: input.deliveryUrl === undefined ? current.deliveryUrl : cleanUrl(input.deliveryUrl),
+      menuUrl: input.menuUrl === undefined ? current.menuUrl : cleanUrl(input.menuUrl),
+      reservation: input.reservation === undefined ? current.reservation : input.reservation,
+      takeaway: input.takeaway === undefined ? current.takeaway : input.takeaway,
+      delivery: input.delivery === undefined ? current.delivery : input.delivery,
+      signatureDishes: cleanDishes(input.signatureDishes) ?? current.signatureDishes,
+      modules: input.modules ?? current.modules,
+      contactEmail: input.contactEmail === undefined ? current.contactEmail : cleanEmail(input.contactEmail),
+      description: nextDescription,
+      sources: cleanSources(input.sources) ?? current.sources,
+      status: nextStatus,
+      firstPublishedAt: firstPublishedStamp(current.firstPublishedAt, nextStatus),
+      lastVerifiedAt: input.lastVerifiedAt === undefined ? current.lastVerifiedAt : input.lastVerifiedAt,
+      osmId: input.osmId === undefined ? current.osmId : cleanText(input.osmId, 80),
+      seoTitle: input.seoTitle === undefined ? current.seoTitle : cleanText(input.seoTitle, 180),
+      seoDescription: input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
+      noindex: input.noindex ?? current.noindex,
+    }
+    // Price band, updatedAt, and updatedBy are derived. An equal row writes nothing.
+    // firstPublishedAt stays in the comparison: a first publish is a change, a later edit keeps the stored instant.
+    if (sameVenueWrite(current, next)) {
+      return { ...current, unchanged: true as const }
+    }
     await useDatabase().insert(revisions).values({
       entityType: 'venue',
       entityId: current.id,
@@ -441,39 +490,7 @@ export class Venues {
     }
     try {
       const [updated] = await useDatabase().update(venues).set({
-        slug: nextSlug,
-        name: input.name === undefined ? current.name : input.name.trim().slice(0, 160),
-        kind: input.kind ?? current.kind,
-        cuisineTags: cleanTags(input.cuisineTags) ?? current.cuisineTags,
-        regionId: input.regionId === undefined ? current.regionId : input.regionId,
-        address: input.address === undefined ? current.address : cleanText(input.address, 300),
-        latitude,
-        longitude,
-        priceLevel,
-        avgCheck,
-        hours,
-        phone: input.phone === undefined ? current.phone : cleanText(input.phone, PHONE_TEXT_MAX),
-        website: input.website === undefined ? current.website : cleanWebsite(input.website),
-        socials: cleanSocials(input.socials) ?? current.socials,
-        bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : cleanUrl(input.bookingUrl),
-        orderUrl: input.orderUrl === undefined ? current.orderUrl : cleanUrl(input.orderUrl),
-        deliveryUrl: input.deliveryUrl === undefined ? current.deliveryUrl : cleanUrl(input.deliveryUrl),
-        menuUrl: input.menuUrl === undefined ? current.menuUrl : cleanUrl(input.menuUrl),
-        reservation: input.reservation === undefined ? current.reservation : input.reservation,
-        takeaway: input.takeaway === undefined ? current.takeaway : input.takeaway,
-        delivery: input.delivery === undefined ? current.delivery : input.delivery,
-        signatureDishes: cleanDishes(input.signatureDishes) ?? current.signatureDishes,
-        modules: input.modules ?? current.modules,
-        contactEmail: input.contactEmail === undefined ? current.contactEmail : cleanEmail(input.contactEmail),
-        description: nextDescription,
-        sources: cleanSources(input.sources) ?? current.sources,
-        status: nextStatus,
-        firstPublishedAt: firstPublishedStamp(current.firstPublishedAt, nextStatus),
-        lastVerifiedAt: input.lastVerifiedAt === undefined ? current.lastVerifiedAt : input.lastVerifiedAt,
-        osmId: input.osmId === undefined ? current.osmId : cleanText(input.osmId, 80),
-        seoTitle: input.seoTitle === undefined ? current.seoTitle : cleanText(input.seoTitle, 180),
-        seoDescription: input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
-        noindex: input.noindex ?? current.noindex,
+        ...next,
         updatedBy: userId ?? null,
         updatedAt: new Date().toISOString(),
       }).where(eq(venues.id, current.id)).returning()
@@ -487,7 +504,7 @@ export class Venues {
           await clearGone(`/zavedeniya/${current.slug}`)
         }
       }
-      return saved
+      return { ...saved, unchanged: false as const }
     } catch (error) {
       const nextOsm = input.osmId === undefined ? current.osmId : cleanText(input.osmId, 80)
       const clash = await uniqueError(error, nextSlug, nextOsm)
@@ -984,6 +1001,32 @@ const RESTORE_KEYS = [
   'modules', 'contactEmail', 'description', 'sources', 'status', 'lastVerifiedAt',
   'osmId', 'seoTitle', 'seoDescription', 'noindex',
 ] as const
+
+function sameVenueWrite(current: object, next: Record<string, unknown>) {
+  const row = current as Record<string, unknown>
+  return Object.keys(next).every((key) => sameValue(row[key], next[key]))
+}
+
+function sameValue(left: unknown, right: unknown) {
+  return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right))
+}
+
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonical)
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(record).sort()) {
+      if (record[key] !== undefined) {
+        out[key] = canonical(record[key])
+      }
+    }
+    return out
+  }
+  return value
+}
 
 function writeFromSnapshot(row: Record<string, unknown>): VenueWrite {
   const write: Record<string, unknown> = {}

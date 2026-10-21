@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
     ogImage: body.ogImage || null,
     noindex: Boolean(body.noindex),
   }, {
-    parts: [body.title, body.description, body.body, body.seoTitle, body.seoDescription],
+    prose: [body.title, body.description, body.body, body.seoTitle, body.seoDescription],
     publishing: true,
   })
   return { ...row, writingWarnings, article: 'body' as const, renderedFields: HUB_RENDERED_FIELDS }

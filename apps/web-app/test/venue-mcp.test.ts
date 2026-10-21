@@ -88,11 +88,27 @@ describe('venues_list input', () => {
       priceBandBasis: null,
       osmId: null,
       distanceKm: null,
+      createdAt: '2026-10-01T00:00:00.000Z',
+      updatedAt: '2026-10-20T00:00:00.000Z',
     }
     const page = venueListResult([row], 3, 2, 1, now)
     expect(page).toMatchObject({ total: 3, page: 2, pageSize: 1 })
     expect(page.items).toEqual([venueListItem(row, now)])
-    expect(page.items[0]).toMatchObject({ slug: 'elka', status: 'archived', stale: true })
+    expect(page.items[0]).toMatchObject({
+      slug: 'elka',
+      status: 'archived',
+      stale: true,
+      createdAt: '2026-10-01T00:00:00.000Z',
+      updatedAt: '2026-10-20T00:00:00.000Z',
+    })
+    expect(toolSource('venue-get.ts')).toContain('createdAt: venue.createdAt')
+    expect(toolSource('venue-get.ts')).toContain('updatedAt: venue.updatedAt')
+    expect(toolSource('venues-list.ts')).toContain('createdAt and updatedAt')
+    expect(toolSource('venue-update.ts')).toContain('unchanged is true only for the venue row')
+    expect(toolSource('venue-update.ts')).toContain('their own tables')
+    expect(toolSource('venue-update.ts')).toContain('updateVenue(input)')
+    expect(toolSource('venue-create.ts')).toContain('SOURCE_LINK_LIMIT')
+    expect(toolSource('venue-update.ts')).toContain('SOURCE_LINK_LIMIT')
   })
 })
 
