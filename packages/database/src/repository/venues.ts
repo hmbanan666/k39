@@ -10,6 +10,7 @@ import {
   descriptionPublishError,
   emptyHours,
   FOOD_KINDS,
+  haversineKm,
   isBlockedVenueSlug,
   isFoodKind,
   NEARBY_MAX_DAYS,
@@ -19,6 +20,7 @@ import {
   STALE_DAYS,
   transliterateVenueSlug,
   VenueInputError,
+  venueNameKey,
   venueSlugCandidates,
 } from '../venues'
 
@@ -66,6 +68,8 @@ export interface VenueListFilter {
   near?: { latitude: number, longitude: number, radiusKm: number }
   foodOnly?: boolean
   limit?: number
+  /** Name or slug contains this text. Lower case, ё folded to е. */
+  query?: string
 }
 
 function cleanText(value: string | null | undefined, max: number) {
@@ -512,26 +516,8 @@ export class Venues {
   }
 
   static async list(filter: VenueListFilter = {}) {
-    const where = []
-    if (filter.regionId) {
-      where.push(eq(venues.regionId, filter.regionId))
-    }
-    if (filter.kind) {
-      where.push(eq(venues.kind, filter.kind))
-    }
-    if (filter.status) {
-      where.push(eq(venues.status, filter.status))
-    }
-    if (filter.foodOnly) {
-      where.push(inArray(venues.kind, [...FOOD_KINDS]))
-    }
-    if (filter.stale === true) {
-      where.push(sql`(${venues.lastVerifiedAt} is null or ${venues.lastVerifiedAt} < now() - (${STALE_DAYS} || ' days')::interval)`)
-    }
-    if (filter.stale === false) {
-      where.push(sql`${venues.lastVerifiedAt} >= now() - (${STALE_DAYS} || ' days')::interval`)
-    }
-    const base = useDatabase().select().from(venues).where(where.length ? and(...where) : undefined).orderBy(asc(venues.name))
+    const where = venueListWhere(filter)
+    const base = useDatabase().select().from(venues).where(where.length ? and(...where) : undefined).orderBy(asc(venues.name), asc(venues.id))
     const rows = filter.limit ? await base.limit(filter.limit) : await base
     if (!filter.near) {
       return rows.map((row) => ({ ...row, distanceKm: null as number | null }))
@@ -541,12 +527,113 @@ export class Venues {
       if (row.latitude == null || row.longitude == null) {
         return []
       }
-      const distanceKm = haversineLocal(latitude, longitude, row.latitude, row.longitude)
+      const distanceKm = haversineKm(latitude, longitude, row.latitude, row.longitude)
       if (distanceKm > radiusKm) {
         return []
       }
       return [{ ...row, distanceKm }]
-    }).sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
+    }).sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0) || a.id.localeCompare(b.id))
+  }
+
+  /**
+   * One page of `list`, ordered by name then id, with the filtered count.
+   * `near` is applied before the slice so `total` counts only rows inside the radius.
+   * pageSize stops at 50, the same cap as `places_list`.
+   */
+  static async listPage(filter: VenueListFilter & { page?: number, pageSize?: number } = {}) {
+    const page = Math.max(1, Math.floor(filter.page ?? 1))
+    const pageSize = Math.min(50, Math.max(1, Math.floor(filter.pageSize ?? 20)))
+    const where = venueListWhere(filter)
+    const clause = where.length ? and(...where) : undefined
+    const ordered = () => useDatabase().select().from(venues).where(clause).orderBy(asc(venues.name), asc(venues.id))
+    if (filter.near) {
+      const rows = await ordered()
+      const { latitude, longitude, radiusKm } = filter.near
+      const matched = rows.flatMap((row) => {
+        if (row.latitude == null || row.longitude == null) {
+          return []
+        }
+        const distanceKm = haversineKm(latitude, longitude, row.latitude, row.longitude)
+        if (distanceKm > radiusKm) {
+          return []
+        }
+        return [{ ...row, distanceKm }]
+      })
+      const start = (page - 1) * pageSize
+      return { items: matched.slice(start, start + pageSize), total: matched.length, page, pageSize }
+    }
+    const [rows, countRows] = await Promise.all([
+      ordered().limit(pageSize).offset((page - 1) * pageSize),
+      useDatabase().select({ value: sql<number>`count(*)::int` }).from(venues).where(clause),
+    ])
+    return {
+      items: rows.map((row) => ({ ...row, distanceKm: null as number | null })),
+      total: Number(countRows[0]?.value ?? 0),
+      page,
+      pageSize,
+    }
+  }
+
+  /**
+   * Venues that share a normalized name or sit within `radiusM` of a point.
+   * Includes every status, so an archived card is not created again.
+   */
+  static async findDuplicates(input: {
+    name?: string
+    latitude?: number
+    longitude?: number
+    radiusM?: number
+    regionId?: string
+  }) {
+    const key = input.name ? venueNameKey(input.name) : ''
+    const latitude = input.latitude
+    const longitude = input.longitude
+    const hasPoint = latitude != null && longitude != null
+    const radiusM = Math.min(2000, Math.max(1, Math.floor(input.radiusM ?? 150)))
+    const where = input.regionId ? eq(venues.regionId, input.regionId) : undefined
+    const rows = await useDatabase().select({
+      id: venues.id,
+      slug: venues.slug,
+      name: venues.name,
+      kind: venues.kind,
+      status: venues.status,
+      latitude: venues.latitude,
+      longitude: venues.longitude,
+      regionSlug: regions.slug,
+      regionTitle: regions.title,
+    }).from(venues).leftJoin(regions, eq(venues.regionId, regions.id)).where(where)
+    const items = rows.flatMap((row) => {
+      const matched: Array<'name' | 'coordinates'> = []
+      if (key && venueNameKey(row.name) === key) {
+        matched.push('name')
+      }
+      let distanceM: number | null = null
+      if (hasPoint && row.latitude != null && row.longitude != null) {
+        distanceM = Math.round(haversineKm(latitude, longitude, row.latitude, row.longitude) * 1000)
+        if (distanceM <= radiusM) {
+          matched.push('coordinates')
+        }
+      }
+      if (!matched.length) {
+        return []
+      }
+      return [{
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        kind: row.kind,
+        status: row.status,
+        region: row.regionSlug ? { slug: row.regionSlug, title: row.regionTitle ?? row.regionSlug } : null,
+        distanceM,
+        matched,
+      }]
+    })
+    items.sort((a, b) => {
+      const left = a.distanceM ?? Number.POSITIVE_INFINITY
+      const right = b.distanceM ?? Number.POSITIVE_INFINITY
+      return left - right || a.name.localeCompare(b.name, 'ru') || a.id.localeCompare(b.id)
+    })
+    return items
   }
 
   static async nearby(origins: Array<{ latitude: number, longitude: number }>, now = new Date()) {
@@ -883,12 +970,35 @@ function writeFromSnapshot(row: Record<string, unknown>): VenueWrite {
   return write as VenueWrite
 }
 
-function haversineLocal(aLat: number, aLng: number, bLat: number, bLng: number) {
-  const toRad = (value: number) => value * Math.PI / 180
-  const dLat = toRad(bLat - aLat)
-  const dLng = toRad(bLng - aLng)
-  const lat1 = toRad(aLat)
-  const lat2 = toRad(bLat)
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
-  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+function likePattern(query: string) {
+  const needle = query.trim().toLowerCase().replace(/ё/g, 'е').replace(/[\\%_]/g, '\\$&')
+  return `%${needle}%`
+}
+
+function venueListWhere(filter: VenueListFilter) {
+  const where = []
+  if (filter.regionId) {
+    where.push(eq(venues.regionId, filter.regionId))
+  }
+  if (filter.kind) {
+    where.push(eq(venues.kind, filter.kind))
+  }
+  if (filter.status) {
+    where.push(eq(venues.status, filter.status))
+  }
+  if (filter.foodOnly) {
+    where.push(inArray(venues.kind, [...FOOD_KINDS]))
+  }
+  if (filter.stale === true) {
+    where.push(sql`(${venues.lastVerifiedAt} is null or ${venues.lastVerifiedAt} < now() - (${STALE_DAYS} || ' days')::interval)`)
+  }
+  if (filter.stale === false) {
+    where.push(sql`${venues.lastVerifiedAt} >= now() - (${STALE_DAYS} || ' days')::interval`)
+  }
+  const query = filter.query?.trim()
+  if (query) {
+    const pattern = likePattern(query)
+    where.push(sql`(lower(translate(${venues.name}, 'ёЁ', 'еЕ')) like ${pattern} or lower(${venues.slug}) like ${pattern})`)
+  }
+  return where
 }
