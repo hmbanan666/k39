@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. Amends ADR 0028.
+Accepted (2026-10-21). Amends ADR 0028.
 
 ## Context
 
