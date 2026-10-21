@@ -828,6 +828,20 @@ export class Editor {
     return useDatabase().select().from(routes).orderBy(asc(routes.title))
   }
 
+  static async routeById(id: string) {
+    const [row] = await useDatabase().select().from(routes).where(eq(routes.id, id)).limit(1)
+    return row ?? null
+  }
+
+  /** The route that owns a stop. A missing point is null. */
+  static async routeForPoint(pointId: string) {
+    const [point] = await useDatabase().select({ routeId: routePoints.routeId }).from(routePoints).where(eq(routePoints.id, pointId)).limit(1)
+    if (!point) {
+      return null
+    }
+    return this.routeById(point.routeId)
+  }
+
   static async routePoints(routeId: string) {
     return useDatabase().select({
       placeSlug: places.slug,
@@ -892,6 +906,11 @@ export class Editor {
 
   static async listRegions() {
     return useDatabase().select().from(regions).orderBy(asc(regions.title))
+  }
+
+  static async regionById(id: string) {
+    const [row] = await useDatabase().select().from(regions).where(eq(regions.id, id)).limit(1)
+    return row ?? null
   }
 
   /** Published place whose slug is the town (the town hub), for a short cover. */

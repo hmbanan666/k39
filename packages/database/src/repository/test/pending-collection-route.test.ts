@@ -6,20 +6,20 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope, requireEditorContent } from '../../../../../apps/web-app/server/utils/access'
 import { applyAdminContentDraft, collectionDraftNotice, discardAdminContentDraft, routeDraftNotice, withPendingGuard } from '../../../../../apps/web-app/server/utils/admin/content-draft'
 import { readCollection, saveCollectionDraft } from '../../../../../apps/web-app/server/utils/mcp/collections'
-import { updateFact } from '../../../../../apps/web-app/server/utils/mcp/fact-write'
+import { refuseLiveFact, updateFact } from '../../../../../apps/web-app/server/utils/mcp/fact-write'
 import { importCommonsPhoto, uploadMediaFromUrl } from '../../../../../apps/web-app/server/utils/mcp/media-import'
 import { attachCollectionPhoto, attachPlacePhoto, detachCollectionPhoto, refuseIncomingPhoto, refuseVenuePhoto } from '../../../../../apps/web-app/server/utils/mcp/photos'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { writeQuest } from '../../../../../apps/web-app/server/utils/mcp/quests'
 import { readRoute, updateRouteDraft } from '../../../../../apps/web-app/server/utils/mcp/routes'
 import { assertScheduleWritable } from '../../../../../apps/web-app/server/utils/mcp/schedule-target'
-import { updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
+import { deleteVenue, updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
 import { valueHash } from '../../../../../apps/web-app/shared/facts'
 import { renderMarkdown } from '../../../../../apps/web-app/shared/markdown'
 import { toPublicModules } from '../../../../../apps/web-app/shared/page-modules'
 import { bodyOf } from '../../body-sections'
 import { useDatabase } from '../../database'
-import { collections, contentDrafts, facts, mcpAudits, media, pageReviews, places, quests, revisions, routes, schedules, slugRedirects, venues, verificationQueue } from '../../tables'
+import { collections, contentDrafts, facts, mcpAudits, media, pageReviews, places, quests, regions, revisions, routePoints, routes, schedules, slugRedirects, venues, verificationQueue } from '../../tables'
 import { Content, Editor } from '../content'
 import { Facts } from '../facts'
 
@@ -46,11 +46,13 @@ const questIds: string[] = []
 const venueIds: string[] = []
 const mediaIds: string[] = []
 const redirectPaths: string[] = []
+const regionIds: string[] = []
+const factSubjectIds: string[] = []
 
 afterEach(async () => {
   enterContentScope('editor')
   const database = useDatabase()
-  for (const id of [...placeIds, ...routeIds, ...collectionIds, ...questIds, ...venueIds]) {
+  for (const id of [...placeIds, ...routeIds, ...collectionIds, ...questIds, ...venueIds, ...factSubjectIds, ...regionIds]) {
     await database.delete(verificationQueue).where(eq(verificationQueue.entityId, id))
     await database.delete(pageReviews).where(eq(pageReviews.entityId, id))
     await database.delete(contentDrafts).where(eq(contentDrafts.entityId, id))
@@ -80,6 +82,9 @@ afterEach(async () => {
   for (const id of venueIds) {
     await database.delete(venues).where(eq(venues.id, id))
   }
+  for (const id of regionIds) {
+    await database.delete(regions).where(eq(regions.id, id))
+  }
   placeIds.length = 0
   routeIds.length = 0
   collectionIds.length = 0
@@ -87,6 +92,8 @@ afterEach(async () => {
   venueIds.length = 0
   mediaIds.length = 0
   redirectPaths.length = 0
+  regionIds.length = 0
+  factSubjectIds.length = 0
 })
 
 async function place(slug: string, title: string) {
@@ -149,7 +156,7 @@ async function storedPhoto(name: string, caption?: string) {
   return row
 }
 
-async function phoneFact(subjectType: 'place' | 'venue', subjectId: string, text: string) {
+async function phoneFact(subjectType: 'place' | 'venue' | 'route' | 'route_stop' | 'region', subjectId: string, text: string) {
   const value = { text }
   const saved = await Facts.upsert({
     kind: 'phone',
@@ -713,5 +720,100 @@ describe('draft token leaves a public fact unchanged', () => {
       confidence: 'stated',
     })).rejects.toMatchObject(liveUnchanged)
     expect((await Facts.byId(venueFact.id))?.value).toEqual({ text: '+7 4012 11-11-11' })
+  })
+
+  it('refuses a live route, route stop, region, and an unknown subject', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const live = await publishedRoute('pending-fact-route')
+    const routeFact = await phoneFact('route', live.id, '+7 4012 40-00-01')
+    const [point] = await useDatabase().select().from(routePoints).where(eq(routePoints.routeId, live.id))
+    factSubjectIds.push(point!.id)
+    const stopFact = await phoneFact('route_stop', point!.id, '+7 4012 40-00-02')
+    const [region] = await useDatabase().insert(regions).values({
+      slug: 'pending-fact-region',
+      title: 'Край факта',
+    }).returning()
+    regionIds.push(region!.id)
+    const regionFact = await phoneFact('region', region!.id, '+7 4012 40-00-03')
+
+    enterContentScope('draft')
+    const next = {
+      value: { text: '+7 4012 40-00-09' },
+      sourceKind: 'official' as const,
+      confidence: 'stated' as const,
+    }
+    await expect(updateFact({ id: routeFact.id, ...next })).rejects.toMatchObject(liveUnchanged)
+    await expect(updateFact({ id: stopFact.id, ...next })).rejects.toMatchObject(liveUnchanged)
+    await expect(updateFact({ id: regionFact.id, ...next })).rejects.toMatchObject(liveUnchanged)
+    await expect(refuseLiveFact('event', 'future-subject')).rejects.toMatchObject(liveUnchanged)
+    await expect(refuseLiveFact('route', 'missing-route')).resolves.toBeUndefined()
+    await expect(refuseLiveFact('route_stop', 'missing-stop')).resolves.toBeUndefined()
+    await expect(refuseLiveFact('region', 'missing-region')).resolves.toBeUndefined()
+    expect((await Facts.byId(routeFact.id))?.value).toEqual({ text: '+7 4012 40-00-01' })
+    expect((await Facts.byId(stopFact.id))?.value).toEqual({ text: '+7 4012 40-00-02' })
+    expect((await Facts.byId(regionFact.id))?.value).toEqual({ text: '+7 4012 40-00-03' })
+
+    const draft = await Editor.saveRoute({
+      slug: 'pending-fact-draft-route',
+      title: 'Черновик маршрута',
+      body: 'Текст черновика маршрута.',
+      publicationStatus: 'draft',
+    })
+    routeIds.push(draft.id)
+    const draftFact = await phoneFact('route', draft.id, '+7 4012 40-00-04')
+    const written = await updateFact({
+      id: draftFact.id,
+      value: { text: '+7 4012 40-00-05' },
+      sourceKind: 'official',
+      confidence: 'stated',
+    })
+    expect(written.conflict).toBe(false)
+    expect((await Facts.byId(draftFact.id))?.value).toEqual({ text: '+7 4012 40-00-05' })
+
+    await Editor.saveRoute({
+      id: live.id,
+      slug: live.slug,
+      title: live.title,
+      body: live.body,
+      publicationStatus: 'archived',
+    })
+    enterContentScope('draft')
+    await expect(updateFact({ id: routeFact.id, ...next })).rejects.toMatchObject(liveUnchanged)
+    await expect(updateFact({ id: stopFact.id, ...next })).rejects.toMatchObject(liveUnchanged)
+    expect((await Facts.byId(routeFact.id))?.value).toEqual({ text: '+7 4012 40-00-01' })
+
+    enterContentScope('editor')
+    await expect(refuseLiveFact('event', 'future-subject')).resolves.toBeUndefined()
+    const editorWritten = await updateFact({
+      id: routeFact.id,
+      value: { text: '+7 4012 40-00-06' },
+      sourceKind: 'official',
+      confidence: 'stated',
+    })
+    expect(editorWritten.conflict).toBe(false)
+    expect((await Facts.byId(routeFact.id))?.value).toEqual({ text: '+7 4012 40-00-06' })
+  })
+})
+
+describe('venue delete is editor-only', () => {
+  it('refuses the draft token on an archived venue and lets the editor delete it', async () => {
+    const [venue] = await useDatabase().insert(venues).values({
+      slug: 'pending-delete-venue',
+      name: 'Архивное кафе',
+      kind: 'cafe',
+      description: 'Короткое описание.',
+      status: 'archived',
+    }).returning()
+    venueIds.push(venue!.id)
+    enterContentScope('draft')
+    await expect(deleteVenue({ id: venue!.id })).rejects.toMatchObject({
+      statusCode: 403,
+      statusMessage: 'Draft token cannot delete a venue',
+    })
+    expect(await useDatabase().select().from(venues).where(eq(venues.id, venue!.id))).toHaveLength(1)
+
+    enterContentScope('editor')
+    await expect(deleteVenue({ id: venue!.id })).resolves.toMatchObject({ id: venue!.id, action: 'deleted' })
+    expect(await useDatabase().select().from(venues).where(eq(venues.id, venue!.id))).toEqual([])
   })
 })

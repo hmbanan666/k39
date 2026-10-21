@@ -4,8 +4,11 @@ import { commitFact } from '../facts/commit'
 import { refuseDraftLivePage } from './draft'
 
 /**
- * A draft token must not change a fact the public page shows.
- * Other subjects stay on the fact writer. A missing row is left to that writer.
+ * A draft token must not change a fact whose parent is live.
+ * Place and venue use their own statuses. A route stop follows its route.
+ * A region has no status: a row that exists is live. Any other subject is
+ * treated as live, because this writer has no parent to prove otherwise.
+ * A missing place, venue, route, stop, or region is left to the fact writer.
  */
 export async function refuseLiveFact(subjectType: string, subjectId: string) {
   if (subjectType === 'place') {
@@ -16,7 +19,24 @@ export async function refuseLiveFact(subjectType: string, subjectId: string) {
   if (subjectType === 'venue') {
     const venue = await db.venues.byId(subjectId)
     refuseDraftLivePage('edit a fact on a published venue', venue?.status, ['published', 'closed'])
+    return
   }
+  if (subjectType === 'route') {
+    const route = await db.editor.routeById(subjectId)
+    refuseDraftLivePage('edit a fact on a published route', route?.publicationStatus)
+    return
+  }
+  if (subjectType === 'route_stop') {
+    const route = await db.editor.routeForPoint(subjectId)
+    refuseDraftLivePage('edit a fact on a published route', route?.publicationStatus)
+    return
+  }
+  if (subjectType === 'region') {
+    const region = await db.editor.regionById(subjectId)
+    refuseDraftLivePage('edit a fact on a published region', region ? 'published' : undefined)
+    return
+  }
+  refuseDraftLivePage('edit a fact on a live subject', 'published')
 }
 
 export async function updateFact(input: {
