@@ -2,6 +2,7 @@ import type { PageModule } from './page-modules'
 import type { ScheduleRules } from './schedule'
 import type { VenueModule } from './venue-modules'
 import { createHash } from 'node:crypto'
+import { isSocialHost } from '@k39/types/social-hosts'
 import { z } from 'zod'
 import { addDays, localNow, scheduleRulesSchema } from './schedule'
 
@@ -237,7 +238,7 @@ export function classifySourceUrl(url: string | null | undefined): Exclude<Sourc
   if (yandex && (host.startsWith('maps.') || parsed.pathname.includes('/maps'))) {
     return 'map_yandex'
   }
-  if (/(?:^|\.)(?:vk\.com|t\.me|telegram\.me|ok\.ru|instagram\.com|facebook\.com|fb\.com|youtube\.com|youtu\.be|dzen\.ru|tiktok\.com)$/.test(host)) {
+  if (isSocialHost(host)) {
     return 'official_social'
   }
   return 'official'

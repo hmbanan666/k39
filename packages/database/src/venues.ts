@@ -1,4 +1,5 @@
 import type { SourceLink } from './types/entities'
+import { isSocialHost } from '@k39/types/social-hosts'
 import { PHONE_TEXT_MAX } from './phone'
 
 export const FOOD_KINDS = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other'] as const
@@ -775,8 +776,6 @@ const SOCIAL_BASE: Record<string, string> = {
   ok: 'https://ok.ru/',
 }
 
-const SOCIAL_WEBSITE_HOST = /(?:^|\.)(?:vk\.(?:com|ru)|t\.me|telegram\.(?:me|org)|ok\.ru|instagram\.com|facebook\.com|fb\.(?:com|me)|threads\.net|youtube\.com|youtu\.be|dzen\.ru|tiktok\.com|whatsapp\.com|wa\.me|x\.com|twitter\.com)$/
-
 function websiteHost(value: string) {
   const text = value.trim()
   if (!text) {
@@ -792,8 +791,7 @@ function websiteHost(value: string) {
 
 /** True when the value points at a social network rather than the venue's own site. */
 export function isSocialWebsite(value: string | null | undefined) {
-  const host = websiteHost(value ?? '')
-  return Boolean(host) && SOCIAL_WEBSITE_HOST.test(host)
+  return isSocialHost(websiteHost(value ?? ''))
 }
 
 function socialNetworkOfWebsite(value: string) {

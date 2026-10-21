@@ -34,6 +34,10 @@ describe('fact values', () => {
   it('classifies official, social, and map hosts', () => {
     expect(classifySourceUrl('https://museum.example/hours')).toBe('official')
     expect(classifySourceUrl('https://vk.com/cafe')).toBe('official_social')
+    expect(classifySourceUrl('https://vk.ru/othergroup')).toBe('official_social')
+    expect(classifySourceUrl('https://m.vk.ru/cafe')).toBe('official_social')
+    expect(classifySourceUrl('https://wa.me/79990001122')).toBe('official_social')
+    expect(classifySourceUrl('https://x.com/cafe')).toBe('official_social')
     expect(classifySourceUrl('https://yandex.ru/maps/org/cafe/1')).toBe('map_yandex')
     expect(classifySourceUrl('https://2gis.ru/kaliningrad/firm/1')).toBe('map_2gis')
     expect(classifySourceUrl('https://www.google.com/maps/place/Brikas')).toBe('map_google')

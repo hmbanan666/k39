@@ -1,4 +1,5 @@
 import type { FoodStickerSlug } from './food-stickers'
+import { isSocialHost } from '@k39/types/social-hosts'
 import { inTown } from './eat-now'
 import { isFoodStickerSlug } from './food-stickers'
 import { pageTitle } from './seo'
@@ -338,7 +339,6 @@ export type MenuUrlClass = 'menu' | 'document' | 'map' | 'aggregator' | 'social'
 
 const GOOGLE_SITE = /(?:^|\.)google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)$/
 const YANDEX_SITE = /(?:^|\.)yandex\.(?:ru|com|by|kz|uz)$/
-const SOCIAL_HOST = /(?:^|\.)(?:vk\.com|t\.me|telegram\.me|ok\.ru|instagram\.com|facebook\.com|fb\.com|threads\.net|youtube\.com|youtu\.be|dzen\.ru|tiktok\.com)$/
 
 function parsedHttpUrl(url: string | null | undefined) {
   const text = url?.trim() ?? ''
@@ -420,7 +420,7 @@ export function classifyMenuUrl(url: string | null | undefined): MenuUrlClass {
   if (isDeliveryAggregator(parsed.host, parsed.pathname)) {
     return 'aggregator'
   }
-  if (SOCIAL_HOST.test(parsed.host)) {
+  if (isSocialHost(parsed.host)) {
     return 'social'
   }
   if (isYandexHost(parsed.host) || GOOGLE_SITE.test(parsed.host)) {
@@ -437,11 +437,11 @@ export function isMenuUrl(url: string | null | undefined) {
 
 /**
  * The venue's own VK page. The price column stores `official` because it
- * only allows `official` and `owner`. A vk.com URL is recorded on the fact
- * as `official_social`. Both shapes are that claim. It counts when
- * `venues.website` is empty and the price community matches a vk.com link
- * in `socials`. A screen name and a numeric id match when one of the two
- * URLs contains both. Otherwise an unmatched pair does not count.
+ * only allows `official` and `owner`. A VK URL is recorded on the fact as
+ * `official_social`. Both shapes are that claim. It counts when
+ * `venues.website` is empty and the price community matches a VK link in
+ * `socials`. A `w=` or `z=` object is that owner, and the path name is
+ * ignored. A section path such as `feed` is not a screen name.
  */
 function isComparableVkMenu(
   sourceKind: string,
@@ -467,12 +467,68 @@ function emptyVkKeys(): VkKeys {
   return { names: new Set(), communities: new Set(), users: new Set() }
 }
 
+/** VK section paths. They are not a community screen name. */
+const VK_SYSTEM_PATH = new Set([
+  'about',
+  'ads',
+  'album',
+  'albums',
+  'app',
+  'apps',
+  'audio',
+  'audios',
+  'away.php',
+  'board',
+  'bookmarks',
+  'calls',
+  'camera',
+  'clips',
+  'club',
+  'dev',
+  'doc',
+  'docs',
+  'event',
+  'events',
+  'faq',
+  'fav',
+  'fave',
+  'feed',
+  'friends',
+  'games',
+  'groups',
+  'help',
+  'id',
+  'im',
+  'invite',
+  'join',
+  'login',
+  'mail',
+  'market',
+  'notifications',
+  'pages',
+  'photo',
+  'photos',
+  'public',
+  'restore',
+  'search',
+  'settings',
+  'stats',
+  'stories',
+  'support',
+  'topic',
+  'topics',
+  'video',
+  'videos',
+  'wall',
+  'write',
+])
+
 function absorbVkToken(keys: VkKeys, token: string) {
   const text = token.trim().replace(/^@/, '')
   if (!text) {
     return
   }
-  const community = /^(?:club|public)(\d+)$/i.exec(text)
+  const community = /^(?:club|public|event)(\d+)$/i.exec(text)
   if (community?.[1]) {
     keys.communities.add(community[1])
     return
@@ -501,12 +557,36 @@ function absorbVkToken(keys: VkKeys, token: string) {
     keys.communities.add(album[1])
     return
   }
-  if (/^(?:wall|market|album|club|public|id)$/i.test(text)) {
+  const attachment = /^(?:photo|doc|topic|video)-(\d+)_\d+/i.exec(text)
+  if (attachment?.[1]) {
+    keys.communities.add(attachment[1])
+    return
+  }
+  if (/\.php$/i.test(text) || VK_SYSTEM_PATH.has(text.toLowerCase())) {
     return
   }
   if (/^[a-z][\w.-]{0,63}$/i.test(text)) {
     keys.names.add(text.toLowerCase())
   }
+}
+
+/** Parts of `w` or `z` that name an object. Those owners replace the path. */
+function vkObjectTokens(parsed: URL) {
+  const tokens: string[] = []
+  for (const name of ['w', 'z']) {
+    const raw = parsed.searchParams.get(name)
+    if (!raw) {
+      continue
+    }
+    for (const part of raw.split('/')) {
+      const probe = emptyVkKeys()
+      absorbVkToken(probe, part)
+      if (probe.communities.size || probe.users.size) {
+        tokens.push(part)
+      }
+    }
+  }
+  return tokens
 }
 
 function vkKeys(url: string | null | undefined): VkKeys | null {
@@ -528,9 +608,13 @@ function vkKeys(url: string | null | undefined): VkKeys | null {
     return null
   }
   const keys = emptyVkKeys()
-  absorbVkToken(keys, parsed.pathname.split('/').filter(Boolean)[0] ?? '')
-  for (const name of ['w', 'z']) {
-    absorbVkToken(keys, parsed.searchParams.get(name) ?? '')
+  const objects = vkObjectTokens(parsed)
+  if (objects.length) {
+    for (const token of objects) {
+      absorbVkToken(keys, token)
+    }
+  } else {
+    absorbVkToken(keys, parsed.pathname.split('/').filter(Boolean)[0] ?? '')
   }
   if (!keys.names.size && !keys.communities.size && !keys.users.size) {
     return null
@@ -609,7 +693,8 @@ function readFactPrice(value: unknown) {
  * on the venue card and is not comparable. A fresh official menu row is
  * comparable: the venue site, or a document on Drive, Docs, or Yandex Disk.
  * The venue's own VK page is comparable only when `venue.website` is empty
- * and the price community matches a vk.com link in `venue.socials`.
+ * and the price community matches a VK link in `venue.socials`. A `w=` or
+ * `z=` object is that owner, and the path name is ignored.
  * Omit `venue` when the caller has not loaded those fields: VK stays out.
  * `cutoff` is `YYYY-MM-DD` from `PRICE_FRESH_DAYS`.
  */

@@ -101,7 +101,7 @@ function cleanSocials(rows: VenueSocial[] | undefined) {
 function cleanWebsite(value: string | null | undefined) {
   const text = cleanText(value, 300)
   if (text && isSocialWebsite(text)) {
-    throw new VenueInputError('Поле website — только собственный сайт заведения. Ссылку на соцсеть запишите в socials.')
+    throw new VenueInputError('В поле «Сайт» укажите только собственный сайт заведения. Ссылку на соцсеть добавьте в «Соцсети».')
   }
   return text
 }

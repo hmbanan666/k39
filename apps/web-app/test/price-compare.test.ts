@@ -1,9 +1,12 @@
+import { isSocialWebsite } from '@k39/database'
+import { isSocialHost } from '@k39/types/social-hosts'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import CheaperPage from '../app/components/CheaperPage.vue'
 import PriceListing from '../app/components/PriceListing.vue'
 import Sticker from '../app/components/Sticker.vue'
 import VenueModules from '../app/components/VenueModules.vue'
+import { classifySourceUrl } from '../shared/facts'
 import { TABLER_ICONS } from '../shared/icons'
 import {
   buildPublicPrices,
@@ -995,9 +998,14 @@ describe('menu url classifier', () => {
       ['https://kaliningrad.tomesto.ru/places/cafe', 'aggregator'],
       ['https://vk.com/cafe', 'social'],
       ['https://m.vk.com/cafe', 'social'],
+      ['https://vk.ru/othergroup', 'social'],
+      ['https://m.vk.ru/othergroup', 'social'],
       ['https://vk.com/market-123', 'social'],
       ['https://instagram.com/cafe', 'social'],
       ['https://t.me/cafe', 'social'],
+      ['https://wa.me/79990001122', 'social'],
+      ['https://x.com/cafe', 'social'],
+      ['https://twitter.com/cafe', 'social'],
       ['https://www.google.com/search?q=menu', 'service'],
       ['https://market.yandex.ru/product/1', 'service'],
       ['https://music.yandex.ru/album/1', 'service'],
@@ -1014,6 +1022,42 @@ describe('menu url classifier', () => {
   })
 })
 
+describe('social hosts', () => {
+  it('uses one list for menu class, source kind, and website', () => {
+    const urls = [
+      'https://vk.com/cafe',
+      'https://www.vk.ru/cafe',
+      'https://m.vk.ru/othergroup',
+      'https://t.me/cafe',
+      'https://telegram.me/cafe',
+      'https://telegram.org/cafe',
+      'https://ok.ru/group',
+      'https://instagram.com/cafe',
+      'https://facebook.com/cafe',
+      'https://fb.com/cafe',
+      'https://fb.me/cafe',
+      'https://threads.net/cafe',
+      'https://youtube.com/cafe',
+      'https://youtu.be/abc',
+      'https://dzen.ru/cafe',
+      'https://tiktok.com/@cafe',
+      'https://whatsapp.com/send',
+      'https://wa.me/79990001122',
+      'https://x.com/cafe',
+      'https://twitter.com/cafe',
+    ]
+    for (const url of urls) {
+      expect(isSocialHost(new URL(url).hostname), url).toBe(true)
+      expect(isSocialWebsite(url), url).toBe(true)
+      expect(classifyMenuUrl(url), url).toBe('social')
+      expect(classifySourceUrl(url), url).toBe('official_social')
+      expect(isMenuUrl(url), url).toBe(false)
+    }
+    expect(isSocialHost('cafe.example')).toBe(false)
+    expect(classifySourceUrl('https://cafe.example/menu')).toBe('official')
+  })
+})
+
 describe('vk menu rule', () => {
   const column = {
     venueId: 'v',
@@ -1023,7 +1067,7 @@ describe('vk menu rule', () => {
     checkedAt: '2026-10-01',
     sourceKind: 'official',
     sourceTitle: 'Меню во ВКонтакте',
-    sourceUrl: 'https://vk.com/cafe?w=wall-10_2',
+    sourceUrl: 'https://vk.com/cafe',
   }
   const cutoff = '2025-10-01'
   const own = [{ url: 'https://vk.com/cafe' }]
@@ -1044,6 +1088,21 @@ describe('vk menu rule', () => {
     expect(vkMenuMatchesSocial('https://vk.com/album-10_4', [{ url: 'https://vk.com/market-10' }])).toBe(true)
     expect(vkMenuMatchesSocial('https://vk.com/album-10', [{ url: 'https://vk.ru/club10' }])).toBe(true)
     expect(vkMenuMatchesSocial('https://vk.com/club10', [{ url: 'https://vk.com/cafe?w=wall-10_1' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe?w=wall-999_5', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe?z=photo-999_1', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe?w=wall-999_5', [{ url: 'https://vk.com/club999' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe?z=photo-999_1', [{ url: 'https://vk.com/public999' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/event10', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/photo-10_2', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/doc-10_3', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/topic-10_4', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/video-10_5', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/feed', [{ url: 'https://vk.com/feed' }])).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/away.php', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/search', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/im', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/feed?w=wall-10_1', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/feed?w=wall-10_1', [{ url: 'https://vk.com/club10' }])).toBe(true)
     expect(vkMenuMatchesSocial('https://vk.com/id5', [{ url: 'https://vk.com/wall5_9' }])).toBe(true)
     expect(vkMenuMatchesSocial('https://vk.com/cafe', [{ url: 'https://vk.com/club10' }])).toBe(false)
     expect(vkMenuMatchesSocial('https://vk.com/id5', [{ url: 'https://vk.com/club5' }])).toBe(false)
@@ -1059,6 +1118,14 @@ describe('vk menu rule', () => {
     expect(resolveMenuPrice({ ...column, sourceUrl: 'https://m.vk.com/cafe' }, null, cutoff, { website: null, socials: own })?.comparable).toBe(true)
     expect(resolveMenuPrice(column, vkFact, cutoff, { website: 'https://cafe.example', socials: own })).toBeNull()
     expect(resolveMenuPrice(column, null, cutoff, { website: 'https://vk.com/cafe', socials: own })).toBeNull()
+    expect(resolveMenuPrice({
+      ...column,
+      sourceUrl: 'https://vk.ru/othergroup',
+    }, null, cutoff, { website: 'https://cafe.example', socials: [{ url: 'https://vk.ru/othergroup' }] })).toBeNull()
+    expect(resolveMenuPrice({
+      ...column,
+      sourceUrl: 'https://vk.ru/cafe',
+    }, null, cutoff, { website: null, socials: [{ url: 'https://vk.ru/cafe' }] })?.comparable).toBe(true)
     expect(resolveMenuPrice(column, null, cutoff, { website: null, socials: [] })).toBeNull()
     expect(resolveMenuPrice(column, null, cutoff)).toBeNull()
     expect(resolveMenuPrice(column, {

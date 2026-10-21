@@ -195,19 +195,21 @@ describe('venue repository', () => {
     expect(isSocialWebsite('t.me/cafe')).toBe(true)
     expect(isSocialWebsite('https://ok.ru/group')).toBe(true)
     expect(isSocialWebsite('https://cafe.example')).toBe(false)
+    const socialWebsite = 'В поле «Сайт» укажите только собственный сайт заведения. Ссылку на соцсеть добавьте в «Соцсети».'
     await expect(Venues.create({
       name: 'ВК как сайт',
       kind: 'cafe',
       website: 'https://vk.com/cafe',
-    })).rejects.toThrow(/socials/)
+    })).rejects.toThrow(socialWebsite)
     const created = await Venues.create({
       name: 'Собственный сайт',
       kind: 'cafe',
       website: 'https://cafe.example',
     })
-    await expect(Venues.update(created.id, { website: 'https://t.me/cafe' })).rejects.toThrow(/socials/)
-    await expect(Venues.update(created.id, { website: 'https://instagram.com/cafe' })).rejects.toThrow(/socials/)
-    await expect(Venues.update(created.id, { website: 'https://ok.ru/group' })).rejects.toThrow(/socials/)
+    await expect(Venues.update(created.id, { website: 'https://t.me/cafe' })).rejects.toThrow(socialWebsite)
+    await expect(Venues.update(created.id, { website: 'https://instagram.com/cafe' })).rejects.toThrow(socialWebsite)
+    await expect(Venues.update(created.id, { website: 'https://ok.ru/group' })).rejects.toThrow(socialWebsite)
+    await expect(Venues.update(created.id, { website: 'https://vk.ru/cafe' })).rejects.toThrow(socialWebsite)
     const moved = await Venues.update(created.id, {
       website: null,
       socials: [{ network: 'vk', url: 'https://vk.com/cafe' }],

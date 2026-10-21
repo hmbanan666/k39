@@ -109,14 +109,16 @@ tell, in one glance, whether this place is cheap or expensive.
   or `owner`), `source_title`, `source_url`. The menu URL is a page or PDF on
   the venue site, or a document on `drive.google.com`, `docs.google.com`,
   `disk.yandex.*`, or `yadi.sk`. VK uses one rule: the fact source kind is
-  `official_social` and the host is `vk.com`. This column stays `official`
-  because it cannot store `official_social`. Comparison treats that column,
-  before the fact overlay, as the same claim. It counts only when
-  `venues.website` is empty and the price community matches a `vk.com` link
+  `official_social` and the host is `vk.com` or `vk.ru`. This column stays
+  `official` because it cannot store `official_social`. Comparison treats
+  that column, before the fact overlay, as the same claim. It counts only
+  when `venues.website` is empty and the price community matches a VK link
   in `socials`: the same screen name, or the same numeric id from `club`,
-  `public`, `wall-`, `market-`, or `album-`. A screen name and a numeric id
-  match only when one of those URLs contains both. `website` is only the
-  venue's own site. A social host is rejected there and belongs in `socials`.
+  `public`, `event`, `wall-`, `market-`, `album-`, `photo-`, `doc-`,
+  `topic-`, or `video-`. A `w=` or `z=` object is that owner, and the path
+  screen name is ignored. A section path such as `feed` is not a screen name.
+  `website` is only the venue's own site. A social host is rejected there
+  and belongs in `socials`.
   Other social networks are not a menu. Set with `venue_prices_set` (replaces
   the list); `venue_get` returns them.
 - Prices are never invented or taken from aggregators. Rows older than 365
