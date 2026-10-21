@@ -15,6 +15,7 @@ function repoRoot() {
 const syncScript = resolve(repoRoot(), 'scripts/git/sync-branch.sh')
 const bootScript = resolve(repoRoot(), 'scripts/env/check-boot.sh')
 const migrateScript = resolve(repoRoot(), 'scripts/env/migrate-dev.sh')
+const nodePathScript = resolve(repoRoot(), 'scripts/env/node-path.sh')
 const dirs: string[] = []
 
 function scratch() {
@@ -76,6 +77,56 @@ describe('node path plan', () => {
       link: [],
       platform: false,
     })
+  })
+})
+
+describe('node path links', () => {
+  const tools = ['node', 'npm', 'npx', 'corepack', 'pnpm', 'pnpx']
+
+  function writeTools(dir: string) {
+    mkdirSync(dir, { recursive: true })
+    for (const name of tools) {
+      const path = join(dir, name)
+      writeFileSync(path, '#!/bin/sh\necho ok\n')
+      chmodSync(path, 0o755)
+    }
+  }
+
+  function linkInto(source: string, dest: string) {
+    execFileSync('bash', [nodePathScript, '--link-into', source, dest], { encoding: 'utf8' })
+  }
+
+  it('does not replace a tool with a symlink to itself', () => {
+    const bin = join(scratch(), 'bin')
+    writeTools(bin)
+    linkInto(bin, bin)
+    for (const name of tools) {
+      expect(lstatSync(join(bin, name)).isSymbolicLink()).toBe(false)
+    }
+  })
+
+  it('does not relink when the destination directory is another path to the source', () => {
+    const root = scratch()
+    const source = join(root, 'src')
+    const alias = join(root, 'alias')
+    writeTools(source)
+    symlinkSync(source, alias)
+    linkInto(source, alias)
+    for (const name of ['npm', 'npx', 'corepack', 'pnpm']) {
+      expect(lstatSync(join(source, name)).isSymbolicLink()).toBe(false)
+    }
+  })
+
+  it('links tools into a different directory', () => {
+    const root = scratch()
+    const source = join(root, 'src')
+    const dest = join(root, 'dest')
+    writeTools(source)
+    mkdirSync(dest)
+    linkInto(source, dest)
+    expect(lstatSync(join(dest, 'pnpm')).isSymbolicLink()).toBe(true)
+    expect(readlinkSync(join(dest, 'pnpm'))).toBe(join(source, 'pnpm'))
+    expect(lstatSync(join(source, 'pnpm')).isSymbolicLink()).toBe(false)
   })
 })
 
