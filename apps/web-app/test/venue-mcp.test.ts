@@ -1,8 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { normalizeObjectSchema, safeParse } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import { describe, expect, it } from 'vitest'
-import { venueDuplicatesInput, venueListItem, venueListResult, venuesListInput } from '../server/utils/mcp/venues'
+import { mcpStrictInput, venueDuplicatesInput, venueListItem, venueListResult, venuesListInput } from '../server/utils/mcp/venues'
 
 function repoRoot() {
   const candidates = [process.cwd(), resolve(process.cwd(), '../..')]
@@ -16,6 +19,43 @@ function toolSource(name: string) {
 }
 
 describe('venues_list input', () => {
+  it('lists additionalProperties false and rejects offset through the MCP server', async () => {
+    // `@nuxtjs/mcp-toolkit/server` imports nitropack virtual storage and cannot
+    // load in vitest. `registerToolFromDefinition` forwards inputSchema to this
+    // same `McpServer.registerTool` call.
+    const server = new McpServer({ name: 'k39-test', version: '0.0.0' })
+    let handlerRan = false
+    server.registerTool('venues_list', {
+      description: 'List venues',
+      inputSchema: mcpStrictInput(venuesListInput),
+    }, async () => {
+      handlerRan = true
+      return { content: [{ type: 'text', text: 'ok' }] }
+    })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    const client = new Client({ name: 'k39-test-client', version: '0.0.0' })
+    await Promise.all([
+      client.connect(clientTransport),
+      server.connect(serverTransport),
+    ])
+    try {
+      const listed = await client.listTools()
+      const tool = listed.tools.find((row) => row.name === 'venues_list')
+      expect(tool?.inputSchema.additionalProperties).toBe(false)
+      const result = await client.callTool({ name: 'venues_list', arguments: { offset: 20 } })
+      expect(result.isError).toBe(true)
+      const text = Array.isArray(result.content)
+        ? result.content.map((part) => 'text' in part ? part.text : '').join('\n')
+        : ''
+      expect(text).toContain('Unrecognized key')
+      expect(text).toContain('offset')
+      expect(handlerRan).toBe(false)
+    } finally {
+      await client.close()
+      await server.close()
+    }
+  })
+
   it('rejects offset and limit and keeps page as the 1-based offset', () => {
     const schema = normalizeObjectSchema(venuesListInput)
     expect(schema).toBe(venuesListInput)

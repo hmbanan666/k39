@@ -115,9 +115,39 @@ export function catalogWithPendingPlace(
   }
 }
 
-const DRAFT_NOTE = 'Preview of the draft row. Not written to content_scores. Traffic results are not applicable.'
+const DRAFT_NOTE = 'Preview of the draft row. Not written to content_scores. Traffic results are not applicable. HTTP status and the sitemap check are not applicable until the page is published, and those points are left out of the average.'
 const PENDING_NOTE = 'Preview of the pending payload. Not written to content_scores. Traffic results are not applicable.'
 const LIVE_NOTE = 'Preview of the live row. Not written to content_scores.'
+
+type UnpublishedIndexing = 'not 200' | 'not in sitemap'
+
+/**
+ * A draft is not on the public URL yet, so "not 200" and "not in sitemap"
+ * are not failures. Each is 20 indexing points, and a waived check is left
+ * out of the average. The sitemap bucket is also the noindex penalty, so an
+ * editorial `noindex` keeps "not in sitemap" as a real check. Pending
+ * payloads keep the scored indexing.
+ */
+function draftIndexing(checks: string[], points: number) {
+  const waived: UnpublishedIndexing[] = []
+  let indexing = points
+  if (checks.includes('not 200')) {
+    waived.push('not 200')
+    indexing += 20
+  }
+  if (checks.includes('not in sitemap') && !checks.includes('noindex')) {
+    waived.push('not in sitemap')
+    indexing += 20
+  }
+  return {
+    indexing: Math.min(100, indexing),
+    checks: [
+      ...checks.filter((check) => !waived.includes(check as UnpublishedIndexing)),
+      ...waived.map((check) => `${check}: not applicable`),
+    ],
+    waived,
+  }
+}
 
 /**
  * One page scored with the same rules as a stored score. Drafts and reviews
@@ -151,12 +181,17 @@ export function scorePreview(input: {
     return null
   }
   const resultsApplicable = input.source === 'live'
-  const checks = resultsApplicable
-    ? score.checks
-    : { ...score.checks, results: ['not applicable'] }
+  const indexing = input.source === 'draft'
+    ? draftIndexing(score.checks.indexing, score.indexing)
+    : { indexing: score.indexing, checks: score.checks.indexing, waived: [] as string[] }
+  const checks = {
+    ...score.checks,
+    indexing: indexing.checks,
+    results: resultsApplicable ? score.checks.results : ['not applicable'],
+  }
   const total = resultsApplicable
     ? score.total
-    : Math.round((score.quality + score.linking + score.indexing) / 3)
+    : Math.round((score.quality + score.linking + indexing.indexing) / 3)
   let note = LIVE_NOTE
   if (input.source === 'pending') {
     note = PENDING_NOTE
@@ -175,14 +210,22 @@ export function scorePreview(input: {
     total,
     quality: score.quality,
     linking: score.linking,
-    indexing: score.indexing,
+    indexing: indexing.indexing,
     results: resultsApplicable ? score.results : null,
     checks,
+    notApplicable: [
+      ...(resultsApplicable ? [] : ['results']),
+      ...indexing.waived,
+    ],
     signals: score.signals,
-    topIssue: topIssue(checks, {
+    topIssue: topIssue({
+      ...checks,
+      indexing: checks.indexing.filter((check) => !check.endsWith('not applicable')),
+      results: resultsApplicable ? checks.results : [],
+    }, {
       quality: score.quality,
       linking: score.linking,
-      indexing: score.indexing,
+      indexing: indexing.indexing,
       results: resultsApplicable ? score.results : 100,
     }),
     note,

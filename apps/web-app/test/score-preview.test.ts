@@ -112,6 +112,8 @@ describe('content score preview', () => {
       publicationStatus: 'draft',
       now: NOW,
     })
+    const indexing = Math.min(100, included[0]!.indexing + 40)
+    expect(included[0]!.checks.indexing).toEqual(expect.arrayContaining(['not 200', 'not in sitemap']))
     expect(preview).toMatchObject({
       preview: true,
       source: 'draft',
@@ -120,16 +122,43 @@ describe('content score preview', () => {
       results: null,
       quality: included[0]!.quality,
       linking: included[0]!.linking,
-      indexing: included[0]!.indexing,
+      indexing,
     })
+    expect(preview?.checks.indexing).toEqual(expect.arrayContaining([
+      'not 200: not applicable',
+      'not in sitemap: not applicable',
+    ]))
+    expect(preview?.checks.indexing).not.toContain('not 200')
+    expect(preview?.checks.indexing).not.toContain('not in sitemap')
+    expect(preview?.notApplicable).toEqual(expect.arrayContaining(['results', 'not 200', 'not in sitemap']))
     expect(preview?.checks.results).toEqual(['not applicable'])
-    expect(preview?.total).toBe(Math.round((included[0]!.quality + included[0]!.linking + included[0]!.indexing) / 3))
+    expect(preview?.total).toBe(Math.round((included[0]!.quality + included[0]!.linking + indexing) / 3))
     expect(preview?.note).toContain('draft row')
+    expect(preview?.note).toContain('not applicable')
+  })
+
+  it('keeps the sitemap penalty when a draft is noindex', () => {
+    const rows = catalog({ places: [place({ publicationStatus: 'draft', noindex: true })] })
+    const included = scoresFromCatalog(rows, [], [], false, NOW, undefined, { include: [{ kind: 'place', id: 'place-1' }] })
+    const preview = scorePreview({
+      catalog: rows,
+      pageType: 'place',
+      entityId: 'place-1',
+      source: 'draft',
+      publicationStatus: 'draft',
+      now: NOW,
+    })
+    expect(included[0]!.checks.indexing).toEqual(expect.arrayContaining(['noindex', 'not in sitemap', 'not 200']))
+    expect(preview?.indexing).toBe(included[0]!.indexing + 20)
+    expect(preview?.checks.indexing).toEqual(expect.arrayContaining(['noindex', 'not in sitemap', 'not 200: not applicable']))
+    expect(preview?.notApplicable).toContain('not 200')
+    expect(preview?.notApplicable).not.toContain('not in sitemap')
   })
 
   it('scores a review route from that row', () => {
     const rows = catalog({ routes: [route()] })
     expect(scoresFromCatalog(rows, [], [], false, NOW)).toEqual([])
+    const included = scoresFromCatalog(rows, [], [], false, NOW, undefined, { include: [{ kind: 'route', id: 'route-1' }] })
     const preview = scorePreview({
       catalog: rows,
       pageType: 'route',
@@ -144,7 +173,12 @@ describe('content score preview', () => {
       publicationStatus: 'review',
       resultsApplicable: false,
       results: null,
+      indexing: Math.min(100, included[0]!.indexing + 40),
     })
+    expect(preview?.checks.indexing).toEqual(expect.arrayContaining([
+      'not 200: not applicable',
+      'not in sitemap: not applicable',
+    ]))
   })
 
   it('scores a pending payload instead of the live body and leaves the catalog score untouched', () => {
@@ -174,6 +208,7 @@ describe('content score preview', () => {
       regionTitle: null,
     })
     const stored = scoresFromCatalog(rows, [], [], false, NOW)
+    const overlaidScore = scoresFromCatalog(overlaid, [], [], false, NOW)
     const preview = scorePreview({
       catalog: overlaid,
       pageType: 'place',
@@ -187,8 +222,13 @@ describe('content score preview', () => {
     expect(preview?.resultsApplicable).toBe(false)
     expect(preview?.results).toBeNull()
     expect(preview?.checks.results).toEqual(['not applicable'])
+    expect(preview?.indexing).toBe(overlaidScore[0]!.indexing)
+    expect(preview?.checks.indexing).toEqual(overlaidScore[0]!.checks.indexing)
+    expect(preview?.checks.indexing.join(' ')).not.toContain('not applicable')
+    expect(preview?.notApplicable).toEqual(['results'])
     expect(Number(preview?.signals.bodyChars)).toBeGreaterThan(Number(stored[0]?.signals.bodyChars))
     expect(preview?.note).toContain('pending payload')
+    expect(preview?.note).not.toContain('sitemap')
     expect(stored[0]?.signals.bodyChars).not.toBe(preview?.signals.bodyChars)
   })
 })
