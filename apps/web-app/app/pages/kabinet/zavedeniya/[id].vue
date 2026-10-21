@@ -4,7 +4,7 @@
       <a href="/kabinet">Кабинет</a>
     </p>
     <h1>Страница заведения</h1>
-    <VenueEditor :venue-id="id" />
+    <CabinetVenueEditor :venue-id="id" />
   </main>
 </template>
 
