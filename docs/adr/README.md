@@ -64,7 +64,7 @@ Proposed.
 | 0038 | [Photos on collections](0038-collection-media.md) | Accepted |
 | 0039 | [«Где дешевле»](0039-where-cheaper.md) | Accepted |
 | 0040 | [Editor token moderates guest rows](0040-guest-mcp-moderation.md) | Accepted |
-| 0041 | [Pending drafts for collections and routes](0041-collection-route-drafts.md) | Proposed |
+| 0041 | [Pending drafts for collections and routes](0041-collection-route-drafts.md) | Accepted |
 | 0042 | [Opening hours with an unknown closing time](0042-open-ended-hours.md) | Accepted |
 | 0043 | [Anonymous event rows are not a session](0043-anonymous-events-session.md) | Accepted |
 | 0044 | [Weekdays with unknown hours](0044-schedule-unknown-days.md) | Accepted |
