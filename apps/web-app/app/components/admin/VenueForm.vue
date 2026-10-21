@@ -380,7 +380,7 @@ async function upload() {
 form { display: grid; gap: 0.7rem; }
 label { display: grid; gap: 0.25rem; }
 input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; }
-.day { grid-template-columns: 2.5rem auto auto 5.5rem 5.5rem; align-items: center; }
+.day { grid-template-columns: 2.5rem auto auto 5.5rem 7.5rem; align-items: center; }
 .hint, .error { margin: 0; }
 .error { color: var(--color-danger); }
 .photo, .history { margin-top: 2rem; }
