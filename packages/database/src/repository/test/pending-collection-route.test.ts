@@ -6,18 +6,22 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope, requireEditorContent } from '../../../../../apps/web-app/server/utils/access'
 import { applyAdminContentDraft, collectionDraftNotice, discardAdminContentDraft, routeDraftNotice, withPendingGuard } from '../../../../../apps/web-app/server/utils/admin/content-draft'
 import { readCollection, saveCollectionDraft } from '../../../../../apps/web-app/server/utils/mcp/collections'
+import { updateFact } from '../../../../../apps/web-app/server/utils/mcp/fact-write'
+import { importCommonsPhoto, uploadMediaFromUrl } from '../../../../../apps/web-app/server/utils/mcp/media-import'
 import { attachCollectionPhoto, attachPlacePhoto, detachCollectionPhoto, refuseIncomingPhoto, refuseVenuePhoto } from '../../../../../apps/web-app/server/utils/mcp/photos'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { writeQuest } from '../../../../../apps/web-app/server/utils/mcp/quests'
 import { readRoute, updateRouteDraft } from '../../../../../apps/web-app/server/utils/mcp/routes'
 import { assertScheduleWritable } from '../../../../../apps/web-app/server/utils/mcp/schedule-target'
 import { updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
+import { valueHash } from '../../../../../apps/web-app/shared/facts'
 import { renderMarkdown } from '../../../../../apps/web-app/shared/markdown'
 import { toPublicModules } from '../../../../../apps/web-app/shared/page-modules'
 import { bodyOf } from '../../body-sections'
 import { useDatabase } from '../../database'
-import { collections, contentDrafts, mcpAudits, media, pageReviews, places, quests, revisions, routes, schedules, slugRedirects, venues, verificationQueue } from '../../tables'
+import { collections, contentDrafts, facts, mcpAudits, media, pageReviews, places, quests, revisions, routes, schedules, slugRedirects, venues, verificationQueue } from '../../tables'
 import { Content, Editor } from '../content'
+import { Facts } from '../facts'
 
 function draftFields(result: object) {
   if (!('renderedFields' in result) || !Array.isArray(result.renderedFields)) {
@@ -53,6 +57,7 @@ afterEach(async () => {
     await database.delete(revisions).where(eq(revisions.entityId, id))
     await database.delete(mcpAudits).where(eq(mcpAudits.entityId, id))
     await database.delete(schedules).where(eq(schedules.entityId, id))
+    await database.delete(facts).where(eq(facts.subjectId, id))
   }
   for (const id of mediaIds) {
     await database.delete(media).where(eq(media.id, id))
@@ -142,6 +147,26 @@ async function storedPhoto(name: string, caption?: string) {
   })
   mediaIds.push(row.id)
   return row
+}
+
+async function phoneFact(subjectType: 'place' | 'venue', subjectId: string, text: string) {
+  const value = { text }
+  const saved = await Facts.upsert({
+    kind: 'phone',
+    subjectType,
+    subjectId,
+    slot: 'phone',
+    value,
+    valueHash: valueHash(value),
+    sourceUrl: null,
+    sourceTitle: null,
+    sourceKind: 'official',
+    checkedAt: '2026-01-01T00:00:00.000Z',
+    ttlDays: 180,
+    confidence: 'stated',
+    actor: 'editor',
+  }, [])
+  return saved.fact
 }
 
 describe('pending collection and route drafts', () => {
@@ -573,5 +598,120 @@ describe('draft token leaves a live gallery and schedule unchanged', () => {
     enterContentScope('editor')
     await expect(assertScheduleWritable('place', live.id)).resolves.toMatchObject({ id: live.id, slug: live.slug })
     await expect(refuseVenuePhoto(venue!.id)).resolves.toMatchObject({ id: venue!.id })
+  })
+
+  it('commons_import and media_upload_from_url refuse a live place and collection', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const live = await place('pending-import-place', 'Место без фото')
+    const collection = await publishedCollection('pending-import-collection')
+    const commons = {
+      fileUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/pending.jpg',
+      pageUrl: 'https://commons.wikimedia.org/wiki/File:Pending.jpg',
+      alt: 'Фото',
+      author: 'Автор',
+      license: 'cc0' as const,
+    }
+    const upload = {
+      url: 'https://example.com/pending.jpg',
+      alt: 'Фото',
+      author: 'Автор',
+      license: 'own' as const,
+      sourceUrl: 'https://example.com/pending',
+    }
+    enterContentScope('draft')
+    await expect(importCommonsPhoto({ ...commons, placeId: live.id })).rejects.toMatchObject(liveUnchanged)
+    await expect(importCommonsPhoto({ ...commons, collectionId: collection.id })).rejects.toMatchObject(liveUnchanged)
+    await expect(uploadMediaFromUrl({ ...upload, placeId: live.id })).rejects.toMatchObject(liveUnchanged)
+    await expect(uploadMediaFromUrl({ ...upload, collectionId: collection.id })).rejects.toMatchObject(liveUnchanged)
+    expect(await Content.galleryFor(live.id)).toEqual([])
+    expect(await Content.collectionGallery(collection.id)).toEqual([])
+
+    await Editor.savePlace({
+      id: live.id,
+      slug: live.slug,
+      title: live.title,
+      summary: live.summary,
+      body: live.body,
+      publicationStatus: 'archived',
+    })
+    await Editor.saveCollection({
+      id: collection.id,
+      slug: collection.slug,
+      title: collection.title,
+      body: collection.body,
+      publicationStatus: 'archived',
+    })
+    await expect(importCommonsPhoto({ ...commons, placeId: live.id })).rejects.toMatchObject(liveUnchanged)
+    await expect(uploadMediaFromUrl({ ...upload, collectionId: collection.id })).rejects.toMatchObject(liveUnchanged)
+    expect(await Content.galleryFor(live.id)).toEqual([])
+    expect(await Content.collectionGallery(collection.id)).toEqual([])
+  })
+})
+
+describe('draft token leaves a public fact unchanged', () => {
+  it('refuses fact_update on a live place or venue and lets the editor write', async () => {
+    const live = await place('pending-fact-place', 'Место с телефоном')
+    const stored = await phoneFact('place', live.id, '+7 4012 00-00-01')
+    enterContentScope('draft')
+    await expect(updateFact({
+      id: stored.id,
+      value: { text: '+7 4012 00-00-02' },
+      sourceKind: 'official',
+      confidence: 'stated',
+    })).rejects.toMatchObject(liveUnchanged)
+    expect((await Facts.byId(stored.id))?.value).toEqual({ text: '+7 4012 00-00-01' })
+
+    enterContentScope('editor')
+    const written = await updateFact({
+      id: stored.id,
+      value: { text: '+7 4012 00-00-02' },
+      sourceKind: 'official',
+      confidence: 'stated',
+    })
+    expect(written.conflict).toBe(false)
+    expect((await Facts.byId(stored.id))?.value).toEqual({ text: '+7 4012 00-00-02' })
+
+    await Editor.savePlace({
+      id: live.id,
+      slug: live.slug,
+      title: live.title,
+      summary: live.summary,
+      body: live.body,
+      publicationStatus: 'archived',
+    })
+    enterContentScope('draft')
+    await expect(updateFact({
+      id: stored.id,
+      value: { text: '+7 4012 00-00-03' },
+      sourceKind: 'official',
+      confidence: 'stated',
+    })).rejects.toMatchObject(liveUnchanged)
+    expect((await Facts.byId(stored.id))?.value).toEqual({ text: '+7 4012 00-00-02' })
+
+    const [venue] = await useDatabase().insert(venues).values({
+      slug: 'pending-fact-venue',
+      name: 'Кафе с телефоном',
+      kind: 'cafe',
+      description: 'Короткое описание.',
+      status: 'published',
+    }).returning()
+    venueIds.push(venue!.id)
+    const venueFact = await phoneFact('venue', venue!.id, '+7 4012 11-11-11')
+    await expect(updateFact({
+      id: venueFact.id,
+      value: { text: '+7 4012 22-22-22' },
+      sourceKind: 'official',
+      confidence: 'stated',
+    })).rejects.toMatchObject(liveUnchanged)
+    expect((await Facts.byId(venueFact.id))?.value).toEqual({ text: '+7 4012 11-11-11' })
+
+    await useDatabase().update(venues).set({ status: 'closed' }).where(eq(venues.id, venue!.id))
+    await expect(updateFact({
+      id: venueFact.id,
+      value: { text: '+7 4012 33-33-33' },
+      sourceKind: 'official',
+      confidence: 'stated',
+    })).rejects.toMatchObject(liveUnchanged)
+    expect((await Facts.byId(venueFact.id))?.value).toEqual({ text: '+7 4012 11-11-11' })
   })
 })

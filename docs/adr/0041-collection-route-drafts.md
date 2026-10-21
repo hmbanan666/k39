@@ -24,13 +24,13 @@ An editor `content_set_publication` with `published` and no other fields applies
 
 The `/admin` collection and route forms show the pending draft the way the place form does: each changed field, live beside draft. Apply uses the same publication writer. Discard deletes the draft. A save is refused until the editor chooses to drop the draft. That drop deletes only the draft that was checked, matching its id and `updatedAt`, inside the same transaction as the save. A draft written after the check stays.
 
-A draft token cannot change the cover, gallery, or caption of a published or archived place or collection. These tools answer 409 with `The live page was not changed`, and they do not write: `media_attach_to_place`, `media_attach_to_collection`, `media_detach_from_collection`, `media_upload_from_url` (place or collection), and `commons_import` (place or collection). The same 409 covers `schedule_set` on a published or archived place and on a published or closed venue, and `media_attach_to_venue` on a published or closed venue. None of those writes is stored in `content_drafts`.
+A draft token cannot change the cover, gallery, or caption of a published or archived place or collection. These tools answer 409 with `The live page was not changed`, and they do not write: `media_attach_to_place`, `media_attach_to_collection`, `media_detach_from_collection`, `media_upload_from_url` (place or collection), and `commons_import` (place or collection). The same 409 covers `schedule_set` on a published or archived place and on a published or closed venue, and `media_attach_to_venue` on a published or closed venue. `fact_update` is the same 409 when the fact belongs to a published or archived place, or to a published or closed venue: the public page reads that phone, price, hours, address, coordinates, and status. `fact_confirm` stays open to the draft token. It moves `checked_at` and writes no new value. None of those writes is stored in `content_drafts`.
 
 Still refused, with no `content_drafts` row: publishing, archive, a published venue, a published quest, and a venue listing. Those answers stay 403 or 409 and do not change the live page.
 
 ## Consequences
 
-An agent with the draft token can propose an edit to a live collection or route. It still cannot publish that edit. A photo or schedule write on a live place, collection, or venue stays a 409. The public page changes only when an editor applies the draft.
+An agent with the draft token can propose an edit to a live collection or route. It still cannot publish that edit. A photo or schedule write on a live place, collection, or venue stays a 409, and so does `fact_update` on a live place or venue. The public page changes only when an editor applies the draft.
 
 Quests stay on the refusal. A quest is a link to a route plus steps, and this record does not give it a pending payload. A later record can add one if an agent needs to propose quest edits the same way.
 
