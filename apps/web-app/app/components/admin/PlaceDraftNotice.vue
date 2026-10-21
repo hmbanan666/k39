@@ -1,9 +1,9 @@
 <template>
   <section
     class="draft"
-    aria-labelledby="place-draft-title"
+    :aria-labelledby="headingId"
   >
-    <h2 id="place-draft-title">
+    <h2 :id="headingId">
       Черновик ждёт решения
     </h2>
     <p class="lead">
@@ -66,10 +66,13 @@
 <script setup lang="ts">
 import type { PlaceDraftNotice } from '~~/shared/place-draft-diff'
 
-defineProps<{
+withDefaults(defineProps<{
   pending: PlaceDraftNotice
   busy?: boolean
-}>()
+  headingId?: string
+}>(), {
+  headingId: 'place-draft-title',
+})
 
 const emit = defineEmits<{
   apply: []

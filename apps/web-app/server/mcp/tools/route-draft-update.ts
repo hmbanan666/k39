@@ -4,7 +4,7 @@ import { orderedStops, routePath } from '../../utils/mcp/schemas'
 
 export default defineMcpTool({
   name: 'route_draft_update',
-  description: 'Update a route in place, including one that is already published. Omitting publicationStatus leaves a published route published. Optional points replace the ordered stops; omit them to keep the current stops. An empty array clears the stops. Each placeSlug must exist. A slug change writes a 301 from /marshruty/old.',
+  description: 'Update a route in place, including one that is already published. Omitting publicationStatus leaves a published route published. A draft-token write to a published or archived route is stored as a pending review and the live row stays. That response is the stored draft: pendingReview, pendingPublicationStatus, bodyLength, renderedFields, and ordered points. publicationStatus in the response stays the live status. Optional points replace the ordered stops; omit them to keep the current stops. An empty array clears the stops. Each placeSlug must exist. A slug change writes a 301 from /marshruty/old.',
   inputSchema: {
     id: z.string().optional(),
     slug: z.string().optional(),

@@ -96,7 +96,7 @@ function faqText(value: unknown) {
   }).filter(Boolean).join('\n\n')
 }
 
-function sourceText(value: unknown) {
+export function sourceText(value: unknown) {
   if (!Array.isArray(value)) {
     return ''
   }
@@ -156,9 +156,25 @@ interface Read {
   text: string
 }
 
-function textRead(value: string | null | undefined): Read {
+export function textRead(value: string | null | undefined): Read {
   const text = prose(value)
   return { key: text, text }
+}
+
+export function diffFields(fields: Array<{ field: string, label: string, live: Read, draft: Read }>): PlaceDraftChange[] {
+  const changes: PlaceDraftChange[] = []
+  for (const field of fields) {
+    if (field.live.key === field.draft.key) {
+      continue
+    }
+    changes.push({
+      field: field.field,
+      label: field.label,
+      live: shown(field.live.text),
+      draft: shown(field.draft.text),
+    })
+  }
+  return changes
 }
 
 const FIELDS: Array<{
@@ -220,21 +236,12 @@ const FIELDS: Array<{
 ]
 
 export function placeDraftChanges(live: PlaceDraftSide, draft: PlaceDraftSide, names: PlaceDraftNames = {}): PlaceDraftChange[] {
-  const changes: PlaceDraftChange[] = []
-  for (const field of FIELDS) {
-    const before = field.read(live, names)
-    const after = field.read(draft, names)
-    if (before.key === after.key) {
-      continue
-    }
-    changes.push({
-      field: field.field,
-      label: field.label,
-      live: shown(before.text),
-      draft: shown(after.text),
-    })
-  }
-  return changes
+  return diffFields(FIELDS.map((field) => ({
+    field: field.field,
+    label: field.label,
+    live: field.read(live, names),
+    draft: field.read(draft, names),
+  })))
 }
 
 export function formatDraftUpdated(iso: string) {

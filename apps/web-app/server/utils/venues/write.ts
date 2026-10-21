@@ -4,7 +4,7 @@ import type { VenueModule } from '../../../shared/venue-modules'
 import { db, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
-import { contentScope } from '../access'
+import { contentScope, requireEditorContent } from '../access'
 import { contentGate, contentWarnings, createVenueContent, updateVenueContent } from '../content/save'
 import { hoursConflict, syncCoordinates, syncVenueContact } from '../facts/sync'
 import { auditMcp } from '../mcp/audit'
@@ -12,6 +12,31 @@ import { parseFactsCheckedAt } from '../mcp/facts'
 import { loadSchedule, saveSchedule } from '../schedule'
 import { normalizeDishModules } from './dishes'
 import { recomputePriceBandsAfterStatus } from './price-band'
+
+/** Editor token only. A published or closed venue stays; the repository refuses those. */
+export async function deleteVenue(input: { id?: string, slug?: string }) {
+  requireEditorContent('delete a venue')
+  if (!input.id && !input.slug) {
+    throw createError({ statusCode: 400, statusMessage: 'Нужен id или slug' })
+  }
+  const current = input.id ? await db.venues.byId(input.id) : await db.venues.bySlug(input.slug || '')
+  if (!current) {
+    throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
+  }
+  try {
+    const result = await db.venues.remove(current.id)
+    if (!result) {
+      throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
+    }
+    await auditMcp('venue_delete', 'venue', result.id)
+    return result
+  } catch (error) {
+    if (error instanceof VenueInputError && error.message.startsWith('Удалить можно только')) {
+      throw createError({ statusCode: 409, statusMessage: error.message })
+    }
+    venueError(error)
+  }
+}
 
 export function venueError(error: unknown): never {
   if (error instanceof VenueInputError) {

@@ -174,15 +174,19 @@ describe('collection article', () => {
     expect(HUB_RENDERED_FIELDS).toContain('body')
     const root = resolve(import.meta.dirname, '..')
     for (const file of [
-      'server/mcp/tools/collection-save.ts',
       'server/utils/mcp/collections.ts',
-      'server/utils/mcp/publish.ts',
       'server/api/admin/collections/[id].patch.ts',
       'server/utils/public-pages.ts',
       'server/utils/scoring/assemble.ts',
     ]) {
       const source = readFileSync(resolve(root, file), 'utf8')
       expect(source, file).toMatch(/collectionWritePlan|collectionArticle/)
+    }
+    for (const file of [
+      'server/mcp/tools/collection-save.ts',
+      'server/utils/mcp/publish.ts',
+    ]) {
+      expect(readFileSync(resolve(root, file), 'utf8'), file).toContain('saveCollectionDraft')
     }
     for (const file of [
       'server/mcp/tools/collection-get.ts',

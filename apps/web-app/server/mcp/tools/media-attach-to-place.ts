@@ -1,11 +1,10 @@
-import { db } from '@k39/database'
 import { z } from 'zod'
-import { contentScope } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
+import { attachPlacePhoto } from '../../utils/mcp/photos'
 
 export default defineMcpTool({
   name: 'media_attach_to_place',
-  description: 'Attach a stored photo to a place. Optionally set cover, sort order, and focal point (0 to 1).',
+  description: 'Attach a stored photo to a place. Optionally set cover, sort order, and focal point (0 to 1). A draft token cannot attach a photo to a published or archived place. That answer is 409 and the live page stays.',
   inputSchema: {
     placeId: z.string(),
     mediaId: z.string(),
@@ -15,28 +14,8 @@ export default defineMcpTool({
     focalY: z.number().min(0).max(1).optional(),
   },
   handler: async (input) => {
-    const media = await db.editor.mediaById(input.mediaId)
-    if (!media) {
-      throw createError({ statusCode: 404, statusMessage: 'Фото не найдено' })
-    }
-    const place = await db.editor.placeById(input.placeId)
-    if (contentScope() === 'draft' && place && (place.publicationStatus === 'published' || place.publicationStatus === 'archived')) {
-      throw createError({ statusCode: 409, statusMessage: 'Draft token cannot attach a photo to a published place. The live page was not changed.' })
-    }
-    await db.editor.attachMedia(input.placeId, input.mediaId, {
-      isCover: input.isCover,
-      sortOrder: input.sortOrder,
-    })
-    if (input.isCover) {
-      await db.editor.setCover(input.placeId, input.mediaId)
-    }
-    if (input.focalX !== undefined || input.focalY !== undefined) {
-      await db.editor.updateMedia(input.mediaId, {
-        focalX: input.focalX,
-        focalY: input.focalY,
-      })
-    }
+    const result = await attachPlacePhoto(input)
     await auditMcp('media_attach_to_place', 'place', input.placeId)
-    return { placeId: input.placeId, mediaId: input.mediaId, isCover: Boolean(input.isCover) }
+    return result
   },
 })

@@ -15,6 +15,12 @@ export default defineConfig({
         },
       },
       {
+        resolve: {
+          alias: [
+            { find: '~~', replacement: fileURLToPath(new URL('./apps/web-app', import.meta.url)) },
+            { find: '~', replacement: fileURLToPath(new URL('./apps/web-app/app', import.meta.url)) },
+          ],
+        },
         test: {
           name: 'packages/database',
           root: './packages/database',

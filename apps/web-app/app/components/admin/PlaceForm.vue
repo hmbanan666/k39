@@ -139,40 +139,16 @@
           </li>
         </ul>
       </section>
-      <div
+      <AdminDraftChoice
         v-if="choice"
-        id="place-draft-choice"
-        class="choice"
-      >
-        <h2>{{ choice === 'apply' ? 'Применить черновик?' : 'Что оставить?' }}</h2>
-        <p>{{ choiceText }}</p>
-        <div class="choice-actions">
-          <UiButton
-            v-if="choice === 'save'"
-            type="button"
-            variant="sea"
-            :disabled="busy"
-            @click="saveAndDiscard"
-          >
-            Сохранить форму и отбросить черновик
-          </UiButton>
-          <UiButton
-            type="button"
-            :disabled="busy"
-            @click="confirmApply"
-          >
-            Применить черновик
-          </UiButton>
-          <UiButton
-            type="button"
-            variant="quiet"
-            :disabled="busy"
-            @click="choice = null"
-          >
-            Вернуться к форме
-          </UiButton>
-        </div>
-      </div>
+        choice-id="place-draft-choice"
+        :choice="choice"
+        :text="choiceText"
+        :busy="busy"
+        @save="saveAndDiscard"
+        @apply="confirmApply"
+        @back="choice = null"
+      />
       <UiButton
         type="submit"
         :disabled="busy"
@@ -429,26 +405,4 @@ input, textarea, select { font: inherit; padding: 0.4rem 0.5rem; }
 .warn { color: #9b3d2a; }
 .serp { border: 1px solid #e6d5b0; padding: 0.8rem; }
 .preview { border-top: 1px solid #e6d5b0; padding-top: 0.6rem; }
-.choice {
-  padding: var(--space-4);
-  border: 1px solid var(--color-line);
-  border-left: 4px solid var(--color-brick);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-.choice h2 {
-  margin: 0 0 var(--space-2);
-  font-family: var(--font-display);
-  font-size: var(--step-1);
-  font-weight: 700;
-}
-.choice p { margin: 0 0 var(--space-3); max-width: 62ch; }
-.choice-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.choice-actions :deep(.btn) {
-  flex: 1 1 14rem;
-  height: auto;
-  min-height: 2.6rem;
-  white-space: normal;
-  text-align: center;
-}
 </style>

@@ -28,7 +28,7 @@ function syncedBody(data: { body?: string, sections?: unknown }): { body?: strin
   return {}
 }
 
-type ContentTx = Parameters<Parameters<ReturnType<typeof useDatabase>['transaction']>[0]>[0]
+export type ContentTx = Parameters<Parameters<ReturnType<typeof useDatabase>['transaction']>[0]>[0]
 
 /** Cap, dedupe, and validate source rows. The same rules as a venue. */
 function pageSources(rows: unknown): SourceLink[] {
@@ -46,6 +46,66 @@ function kept<T>(payload: Record<string, unknown>, key: string, fallback: T): T 
     return fallback
   }
   return payload[key] as T
+}
+
+function routeFromPending(existing: typeof routes.$inferSelect, payload: Record<string, unknown>) {
+  const slug = typeof payload.slug === 'string' && payload.slug ? payload.slug : existing.slug
+  const title = typeof payload.title === 'string' && payload.title ? payload.title : existing.title
+  const next = {
+    slug,
+    title,
+    summary: kept(payload, 'summary', existing.summary),
+    body: kept(payload, 'body', existing.body),
+    seoTitle: kept(payload, 'seoTitle', existing.seoTitle),
+    seoDescription: kept(payload, 'seoDescription', existing.seoDescription),
+    ogImage: kept(payload, 'ogImage', existing.ogImage),
+    noindex: kept(payload, 'noindex', existing.noindex),
+    publicationStatus: 'published' as const,
+  }
+  const sections = Object.hasOwn(payload, 'sections') ? { sections: payload.sections } : {}
+  return { ...next, ...syncedBody({ ...next, ...sections }) }
+}
+
+function collectionFromPending(existing: typeof collections.$inferSelect, payload: Record<string, unknown>) {
+  const slug = typeof payload.slug === 'string' && payload.slug ? payload.slug : existing.slug
+  const title = typeof payload.title === 'string' && payload.title ? payload.title : existing.title
+  return {
+    slug,
+    title,
+    summary: kept(payload, 'summary', existing.summary),
+    body: kept(payload, 'body', existing.body),
+    seoTitle: kept(payload, 'seoTitle', existing.seoTitle),
+    seoDescription: kept(payload, 'seoDescription', existing.seoDescription),
+    ogImage: kept(payload, 'ogImage', existing.ogImage),
+    noindex: kept(payload, 'noindex', existing.noindex),
+    kind: kept(payload, 'kind', existing.kind),
+    month: kept(payload, 'month', existing.month),
+    sources: Object.hasOwn(payload, 'sources') ? pageSources(payload.sources) : existing.sources,
+    modules: kept(payload, 'modules', existing.modules),
+    publicationStatus: 'published' as const,
+  }
+}
+
+async function withPendingDraft<T>(
+  entityType: string,
+  entityId: string,
+  apply: (tx: ContentTx, draft: typeof contentDrafts.$inferSelect) => Promise<T | null>,
+) {
+  return useDatabase().transaction(async (tx) => {
+    const [draft] = await tx.select().from(contentDrafts).where(and(
+      eq(contentDrafts.entityType, entityType),
+      eq(contentDrafts.entityId, entityId),
+    )).limit(1).for('update')
+    if (!draft) {
+      return null
+    }
+    const result = await apply(tx, draft)
+    if (!result) {
+      return null
+    }
+    await tx.delete(contentDrafts).where(eq(contentDrafts.id, draft.id))
+    return result
+  })
 }
 
 /**
@@ -571,9 +631,32 @@ export class Editor {
     return rows.map((row) => row.entityId)
   }
 
+  static async contentDraftsFor(entityType: string) {
+    return useDatabase().select().from(contentDrafts).where(eq(contentDrafts.entityType, entityType))
+  }
+
+  /** Rejects a stop whose place slug does not exist. Does not write. */
+  static async assertOrderedStops(stops: OrderedStop[]) {
+    await resolveStops(stops)
+  }
+
   /** The live row after `applyPendingPlace` would write this payload. */
   static pendingPlaceNext(existing: typeof places.$inferSelect, payload: Record<string, unknown>) {
     return placeFromPending(existing, payload)
+  }
+
+  /** Columns `applyPendingRoute` would write. Points stay on the payload. */
+  static pendingRouteNext(existing: typeof routes.$inferSelect, payload: Record<string, unknown>) {
+    const next = routeFromPending(existing, payload)
+    const path = Object.hasOwn(payload, 'path')
+      ? { path: payload.path as [number, number][] | null }
+      : { path: existing.path }
+    return { ...next, ...path }
+  }
+
+  /** Columns `applyPendingCollection` would write. Items stay on the payload. */
+  static pendingCollectionNext(existing: typeof collections.$inferSelect, payload: Record<string, unknown>) {
+    return collectionFromPending(existing, payload)
   }
 
   /**
@@ -581,14 +664,7 @@ export class Editor {
    * in one transaction (ADR 0035). Null when that draft is already gone.
    */
   static async applyPendingPlace(id: string) {
-    return useDatabase().transaction(async (tx) => {
-      const [draft] = await tx.select().from(contentDrafts).where(and(
-        eq(contentDrafts.entityType, 'place'),
-        eq(contentDrafts.entityId, id),
-      )).limit(1).for('update')
-      if (!draft) {
-        return null
-      }
+    return withPendingDraft('place', id, async (tx, draft) => {
       const [existing] = await tx.select().from(places).where(eq(places.id, id)).limit(1)
       if (!existing) {
         return null
@@ -609,8 +685,91 @@ export class Editor {
         updatedBy: null,
         updatedAt: new Date().toISOString(),
       }).where(eq(places.id, existing.id)).returning()
-      await tx.delete(contentDrafts).where(eq(contentDrafts.id, draft.id))
       return updated ?? null
+    })
+  }
+
+  /**
+   * Writes a pending route draft, its ordered stops, and a slug redirect,
+   * then removes the draft, in one transaction (ADR 0041).
+   */
+  static async applyPendingRoute(id: string) {
+    return withPendingDraft('route', id, async (tx, draft) => {
+      const [existing] = await tx.select().from(routes).where(eq(routes.id, id)).limit(1)
+      if (!existing) {
+        return null
+      }
+      // A route row has no sources column. The same cap and dedupe still run, so a list on the payload is not copied as-is.
+      if (Object.hasOwn(draft.payload, 'sources')) {
+        pageSources(draft.payload.sources)
+      }
+      const next = routeFromPending(existing, draft.payload)
+      await tx.insert(revisions).values({
+        entityType: 'route',
+        entityId: existing.id,
+        snapshot: existing,
+        updatedBy: null,
+      })
+      if (existing.slug !== next.slug) {
+        await upsertRedirect(`/marshruty/${existing.slug}`, `/marshruty/${next.slug}`, tx)
+      }
+      const path = Object.hasOwn(draft.payload, 'path')
+        ? { path: draft.payload.path as [number, number][] | null }
+        : {}
+      const [updated] = await tx.update(routes).set({
+        ...next,
+        ...path,
+        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
+        updatedBy: null,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(routes.id, existing.id)).returning()
+      if (!updated) {
+        return null
+      }
+      if (Array.isArray(draft.payload.points)) {
+        const resolved = await resolveStops(draft.payload.points as OrderedStop[], tx)
+        await writeRoutePoints(updated.id, resolved, tx)
+      }
+      await syncGonePath(`/marshruty/${updated.slug}`, 'published', tx)
+      return updated
+    })
+  }
+
+  /**
+   * Writes a pending collection draft, its ordered items, and a slug redirect,
+   * then removes the draft, in one transaction (ADR 0041).
+   */
+  static async applyPendingCollection(id: string) {
+    return withPendingDraft('collection', id, async (tx, draft) => {
+      const [existing] = await tx.select().from(collections).where(eq(collections.id, id)).limit(1)
+      if (!existing) {
+        return null
+      }
+      const next = collectionFromPending(existing, draft.payload)
+      await tx.insert(revisions).values({
+        entityType: 'collection',
+        entityId: existing.id,
+        snapshot: existing,
+        updatedBy: null,
+      })
+      if (existing.slug !== next.slug) {
+        await upsertRedirect(`/podborki/${existing.slug}`, `/podborki/${next.slug}`, tx)
+      }
+      const [updated] = await tx.update(collections).set({
+        ...next,
+        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
+        updatedBy: null,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(collections.id, existing.id)).returning()
+      if (!updated) {
+        return null
+      }
+      if (Array.isArray(draft.payload.items)) {
+        const resolved = await resolveStops(draft.payload.items as OrderedStop[], tx)
+        await writeCollectionItems(updated.id, resolved, tx)
+      }
+      await syncGonePath(`/podborki/${updated.slug}`, 'published', tx)
+      return updated
     })
   }
 
@@ -675,6 +834,20 @@ export class Editor {
     return useDatabase().select().from(routes).orderBy(asc(routes.title))
   }
 
+  static async routeById(id: string) {
+    const [row] = await useDatabase().select().from(routes).where(eq(routes.id, id)).limit(1)
+    return row ?? null
+  }
+
+  /** The route that owns a stop. A missing point is null. */
+  static async routeForPoint(pointId: string) {
+    const [point] = await useDatabase().select({ routeId: routePoints.routeId }).from(routePoints).where(eq(routePoints.id, pointId)).limit(1)
+    if (!point) {
+      return null
+    }
+    return this.routeById(point.routeId)
+  }
+
   static async routePoints(routeId: string) {
     return useDatabase().select({
       placeSlug: places.slug,
@@ -711,6 +884,23 @@ export class Editor {
     return useDatabase().select().from(collections).orderBy(asc(collections.title))
   }
 
+  static async collectionById(id: string) {
+    const [row] = await useDatabase().select().from(collections).where(eq(collections.id, id)).limit(1)
+    return row ?? null
+  }
+
+  static transaction<T>(run: (tx: ContentTx) => Promise<T>) {
+    return useDatabase().transaction(run)
+  }
+
+  /** Deletes the draft only when it is still the row the caller checked. */
+  static async deleteContentDraftIfUnchanged(id: string, updatedAt: string, tx: ContentTx) {
+    await tx.delete(contentDrafts).where(and(
+      eq(contentDrafts.id, id),
+      eq(contentDrafts.updatedAt, updatedAt),
+    ))
+  }
+
   static async collectionItems(collectionId: string) {
     return useDatabase().select({
       placeSlug: places.slug,
@@ -722,6 +912,11 @@ export class Editor {
 
   static async listRegions() {
     return useDatabase().select().from(regions).orderBy(asc(regions.title))
+  }
+
+  static async regionById(id: string) {
+    const [row] = await useDatabase().select().from(regions).where(eq(regions.id, id)).limit(1)
+    return row ?? null
   }
 
   /** Published place whose slug is the town (the town hub), for a short cover. */
@@ -740,15 +935,15 @@ export class Editor {
     ))
   }
 
-  static async saveRoute(input: { id?: string, slug: string, title: string, summary?: string | null, body?: string, sections?: unknown, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null) {
+  static async saveRoute(input: { id?: string, slug: string, title: string, summary?: string | null, body?: string, sections?: unknown, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null, tx?: ContentTx) {
     const data = { ...input, ...syncedBody(input) }
-    const resolvedPoints = data.points ? await resolveStops(data.points) : null
-    const db = useDatabase()
+    const resolvedPoints = data.points ? await resolveStops(data.points, tx) : null
+    const db = tx ?? useDatabase()
     const [existing] = data.id
       ? await db.select().from(routes).where(eq(routes.id, data.id)).limit(1)
       : await db.select().from(routes).where(eq(routes.slug, data.slug)).limit(1)
     if (existing && existing.slug !== data.slug) {
-      await upsertRedirect(`/marshruty/${existing.slug}`, `/marshruty/${data.slug}`)
+      await upsertRedirect(`/marshruty/${existing.slug}`, `/marshruty/${data.slug}`, tx)
     }
     const values = {
       slug: data.slug,
@@ -773,21 +968,21 @@ export class Editor {
       throw new Error('Route insert failed')
     }
     if (resolvedPoints) {
-      await writeRoutePoints(row.id, resolvedPoints)
+      await writeRoutePoints(row.id, resolvedPoints, tx)
     }
-    await syncGonePath(`/marshruty/${row.slug}`, row.publicationStatus)
+    await syncGonePath(`/marshruty/${row.slug}`, row.publicationStatus, tx)
     return row
   }
 
-  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[], kind?: CollectionKind, month?: number | null, sources?: SourceLink[], modules?: StoredPageModule[] }, userId?: string | null) {
+  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[], kind?: CollectionKind, month?: number | null, sources?: SourceLink[], modules?: StoredPageModule[] }, userId?: string | null, tx?: ContentTx) {
     const sources = data.sources === undefined ? undefined : pageSources(data.sources)
-    const resolvedItems = data.items ? await resolveStops(data.items) : null
-    const db = useDatabase()
+    const resolvedItems = data.items ? await resolveStops(data.items, tx) : null
+    const db = tx ?? useDatabase()
     const [existing] = data.id
       ? await db.select().from(collections).where(eq(collections.id, data.id)).limit(1)
       : await db.select().from(collections).where(eq(collections.slug, data.slug)).limit(1)
     if (existing && existing.slug !== data.slug) {
-      await upsertRedirect(`/podborki/${existing.slug}`, `/podborki/${data.slug}`)
+      await upsertRedirect(`/podborki/${existing.slug}`, `/podborki/${data.slug}`, tx)
     }
     const values = {
       slug: data.slug,
@@ -814,9 +1009,9 @@ export class Editor {
       throw new Error('Collection insert failed')
     }
     if (resolvedItems) {
-      await writeCollectionItems(row.id, resolvedItems)
+      await writeCollectionItems(row.id, resolvedItems, tx)
     }
-    await syncGonePath(`/podborki/${row.slug}`, row.publicationStatus)
+    await syncGonePath(`/podborki/${row.slug}`, row.publicationStatus, tx)
     return row
   }
 
@@ -1225,8 +1420,8 @@ function blankNote(note: string | null | undefined) {
   return text || null
 }
 
-async function resolveStops(stops: OrderedStop[]) {
-  const db = useDatabase()
+async function resolveStops(stops: OrderedStop[], tx?: ContentTx) {
+  const db = tx ?? useDatabase()
   const resolved: ResolvedStop[] = []
   for (const stop of stops) {
     const [place] = await db.select({ id: places.id }).from(places).where(eq(places.slug, stop.placeSlug)).limit(1)
@@ -1238,37 +1433,45 @@ async function resolveStops(stops: OrderedStop[]) {
   return resolved
 }
 
-async function writeRoutePoints(routeId: string, stops: ResolvedStop[]) {
-  const db = useDatabase()
-  await db.transaction(async (tx) => {
-    await tx.delete(routePoints).where(eq(routePoints.routeId, routeId))
+async function writeRoutePoints(routeId: string, stops: ResolvedStop[], tx?: ContentTx) {
+  const write = async (db: ContentTx) => {
+    await db.delete(routePoints).where(eq(routePoints.routeId, routeId))
     if (!stops.length) {
       return
     }
     // Position is the array index so the saved order matches the request.
-    await tx.insert(routePoints).values(stops.map((stop, position) => ({
+    await db.insert(routePoints).values(stops.map((stop, position) => ({
       routeId,
       placeId: stop.placeId,
       position,
       note: stop.note,
     })))
-  })
+  }
+  if (tx) {
+    await write(tx)
+    return
+  }
+  await useDatabase().transaction(write)
 }
 
-async function writeCollectionItems(collectionId: string, stops: ResolvedStop[]) {
-  const db = useDatabase()
-  await db.transaction(async (tx) => {
-    await tx.delete(collectionItems).where(eq(collectionItems.collectionId, collectionId))
+async function writeCollectionItems(collectionId: string, stops: ResolvedStop[], tx?: ContentTx) {
+  const write = async (db: ContentTx) => {
+    await db.delete(collectionItems).where(eq(collectionItems.collectionId, collectionId))
     if (!stops.length) {
       return
     }
-    await tx.insert(collectionItems).values(stops.map((stop, position) => ({
+    await db.insert(collectionItems).values(stops.map((stop, position) => ({
       collectionId,
       placeId: stop.placeId,
       position,
       note: stop.note,
     })))
-  })
+  }
+  if (tx) {
+    await write(tx)
+    return
+  }
+  await useDatabase().transaction(write)
 }
 
 async function redirectByPath(fromPath: string) {
@@ -1284,8 +1487,8 @@ async function redirectByPath(fromPath: string) {
   return row ?? null
 }
 
-async function markGone(fromPath: string) {
-  const db = useDatabase()
+async function markGone(fromPath: string, tx?: ContentTx) {
+  const db = tx ?? useDatabase()
   const [existing] = await db.select().from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
   if (!existing) {
     await db.insert(slugRedirects).values({ fromPath, toPath: null, statusCode: 410 })
@@ -1294,17 +1497,18 @@ async function markGone(fromPath: string) {
   await db.update(slugRedirects).set({ toPath: null, statusCode: 410 }).where(eq(slugRedirects.id, existing.id))
 }
 
-async function clearGone(fromPath: string) {
-  await useDatabase().delete(slugRedirects).where(and(eq(slugRedirects.fromPath, fromPath), eq(slugRedirects.statusCode, 410)))
+async function clearGone(fromPath: string, tx?: ContentTx) {
+  const db = tx ?? useDatabase()
+  await db.delete(slugRedirects).where(and(eq(slugRedirects.fromPath, fromPath), eq(slugRedirects.statusCode, 410)))
 }
 
-async function syncGonePath(path: string, status: PublicationStatus) {
+async function syncGonePath(path: string, status: PublicationStatus, tx?: ContentTx) {
   if (status === 'published') {
-    await clearGone(path)
+    await clearGone(path, tx)
     return
   }
   if (status === 'archived') {
-    await markGone(path)
+    await markGone(path, tx)
   }
 }
 

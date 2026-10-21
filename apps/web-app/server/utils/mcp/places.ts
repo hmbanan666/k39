@@ -7,6 +7,7 @@ import { syncCoordinates, syncPlaceStatus } from '../facts/sync'
 import { auditMcp } from './audit'
 import { resolvePublication } from './draft'
 import { parseFactsCheckedAt } from './facts'
+import { isPublicationOnly, mergedField, pendingDraftFields, pendingPublication } from './pending'
 
 const VISIT = new Set(['open', 'ruins', 'closed', 'unknown'])
 
@@ -114,30 +115,32 @@ const PLACE_RENDERED_FIELDS = [
  * row, are how MCP and PATCH /api/content/places address the place. A
  * different slug is a rename and counts as an edit.
  */
+const PLACE_CONTENT_KEYS = [
+  'title',
+  'summary',
+  'body',
+  'sections',
+  'hours',
+  'price',
+  'howToGet',
+  'latitude',
+  'longitude',
+  'regionSlug',
+  'categorySlug',
+  'seoTitle',
+  'seoDescription',
+  'ogImage',
+  'noindex',
+  'sources',
+  'visitDuration',
+  'bestTime',
+  'faq',
+  'factsCheckedAt',
+  'status',
+] as const
+
 function publicationOnly(input: PlaceDraftInput, currentSlug: string) {
-  const slugUnchanged = input.slug === undefined || input.slug === currentSlug
-  return slugUnchanged
-    && input.title === undefined
-    && input.summary === undefined
-    && input.body === undefined
-    && input.sections === undefined
-    && input.hours === undefined
-    && input.price === undefined
-    && input.howToGet === undefined
-    && input.latitude === undefined
-    && input.longitude === undefined
-    && input.regionSlug === undefined
-    && input.categorySlug === undefined
-    && input.seoTitle === undefined
-    && input.seoDescription === undefined
-    && input.ogImage === undefined
-    && input.noindex === undefined
-    && input.sources === undefined
-    && input.visitDuration === undefined
-    && input.bestTime === undefined
-    && input.faq === undefined
-    && input.factsCheckedAt === undefined
-    && input.status === undefined
+  return isPublicationOnly(input, PLACE_CONTENT_KEYS, currentSlug)
 }
 
 function storedDraftResponse(
@@ -163,11 +166,7 @@ function storedDraftResponse(
     : current.lastVerifiedAt
   return {
     ...compactPlace({ ...current, slug, title, status, lastVerifiedAt: factsCheckedAt }),
-    pendingReview: true as const,
-    pendingPublicationStatus: pendingStatus,
-    bodyLength: body.length,
-    renderedFields: PLACE_RENDERED_FIELDS,
-    writingWarnings,
+    ...pendingDraftFields(body, pendingStatus, PLACE_RENDERED_FIELDS, writingWarnings),
   }
 }
 
@@ -331,20 +330,15 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     }
     const base = pending?.payload ?? {}
     const text = (key: string, value: string | null | undefined, fallback: string | null) => {
-      if (value !== undefined) {
-        return value
-      }
-      if (key in base) {
-        return (base[key] as string | null | undefined) ?? null
-      }
-      return fallback
+      const merged = mergedField(value, base, key, fallback)
+      return merged ?? null
     }
     const checked = parseFactsCheckedAt(
       input.factsCheckedAt === undefined
         ? (base.factsCheckedAt as string | null | undefined) ?? (base.lastVerifiedAt as string | null | undefined)
         : input.factsCheckedAt,
     )
-    const pendingStatus = input.publicationStatus === 'draft' ? 'draft' : 'review'
+    const pendingStatus = pendingPublication(input.publicationStatus)
     const payload = {
       slug,
       title: input.title ?? (base.title as string | undefined) ?? current.title,

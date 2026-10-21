@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. Amended by [ADR 0041](0041-collection-route-drafts.md) for collections and routes. Venues, quests, listings, and archive stay refused.
 
 ## Context
 
@@ -21,7 +21,7 @@ Two bearer secrets, compared in constant time:
 - `CONTENT_API_TOKEN` is the editor token. It can publish, unpublish, and edit a live row. Same rights as ADR 0012.
 - `CONTENT_DRAFT_TOKEN` is the agent token. It can read. It can create and update a draft or a review. It cannot set `published`. A write against a published or archived place is stored in `content_drafts` and the live row stays. `place_get` returns that row as `pendingReview`. An editor publish (`content_set_publication` with `published`, and no other fields) applies the pending payload and then deletes it. An editor write of the live row discards the pending payload.
 
-The draft token cannot archive, edit a hub or a region, delete media, change the price catalog, migrate schedules, or edit a published venue, route, collection, quest, or listing. Those actions answer 403 or 409 and do not change the live page. Publishing stays the reviewer step in `k39-publish-review`.
+The draft token cannot archive, edit a hub or a region, delete media, delete a venue, change the price catalog, migrate schedules, or edit a published venue, quest, or listing. Photo, schedule, and fact-value writes on a live page are the same 409 under ADR 0041. Those actions answer 403 or 409 and do not change the live page. A published route or collection is a pending draft under ADR 0041. Publishing stays the reviewer step in `k39-publish-review`.
 
 `/mcp` answers a missing or wrong token with HTTP 401, `WWW-Authenticate: Bearer realm="k39"` (no `resource_metadata`), and a JSON-RPC error body. Unset tokens are still 503. The same 401 challenge is on the REST content routes. Sixty calls a minute are counted per presented secret.
 
@@ -44,3 +44,5 @@ A pending draft is invisible on the public page. The score still reads the live 
 `place_update` with the draft token returns the stored draft: `pendingReview`, `bodyLength`, and `renderedFields`. `publicationStatus` in that response stays the live status. An editor publish applies the pending payload and deletes the draft in one transaction. An editor write through MCP that changes any other field discards the pending payload.
 
 The `/admin` place form does not discard that draft on its own. It shows each field the pending payload would change, live value beside draft value. Apply calls `setPublication` with `published` and no other fields, the same writer as `content_set_publication`. Discard deletes the draft and leaves the live row. `PATCH /api/admin/places/[id]` returns 409 while a draft exists, and writes nothing, unless the body sets `pendingDraft` to `discard`. That choice writes the form and then deletes the draft. Venues are not stored in `content_drafts`: a draft token cannot edit a published venue, and the venue form has no pending row to apply.
+
+ADR 0041 is the pending-draft path for a published route or collection. Venues, quests, listings, and archive stay on the refusal above.

@@ -6,6 +6,14 @@
       :key="item.id"
       @submit.prevent="save(item)"
     >
+      <AdminPlaceDraftNotice
+        v-if="item.pending"
+        :pending="item.pending"
+        :busy="busyId === item.id"
+        :heading-id="`route-draft-${item.id}`"
+        @apply="onApply(item)"
+        @discard="onDiscard(item)"
+      />
       <label>Название <input v-model="item.title"></label>
       <label>Slug <input v-model="item.slug"></label>
       <label>Кратко <textarea v-model="item.summary" rows="2" /></label>
@@ -30,24 +38,211 @@
         v-model="item.noindex"
         type="checkbox"
       > Не индексировать</label>
-      <button type="submit">
+      <AdminDraftChoice
+        v-if="choice[item.id]"
+        :choice="chosen(item.id)"
+        :choice-id="`route-draft-choice-${item.id}`"
+        :text="choiceText(item)"
+        :busy="busyId === item.id"
+        @save="saveAndDiscard(item)"
+        @apply="confirmApply(item)"
+        @back="choice[item.id] = undefined"
+      />
+      <button
+        type="submit"
+        :disabled="busyId === item.id"
+      >
         Сохранить
       </button>
+      <p
+        v-if="message[item.id]"
+        aria-live="polite"
+      >
+        {{ message[item.id] }}
+      </p>
     </form>
   </main>
 </template>
 
 <script setup lang="ts">
-import { ofetch } from 'ofetch'
+import type { FetchError } from 'ofetch'
+import type { ContentDraftNotice } from '~~/shared/content-draft-diff'
+
+interface RouteForm {
+  id: string
+  title: string
+  slug: string
+  summary: string | null
+  body: string
+  publicationStatus: string
+  seoTitle: string | null
+  seoDescription: string | null
+  ogImage: string | null
+  noindex: boolean
+  pending: ContentDraftNotice | null
+}
 
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
-const items = ref(await ofetch('/api/admin/routes'))
-async function save(item: { id: string }) {
-  await ofetch(`/api/admin/routes/${item.id}`, { method: 'PATCH', body: item })
+
+const requestFetch = useRequestFetch()
+const items = ref<RouteForm[]>(await requestFetch('/api/admin/routes'))
+const choice = reactive<Record<string, 'save' | 'apply' | undefined>>({})
+const message = reactive<Record<string, string>>({})
+const busyId = ref('')
+const baseline = ref<Record<string, string>>({})
+
+function snapshot(item: RouteForm) {
+  return JSON.stringify({
+    title: item.title,
+    slug: item.slug,
+    summary: item.summary,
+    body: item.body,
+    publicationStatus: item.publicationStatus,
+    seoTitle: item.seoTitle,
+    seoDescription: item.seoDescription,
+    ogImage: item.ogImage,
+    noindex: item.noindex,
+  })
+}
+
+function remember() {
+  const next: Record<string, string> = {}
+  for (const item of items.value) {
+    next[item.id] = snapshot(item)
+  }
+  baseline.value = next
+}
+
+remember()
+
+function dirty(item: RouteForm) {
+  return snapshot(item) !== baseline.value[item.id]
+}
+
+function chosen(id: string): 'save' | 'apply' {
+  return choice[id] ?? 'save'
+}
+
+function choiceText(item: RouteForm) {
+  if (choice[item.id] === 'apply') {
+    return 'В форме есть правки. Они не сохранятся. На сайт попадёт черновик.'
+  }
+  if (dirty(item)) {
+    return 'Сохранение запишет правки формы и удалит черновик. Применение запишет черновик и не сохранит правки формы.'
+  }
+  return 'Сохранение оставит живую страницу и удалит черновик. Применение запишет черновик на сайт.'
+}
+
+function failure(error: unknown, fallback: string) {
+  const data = (error as FetchError<{ statusMessage?: string }>)?.data
+  return data?.statusMessage || fallback
+}
+
+function payload(item: RouteForm, discard: boolean) {
+  return {
+    title: item.title,
+    slug: item.slug,
+    summary: item.summary,
+    body: item.body,
+    publicationStatus: item.publicationStatus,
+    seoTitle: item.seoTitle,
+    seoDescription: item.seoDescription,
+    ogImage: item.ogImage,
+    noindex: item.noindex,
+    ...(discard ? { pendingDraft: 'discard' } : {}),
+  }
+}
+
+async function reload() {
+  items.value = await requestFetch('/api/admin/routes')
+  remember()
+}
+
+async function save(item: RouteForm) {
+  if (busyId.value) {
+    return
+  }
+  if (item.pending) {
+    choice[item.id] = 'save'
+    await nextTick()
+    document.getElementById(`route-draft-choice-${item.id}`)?.scrollIntoView({ block: 'nearest' })
+    return
+  }
+  await persist(item, false)
+}
+
+async function saveAndDiscard(item: RouteForm) {
+  await persist(item, true)
+}
+
+async function persist(item: RouteForm, discard: boolean) {
+  if (busyId.value) {
+    return
+  }
+  busyId.value = item.id
+  message[item.id] = ''
+  try {
+    await requestFetch(`/api/admin/routes/${item.id}`, { method: 'PATCH', body: payload(item, discard) })
+    choice[item.id] = undefined
+    if (discard) {
+      item.pending = null
+    }
+    baseline.value[item.id] = snapshot(item)
+    message[item.id] = discard ? 'Сохранено, черновик отброшен' : 'Сохранено'
+  } catch (error) {
+    message[item.id] = failure(error, 'Не сохранилось')
+  } finally {
+    busyId.value = ''
+  }
+}
+
+function onApply(item: RouteForm) {
+  if (dirty(item)) {
+    choice[item.id] = 'apply'
+    nextTick(() => document.getElementById(`route-draft-choice-${item.id}`)?.scrollIntoView({ block: 'nearest' }))
+    return
+  }
+  void confirmApply(item)
+}
+
+async function confirmApply(item: RouteForm) {
+  if (busyId.value) {
+    return
+  }
+  busyId.value = item.id
+  message[item.id] = ''
+  try {
+    await requestFetch(`/api/admin/routes/${item.id}/draft`, { method: 'POST', body: { action: 'apply' } })
+    choice[item.id] = undefined
+    await reload()
+    message[item.id] = 'Черновик опубликован'
+  } catch (error) {
+    message[item.id] = failure(error, 'Черновик не опубликован')
+  } finally {
+    busyId.value = ''
+  }
+}
+
+async function onDiscard(item: RouteForm) {
+  if (busyId.value) {
+    return
+  }
+  busyId.value = item.id
+  message[item.id] = ''
+  try {
+    await requestFetch(`/api/admin/routes/${item.id}/draft`, { method: 'POST', body: { action: 'discard' } })
+    item.pending = null
+    choice[item.id] = undefined
+    message[item.id] = 'Черновик отброшен'
+  } catch (error) {
+    message[item.id] = failure(error, 'Черновик не отброшен')
+  } finally {
+    busyId.value = ''
+  }
 }
 </script>
 
 <style scoped>
 .admin { max-width: 46rem; margin: 0 auto; padding: 1.5rem; }
-form { display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid #e6d5b0; padding: 1rem 0; }
+form { display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--color-line); padding: 1rem 0; }
 </style>

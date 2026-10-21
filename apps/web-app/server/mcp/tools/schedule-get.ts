@@ -18,7 +18,8 @@ export default defineMcpTool({
     const now = new Date()
     return {
       entityType,
-      ...target,
+      id: target.id,
+      slug: target.slug,
       schedule: record,
       text: record ? describeSchedule(record.rules) : [],
       status: statusFromRules(record, now),
