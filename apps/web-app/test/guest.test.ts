@@ -27,13 +27,35 @@ describe('guest byline and text', () => {
     const ok = inspectGuestText(`${'Были во дворе форта и смотрели двор. '.repeat(4)} https://kremlin.ru/visit`)
     expect(ok.ok).toBe(true)
     expect(inspectGuestText('Напишите мне guest@example.com пожалуйста, это длинный отзыв о визите.').ok).toBe(false)
-    expect(inspectGuestText('Звоните +7 401 234-56-78 если нужен гид на длинную прогулку по форту.').ok).toBe(false)
+    const phone = inspectGuestText('Звоните +7 401 234-56-78 если нужен гид на длинную прогулку по форту.')
+    expect(phone.ok).toBe(false)
+    if (!phone.ok) {
+      expect(phone.message).toBe('Уберите номер телефона из текста: «+7 401 234-56-78».')
+    }
     expect(inspectGuestText('Смотрите https://kremlin.ru/a и https://kremlin.ru/b это длинный отзыв о визите в форт.').ok).toBe(false)
     expect(inspectGuestText('Смотрите http://kremlin.ru/a это длинный отзыв о визите во двор форта сегодня.').ok).toBe(false)
     expect(inspectGuestUrl('https://user:pass@kremlin.ru/a').ok).toBe(false)
     expect(inspectGuestUrl('https://kgdmore.ru/post').ok).toBe(false)
     expect(inspectGuestUrl('https://localhost/a').ok).toBe(false)
     expect(inspectGuestText('Телефон +7 401 200-00-00', { allowPhone: true }).ok).toBe(true)
+    expect(inspectGuestText('Были с 12.05.2025 - 14.05.2025 и двор был тихий.').ok).toBe(true)
+    expect(inspectGuestText('Средний чек 10 000 - 15 000 руб, порции большие.').ok).toBe(true)
+    for (const sample of ['+7 (401) 123-45-67', '8 401 123-45-67', '8 401 123 45 67', '84011234567', '+74011234567']) {
+      const rejected = inspectGuestText(`Напишите ${sample} если нужна касса.`)
+      expect(rejected.ok).toBe(false)
+      if (!rejected.ok) {
+        expect(rejected.message).toBe(`Уберите номер телефона из текста: «${sample}».`)
+      }
+    }
+    expect(inspectGuestText('+7 (401) 123-45-67', { allowPhone: true }).ok).toBe(true)
+  })
+
+  it('checks a guest photo before it spends an hourly upload', () => {
+    const source = read('server/utils/guests/photo.ts')
+    const check = source.indexOf('uploadProblem(')
+    const charge = source.indexOf('limitGuestPhoto(')
+    expect(check).toBeGreaterThan(-1)
+    expect(check).toBeLessThan(charge)
   })
 
   it('renders one hostname link and a Review without a rating', () => {
