@@ -9,6 +9,7 @@ import {
   formatHoursLines,
   formatVenueDistance,
   HOURS_UNKNOWN,
+  isSocialWebsite,
   isStale,
   nearbyFresh,
   osmElementToDraft,
@@ -119,6 +120,15 @@ describe('venue policy', () => {
       tags: { amenity: 'cafe', name: 'Почта', email: 'Desk@Cafe.Test' },
     })?.contactEmail).toBe('desk@cafe.test')
     expect(draft?.hours.days.find((day) => day.weekday === 'mon')?.opens).toBe('09:00')
+    const vkSite = osmElementToDraft({
+      type: 'node',
+      id: 45,
+      lat: FORT.latitude,
+      lon: FORT.longitude,
+      tags: { amenity: 'cafe', name: 'Лето', website: 'https://vk.com/leto' },
+    })
+    expect(vkSite?.website).toBeNull()
+    expect(vkSite?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/leto' }])
     expect(osmElementToDraft({ type: 'node', id: 1, lat: 1, lon: 1, tags: { amenity: 'cafe' } })).toBeNull()
     const query = overpassQuery({ latitude: 54.7, longitude: 20.5, radiusMeters: 800 })
     expect(query).toContain('around:800,54.7,20.5')
@@ -177,6 +187,37 @@ describe('venue repository', () => {
     expect(created.phone).toBe(phones)
     const updated = await Venues.update(created.id, { phone: phones })
     expect(updated?.phone).toBe(phones)
+  })
+
+  it('rejects a social website and can move that link into socials in one update', async () => {
+    expect(isSocialWebsite('https://vk.com/cafe')).toBe(true)
+    expect(isSocialWebsite('https://www.instagram.com/cafe')).toBe(true)
+    expect(isSocialWebsite('t.me/cafe')).toBe(true)
+    expect(isSocialWebsite('https://ok.ru/group')).toBe(true)
+    expect(isSocialWebsite('https://cafe.example')).toBe(false)
+    await expect(Venues.create({
+      name: 'ВК как сайт',
+      kind: 'cafe',
+      website: 'https://vk.com/cafe',
+    })).rejects.toThrow(/socials/)
+    const created = await Venues.create({
+      name: 'Собственный сайт',
+      kind: 'cafe',
+      website: 'https://cafe.example',
+    })
+    await expect(Venues.update(created.id, { website: 'https://t.me/cafe' })).rejects.toThrow(/socials/)
+    await expect(Venues.update(created.id, { website: 'https://instagram.com/cafe' })).rejects.toThrow(/socials/)
+    await expect(Venues.update(created.id, { website: 'https://ok.ru/group' })).rejects.toThrow(/socials/)
+    const moved = await Venues.update(created.id, {
+      website: null,
+      socials: [{ network: 'vk', url: 'https://vk.com/cafe' }],
+    })
+    expect(moved?.website).toBeNull()
+    expect(moved?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/cafe' }])
+    await useDatabase().update(venues).set({ website: 'https://vk.com/legacy' }).where(eq(venues.id, created.id))
+    const kept = await Venues.update(created.id, { phone: '+7 4012 00-00-00' })
+    expect(kept?.website).toBe('https://vk.com/legacy')
+    expect(kept?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/cafe' }])
   })
 
   it('orders nearby food venues and hides rows older than a year', async () => {

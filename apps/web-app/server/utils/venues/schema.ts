@@ -25,7 +25,7 @@ export const venueFields = {
     note: z.string().nullable().optional(),
   }).optional(),
   phone: z.string().nullable().optional(),
-  website: z.string().nullable().optional(),
+  website: z.string().nullable().optional().describe('The venue\'s own site. Null clears it. A social host (vk.com, t.me, instagram, ok.ru, and the like) is rejected: put that link in socials'),
   socials: z.array(z.object({ network: z.string(), url: z.string() })).optional().describe('vk, telegram, instagram, whatsapp... with full URLs'),
   bookingUrl: z.string().nullable().optional().describe('Official table booking page. Null clears it'),
   orderUrl: z.string().nullable().optional().describe('Official online order or pickup page'),

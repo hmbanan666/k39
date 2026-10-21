@@ -112,9 +112,13 @@ tell, in one glance, whether this place is cheap or expensive.
   `official_social` and the host is `vk.com`. This column stays `official`
   because it cannot store `official_social`. Comparison treats that column,
   before the fact overlay, as the same claim. It counts only when
-  `venues.website` is empty. The path is not an ownership check. Other social
-  networks are not a menu. Set with `venue_prices_set` (replaces the list);
-  `venue_get` returns them.
+  `venues.website` is empty and the price community matches a `vk.com` link
+  in `socials`: the same screen name, or the same numeric id from `club`,
+  `public`, `wall-`, `market-`, or `album-`. A screen name and a numeric id
+  match only when one of those URLs contains both. `website` is only the
+  venue's own site. A social host is rejected there and belongs in `socials`.
+  Other social networks are not a menu. Set with `venue_prices_set` (replaces
+  the list); `venue_get` returns them.
 - Prices are never invented or taken from aggregators. Rows older than 365
   days are not shown. Without fresh rows the module is hidden.
 
@@ -143,8 +147,8 @@ price fact when that row is cited (ADR 0033). Published venues only (drafts,
 closed and archived are out), checked within a year, in the same region.
 Peers are official menu rows: `sourceKind` official and a menu URL (the
 venue site, or a document on Drive, Google Docs, or Yandex Disk), or the
-venue's own VK page under the rule above when that venue has no website.
-An owner price stays on this card and is not a peer. Packaged or bottled
+venue's own VK page when `website` is empty and the community matches a
+VK link in `socials`. An owner price stays on this card and is not a peer. Packaged or bottled
 orange juice is not the catalog row. One price per venue: the
 same portion when that venue has it, otherwise its cheapest fresh official
 price. The card uses its own price. `/ceny` and `/gde-deshevle` use that

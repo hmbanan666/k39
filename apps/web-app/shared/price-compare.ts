@@ -332,7 +332,7 @@ export function isPackagedJuice(slug: string, variant: string | null | undefined
  * `document` is that menu on an official file host.
  * Maps, delivery aggregators, social networks, and other Google or Yandex
  * services are not a menu. VK is `social` here; `resolveMenuPrice` applies
- * the separate no-website rule.
+ * the separate ownership rule.
  */
 export type MenuUrlClass = 'menu' | 'document' | 'map' | 'aggregator' | 'social' | 'service' | 'invalid'
 
@@ -438,22 +438,135 @@ export function isMenuUrl(url: string | null | undefined) {
 /**
  * The venue's own VK page. The price column stores `official` because it
  * only allows `official` and `owner`. A vk.com URL is recorded on the fact
- * as `official_social`. Both shapes are that claim. The host identifies the
- * network. The path is not an ownership check. Comparable only when
- * `venues.website` is empty.
+ * as `official_social`. Both shapes are that claim. It counts when
+ * `venues.website` is empty and the price community matches a vk.com link
+ * in `socials`. A screen name and a numeric id match when one of the two
+ * URLs contains both. Otherwise an unmatched pair does not count.
  */
-function isComparableVkMenu(sourceKind: string, sourceUrl: string | null, website: string | null) {
-  if (website?.trim()) {
+function isComparableVkMenu(
+  sourceKind: string,
+  sourceUrl: string | null,
+  venue: { website: string | null, socials?: Array<{ url: string }> },
+) {
+  if (venue.website?.trim()) {
     return false
   }
   if (sourceKind !== 'official' && sourceKind !== 'official_social') {
     return false
   }
-  const parsed = parsedHttpUrl(sourceUrl)
-  if (!parsed) {
+  return vkMenuMatchesSocial(sourceUrl, venue.socials ?? [])
+}
+
+interface VkKeys {
+  names: Set<string>
+  communities: Set<string>
+  users: Set<string>
+}
+
+function emptyVkKeys(): VkKeys {
+  return { names: new Set(), communities: new Set(), users: new Set() }
+}
+
+function absorbVkToken(keys: VkKeys, token: string) {
+  const text = token.trim().replace(/^@/, '')
+  if (!text) {
+    return
+  }
+  const community = /^(?:club|public)(\d+)$/i.exec(text)
+  if (community?.[1]) {
+    keys.communities.add(community[1])
+    return
+  }
+  const user = /^id(\d+)$/i.exec(text)
+  if (user?.[1]) {
+    keys.users.add(user[1])
+    return
+  }
+  const wall = /^wall(-)?(\d+)(?:_\d+)?$/i.exec(text)
+  if (wall?.[2]) {
+    if (wall[1]) {
+      keys.communities.add(wall[2])
+    } else {
+      keys.users.add(wall[2])
+    }
+    return
+  }
+  const market = /^market-(\d+)(?:_\d+)?$/i.exec(text)
+  if (market?.[1]) {
+    keys.communities.add(market[1])
+    return
+  }
+  const album = /^album-(\d+)(?:_\d+)?$/i.exec(text)
+  if (album?.[1]) {
+    keys.communities.add(album[1])
+    return
+  }
+  if (/^(?:wall|market|album|club|public|id)$/i.test(text)) {
+    return
+  }
+  if (/^[a-z][\w.-]{0,63}$/i.test(text)) {
+    keys.names.add(text.toLowerCase())
+  }
+}
+
+function vkKeys(url: string | null | undefined): VkKeys | null {
+  const text = url?.trim() ?? ''
+  if (!text) {
+    return null
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(text)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return null
+  }
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  if (host !== 'vk.com' && !host.endsWith('.vk.com') && host !== 'vk.ru' && !host.endsWith('.vk.ru')) {
+    return null
+  }
+  const keys = emptyVkKeys()
+  absorbVkToken(keys, parsed.pathname.split('/').filter(Boolean)[0] ?? '')
+  for (const name of ['w', 'z']) {
+    absorbVkToken(keys, parsed.searchParams.get(name) ?? '')
+  }
+  if (!keys.names.size && !keys.communities.size && !keys.users.size) {
+    return null
+  }
+  return keys
+}
+
+function vkKeysOverlap(left: VkKeys, right: VkKeys) {
+  for (const name of left.names) {
+    if (right.names.has(name)) {
+      return true
+    }
+  }
+  for (const id of left.communities) {
+    if (right.communities.has(id)) {
+      return true
+    }
+  }
+  for (const id of left.users) {
+    if (right.users.has(id)) {
+      return true
+    }
+  }
+  return false
+}
+
+/** True when the price URL and one stored social link name the same VK community. */
+export function vkMenuMatchesSocial(priceUrl: string | null | undefined, socials: Array<{ url: string }>) {
+  const price = vkKeys(priceUrl)
+  if (!price) {
     return false
   }
-  return parsed.host === 'vk.com' || parsed.host.endsWith('.vk.com')
+  return socials.some((row) => {
+    const social = vkKeys(row.url)
+    return Boolean(social && vkKeysOverlap(price, social))
+  })
 }
 
 /** A stored menu row before the fact overlay. */
@@ -495,15 +608,16 @@ function readFactPrice(value: unknown) {
  * The fact wins when it is cited. A gap hides the price. An owner price stays
  * on the venue card and is not comparable. A fresh official menu row is
  * comparable: the venue site, or a document on Drive, Docs, or Yandex Disk.
- * The venue's own VK page is comparable only when `venue.website` is empty.
- * Omit `venue` when the caller has not loaded that field: VK stays out.
+ * The venue's own VK page is comparable only when `venue.website` is empty
+ * and the price community matches a vk.com link in `venue.socials`.
+ * Omit `venue` when the caller has not loaded those fields: VK stays out.
  * `cutoff` is `YYYY-MM-DD` from `PRICE_FRESH_DAYS`.
  */
 export function resolveMenuPrice<T extends MenuColumn>(
   row: T,
   fact: MenuFact | null | undefined,
   cutoff: string,
-  venue?: { website: string | null },
+  venue?: { website: string | null, socials?: Array<{ url: string }> },
 ): { row: T, comparable: boolean } | null {
   if (fact?.confidence === 'gap') {
     return null
@@ -539,7 +653,7 @@ export function resolveMenuPrice<T extends MenuColumn>(
   if (sourceKind === 'official' && isMenuUrl(sourceUrl)) {
     return { row: next, comparable: true }
   }
-  if (venue && isComparableVkMenu(sourceKind, sourceUrl, venue.website)) {
+  if (venue && isComparableVkMenu(sourceKind, sourceUrl, venue)) {
     return { row: next, comparable: true }
   }
   return null

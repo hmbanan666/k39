@@ -648,9 +648,8 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
     town,
     district,
     phone: (tags.phone || tags['contact:phone'] || '').trim().slice(0, PHONE_TEXT_MAX) || null,
-    website: (tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null,
+    ...ownSiteAndSocials((tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null, osmSocials(tags)),
     contactEmail: osmEmail(tags.email || tags['contact:email']),
-    socials: osmSocials(tags),
     menuUrl: osmUrl(tags['website:menu'] || tags['contact:menu'] || tags.menu),
     reservation: osmReservation(tags.reservation),
     takeaway: osmYesNo(tags.takeaway),
@@ -774,6 +773,77 @@ const SOCIAL_BASE: Record<string, string> = {
   facebook: 'https://facebook.com/',
   youtube: 'https://youtube.com/',
   ok: 'https://ok.ru/',
+}
+
+const SOCIAL_WEBSITE_HOST = /(?:^|\.)(?:vk\.(?:com|ru)|t\.me|telegram\.(?:me|org)|ok\.ru|instagram\.com|facebook\.com|fb\.(?:com|me)|threads\.net|youtube\.com|youtu\.be|dzen\.ru|tiktok\.com|whatsapp\.com|wa\.me|x\.com|twitter\.com)$/
+
+function websiteHost(value: string) {
+  const text = value.trim()
+  if (!text) {
+    return ''
+  }
+  const withScheme = /^https?:\/\//i.test(text) ? text : `https://${text}`
+  try {
+    return new URL(withScheme).hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+/** True when the value points at a social network rather than the venue's own site. */
+export function isSocialWebsite(value: string | null | undefined) {
+  const host = websiteHost(value ?? '')
+  return Boolean(host) && SOCIAL_WEBSITE_HOST.test(host)
+}
+
+function socialNetworkOfWebsite(value: string) {
+  const host = websiteHost(value)
+  if (/(?:^|\.)vk\.(?:com|ru)$/.test(host)) {
+    return 'vk'
+  }
+  if (/(?:^|\.)(?:t\.me|telegram\.(?:me|org))$/.test(host)) {
+    return 'telegram'
+  }
+  if (/(?:^|\.)instagram\.com$/.test(host)) {
+    return 'instagram'
+  }
+  if (/(?:^|\.)ok\.ru$/.test(host)) {
+    return 'ok'
+  }
+  if (/(?:^|\.)(?:facebook\.com|fb\.(?:com|me))$/.test(host)) {
+    return 'facebook'
+  }
+  if (/(?:^|\.)(?:youtube\.com|youtu\.be)$/.test(host)) {
+    return 'youtube'
+  }
+  if (/(?:^|\.)(?:whatsapp\.com|wa\.me)$/.test(host)) {
+    return 'whatsapp'
+  }
+  if (/(?:^|\.)tiktok\.com$/.test(host)) {
+    return 'tiktok'
+  }
+  if (/(?:^|\.)dzen\.ru$/.test(host)) {
+    return 'dzen'
+  }
+  if (/(?:^|\.)threads\.net$/.test(host)) {
+    return 'threads'
+  }
+  if (/(?:^|\.)(?:x\.com|twitter\.com)$/.test(host)) {
+    return 'x'
+  }
+  return 'social'
+}
+
+/** A social URL in the OSM website tag is a social, not the venue site. */
+function ownSiteAndSocials(website: string | null, socials: VenueSocial[]) {
+  if (!website || !isSocialWebsite(website)) {
+    return { website, socials }
+  }
+  const url = website
+  if (socials.some((row) => row.url === url)) {
+    return { website: null, socials }
+  }
+  return { website: null, socials: [...socials, { network: socialNetworkOfWebsite(url), url }] }
 }
 
 function osmUrl(raw: string | undefined) {

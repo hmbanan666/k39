@@ -44,6 +44,7 @@ import {
   safePriceImage,
   sharedPriceSource,
   showsPriceSample,
+  vkMenuMatchesSocial,
 } from '../shared/price-compare'
 import { collectionDocument, schemaProblems } from '../shared/seo'
 import { presentVenueBlocks, toPublicVenueModules } from '../shared/venue-modules'
@@ -1022,36 +1023,51 @@ describe('vk menu rule', () => {
     checkedAt: '2026-10-01',
     sourceKind: 'official',
     sourceTitle: 'Меню во ВКонтакте',
-    sourceUrl: 'https://vk.com/cafe?w=wall-1_2',
+    sourceUrl: 'https://vk.com/cafe?w=wall-10_2',
   }
   const cutoff = '2025-10-01'
+  const own = [{ url: 'https://vk.com/cafe' }]
   const vkFact = {
     confidence: 'stated',
     sourceKind: 'official_social',
-    sourceUrl: 'https://vk.com/market-123',
+    sourceUrl: 'https://vk.com/market-10',
     sourceTitle: 'Меню во ВКонтакте',
     checkedAt: '2026-10-01',
     value: { priceRub: 210, variant: '300 мл' },
   }
 
-  it('counts the venue VK page only when the venue has no website', () => {
-    const fromFact = resolveMenuPrice(column, vkFact, cutoff, { website: null })
+  it('counts a vk price only when its community matches socials and the venue has no website', () => {
+    expect(vkMenuMatchesSocial('https://vk.com/cafe', own)).toBe(true)
+    expect(vkMenuMatchesSocial('https://m.vk.com/Cafe', own)).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/club10', [{ url: 'https://vk.com/public10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/wall-10_3', [{ url: 'https://vk.com/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/album-10_4', [{ url: 'https://vk.com/market-10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/album-10', [{ url: 'https://vk.ru/club10' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/club10', [{ url: 'https://vk.com/cafe?w=wall-10_1' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/id5', [{ url: 'https://vk.com/wall5_9' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/cafe', [{ url: 'https://vk.com/club10' }])).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/id5', [{ url: 'https://vk.com/club5' }])).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/other', own)).toBe(false)
+    expect(vkMenuMatchesSocial('https://instagram.com/cafe', own)).toBe(false)
+
+    const fromFact = resolveMenuPrice(column, vkFact, cutoff, { website: null, socials: [{ url: 'https://vk.com/club10' }] })
     expect(fromFact?.comparable).toBe(true)
     expect(fromFact?.row.priceRub).toBe(210)
     expect(fromFact?.row.sourceKind).toBe('official_social')
-    expect(resolveMenuPrice(column, null, cutoff, { website: '' })?.comparable).toBe(true)
-    expect(resolveMenuPrice(column, null, cutoff, { website: '   ' })?.comparable).toBe(true)
-    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://m.vk.com/cafe' }, null, cutoff, { website: null })?.comparable).toBe(true)
-    expect(resolveMenuPrice(column, vkFact, cutoff, { website: 'https://cafe.example' })).toBeNull()
+    expect(resolveMenuPrice(column, null, cutoff, { website: '', socials: own })?.comparable).toBe(true)
+    expect(resolveMenuPrice(column, null, cutoff, { website: '   ', socials: own })?.comparable).toBe(true)
+    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://m.vk.com/cafe' }, null, cutoff, { website: null, socials: own })?.comparable).toBe(true)
+    expect(resolveMenuPrice(column, vkFact, cutoff, { website: 'https://cafe.example', socials: own })).toBeNull()
+    expect(resolveMenuPrice(column, null, cutoff, { website: 'https://vk.com/cafe', socials: own })).toBeNull()
+    expect(resolveMenuPrice(column, null, cutoff, { website: null, socials: [] })).toBeNull()
     expect(resolveMenuPrice(column, null, cutoff)).toBeNull()
     expect(resolveMenuPrice(column, {
       ...vkFact,
       sourceUrl: 'https://instagram.com/cafe',
-    }, cutoff, { website: null })).toBeNull()
-    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://drive.google.com/file/d/abc/view' }, null, cutoff, { website: 'https://cafe.example' })?.comparable).toBe(true)
-    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://yandex.ru/maps/org/1' }, null, cutoff, { website: null })).toBeNull()
-    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://eda.yandex.ru/restaurant/cafe' }, null, cutoff, { website: null })).toBeNull()
-    const owner = resolveMenuPrice({ ...column, sourceKind: 'owner', sourceUrl: 'https://vk.com/cafe' }, null, cutoff, { website: null })
+    }, cutoff, { website: null, socials: own })).toBeNull()
+    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://drive.google.com/file/d/abc/view' }, null, cutoff, { website: 'https://cafe.example', socials: own })?.comparable).toBe(true)
+    expect(resolveMenuPrice({ ...column, sourceUrl: 'https://yandex.ru/maps/org/1' }, null, cutoff, { website: null, socials: own })).toBeNull()
+    const owner = resolveMenuPrice({ ...column, sourceKind: 'owner', sourceUrl: 'https://vk.com/cafe' }, null, cutoff, { website: null, socials: own })
     expect(owner?.comparable).toBe(false)
     expect(owner?.row.priceRub).toBe(200)
   })
