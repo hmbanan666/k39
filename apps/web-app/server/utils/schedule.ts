@@ -1,7 +1,7 @@
 import type { FactActor } from '~~/shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '~~/shared/schedule'
 import { db } from '@k39/database'
-import { addDays, expandIntervals, localNow, readRules } from '~~/shared/schedule'
+import { addDays, expandIntervals, localNow, readRules, unknownSpans } from '~~/shared/schedule'
 import { hoursConflict, writeHoursFact } from './facts/sync'
 import { rejectBannedSites } from './mcp/writing-guard'
 
@@ -17,6 +17,11 @@ function intervalsFor(rules: ScheduleRules, at = new Date()) {
     lastEntryAt: item.lastEntry ? item.lastEntry.toISOString() : null,
     openEnded: Boolean(item.openEnded),
   }))
+}
+
+/** Days with unknown hours (ADR 0044) over the same window as the stored intervals. */
+export function unknownSpansFor(rules: ScheduleRules, at = new Date()) {
+  return unknownSpans(rules, addDays(localNow(at).date, -1), WINDOW_DAYS + 1)
 }
 
 export async function saveSchedule(entityType: string, entityId: string, record: ScheduleRecord, options?: { actor?: FactActor, syncFacts?: boolean, pageStatus?: string | null }) {

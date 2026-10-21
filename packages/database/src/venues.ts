@@ -92,6 +92,8 @@ const RU: Record<string, string> = {
 export interface VenueDayHours {
   weekday: Weekday
   closed: boolean
+  /** The source gives no hours for this day: neither open nor closed (ADR 0044). */
+  unknown?: boolean
   opens: string | null
   closes: string | null
 }
@@ -340,11 +342,15 @@ export function normalizeHours(value: unknown): VenueHours {
       if (!item || typeof item !== 'object') {
         continue
       }
-      const day = item as { weekday?: unknown, closed?: unknown, opens?: unknown, closes?: unknown }
+      const day = item as { weekday?: unknown, closed?: unknown, unknown?: unknown, opens?: unknown, closes?: unknown }
       if (typeof day.weekday !== 'string' || !(WEEKDAYS as readonly string[]).includes(day.weekday)) {
         continue
       }
       const weekday = day.weekday as Weekday
+      if (day.unknown === true && day.closed !== true) {
+        given.set(weekday, { weekday, closed: false, unknown: true, opens: null, closes: null })
+        continue
+      }
       const closed = day.closed === true
       const opens = typeof day.opens === 'string' && CLOCK.test(day.opens) ? day.opens : null
       const closes = typeof day.closes === 'string' && (CLOCK.test(day.closes) || day.closes === '24:00') ? day.closes : null
@@ -368,6 +374,10 @@ export function hoursAreSet(hours: VenueHours) {
 
 export const HOURS_UNKNOWN = 'Часы уточняйте'
 
+function dayKey(day: VenueDayHours) {
+  return day.unknown ? 'unknown' : day.closed ? 'closed' : `${day.opens}-${day.closes}`
+}
+
 export function formatHoursLines(hours: VenueHours) {
   const open = hours.days.some((day) => !day.closed && day.opens)
   if (!open) {
@@ -378,11 +388,11 @@ export function formatHoursLines(hours: VenueHours) {
   let index = 0
   while (index < hours.days.length) {
     const day = hours.days[index]!
-    const key = day.closed ? 'closed' : `${day.opens}-${day.closes}`
+    const key = dayKey(day)
     let end = index
     while (end + 1 < hours.days.length) {
       const next = hours.days[end + 1]!
-      const nextKey = next.closed ? 'closed' : `${next.opens}-${next.closes}`
+      const nextKey = dayKey(next)
       if (nextKey !== key) {
         break
       }
@@ -391,7 +401,7 @@ export function formatHoursLines(hours: VenueHours) {
     const label = index === end
       ? WEEKDAY_LABEL[day.weekday]
       : `${WEEKDAY_LABEL[day.weekday]}-${WEEKDAY_LABEL[hours.days[end]!.weekday]}`
-    lines.push(day.closed ? `${label} выходной` : day.closes ? `${label} ${day.opens}-${day.closes}` : `${label} с ${day.opens}, закрытие уточняйте`)
+    lines.push(day.unknown ? `${label}: часы уточняйте` : day.closed ? `${label} выходной` : day.closes ? `${label} ${day.opens}-${day.closes}` : `${label} с ${day.opens}, закрытие уточняйте`)
     index = end + 1
   }
   if (hours.note?.trim()) {

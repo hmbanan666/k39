@@ -55,7 +55,7 @@ function update() {
   // A closure's secondary part («снаружи можно посмотреть») goes on its own muted line.
   const [main, ...rest] = availabilityText(value, now).split(' · ')
   status.value = value.status === 'unknown'
-    ? null
+    ? value.unknownDay ? { open: false, muted: true, text: availabilityText(value, now) } : null
     : value.closure
       ? { open: false, muted: false, text: main ?? '', sub: rest.join(' · ') || undefined }
       : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen) || value.status === 'appointment' || Boolean(value.slot), text: [props.hideRemaining && value.closesAt && (value.minutesLeft ?? 0) < 24 * 60 ? (availabilityText(value, now).split(' · ')[0] ?? '') : availabilityText(value, now), value.status === 'appointment' ? props.schedule?.rules.note : ''].filter(Boolean).join(': ') }
