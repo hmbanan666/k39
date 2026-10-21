@@ -839,7 +839,7 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   }
   const now = input.now ?? new Date()
   const parsedHours = scheduleMarkup(input.schedule ?? null, now) ?? openingHoursSchema(parsePlaceHours(input.hours), now)
-  if (parsedHours) {
+  if (parsedHours?.regular.length) {
     node.openingHoursSpecification = parsedHours.regular
     if (parsedHours.special.length) {
       node.specialOpeningHoursSpecification = parsedHours.special

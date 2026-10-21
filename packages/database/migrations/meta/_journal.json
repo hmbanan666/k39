@@ -281,6 +281,13 @@
       "when": 1792170000000,
       "tag": "0039_search_fold",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792180000000,
+      "tag": "0039_open_ended_intervals",
+      "breakpoints": true
     }
   ]
 }

@@ -17,11 +17,29 @@ const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-
 const daySchema = z.object({
   days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
   opens: clock,
-  /** Equal to or before `opens` means the interval runs past midnight. */
-  closes: clock,
+  /**
+   * Equal to or before `opens` means the interval runs past midnight.
+   * Missing means the source gives no closing time (ADR 0042): the day is
+   * open from `opens` and nothing is claimed after the end of that day.
+   */
+  closes: clock.optional(),
   breaks: z.array(z.object({ from: clock, to: clock })).max(3).default([]),
   /** Ticket desk or last entry, if earlier than closing. */
   lastEntry: clock.optional(),
+}).superRefine((entry, ctx) => {
+  if (entry.closes) {
+    return
+  }
+  // Without a close the day ends at midnight, so breaks and the last entry
+  // must fall after opening on the same day.
+  for (const [index, pause] of (entry.breaks ?? []).entries()) {
+    if (!(entry.opens < pause.from && pause.from < pause.to)) {
+      ctx.addIssue({ code: 'custom', path: ['breaks', index], message: 'Without closes, a break must start after opens and end later the same day' })
+    }
+  }
+  if (entry.lastEntry && entry.lastEntry <= entry.opens) {
+    ctx.addIssue({ code: 'custom', path: ['lastEntry'], message: 'Without closes, lastEntry must be after opens the same day' })
+  }
 })
 
 export const scheduleRulesSchema = z.object({
@@ -171,7 +189,8 @@ function closureOn(rules: ScheduleRules, date: string) {
 
 export interface DayHours {
   opens: string
-  closes: string
+  /** Null: closing time unknown (ADR 0042). */
+  closes: string | null
   breaks: Array<{ from: string, to: string }>
   lastEntry?: string
 }
@@ -201,15 +220,18 @@ export function hoursOn(rules: ScheduleRules, date: string): DayHours | null {
     }
   }
   const entry = seasonFor(rules, date)?.week.find((item) => item.days.includes(day))
-  return entry ? { opens: entry.opens, closes: entry.closes, breaks: entry.breaks ?? [], lastEntry: entry.lastEntry } : null
+  return entry ? { opens: entry.opens, closes: entry.closes ?? null, breaks: entry.breaks ?? [], lastEntry: entry.lastEntry } : null
 }
 
 // --- materialised intervals ------------------------------------------------
 
 export interface OpenInterval {
   start: Date
+  /** For an open-ended day, the end of that local day: not a closing time. */
   end: Date
   lastEntry: Date | null
+  /** Part of a day with no known closing time (ADR 0042). */
+  openEnded?: boolean
 }
 
 /** Concrete open intervals for `days` local days starting at `from`. */
@@ -234,11 +256,22 @@ export function expandIntervals(rules: ScheduleRules, from: string, days: number
     if (rules.mode === 'slots' && rules.slots) {
       // Each start time inside the day's hours is one slot interval.
       for (const time of [...rules.slots.times].sort()) {
-        if (toMinutes(time) >= toMinutes(hours.opens) && toMinutes(time) < toMinutes(hours.closes)) {
+        if (toMinutes(time) >= toMinutes(hours.opens) && (hours.closes == null || toMinutes(time) < toMinutes(hours.closes))) {
           const start = zonedTime(date, time)
           out.push({ start, end: new Date(start.getTime() + rules.slots.minutes * 60_000), lastEntry: null })
         }
       }
+      continue
+    }
+    if (hours.closes == null) {
+      // Every part of an open-ended day carries the flag, so no part of it
+      // ever reports a closing time.
+      let start = zonedTime(date, hours.opens)
+      for (const pause of [...hours.breaks].sort((a, b) => a.from.localeCompare(b.from))) {
+        out.push({ start, end: zonedTime(date, pause.from), lastEntry: null, openEnded: true })
+        start = zonedTime(date, pause.to)
+      }
+      out.push({ start, end: zonedTime(addDays(date, 1), '00:00'), lastEntry: hours.lastEntry ? zonedTime(date, hours.lastEntry) : null, openEnded: true })
       continue
     }
     const overnight = toMinutes(hours.closes) <= toMinutes(hours.opens)
@@ -276,6 +309,9 @@ export interface Availability {
   closure?: ScheduleRules['closure']
   /** Slots mode: the label of the next start («Экскурсия»); opensAt is that start. */
   slot?: string
+  /** Open since `openedAt` on a day with no known closing time (ADR 0042). */
+  openEnded?: boolean
+  openedAt?: string
 }
 
 export const SOON_MINUTES = 60
@@ -312,6 +348,9 @@ export function availabilityAt(intervals: OpenInterval[], at: Date, verified: bo
   }
   const now = at.getTime()
   const current = intervals.find((item) => item.start.getTime() <= now && now < item.end.getTime())
+  if (current?.openEnded) {
+    return { status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, openEnded: true, openedAt: current.start.toISOString() }
+  }
   // An interval that runs past a week only ends at the materialised window
   // boundary: there is no real closing time to show.
   if (current && current.end.getTime() - now > 7 * 24 * 60 * 60_000) {
@@ -356,6 +395,9 @@ export function availabilityText(value: Availability, at: Date) {
   }
   if (value.status === 'appointment') {
     return 'По записи'
+  }
+  if (value.openEnded && value.openedAt) {
+    return `Открыто с ${clockOf(value.openedAt)}, закрытие уточняйте`
   }
   if (value.closesAt) {
     const left = value.minutesLeft ?? 0
@@ -424,12 +466,15 @@ function mdLabel(value: string) {
 }
 
 function dayLine(entry: ScheduleDay) {
-  const parts = [`${dayRange(entry.days)} ${entry.opens}–${entry.closes}`]
+  const parts = [entry.closes ? `${dayRange(entry.days)} ${entry.opens}–${entry.closes}` : `${dayRange(entry.days)} с ${entry.opens}`]
   for (const pause of entry.breaks ?? []) {
     parts.push(`перерыв ${pause.from}–${pause.to}`)
   }
   if (entry.lastEntry) {
     parts.push(`вход и касса до ${entry.lastEntry}`)
+  }
+  if (!entry.closes) {
+    parts.push('закрытие уточняйте')
   }
   return parts.join(', ')
 }
@@ -554,6 +599,11 @@ export function scheduleMarkup(record: { rules: ScheduleRules | null, verifiedAt
   if (rules.mode !== 'hours' || !rules.seasons.length) {
     return null
   }
+  // schema.org consumers read a missing day as closed, and `closes` has no
+  // "unknown" value: a week with an open-ended day emits no hours at all.
+  if (rules.seasons.some((season) => season.week.some((entry) => !entry.closes))) {
+    return { regular: [], special: [] }
+  }
   const regular = rules.seasons.flatMap((season) => season.week.map((entry) => ({
     '@type': 'OpeningHoursSpecification',
     'dayOfWeek': entry.days.map((day) => `https://schema.org/${SCHEMA_DAYS[day]}`),
@@ -587,19 +637,20 @@ const VENUE_DAY: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu:
 
 /** OSM-style venue hours as rules (unverified until checked). */
 export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, closed: boolean, opens: string | null, closes: string | null }>, note: string | null } | null): ScheduleRules | null {
-  const open = (hours?.days ?? []).filter((day) => !day.closed && day.opens && day.closes && VENUE_DAY[day.weekday] !== undefined)
+  // A day with an opening and no closing time is open-ended (ADR 0042).
+  const open = (hours?.days ?? []).filter((day) => !day.closed && day.opens && VENUE_DAY[day.weekday] !== undefined)
   if (!open.length) {
     return null
   }
   const groups = new Map<string, number[]>()
   for (const day of open) {
-    const key = `${day.opens}|${day.closes}`
+    const key = `${day.opens}|${day.closes ?? ''}`
     groups.set(key, [...(groups.get(key) ?? []), VENUE_DAY[day.weekday]!])
   }
   const parsed = scheduleRulesSchema.safeParse({
     seasons: [{ week: [...groups].map(([key, days]) => {
       const [opens, closes] = key.split('|')
-      return { days, opens: opens === '24:00' ? '00:00' : opens, closes: closes === '24:00' ? '00:00' : closes }
+      return { days, opens: opens === '24:00' ? '00:00' : opens, ...(closes ? { closes: closes === '24:00' ? '00:00' : closes } : {}) }
     }) }],
     note: hours?.note || undefined,
   })
@@ -607,7 +658,7 @@ export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, clos
 }
 
 /** Status from the materialised window: the interval open at `at`, if any, and the next start. */
-export function availabilityFromWindow(input: { currentEnd: string | null, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean, closed?: boolean, closure?: ScheduleRules['closure'], slot?: string }, at: Date): Availability {
+export function availabilityFromWindow(input: { currentEnd: string | null, currentStart?: string | null, currentOpenEnded?: boolean, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean, closed?: boolean, closure?: ScheduleRules['closure'], slot?: string }, at: Date): Availability {
   if (input.verified && input.appointment) {
     return BY_APPOINTMENT
   }
@@ -622,7 +673,8 @@ export function availabilityFromWindow(input: { currentEnd: string | null, nextS
   }
   const intervals: OpenInterval[] = []
   if (input.currentEnd) {
-    intervals.push({ start: new Date(at.getTime() - 1), end: new Date(input.currentEnd), lastEntry: null })
+    const start = input.currentStart ? new Date(input.currentStart) : new Date(at.getTime() - 1)
+    intervals.push({ start, end: new Date(input.currentEnd), lastEntry: null, openEnded: Boolean(input.currentOpenEnded) })
   }
   if (input.nextStart) {
     intervals.push({ start: new Date(input.nextStart), end: new Date(new Date(input.nextStart).getTime() + 60_000), lastEntry: null })

@@ -14,6 +14,7 @@ export interface IntervalRow {
   startsAt: string
   endsAt: string
   lastEntryAt: string | null
+  openEnded?: boolean
 }
 
 export interface AvailabilityEntity {
@@ -29,6 +30,9 @@ export interface AvailabilityEntity {
   closure: unknown
   slotLabel: string | null
   currentEnd: string | null
+  currentStart: string | null
+  /** The current interval has no known closing time; currentEnd is only the end of that day. */
+  currentOpenEnded: boolean
   nextStart: string | null
 }
 
@@ -90,15 +94,18 @@ export class Schedules {
         coalesce(s.rules->>'mode', 'hours') as mode,
         s.rules->'closure' as closure,
         coalesce(s.rules->'slots'->>'label', 'Экскурсия') as slot_label,
-        (select i.ends_at from schedule_intervals i
-          where i.entity_type = e.entity_type and i.entity_id = e.entity_id
-            and i.starts_at <= ${at}::timestamptz and i.ends_at > ${at}::timestamptz
-          order by i.ends_at desc limit 1) as current_end,
+        cur.ends_at as current_end,
+        cur.starts_at as current_start,
+        coalesce(cur.open_ended, false) as current_open_ended,
         (select i.starts_at from schedule_intervals i
           where i.entity_type = e.entity_type and i.entity_id = e.entity_id and i.starts_at > ${at}::timestamptz
           order by i.starts_at limit 1) as next_start
       from entities e
       join schedules s on s.entity_type = e.entity_type and s.entity_id = e.entity_id
+      left join lateral (select i.starts_at, i.ends_at, i.open_ended from schedule_intervals i
+        where i.entity_type = e.entity_type and i.entity_id = e.entity_id
+          and i.starts_at <= ${at}::timestamptz and i.ends_at > ${at}::timestamptz
+        order by i.ends_at desc limit 1) cur on true
       where e.entity_type in ${types}
         ${box ? sql`and e.longitude between ${box[0]} and ${box[2]} and e.latitude between ${box[1]} and ${box[3]}` : sql``}
     `)
@@ -116,6 +123,8 @@ export class Schedules {
       closure: row.closure ?? null,
       slotLabel: row.slot_label ? String(row.slot_label) : null,
       currentEnd: row.current_end ? new Date(String(row.current_end)).toISOString() : null,
+      currentStart: row.current_start ? new Date(String(row.current_start)).toISOString() : null,
+      currentOpenEnded: row.current_open_ended === true || row.current_open_ended === 't',
       nextStart: row.next_start ? new Date(String(row.next_start)).toISOString() : null,
     }))
   }

@@ -359,14 +359,15 @@ export function normalizeHours(value: unknown): VenueHours {
   }
 }
 
+/** An opening time alone counts: the closing time may be unknown (ADR 0042). */
 export function hoursAreSet(hours: VenueHours) {
-  return Boolean(hours.note?.trim()) || hours.days.some((day) => !day.closed && day.opens && day.closes)
+  return Boolean(hours.note?.trim()) || hours.days.some((day) => !day.closed && day.opens)
 }
 
 export const HOURS_UNKNOWN = 'Часы уточняйте'
 
 export function formatHoursLines(hours: VenueHours) {
-  const open = hours.days.some((day) => !day.closed && day.opens && day.closes)
+  const open = hours.days.some((day) => !day.closed && day.opens)
   if (!open) {
     const note = hours.note?.trim()
     return [note || HOURS_UNKNOWN]
@@ -388,7 +389,7 @@ export function formatHoursLines(hours: VenueHours) {
     const label = index === end
       ? WEEKDAY_LABEL[day.weekday]
       : `${WEEKDAY_LABEL[day.weekday]}-${WEEKDAY_LABEL[hours.days[end]!.weekday]}`
-    lines.push(day.closed ? `${label} выходной` : `${label} ${day.opens}-${day.closes}`)
+    lines.push(day.closed ? `${label} выходной` : day.closes ? `${label} ${day.opens}-${day.closes}` : `${label} с ${day.opens}, закрытие уточняйте`)
     index = end + 1
   }
   if (hours.note?.trim()) {

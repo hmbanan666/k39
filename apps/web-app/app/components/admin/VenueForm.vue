@@ -78,6 +78,9 @@
             :disabled="day.closed"
           >
         </label>
+        <p class="hint">
+          Источник называет только время открытия? Оставьте закрытие пустым: на сайте будет «с 12:00, закрытие уточняйте».
+        </p>
         <label>Заметка <input v-model="form.hoursNote"></label>
       </fieldset>
       <label>Описание
