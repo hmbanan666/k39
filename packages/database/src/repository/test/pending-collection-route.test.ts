@@ -364,6 +364,42 @@ describe('pending collection and route drafts', () => {
     expect(await Editor.contentDraft('route', live.id)).not.toBeNull()
   })
 
+  it('stamps firstPublishedAt when a pending route or collection is applied', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const route = await publishedRoute('pending-stamp-route')
+    const collection = await publishedCollection('pending-stamp-collection')
+    const kept = '2024-06-01T00:00:00.000Z'
+    await useDatabase().update(routes).set({ firstPublishedAt: null }).where(eq(routes.id, route.id))
+    await useDatabase().update(collections).set({ firstPublishedAt: kept }).where(eq(collections.id, collection.id))
+    const collectionBefore = (await Editor.collectionById(collection.id))?.firstPublishedAt
+    expect(collectionBefore).toBeTruthy()
+    expect((await Editor.routeById(route.id))?.firstPublishedAt).toBeNull()
+
+    enterContentScope('draft')
+    await updateRouteDraft({
+      id: route.id,
+      title: 'Маршрут со штампом',
+      body: 'Новый текст маршрута со штампом.',
+    }, 'route_update')
+    await saveCollectionDraft({
+      id: collection.id,
+      slug: collection.slug,
+      title: 'Подборка со штампом',
+      body: 'Новый текст подборки со штампом.',
+    })
+
+    enterContentScope('editor')
+    await setPublication({ entity: 'route', id: route.id, publicationStatus: 'published' })
+    await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
+
+    const routeAfter = (await Editor.routeById(route.id))?.firstPublishedAt
+    expect(routeAfter).toBeTruthy()
+    expect(new Date(routeAfter ?? '').getTime()).toBeGreaterThan(new Date('2024-01-01').getTime())
+    expect((await Editor.collectionById(collection.id))?.firstPublishedAt).toBe(collectionBefore)
+    expect((await Editor.routeById(route.id))?.title).toBe('Маршрут со штампом')
+    expect((await Editor.collectionById(collection.id))?.title).toBe('Подборка со штампом')
+  })
+
   it('shows the admin diff, refuses a save, then apply and discard', async () => {
     await place('pending-stop-a', 'Первая остановка')
     const collection = await publishedCollection('pending-admin-collection')

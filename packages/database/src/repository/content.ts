@@ -715,6 +715,7 @@ export class Editor {
       const [updated] = await tx.update(routes).set({
         ...next,
         ...path,
+        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
         updatedBy: null,
         updatedAt: new Date().toISOString(),
       }).where(eq(routes.id, existing.id)).returning()
@@ -752,6 +753,7 @@ export class Editor {
       }
       const [updated] = await tx.update(collections).set({
         ...next,
+        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
         updatedBy: null,
         updatedAt: new Date().toISOString(),
       }).where(eq(collections.id, existing.id)).returning()
