@@ -66,7 +66,7 @@ Proposed.
 | 0040 | [Editor token moderates guest rows](0040-guest-mcp-moderation.md) | Accepted |
 | 0042 | [Opening hours with an unknown closing time](0042-open-ended-hours.md) | Accepted |
 | 0043 | [Anonymous event rows are not a session](0043-anonymous-events-session.md) | Accepted |
-| 0045 | [Goal grace and the status check](0045-goal-grace-and-status-check.md) | Proposed |
+| 0045 | [Goal grace and the status check](0045-goal-grace-and-status-check.md) | Accepted |
 
 ## Redirects
 
