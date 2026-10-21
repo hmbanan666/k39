@@ -14,6 +14,7 @@ const include = Array.isArray(config.include) ? config.include : []
 config.include = [
   ...include,
   '../../../packages/database/src/repository/test/pending-publish.test.ts',
+  '../../../packages/database/src/repository/test/media-ingest.test.ts',
 ]
 const target = join(dirname(source), 'tsconfig.writer-test.json')
 writeFileSync(target, JSON.stringify(config))

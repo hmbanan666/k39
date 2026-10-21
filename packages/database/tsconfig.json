@@ -25,6 +25,7 @@
   "exclude": [
     "./dist",
     "./node_modules",
-    "./src/repository/test/pending-publish.test.ts"
+    "./src/repository/test/pending-publish.test.ts",
+    "./src/repository/test/media-ingest.test.ts"
   ]
 }

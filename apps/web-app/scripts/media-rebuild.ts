@@ -20,6 +20,8 @@ for (const row of rows) {
   const legacy = master ? null : await readFile(`${mediaRoot()}/${row.filename}`).catch(() => null)
   const source = master ?? legacy
   if (!source) {
+    // The file is gone. Keep the row and mark it failed. A rejected upload
+    // is not inserted. The daily purge deletes only failed rows with no bytes.
     await db.editor.updateMedia(row.id, { status: 'failed' })
     continue
   }

@@ -1001,6 +1001,14 @@ export class Editor {
     await useDatabase().delete(media).where(eq(media.id, id))
   }
 
+  /**
+   * Rejected uploads used to be inserted as failed rows with zero bytes.
+   * A missing master on a real photo stays failed (media-rebuild) and is kept.
+   */
+  static async deleteFailedUploads() {
+    return useDatabase().delete(media).where(and(eq(media.status, 'failed'), eq(media.bytes, 0))).returning({ id: media.id })
+  }
+
   static async attachMedia(placeId: string, mediaId: string, options?: { sortOrder?: number, isCover?: boolean }) {
     const db = useDatabase()
     const existing = await db.select().from(placeMedia).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId))).limit(1)

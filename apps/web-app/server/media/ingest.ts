@@ -2,7 +2,7 @@ import type { MediaLicense } from '@k39/database'
 import type { Buffer } from 'node:buffer'
 import { db } from '@k39/database'
 import { createId } from '@paralleldrive/cuid2'
-import { processImage, uploadProblem } from './process'
+import { processImage, uploadProblem, uploadStatus } from './process'
 import { withMediaSlot } from './semaphore'
 import { createLocalMediaStorage } from './storage'
 
@@ -46,9 +46,10 @@ export async function ingestImage(input: {
   collectionId?: string | null
   isCover?: boolean
 }) {
-  const problem = uploadProblem(input.mime, input.filename, input.bytes.length)
+  // Client MIME is not a format. uploadProblem reads the header.
+  const problem = await uploadProblem(input.bytes, input.filename)
   if (problem) {
-    return { error: problem, statusCode: problem.includes('25') ? 413 : 400 }
+    return { error: problem.message, statusCode: uploadStatus(problem.code) }
   }
   if (!input.alt.trim()) {
     return { error: 'Нужен alt.', statusCode: 400 }
@@ -60,17 +61,6 @@ export async function ingestImage(input: {
     processed = await withMediaSlot(() => processImage(input.bytes, id, storage))
   } catch (error) {
     await removeStoredMedia(id)
-    await db.editor.saveMedia({
-      id,
-      filename: 'master.webp',
-      mime: 'image/webp',
-      bytes: 0,
-      width: null,
-      height: null,
-      alt: input.alt.trim(),
-      status: 'failed',
-      placeId: input.placeId ?? null,
-    }).catch(() => undefined)
     throw error
   }
   try {

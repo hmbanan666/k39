@@ -2,11 +2,12 @@ import { Buffer } from 'node:buffer'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { crc32 } from 'node:zlib'
 import sharp from 'sharp'
 import { afterEach, describe, expect, it } from 'vitest'
 import { categoryNames, fallbackQueries, mapCommonsLicense, plainText } from '../server/media/commons'
 import { coverSizeWarning } from '../server/media/ingest'
-import { processImage } from '../server/media/process'
+import { MAX_INPUT_PIXELS, MAX_UPLOAD_BYTES, processImage, uploadBodyProblem, uploadProblem, uploadStatus } from '../server/media/process'
 import { mediaSlotDepth, withMediaSlot } from '../server/media/semaphore'
 import { createLocalMediaStorage } from '../server/media/storage'
 
@@ -110,5 +111,87 @@ describe('commons licenses', () => {
     expect(coverSizeWarning(800, true)).toContain('1200')
     expect(coverSizeWarning(800, false)).toBe('')
     expect(coverSizeWarning(1600, true)).toBe('')
+  })
+})
+
+function pngChunk(type: string, data: Buffer) {
+  const length = Buffer.alloc(4)
+  length.writeUInt32BE(data.length)
+  const body = Buffer.concat([Buffer.from(type), data])
+  const crc = Buffer.alloc(4)
+  crc.writeUInt32BE(crc32(body) >>> 0)
+  return Buffer.concat([length, body, crc])
+}
+
+/** A 1×1 PNG whose header claims a huge frame. The pixel bytes stay tiny. */
+async function hugeHeaderPng(width: number, height: number) {
+  const tiny = await sharp({
+    create: { width: 1, height: 1, channels: 3, background: { r: 200, g: 10, b: 10 } },
+  }).png().toBuffer()
+  const chunks: Array<{ type: string, data: Buffer }> = []
+  let offset = 8
+  while (offset < tiny.length) {
+    const size = tiny.readUInt32BE(offset)
+    const type = tiny.subarray(offset + 4, offset + 8).toString('ascii')
+    chunks.push({ type, data: Buffer.from(tiny.subarray(offset + 8, offset + 8 + size)) })
+    offset += 12 + size
+  }
+  const header = chunks.find((chunk) => chunk.type === 'IHDR')
+  if (!header) {
+    throw new Error('png has no IHDR')
+  }
+  header.data.writeUInt32BE(width, 0)
+  header.data.writeUInt32BE(height, 4)
+  return Buffer.concat([tiny.subarray(0, 8), ...chunks.map((chunk) => pngChunk(chunk.type, chunk.data))])
+}
+
+describe('upload problems', () => {
+  it('maps problem codes to status codes', () => {
+    expect(uploadStatus('too_large')).toBe(413)
+    expect(uploadStatus('too_many_pixels')).toBe(413)
+    expect(uploadStatus('bad_type')).toBe(400)
+    expect(uploadStatus('heic')).toBe(400)
+    expect(uploadStatus('unreadable')).toBe(400)
+    expect(uploadBodyProblem(undefined)).toBeNull()
+    expect(uploadBodyProblem(String(MAX_UPLOAD_BYTES))?.code).toBeUndefined()
+    expect(uploadBodyProblem(String(MAX_UPLOAD_BYTES + 1024 * 1024))?.code).toBe('too_large')
+    expect(uploadStatus(uploadBodyProblem(String(MAX_UPLOAD_BYTES + 1024 * 1024))!.code)).toBe(413)
+  })
+
+  it('rejects corrupt bytes, a lied type, HEIC and an oversize header', async () => {
+    const text = await uploadProblem(Buffer.from('this is not a photo'), 'note.jpg')
+    expect(text).toMatchObject({ code: 'unreadable', message: 'Не удалось прочитать изображение.' })
+    expect(uploadStatus(text!.code)).toBe(400)
+
+    const png = await sharp({
+      create: { width: 4, height: 4, channels: 3, background: { r: 1, g: 2, b: 3 } },
+    }).png().toBuffer()
+    expect(await uploadProblem(png, 'declared.jpg')).toBeNull()
+
+    const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
+    const lied = await uploadProblem(gif, 'photo.jpg')
+    expect(lied?.code).toBe('bad_type')
+    expect(uploadStatus(lied!.code)).toBe(400)
+
+    const jpeg = await sharp({
+      create: { width: 4, height: 4, channels: 3, background: { r: 9, g: 9, b: 9 } },
+    }).jpeg().toBuffer()
+    const named = await uploadProblem(jpeg, 'IMG_2043.HEIC')
+    expect(named?.code).toBe('heic')
+    expect(named?.message).toContain('HEIC')
+    const branded = Buffer.concat([Buffer.alloc(4), Buffer.from('ftypheic')])
+    branded.writeUInt32BE(branded.length, 0)
+    expect((await uploadProblem(branded, 'photo.jpg'))?.code).toBe('heic')
+
+    const huge = await hugeHeaderPng(20_000, 20_000)
+    expect(20_000 * 20_000).toBeGreaterThan(MAX_INPUT_PIXELS)
+    const started = Date.now()
+    const pixels = await uploadProblem(huge, 'frame.png')
+    expect(Date.now() - started).toBeLessThan(1000)
+    expect(pixels?.code).toBe('too_many_pixels')
+    expect(uploadStatus(pixels!.code)).toBe(413)
+
+    const heavy = Buffer.alloc(MAX_UPLOAD_BYTES + 1)
+    expect((await uploadProblem(heavy, 'big.jpg'))?.code).toBe('too_large')
   })
 })
