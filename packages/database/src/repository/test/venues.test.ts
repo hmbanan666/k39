@@ -249,7 +249,7 @@ describe('venue repository', () => {
     expect(kept?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/cafe' }])
   })
 
-  it('stores a VK community id only beside a VK link and clears it with the last one', async () => {
+  it('stores a VK community id only beside a VK link and clears it when socials stop supporting it', async () => {
     const vk = [{ network: 'vk', url: 'https://vk.com/lugowen_gastro' }]
     await expect(Venues.create({ name: 'Без ВК', kind: 'cafe', vkCommunityId: 236300695 }))
       .rejects
@@ -274,6 +274,14 @@ describe('venue repository', () => {
     expect(restored?.vkCommunityId).toBe(236300695)
     const unset = await Venues.update(created.id, { vkCommunityId: null })
     expect(unset?.vkCommunityId).toBeNull()
+
+    const moved = await Venues.update(created.id, { socials: vk, vkCommunityId: 236300695 })
+    expect(moved?.vkCommunityId).toBe(236300695)
+    const owner = await Venues.update(created.id, { socials: [{ network: 'vk', url: 'https://vk.com/club10' }] })
+    expect(owner?.vkCommunityId).toBeNull()
+    expect(owner?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/club10' }])
+    const next = await Venues.update(created.id, { phone: '+7 4012 00-00-01' })
+    expect(next?.vkCommunityId).toBeNull()
     await expect(useDatabase().update(venues).set({ vkCommunityId: -5 }).where(eq(venues.id, created.id)))
       .rejects
       .toThrow()

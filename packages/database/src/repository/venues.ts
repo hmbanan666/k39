@@ -1,6 +1,6 @@
 import type { SourceLink } from '../types/entities'
 import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
-import { parseVkCommunityId, vkCommunityIdProblem, vkSocialLinks } from '@k39/types/vk-community'
+import { parseVkCommunityId, vkCommunityIdProblem } from '@k39/types/vk-community'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
@@ -115,12 +115,14 @@ function cleanWebsite(value: string | null | undefined) {
 /**
  * The stored VK community id after a write. An explicit value must be a
  * positive integer that belongs to a VK link in `socials`. Without one, the
- * stored id stays while a VK link stays, and clears with the last VK link,
- * so an owner who removes the VK link is not blocked by a field they cannot see.
+ * stored id stays only while it still passes that check against the new
+ * `socials`, and clears otherwise. An owner edits socials without seeing this
+ * field, so an owner save never fails on it and never leaves a stale id.
+ * A screen-name change keeps the id: the check cannot tell a rename from a move.
  */
 function nextVkCommunityId(input: VenueWrite['vkCommunityId'], current: number | null, socials: VenueSocial[]) {
   if (input === undefined) {
-    return current != null && vkSocialLinks(socials).links ? current : null
+    return current != null && vkCommunityIdProblem(current, socials) === null ? current : null
   }
   const id = parseVkCommunityId(input)
   if (id === 'invalid') {
