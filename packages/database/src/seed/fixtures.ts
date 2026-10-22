@@ -1,4 +1,5 @@
 import type { StoredPageModule } from '../types'
+import { addDays, localNow, zonedTime } from '@k39/types/zone'
 import { eq } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { Content, Editor } from '../repository/content'
@@ -205,18 +206,14 @@ async function ensureVenue(input: {
   return row
 }
 
-function localDay(now: Date, days: number) {
-  return new Date(now.getTime() + days * 86_400_000).toISOString().slice(0, 10)
-}
-
-/** Kaliningrad is UTC+2 all year. */
-function kaliningrad(day: string, time: string) {
-  return new Date(`${day}T${time}:00+02:00`).toISOString()
+/** A Kaliningrad wall-clock time `days` after today, as an ISO instant. */
+function localAt(now: Date, days: number, time: string) {
+  return zonedTime(addDays(localNow(now).date, days), time).toISOString()
 }
 
 /** Example ticket rows and events, dated from `now`. Labels only, not a real tariff. */
 async function applyPracticalFixtures(placeId: string, staleId: string, now: Date) {
-  const day = now.toISOString().slice(0, 10)
+  const day = localNow(now).date
   const source = { sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: day }
   await Admission.replace('place', placeId, [
     { slot: 'adult', audience: 'general', priceRub: 400, condition: null, label: null, sortOrder: 0, ...source },
@@ -225,14 +222,14 @@ async function applyPracticalFixtures(placeId: string, staleId: string, now: Dat
     { slot: 'kids', audience: 'free', priceRub: 0, condition: 'Дети до 7 лет', label: null, sortOrder: 3, ...source },
   ])
   await Admission.replace('place', staleId, [
-    { slot: 'adult', audience: 'general', priceRub: 300, condition: null, label: null, sortOrder: 0, sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: localDay(now, -400) },
+    { slot: 'adult', audience: 'general', priceRub: 300, condition: null, label: null, sortOrder: 0, sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: addDays(day, -400) },
   ])
   await CalendarEvents.removeForSubject('place', placeId)
   const event = { subjectType: 'place' as const, subjectId: placeId, sourceUrl: AFISHA_URL, sourceTitle: 'Афиша фикстуры', checkedAt: day }
-  await CalendarEvents.insert({ ...event, title: 'Фикстура: вечерний концерт', startsAt: kaliningrad(localDay(now, 3), '19:00'), endsAt: kaliningrad(localDay(now, 3), '21:00'), allDay: false, ticketUrl: TICKETS_URL })
-  await CalendarEvents.insert({ ...event, title: 'Фикстура: день открытых дверей', startsAt: kaliningrad(localDay(now, 10), '00:00'), endsAt: kaliningrad(localDay(now, 12), '00:00'), allDay: true, ticketUrl: null })
-  await CalendarEvents.insert({ ...event, title: 'Фикстура: прошедший концерт', startsAt: kaliningrad(localDay(now, -2), '19:00'), endsAt: null, allDay: false, ticketUrl: TICKETS_URL })
-  const cancelled = await CalendarEvents.insert({ ...event, title: 'Фикстура: отменённый концерт', startsAt: kaliningrad(localDay(now, 5), '18:00'), endsAt: null, allDay: false, ticketUrl: null })
+  await CalendarEvents.insert({ ...event, title: 'Фикстура: вечерний концерт', startsAt: localAt(now, 3, '19:00'), endsAt: localAt(now, 3, '21:00'), allDay: false, ticketUrl: TICKETS_URL })
+  await CalendarEvents.insert({ ...event, title: 'Фикстура: день открытых дверей', startsAt: localAt(now, 10, '00:00'), endsAt: localAt(now, 12, '00:00'), allDay: true, ticketUrl: null })
+  await CalendarEvents.insert({ ...event, title: 'Фикстура: прошедший концерт', startsAt: localAt(now, -2, '19:00'), endsAt: null, allDay: false, ticketUrl: TICKETS_URL })
+  const cancelled = await CalendarEvents.insert({ ...event, title: 'Фикстура: отменённый концерт', startsAt: localAt(now, 5, '18:00'), endsAt: null, allDay: false, ticketUrl: null })
   await CalendarEvents.cancel(cancelled.id, now.toISOString())
 }
 
@@ -450,7 +447,7 @@ export async function applyFixtures(now = new Date()) {
   })
   const route = await Editor.routeBySlug(FIXTURE_SLUGS.route)
   await Admission.replace('route', route!.id, [
-    { slot: 'tour', audience: 'general', priceRub: 1200, condition: 'Экскурсия с гидом, группа до 15 человек', label: 'Экскурсия', sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: now.toISOString().slice(0, 10), sortOrder: 0 },
+    { slot: 'tour', audience: 'general', priceRub: 1200, condition: 'Экскурсия с гидом, группа до 15 человек', label: 'Экскурсия', sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: localNow(now).date, sortOrder: 0 },
   ])
 
   await Editor.saveCollection({

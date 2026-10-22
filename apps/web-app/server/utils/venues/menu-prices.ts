@@ -1,11 +1,7 @@
 import type { MenuColumn, MenuFact } from '../../../shared/price-compare'
-import { db, PRICE_FRESH_DAYS } from '@k39/database'
+import { db } from '@k39/database'
+import { priceFreshCutoff } from '@k39/types/freshness'
 import { resolveMenuPrice } from '../../../shared/price-compare'
-
-/** Day string `PRICE_FRESH_DAYS` before `now`. Prices on that day still count. */
-export function priceFreshCutoff(now = new Date()) {
-  return new Date(now.getTime() - PRICE_FRESH_DAYS * 86_400_000).toISOString().slice(0, 10)
-}
 
 function asMenuFact(row: {
   confidence: string

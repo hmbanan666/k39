@@ -1,3 +1,5 @@
+import { priceFreshCutoff } from '@k39/types/freshness'
+
 // Admission rows (ADR 0046). One ticket list per place, venue, or route.
 // Shared by the writer, the renderer, the score, and JSON-LD.
 
@@ -15,8 +17,6 @@ export const ADMISSION_LABELS: Record<AdmissionAudience, string> = {
 export const ADMISSION_MAX_ROWS = 12
 export const ADMISSION_CONDITION_MAX = 200
 export const ADMISSION_LABEL_MAX = 80
-/** The same window as `PRICE_FRESH_DAYS` in `@k39/database`. Client code cannot import that package. */
-export const ADMISSION_FRESH_DAYS = 365
 export const PRACTICAL_SLOT = /^[a-z0-9-]{1,40}$/
 
 export interface AdmissionRow {
@@ -55,10 +55,6 @@ export function admissionRowProblem(row: Pick<AdmissionRow, 'audience' | 'priceR
   return null
 }
 
-export function admissionCutoff(now = new Date()) {
-  return new Date(now.getTime() - ADMISSION_FRESH_DAYS * 86_400_000).toISOString().slice(0, 10)
-}
-
 function audienceRank(audience: AdmissionAudience) {
   return ADMISSION_AUDIENCES.indexOf(audience)
 }
@@ -91,7 +87,7 @@ export function admissionLabel(row: Pick<AdmissionRow, 'audience' | 'label'>) {
 }
 
 export function admissionView(rows: AdmissionRow[], now = new Date()): AdmissionView {
-  const cutoff = admissionCutoff(now)
+  const cutoff = priceFreshCutoff(now)
   const fresh = sortAdmission(rows.filter((row) => row.checkedAt >= cutoff))
   return {
     stored: rows.length > 0,

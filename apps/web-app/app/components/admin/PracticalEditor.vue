@@ -236,6 +236,7 @@ import type { AdmissionAudience } from '~~/shared/admission'
 import type { EventTiming } from '~~/shared/events'
 import { ADMISSION_AUDIENCES, ADMISSION_LABELS, ADMISSION_MAX_ROWS } from '~~/shared/admission'
 import { eventWhen } from '~~/shared/events'
+import { localNow } from '~~/shared/schedule'
 
 interface TicketRow {
   slot: string
@@ -271,7 +272,7 @@ const props = defineProps<{ subjectType: 'place' | 'venue' | 'route', subjectId:
 const requestFetch = useRequestFetch()
 const base = `/api/admin/practical/${props.subjectType}/${props.subjectId}`
 const audienceOptions = ADMISSION_AUDIENCES.map((value) => ({ value, label: ADMISSION_LABELS[value] }))
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => localNow(new Date()).date
 
 const tickets = ref<TicketRow[]>([])
 const shownSlots = ref<string[]>([])

@@ -5,6 +5,7 @@ import { db } from '@k39/database'
 import { createError } from 'h3'
 import { z } from 'zod'
 import { ADMISSION_AUDIENCES, ADMISSION_CONDITION_MAX, ADMISSION_LABEL_MAX, ADMISSION_MAX_ROWS, admissionRowProblem, admissionView, PRACTICAL_SLOT, sortAdmission } from '../../../shared/admission'
+import { localNow } from '../../../shared/schedule'
 import { commitFact, retireFactSlot } from '../facts/commit'
 import { rejectBannedSites, writingGate } from '../mcp/writing-guard'
 import { admissionSourceProblem } from './sources'
@@ -38,7 +39,7 @@ export function normalizeAdmission(rows: AdmissionRowInput[], now = new Date()):
   if (rows.length > ADMISSION_MAX_ROWS) {
     bad(`Не больше ${ADMISSION_MAX_ROWS} строк билетов`)
   }
-  const today = now.toISOString().slice(0, 10)
+  const today = localNow(now).date
   const seen = new Set<string>()
   return rows.map((row, index) => {
     if (!PRACTICAL_SLOT.test(row.slot)) {
@@ -56,7 +57,7 @@ export function normalizeAdmission(rows: AdmissionRowInput[], now = new Date()):
       bad(`${row.slot}: ${problem}`)
     }
     if (Number.isNaN(Date.parse(`${row.checkedAt}T00:00:00Z`)) || row.checkedAt > today) {
-      bad(`${row.slot}: checkedAt — день проверки, не в будущем`)
+      bad(`${row.slot}: checkedAt: день проверки, не в будущем`)
     }
     return {
       slot: row.slot,

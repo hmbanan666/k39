@@ -1,6 +1,6 @@
 import { db } from '@k39/database'
+import { priceFreshCutoff } from '@k39/types/freshness'
 import { z } from 'zod'
-import { admissionCutoff } from '../../../shared/admission'
 
 export default defineMcpTool({
   name: 'admissions_list',
@@ -12,7 +12,7 @@ export default defineMcpTool({
   },
   handler: async ({ subjectType, staleOnly }) => {
     const rows = await db.admission.list(subjectType)
-    const cutoff = admissionCutoff()
+    const cutoff = priceFreshCutoff()
     const groups = new Map<string, { subjectType: string, subjectId: string, rows: number, stale: number, oldestCheckedAt: string }>()
     for (const row of rows) {
       const key = `${row.subjectType}:${row.subjectId}`

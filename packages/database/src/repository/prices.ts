@@ -1,3 +1,4 @@
+import { PRICE_FRESH_DAYS, priceFreshCutoff } from '@k39/types/freshness'
 import { and, asc, desc, eq, gte } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { priceInName, priceInNameMessage } from '../price-label'
@@ -15,8 +16,7 @@ export interface VenuePriceInput {
   sourceUrl?: string | null
 }
 
-/** Prices older than this are not shown. */
-export const PRICE_FRESH_DAYS = 365
+export { PRICE_FRESH_DAYS }
 
 /** A catalog picture is a site path or an https URL. Empty clears it. */
 export function normalizePriceItemImage(value: string | null | undefined) {
@@ -29,10 +29,6 @@ export function normalizePriceItemImage(value: string | null | undefined) {
     return text
   }
   throw new Error('Картинка позиции: путь от корня сайта или https-ссылка')
-}
-
-function freshCutoff(now = new Date()) {
-  return new Date(now.getTime() - PRICE_FRESH_DAYS * 86_400_000).toISOString().slice(0, 10)
 }
 
 export class Prices {
@@ -83,7 +79,7 @@ export class Prices {
   /** Prices checked within PRICE_FRESH_DAYS, for the public page. */
   static async freshForVenue(venueId: string, now = new Date()) {
     const rows = await Prices.forVenue(venueId)
-    const cutoff = freshCutoff(now)
+    const cutoff = priceFreshCutoff(now)
     return rows.filter((row) => row.checkedAt >= cutoff)
   }
 
@@ -103,7 +99,7 @@ export class Prices {
       sourceKind: venuePrices.sourceKind,
       sourceTitle: venuePrices.sourceTitle,
       sourceUrl: venuePrices.sourceUrl,
-    }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).innerJoin(venues, eq(venuePrices.venueId, venues.id)).where(and(eq(priceItems.slug, slug), eq(venues.status, 'published'), gte(venuePrices.checkedAt, freshCutoff(now)))).orderBy(asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
+    }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).innerJoin(venues, eq(venuePrices.venueId, venues.id)).where(and(eq(priceItems.slug, slug), eq(venues.status, 'published'), gte(venuePrices.checkedAt, priceFreshCutoff(now)))).orderBy(asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
   }
 
   /**
@@ -128,7 +124,7 @@ export class Prices {
       sourceKind: venuePrices.sourceKind,
       sourceTitle: venuePrices.sourceTitle,
       sourceUrl: venuePrices.sourceUrl,
-    }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).innerJoin(venues, eq(venuePrices.venueId, venues.id)).where(and(eq(venues.status, 'published'), gte(venuePrices.checkedAt, freshCutoff(now)))).orderBy(asc(priceItems.sortOrder), asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
+    }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).innerJoin(venues, eq(venuePrices.venueId, venues.id)).where(and(eq(venues.status, 'published'), gte(venuePrices.checkedAt, priceFreshCutoff(now)))).orderBy(asc(priceItems.sortOrder), asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
   }
 
   /** Replaces a venue's prices. Unknown catalog items fail the whole write. */

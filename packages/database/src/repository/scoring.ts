@@ -1,11 +1,11 @@
 import type { PageKind, PrimaryAction, SourceLink, StoredPageModule } from '../types/entities'
 import type { CatalogArticle, CatalogHub, CatalogPassport, CatalogStop, CatalogVenue, ContentCatalog, PageMetric, PassportWrite, ScorePlace, StoredScore } from '../types/scoring'
+import { priceFreshCutoff } from '@k39/types/freshness'
 import { createId } from '@paralleldrive/cuid2'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { useDatabase } from '../database'
 import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, pagePersonas, places, quests, questSteps, regions, relatedLinks, routePoints, routes, schedules, venues } from '../tables'
-import { PRICE_FRESH_DAYS } from './prices'
 
 const HUB_SLUGS = ['forty', 'zamki', 'plyazhi', 'kurorty', 'muzei', 'eda']
 
@@ -129,7 +129,7 @@ export class Scoring {
       from venue_media
       group by venue_id
     `)
-    const freshCutoff = new Date(Date.now() - PRICE_FRESH_DAYS * 86_400_000).toISOString().slice(0, 10)
+    const freshCutoff = priceFreshCutoff()
     const practicalResult = await db.execute(sql`
       select subject_type, subject_id, sum(rows)::int as rows, sum(fresh)::int as fresh, sum(upcoming)::int as upcoming
       from (

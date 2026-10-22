@@ -1,6 +1,7 @@
 import type { PublicMedia } from './media'
 import type { PriceSummary, PublicPriceCard, SharedPriceSource, StoredPriceBand } from './price-compare'
 import { priceInName, priceInNameMessage } from '@k39/database/price-label'
+import { priceFreshCutoff } from '@k39/types/freshness'
 import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
 import { priceBadgeFromBand, priceCompareLead, sharedPriceSource } from './price-compare'
@@ -11,12 +12,6 @@ export type AudienceIcon = typeof AUDIENCE_ICONS[number]
 
 /** Curated «Что заказать» list. Not a full menu. */
 export const DISH_SHOWCASE_MAX = 8
-
-/**
- * A dish price older than this is hidden, the same window as
- * `PRICE_FRESH_DAYS` for «Ориентиры цен».
- */
-export const DISH_PRICE_FRESH_DAYS = 365
 
 const DISH_ID = /^[\w-]{8,40}$/
 
@@ -292,8 +287,7 @@ export function dishPriceIsFresh(updatedAt: string | null | undefined, now = new
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
     return true
   }
-  const cutoff = new Date(now.getTime() - DISH_PRICE_FRESH_DAYS * 86_400_000).toISOString().slice(0, 10)
-  return day >= cutoff
+  return day >= priceFreshCutoff(now)
 }
 
 function readStoredDishes(stored: unknown): StoredDish[] {
