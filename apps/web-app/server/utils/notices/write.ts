@@ -5,7 +5,7 @@ import { db } from '@k39/database'
 import { classifyOfficialUrl } from '@k39/types/official-url'
 import { vkMenuMatchesSocial } from '@k39/types/vk-community'
 import { createError } from 'h3'
-import { normalizeNotice, NoticeInputError, noticeListSchema, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeToday } from '../../../shared/notices'
+import { normalizeNotice, NoticeInputError, noticeListSchema, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeSummary, noticeToday } from '../../../shared/notices'
 import { contentScope } from '../access'
 import { contentWarnings } from '../content/save'
 import { auditMcp } from '../mcp/audit'
@@ -324,4 +324,18 @@ export async function noticesView(target: Pick<NoticeTarget, 'type' | 'id'>, now
         }
       : null,
   }
+}
+
+/**
+ * The «Объявления на даты» row of the admin live-beside-draft diff. Empty
+ * when the draft has no `notices` key or the staged list reads the same.
+ */
+export async function noticeDraftChange(target: Pick<NoticeTarget, 'type' | 'id'>, payload: Record<string, unknown>) {
+  const staged = stagedNotices(payload)
+  if (!staged) {
+    return []
+  }
+  const live = noticeSummary((await db.notices.forSubject(target.type, target.id)).map(toNoticeValue))
+  const draft = noticeSummary(staged)
+  return live === draft ? [] : [{ field: 'notices', label: 'Объявления на даты', live, draft }]
 }

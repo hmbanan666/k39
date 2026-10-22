@@ -47,6 +47,7 @@
       <slot name="meta" />
       <OpeningLive
         :schedule="schedule ?? null"
+        :notices="notices"
         show-unknown
         compact
         hide-remaining
@@ -62,6 +63,7 @@
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
+import type { NoticeWindow } from '~~/shared/notices'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import { computed } from 'vue'
 import { illustrationFor } from '~~/shared/illustrations'
@@ -82,6 +84,8 @@ const props = withDefaults(defineProps<{
   partner?: boolean
   stale?: boolean
   schedule?: ScheduleRecord | null
+  /** Notice windows (ADR 0049). The card has no banner; a current `closed` one replaces the open chip. */
+  notices?: NoticeWindow[] | null
   /** Resting tilt. «none» keeps a single card still. */
   lean?: 'left' | 'right' | 'none'
   sizes?: string
@@ -101,6 +105,7 @@ const props = withDefaults(defineProps<{
   partner: false,
   stale: false,
   schedule: null,
+  notices: null,
   lean: 'none',
   sizes: '(min-width: 900px) 240px, 70vw',
   priority: false,

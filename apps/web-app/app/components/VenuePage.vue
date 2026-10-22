@@ -90,6 +90,10 @@
         >
           {{ venue.address }}
         </p>
+        <TemporaryNotices
+          :notices="venue.notices"
+          variant="hero"
+        />
       </div>
     </header>
     <div class="venue-body">
@@ -126,8 +130,13 @@
         </template>
         <template #lead>
           <FactsCard :checked="checkedLabel">
+            <TemporaryNotices
+              :notices="venue.notices"
+              variant="facts"
+            />
             <OpeningLive
               :schedule="venue.schedule"
+              :notices="noticeWindows"
               :has-hours="Boolean(venue.schedule) || venue.hours.length > 0"
             />
             <div
@@ -380,6 +389,7 @@ import type { AdmissionView } from '~~/shared/admission'
 import type { EventLine } from '~~/shared/events'
 import type { GuestPublicItem } from '~~/shared/guest'
 import type { PublicMedia } from '~~/shared/media'
+import type { PublicNotice } from '~~/shared/notices'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import type { StickerSlug } from '~~/shared/stickers'
@@ -388,6 +398,7 @@ import { htmlContainsAddress } from '~~/shared/address'
 import { venueClaimPath } from '~~/shared/cabinet'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
+import { statusWindows } from '~~/shared/notices'
 import { operator } from '~~/shared/operator'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 import { parsePhones } from '~~/shared/phone'
@@ -434,6 +445,7 @@ export interface VenuePageData {
     checkedAt: string | null
     regionTitle: string | null
     schedule: ScheduleRecord | null
+    notices: PublicNotice[]
     modules: PublicVenueModules | null
     admission: AdmissionView
     upcoming: EventLine[]
@@ -446,6 +458,7 @@ export interface VenuePageData {
 
 const props = defineProps<{ page: VenuePageData }>()
 const venue = props.page.venue
+const noticeWindows = statusWindows(venue.notices)
 const cover = props.page.cover
 const photos = props.page.photos
 // Hero takes the cover plus up to two more; «Как внутри» shows the rest.

@@ -11,6 +11,7 @@ import { phoneCheckedAt, resolvePlaceContact } from '../content/place-contact'
 import { contentGate, savePlaceContent } from '../content/save'
 import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../facts/sync'
 import { setPublication } from '../mcp/publish'
+import { noticeDraftChange, onlyNoticesStaged } from '../notices/write'
 
 const VISIT = new Set<VisitStatus>(['open', 'ruins', 'closed', 'unknown'])
 const PUBLICATION = new Set<PublicationStatus>(['draft', 'review', 'published', 'archived'])
@@ -73,20 +74,27 @@ export async function adminPlaceDraftView(id: string): Promise<{ pending: PlaceD
   if (!draft) {
     return { pending: null }
   }
-  const next = db.editor.pendingPlaceNext(live, draft.payload)
-  const [categories, regions] = await Promise.all([
+  // A draft with only staged notices does not touch the columns on apply.
+  const noticesOnly = onlyNoticesStaged(draft.payload)
+  const next = noticesOnly ? live : db.editor.pendingPlaceNext(live, draft.payload)
+  const [categories, regions, notices] = await Promise.all([
     db.content.categories(),
     db.editor.listRegions(),
+    noticeDraftChange({ type: 'place', id }, draft.payload),
   ])
   return {
     pending: {
       updatedAt: draft.updatedAt,
       updatedLabel: formatDraftUpdated(draft.updatedAt),
       publicationStatus: draft.publicationStatus,
-      changes: placeDraftChanges(live, next, {
-        category: new Map(categories.map((item) => [item.id, item.title])),
-        region: new Map(regions.map((item) => [item.id, item.title])),
-      }),
+      noticesOnly,
+      changes: [
+        ...placeDraftChanges(live, next, {
+          category: new Map(categories.map((item) => [item.id, item.title])),
+          region: new Map(regions.map((item) => [item.id, item.title])),
+        }),
+        ...notices,
+      ],
     },
   }
 }

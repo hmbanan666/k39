@@ -28,6 +28,7 @@
           :partner="item.partner"
           :stale="item.stale"
           :schedule="item.schedule"
+          :notices="item.notices"
           :phone="item.phone"
           :lean="index % 2 === 0 ? 'left' : 'right'"
           track
@@ -45,6 +46,7 @@
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
+import type { NoticeWindow } from '~~/shared/notices'
 import type { ScheduleRecord } from '~~/shared/schedule'
 
 interface EatItem {
@@ -61,6 +63,7 @@ interface EatItem {
   stale: boolean
   media?: PublicMedia | null
   schedule?: ScheduleRecord | null
+  notices?: NoticeWindow[] | null
   phone?: string | null
 }
 

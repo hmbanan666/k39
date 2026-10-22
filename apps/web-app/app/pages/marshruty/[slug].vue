@@ -44,6 +44,7 @@
 <script setup lang="ts">
 import type { AdmissionView } from '~~/shared/admission'
 import type { EventLine } from '~~/shared/events'
+import type { NoticeWindow } from '~~/shared/notices'
 import type { RouteStopView } from '~~/shared/route-nav'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
@@ -67,6 +68,7 @@ const page = await fetchPublic<{
     partner: boolean
     stale: boolean
     schedule: ScheduleRecord | null
+    notices?: NoticeWindow[]
   }>
 }>(`/api/public/routes/${slug}`)
 usePublicHead(page.doc)

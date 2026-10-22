@@ -48,6 +48,8 @@ export interface PlaceDraftNotice {
   updatedAt: string
   updatedLabel: string
   publicationStatus: 'draft' | 'review'
+  /** The draft holds only staged notices (ADR 0049): apply writes them and keeps the status. */
+  noticesOnly?: boolean
   changes: PlaceDraftChange[]
 }
 

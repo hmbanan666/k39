@@ -1,4 +1,5 @@
 import type { PublicMedia } from './media'
+import type { NoticeWindow } from './notices'
 import type { ScheduleRecord } from './schedule'
 import { z } from 'zod'
 
@@ -106,6 +107,8 @@ export interface ListingVenueCard {
   kindLabel: string
   media: PublicMedia | null
   schedule: ScheduleRecord | null
+  /** Status windows only (ADR 0049): a current `closed` one replaces the open chip. */
+  notices?: NoticeWindow[]
   stale: boolean
   meta: string
   phone?: string | null

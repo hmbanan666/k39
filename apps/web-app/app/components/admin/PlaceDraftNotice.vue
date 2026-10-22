@@ -7,7 +7,7 @@
       Черновик ждёт решения
     </h2>
     <p class="lead">
-      Агент сохранил правки этой страницы. На сайте по-прежнему живой текст. Применить опубликует черновик. Отбросить оставит живую страницу.
+      {{ lead || (pending.noticesOnly ? NOTICES_LEAD : PAGE_LEAD) }}
     </p>
     <p class="meta">
       {{ pending.publicationStatus === 'review' ? 'На проверке' : 'Черновик' }}. {{ pending.updatedLabel }}
@@ -70,9 +70,15 @@ withDefaults(defineProps<{
   pending: PlaceDraftNotice
   busy?: boolean
   headingId?: string
+  /** Replaces the default lead, for a draft whose apply differs from a page publish. */
+  lead?: string
 }>(), {
   headingId: 'place-draft-title',
+  lead: '',
 })
+
+const PAGE_LEAD = 'Агент сохранил правки этой страницы. На сайте по-прежнему живой текст. Применить опубликует черновик. Отбросить оставит живую страницу.'
+const NOTICES_LEAD = 'Агент предложил объявления на даты. На сайте по-прежнему живые объявления. Применить запишет их, статус страницы не изменится. Отбросить оставит живые.'
 
 const emit = defineEmits<{
   apply: []

@@ -272,6 +272,17 @@ export function noticeLines(notice: Pick<PublicNotice, 'kind' | 'from' | 'to' | 
   }
 }
 
+/** One line per row for the admin live-beside-draft diff. */
+export function noticeSummary(rows: Array<Pick<NoticeValue, 'kind' | 'from' | 'to' | 'text' | 'address'>> | null | undefined) {
+  if (!rows?.length) {
+    return 'нет объявлений'
+  }
+  return rows.map((row) => {
+    const where = row.kind === 'relocation' && row.address ? ` Адрес: ${row.address}.` : ''
+    return `${NOTICE_KIND_TITLE[row.kind]}, ${noticeDateLine(row)}. ${row.text}${where}`
+  }).join('\n')
+}
+
 /** The windows a status line needs: only `closed` overrides it. */
 export function statusWindows(rows: NoticeWindow[]): NoticeWindow[] {
   return rows.filter((row) => row.kind === 'closed').map((row) => ({ kind: row.kind, from: row.from, to: row.to }))
