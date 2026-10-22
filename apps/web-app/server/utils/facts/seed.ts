@@ -1,7 +1,7 @@
 import type { SourceLink } from '@k39/database'
 import { db, tables, useDatabase } from '@k39/database'
 import { eq } from 'drizzle-orm'
-import { classifySourceUrl, defaultTtl, FACT_IMPORT_ID, hoursLookEmpty, seedFactDisposition } from '../../../shared/facts'
+import { classifyMenuSourceUrl, classifySourceUrl, defaultTtl, FACT_IMPORT_ID, hoursLookEmpty, seedFactDisposition } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { commitFact } from './commit'
 import { loadPageSnapshots } from './pages'
@@ -98,7 +98,7 @@ export async function applyFactLayer() {
   }
 
   for (const row of priceRows) {
-    const sourceKind = row.sourceKind === 'owner' ? 'owner' : (row.sourceUrl ? classifySourceUrl(row.sourceUrl) : 'official')
+    const sourceKind = row.sourceKind === 'owner' ? 'owner' : (row.sourceUrl ? classifyMenuSourceUrl(row.sourceUrl) : 'official')
     await commitFact({
       kind: 'price',
       subjectType: 'venue',

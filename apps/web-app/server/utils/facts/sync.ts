@@ -2,7 +2,7 @@ import type { ContentTx, VenuePriceInput } from '@k39/database'
 import type { FactActor, SourceKind } from '../../../shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '../../../shared/schedule'
 import { db } from '@k39/database'
-import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
+import { classifyMenuSourceUrl, classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { rejectBannedSites } from '../mcp/writing-guard'
 import { commitFact, retireFactSlot } from './commit'
@@ -152,7 +152,7 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
           value: { itemId: item.id, itemSlug: item.slug, variant: row.variant, priceRub: Math.round(next.priceRub) },
           sourceUrl: next.sourceKind === 'owner' ? null : next.sourceUrl ?? null,
           sourceTitle: next.sourceTitle,
-          sourceKind: next.sourceKind === 'owner' ? 'owner' : classifySourceUrl(next.sourceUrl),
+          sourceKind: next.sourceKind === 'owner' ? 'owner' : classifyMenuSourceUrl(next.sourceUrl),
           checkedAt: dateStamp(next.checkedAt),
           confidence: next.sourceKind === 'owner' ? 'owner' : 'stated',
           actor,
@@ -210,7 +210,7 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
       ? current.find((itemRow) => priceKey(itemRow.item, itemRow.variant) === priceKey(row.item, row.variant))
       : null
     const writeActor: FactActor = keptOwner && keptOwner.priceRub === row.priceRub ? 'owner' : actor
-    const sourceKind = row.sourceKind === 'owner' ? 'owner' as const : classifySourceUrl(row.sourceUrl)
+    const sourceKind = row.sourceKind === 'owner' ? 'owner' as const : classifyMenuSourceUrl(row.sourceUrl)
     await commitFact({
       kind: 'price',
       subjectType: 'venue',

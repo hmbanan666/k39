@@ -22,7 +22,7 @@ The review started with 13 open issues. Eight have actionable repository changes
 
 Node 24.21.0, pinned pnpm 10.25.0, and an isolated local Postgres 18 cluster. The final branch is rebased on #280.
 
-- `pnpm run check:full`: repository and skill checks, ESLint, all package and writer-test typechecks, 759 tests in 114 files.
+- `pnpm run check:full`: repository and skill checks, ESLint, all package and writer-test typechecks, 760 tests in 114 files.
 - `pnpm --filter @k39/web-app build`: successful Nuxt/Nitro production build.
 - Browser checks at 390px and 1440px: eight public screens below, no horizontal overflow. All five standard button variants measure at least 44px high.
 - Actual local editor session: venue live/draft diff includes fields, hours and prices; save presents the pending-draft choice; apply succeeds; discard preserves the live row; appointment text remains visible with JavaScript disabled. No browser page errors in that flow.

@@ -12,6 +12,7 @@ import { setNotices } from '../../../../../apps/web-app/server/utils/notices/wri
 import { practicalTarget } from '../../../../../apps/web-app/server/utils/practical/target'
 import { loadSchedule, saveSchedule } from '../../../../../apps/web-app/server/utils/schedule'
 import { previewContentScore } from '../../../../../apps/web-app/server/utils/scoring/run'
+import { projectMenuPrices } from '../../../../../apps/web-app/server/utils/venues/menu-prices'
 import { applyPendingVenue, venuePendingReview, writeVenueOpeningSchedule, writeVenuePrices } from '../../../../../apps/web-app/server/utils/venues/pending'
 import { updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
 import { scheduleRulesSchema } from '../../../../../apps/web-app/shared/schedule'
@@ -76,6 +77,15 @@ async function pending(id: string) {
 }
 
 describe('pending venue drafts (ADR 0047)', () => {
+  it('keeps an allowed menu document comparable after the price fact is written', async () => {
+    const row = await venue()
+    await setVenuePrices(row.id, [{ ...prices[0]!, sourceUrl: 'https://drive.google.com/file/d/menu/view' }], 'editor', row.status)
+    const stored = (await Prices.forVenue(row.id)).map((price) => ({ ...price, venueId: row.id }))
+    const shown = await projectMenuPrices(stored)
+    expect(shown).toHaveLength(1)
+    expect(shown[0]?.comparable).toBe(true)
+  })
+
   it('merges fields, schedule, prices and notices without changing any live reader', async () => {
     const row = await venue()
     const before = await Venues.byId(row.id)

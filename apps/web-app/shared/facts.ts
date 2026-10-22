@@ -269,6 +269,11 @@ export function classifySourceUrl(url: string | null | undefined): Exclude<Sourc
   return kind === 'official' ? 'official' : 'none'
 }
 
+/** Menu prices also allow official document hosts; other fact kinds do not. */
+export function classifyMenuSourceUrl(url: string | null | undefined): Exclude<SourceKind, 'owner'> {
+  return classifyOfficialUrl(url) === 'document' ? 'official' : classifySourceUrl(url)
+}
+
 export function watchableSource(kind: SourceKind, url: string | null | undefined) {
   if (kind !== 'official' && kind !== 'official_social') {
     return false
