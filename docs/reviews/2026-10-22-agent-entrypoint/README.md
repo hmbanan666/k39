@@ -38,4 +38,5 @@ These corrections do not implement the missing features or change production beh
 - `check:quick`: repository validation and Markdown ESLint passed; its planner selected no typechecks or Vitest for these documentation paths.
 - Local Markdown links, anchors and code-map paths were checked for existence.
 - The baseline [main CI](https://github.com/hmbanan666/k39/actions/runs/39843813603) is green for the unchanged runtime: 772 tests, build, SSR smoke and Docker checks.
-- Fresh pre-PR CI evidence will be recorded after the branch checks finish. No new implementation-mirroring tests are added for a documentation reorganization.
+- Fresh [pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/39845583530) passed on `1f215e4eecf5355985f97cc14448ae5a2cf73f1a`: repository validation, ESLint, all typechecks, 772 tests across 115 files, build, standalone SSR smoke and Docker image build. A temporary branch push trigger enabled this run before opening a PR; it is removed from the final diff. The follow-up changes only this evidence and that trigger. Normal PR CI checks the final head again.
+- No new implementation-mirroring tests are added for a documentation reorganization.
