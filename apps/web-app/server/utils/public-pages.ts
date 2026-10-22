@@ -11,6 +11,7 @@ import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
 import { omitFactGap, readShownFacts } from './facts/read'
 import { attachGuestReviews, loadGuestItems } from './guests/moderate'
+import { loadAdmission, loadMemberEvents, loadSubjectEvents } from './practical/public'
 import { loadSchedule } from './schedule'
 import { eatNearby, TOWN_EAT_LIMIT } from './venues/public'
 
@@ -142,6 +143,8 @@ export async function loadPlace(slug: string, page = 1) {
     return null
   }
   const schedule = await loadSchedule('place', loaded.place.id)
+  const admission = await loadAdmission('place', loaded.place.id)
+  const upcoming = await loadSubjectEvents('place', loaded.place.id)
   const shown = (await readShownFacts('place', [{
     id: loaded.place.id,
     latitude: loaded.place.latitude,
@@ -212,6 +215,7 @@ export async function loadPlace(slug: string, page = 1) {
     faq: loaded.place.faq ?? [],
     updatedAt: loaded.place.updatedAt,
     checkedAt: loaded.place.lastVerifiedAt,
+    practical: { admission, events: upcoming.rows },
   })
   const guests = await loadGuestItems('place', loaded.place.id)
   attachGuestReviews(`${absoluteUrl(`/${loaded.place.slug}`)}#place`, guests, doc.jsonLd)
@@ -262,6 +266,8 @@ export async function loadPlace(slug: string, page = 1) {
     faq: structuredFaq,
     checkedAt: isoDay(loaded.place.lastVerifiedAt),
     place: { ...loaded.place, schedule, latitude, longitude, status, phone: shown.phone },
+    admission,
+    upcoming: upcoming.lines,
     categoryTitle: loaded.category.title,
     categorySlug: loaded.category.slug,
     category: loaded.category,
@@ -300,6 +306,7 @@ export async function loadRoute(slug: string) {
   if (!loaded) {
     return null
   }
+  const admission = await loadAdmission('route', loaded.route.id)
   const stops = routeStopViews(loaded.points.map((point) => ({
     href: `/${point.slug}`,
     text: point.title,
@@ -326,9 +333,12 @@ export async function loadRoute(slug: string) {
     ogImage: storedImage(loaded.route.ogImage, loaded.route.title),
     kind: 'TouristTrip',
     body: bodyOf(loaded.route),
+    admission,
   })
   return {
     doc,
+    admission,
+    upcoming: await loadMemberEvents(loaded.points.map((point) => point.id)),
     html: renderMarkdown(bodyOf(loaded.route)),
     summary: loaded.route.summary || '',
     path: normalizeRoutePath(loaded.route.path),
@@ -405,6 +415,7 @@ export async function loadCollection(slug: string) {
   const modules = stored.length ? toPublicModules(stored, (markdown) => renderMarkdown(markdown)) : null
   return {
     doc,
+    upcoming: await loadMemberEvents(loaded.items.map((item) => item.id)),
     modules: modules ?? [],
     html: modules?.length ? '' : renderMarkdown(loaded.collection.body),
     places,

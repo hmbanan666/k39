@@ -1,6 +1,7 @@
 export type UserRole = 'user' | 'editor' | 'admin'
 
 export type VisitStatus = 'open' | 'ruins' | 'closed' | 'unknown'
+export type AdmissionAudience = 'general' | 'reduced' | 'family' | 'foreign' | 'free'
 
 export type PublicationStatus = 'draft' | 'review' | 'published' | 'archived'
 

@@ -1,6 +1,6 @@
 import type { BodySection } from './body-sections'
 import type { ClaimChannel, ClaimStatus, VenueMemberRole } from './claims'
-import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
+import type { AdmissionAudience, AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
 import type { LengthOverride, ScoreChecks } from './types/scoring'
 import type { VenueDish, VenueHours, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from './venues'
 import { cuid2 } from 'drizzle-cuid2/postgres'
@@ -707,7 +707,7 @@ export const admissionPrices = pgTable('admission_prices', {
   subjectType: varchar('subject_type').notNull(),
   subjectId: varchar('subject_id').notNull(),
   slot: varchar('slot').notNull(),
-  audience: varchar('audience').notNull(),
+  audience: varchar('audience').notNull().$type<AdmissionAudience>(),
   priceRub: integer('price_rub').notNull(),
   condition: text('condition'),
   label: varchar('label'),

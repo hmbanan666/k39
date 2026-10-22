@@ -1,10 +1,10 @@
+import type { AdmissionAudience } from '../types/entities'
 import { and, asc, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { admissionPrices, calendarEvents, places, routes, venues } from '../tables'
 
 export type AdmissionSubjectType = 'place' | 'venue' | 'route'
 export type EventSubjectType = 'place' | 'venue'
-export type AdmissionAudience = 'general' | 'reduced' | 'family' | 'foreign' | 'free'
 
 export interface AdmissionRowWrite {
   slot: string

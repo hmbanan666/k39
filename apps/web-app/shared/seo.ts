@@ -1,5 +1,9 @@
+import type { AdmissionView } from './admission'
+import type { EventNodeInput } from './events'
 import type { PublicMedia } from './media'
 import type { ScheduleRecord } from './schedule'
+import { admissionFree, admissionOffers } from './admission'
+import { eventNode } from './events'
 import { licenseHref, licenseLabel, openGraphFile } from './media'
 import { openingHoursSchema, parsePlaceHours } from './opening-hours'
 import { phoneE164List } from './phone'
@@ -603,6 +607,39 @@ export interface VenueSeoInput {
   cuisineLabels?: string[]
   menuUrl?: string | null
   reservation?: string | null
+  practical?: PracticalSeoInput
+}
+
+/** Admission rows and upcoming events of a page (ADR 0046). */
+export interface PracticalSeoInput {
+  admission?: AdmissionView | null
+  events?: EventNodeInput[]
+}
+
+/**
+ * Fresh admission rows become `offers` on the node, and the stored rows decide
+ * `isAccessibleForFree`. Returns the upcoming `Event` nodes located at the node.
+ */
+function practicalMarkup(node: Record<string, unknown>, practical: PracticalSeoInput | undefined, options: { events: boolean }) {
+  const admission = practical?.admission
+  if (admission?.stored) {
+    const offers = admissionOffers(admission)
+    if (offers.length) {
+      node.offers = offers
+    }
+    const free = admissionFree(admission)
+    if (free == null) {
+      delete node.isAccessibleForFree
+    } else {
+      node.isAccessibleForFree = free
+    }
+  }
+  if (!options.events) {
+    return []
+  }
+  const id = String(node['@id'])
+  const url = String(node.url)
+  return (practical?.events ?? []).map((row) => eventNode(row, id, url))
 }
 
 export function venueDocument(input: VenueSeoInput): SeoDocument {
@@ -690,6 +727,7 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
   if (specs.length) {
     node.openingHoursSpecification = specs
   }
+  const events = practicalMarkup(node, input.practical, { events: true })
   const missingDescription = !input.description.trim()
   return {
     title,
@@ -699,7 +737,7 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
     h1: input.name,
     crumbs,
     ogImage: image,
-    jsonLd: [breadcrumbNode(crumbs), node],
+    jsonLd: [breadcrumbNode(crumbs), node, ...events],
   }
 }
 
@@ -791,6 +829,7 @@ export interface PlaceSeoInput {
   faq?: Array<{ question: string, answer: string }>
   updatedAt?: string | null
   checkedAt?: string | null
+  practical?: PracticalSeoInput
 }
 
 // ISO date (YYYY-MM-DD) or null. Accepts a timestamp string from Postgres.
@@ -902,6 +941,7 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   if (citation.length) {
     node.citation = citation
   }
+  const events = practicalMarkup(node, input.practical, { events: true })
   const noindex = Boolean(input.noindex) || page > 1
   const jsonLd = [
     breadcrumbNode(crumbs),
@@ -909,6 +949,7 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     placeWebPage(path, title, description, input),
     // The site-wide schema graph already emits WebSite with this @id; only Organization is added here.
     { ...organizationNode(), '@id': `${SITE_ORIGIN}/#organization` },
+    ...events,
   ]
   const faq = faqPageNode(input.body, input.faq)
   if (faq) {
@@ -1072,6 +1113,8 @@ export function collectionDocument(input: {
   ogImage?: SeoImage
   images?: SeoImage[]
   body?: string | null
+  /** A route's own tickets. Events of stops stay on those place pages. */
+  admission?: AdmissionView | null
 }): SeoDocument {
   const page = input.page ?? 1
   const parent = input.parent ?? { name: 'Главная', href: '/' }
@@ -1108,6 +1151,9 @@ export function collectionDocument(input: {
     : { '@type': 'CollectionPage', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'mainEntity': list }
   if (input.images?.length) {
     node.image = input.images.map((item) => imageObject(item))
+  }
+  if (input.kind === 'TouristTrip') {
+    practicalMarkup(node, { admission: input.admission }, { events: false })
   }
   const noindex = Boolean(input.noindex) || page > 1
   const jsonLd = [breadcrumbNode(crumbs), node]
@@ -1225,6 +1271,7 @@ const SCHEMA_TYPES = new Set([
   'Menu',
   'MenuItem',
   'Offer',
+  'Event',
 ])
 
 const OPENING_HOURS = /^(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))? \d{2}:\d{2}-\d{2}:\d{2}$/

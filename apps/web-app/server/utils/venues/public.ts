@@ -35,6 +35,7 @@ import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../
 import { dishMenuNode, toPublicVenueModules } from '../../../shared/venue-modules'
 import { FACT_UNKNOWN, omitFactGap, readShownFacts } from '../facts/read'
 import { attachGuestReviews, loadGuestItems } from '../guests/moderate'
+import { loadAdmission, loadSubjectEvents } from '../practical/public'
 import { loadSchedule } from '../schedule'
 import { loadComparablePrices, peersByItem } from './comparable-prices'
 import { projectMenuPrices } from './menu-prices'
@@ -183,6 +184,8 @@ async function loadVenue(slug: string) {
   const photos = gallery.map((item) => toPublicMedia(item.media))
   const cover = photos.find((item, index) => gallery[index]?.isCover) ?? photos[0] ?? null
   const schedule = await loadSchedule('venue', venue.id)
+  const admission = await loadAdmission('venue', venue.id)
+  const upcoming = await loadSubjectEvents('venue', venue.id)
   const hourLines = scheduleDetails(schedule?.rules ?? null)
   const body = publicProse(venue.description, hourLines)
   const moduleSource = publicVenueModules(venue.modules, hourLines)
@@ -250,6 +253,7 @@ async function loadVenue(slug: string) {
     cuisineLabels: cuisineLabels(venue.cuisineTags, 6),
     menuUrl: venue.menuUrl,
     reservation: venue.reservation,
+    practical: { admission, events: upcoming.rows },
   })
   const markup = scheduleMarkup(schedule, now)
   const business = doc.jsonLd.find((node) => {
@@ -340,6 +344,8 @@ async function loadVenue(slug: string) {
       checkedAt: venue.lastVerifiedAt,
       regionTitle: region ? regionLabel(region) : null,
       schedule,
+      admission,
+      upcoming: upcoming.lines,
     },
     photos,
     cover,

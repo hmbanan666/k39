@@ -71,6 +71,8 @@ export function guideFacts(place: {
   price?: string | null
   phone?: string | null
   website?: string | null
+  /** Any admission row, fresh or stale (ADR 0046). The ticket block then replaces `price`. */
+  admissionStored?: boolean
 }, now = new Date()): GuideFact[] {
   // A checked structured schedule wins over the free-text hours.
   const record = place.schedule ?? null
@@ -81,7 +83,7 @@ export function guideFacts(place: {
     { key: 'season', label: 'Когда ехать', value: place.bestTime?.trim() || '' },
     { key: 'hours', label: 'Часы', value: hoursText },
     ...closureRow(place.hours, usable, now),
-    { key: 'price', label: 'Цена', value: place.price?.trim() || '' },
+    { key: 'price', label: 'Цена', value: place.admissionStored ? '' : place.price?.trim() || '' },
     ...phoneRow(place.phone),
     ...websiteRow(place.website),
   ]

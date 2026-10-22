@@ -13,6 +13,7 @@ export interface PageSection {
 export const PAGE_SECTIONS = {
   stops: { id: 'ostanovki', title: 'Остановки' },
   nearby: { id: 'ryadom', title: 'Рядом' },
+  upcoming: { id: 'blizhayshee', title: 'Ближайшее' },
   directions: { id: 'kak-dobratsya', title: 'Как добраться' },
   eatNearby: { id: 'gde-poest', title: 'Где поесть рядом' },
   placeRoutes: { id: 'marshruty', title: 'Маршруты с этим местом' },

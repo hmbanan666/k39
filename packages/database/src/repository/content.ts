@@ -340,6 +340,7 @@ export class Content {
       return null
     }
     const points = await db.select({
+      id: places.id,
       slug: places.slug,
       title: places.title,
       note: routePoints.note,
@@ -862,6 +863,11 @@ export class Editor {
 
   static async routeById(id: string) {
     const [row] = await useDatabase().select().from(routes).where(eq(routes.id, id)).limit(1)
+    return row ?? null
+  }
+
+  static async routeBySlug(slug: string) {
+    const [row] = await useDatabase().select().from(routes).where(eq(routes.slug, slug)).limit(1)
     return row ?? null
   }
 

@@ -33,12 +33,27 @@
           :months="page.monthNav"
         />
       </template>
+      <template #after>
+        <UpcomingEvents
+          :id="PAGE_SECTIONS.upcoming.id"
+          :items="page.upcoming"
+          :title="PAGE_SECTIONS.upcoming.title"
+        />
+      </template>
     </ReaderLayout>
     <ReaderLayout
       v-else
       :html="page.html"
       :sections-after="sectionsAfter"
-    />
+    >
+      <template #after>
+        <UpcomingEvents
+          :id="PAGE_SECTIONS.upcoming.id"
+          :items="page.upcoming"
+          :title="PAGE_SECTIONS.upcoming.title"
+        />
+      </template>
+    </ReaderLayout>
     <section
       v-if="rest.length"
       :id="PAGE_SECTIONS.gallery.id"
@@ -124,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import type { EventLine } from '~~/shared/events'
 import type { PublicMedia } from '~~/shared/media'
 import type { PublicPageModule, PublicPlaceCard } from '~~/shared/page-modules'
 import type { PageSection } from '~~/shared/page-sections'
@@ -144,6 +160,7 @@ const page = await fetchPublic<{
   monthNav: Array<TextLink & { current: boolean }>
   cover: PublicMedia | null
   gallery: PublicMedia[]
+  upcoming: EventLine[]
 }>(`/api/public/collections/${slug}`)
 const photos = page.gallery
 const rest = page.cover ? photos.filter((item) => item.id !== page.cover?.id) : photos
@@ -159,6 +176,7 @@ const placesTitle = page.kind === 'month' ? 'Места из путеводит�
 const moduleSections = moduleAnchors(page.modules, (module) => module.type !== 'places' || page.places.length > 0)
   .filter((item): item is PageSection => Boolean(item))
 const sectionsAfter = presentSections([
+  [PAGE_SECTIONS.upcoming, page.upcoming.length > 0],
   [PAGE_SECTIONS.gallery, rest.length > 0],
   [PAGE_SECTIONS.places, !page.modules.length && page.places.length > 0],
 ], { [PAGE_SECTIONS.places.id]: placesTitle })

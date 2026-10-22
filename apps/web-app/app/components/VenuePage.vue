@@ -188,6 +188,7 @@
                 </p>
               </div>
             </div>
+            <TicketsFact :admission="venue.admission" />
             <div
               v-if="venue.socials.length"
               class="fact"
@@ -238,6 +239,11 @@
         </template>
       </ReaderLayout>
       <div class="venue-tail">
+        <UpcomingEvents
+          :id="PAGE_SECTIONS.upcoming.id"
+          :items="venue.upcoming"
+          :title="PAGE_SECTIONS.upcoming.title"
+        />
         <section
           v-if="showLegacyOrder"
           :id="SECTIONS.order.id"
@@ -400,6 +406,8 @@
 </template>
 
 <script setup lang="ts">
+import type { AdmissionView } from '~~/shared/admission'
+import type { EventLine } from '~~/shared/events'
 import type { GuestPublicItem } from '~~/shared/guest'
 import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
@@ -458,6 +466,8 @@ export interface VenuePageData {
     regionTitle: string | null
     schedule: ScheduleRecord | null
     modules: PublicVenueModules | null
+    admission: AdmissionView
+    upcoming: EventLine[]
   }
   photos: PublicMedia[]
   cover: PublicMedia | null
@@ -493,6 +503,7 @@ const sectionsBefore = modules
   ? orderedBlocks.map((block) => ({ id: block.id, title: block.title }))
   : presentSections([[ABOUT, Boolean(venue.html)]])
 const sectionsAfter = presentSections([
+  [PAGE_SECTIONS.upcoming, venue.upcoming.length > 0],
   [SECTIONS.order, showLegacyOrder],
   [SECTIONS.inside, interior.length > 0],
   [PAGE_SECTIONS.directions, showDirections],
