@@ -57,7 +57,7 @@ defineProps<{ admission: AdmissionView }>()
   stroke-width: 1.7;
 }
 .tickets p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
-.label {
+.tickets .label {
   margin-bottom: 0.3rem;
   color: var(--muted);
   font: 600 0.72rem/1 var(--font-body);

@@ -11,7 +11,7 @@
       v-if="!tickets.length"
       class="muted"
     >
-      Строк нет. На странице показывается поле «Цена».
+      Строк нет. {{ subjectType === 'place' ? 'На странице показывается поле «Цена».' : 'Блока «Билеты» на странице нет.' }}
     </p>
     <fieldset
       v-for="(row, index) in tickets"
