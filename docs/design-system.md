@@ -19,19 +19,21 @@ Defined on `:root` in `apps/web-app/app/assets/css/tokens.css`.
 | `--color-success`, `--color-warn`, `--color-danger` | Status colors |
 | `--focus` | Focus ring, `#1f6a8c` |
 
-Paper is `#f5eee1`, surface `#fffbf3`, ink `#2b2420`, muted `#6a5d52`. The palette board checks these pairs at WCAG AA. Button text is surface on brick. Link text is sea on paper.
+Paper is `#f5eee1`, surface `#fffbf3`, ink `#2b2420`, muted `#6a5d52`. Button text is surface on brick. Link text is sea on paper. Contrast of these text pairs is checked in `test/design-tokens.test.ts`; that does not certify every component or the unused dark theme.
 
 Dark values are prepared under `[data-theme="dark"]` and are not applied.
 
 ## Type
 
 - Headings: Alegreya. Stamps and the partner label: Alegreya SC. Body: Golos Text.
-- `@nuxt/fonts` downloads only Cyrillic and Latin, weights 400 and 700 (Alegreya also italic 400), at build time. Pages preload those faces. `font-display: swap`. Fallback metrics come from Fontaine.
+- `@nuxt/fonts` downloads Cyrillic and Latin at build time. Alegreya uses a variable 400–800 range (normal and italic); Golos Text uses 400–700. Alegreya SC keeps weight 400. The existing preload policy is unchanged. `font-display: swap`. Fallback metrics come from Fontaine.
 - Scale uses `clamp`: `--step--1` through `--step-3`.
 
 ## Space, radius, shadow, motion
 
-Spacing is `--space-1` (0.25rem) through `--space-8`. Radii are small (`3px`), medium (`8px`), and a slightly uneven card radius. Shadows are soft ink, not glass.
+Spacing is `--space-1` (0.25rem) through `--space-8`. Radius tokens are small (`8px`), medium (`14px`), and large (`18px`). Postcards and stamps keep their own shapes. Shadows are soft ink, not glass. Standard buttons have a minimum height of `2.75rem` (44px at the default root size).
+
+Colors and shadows live in `tokens.css`, including badge tints, overlays, and editor surfaces. The visitor map keeps a fixed paper basemap; its imperative MapLibre/canvas colors live in `app/lib/map-colors.ts` and do not follow page theme tokens.
 
 `--frame` (76rem) and `--frame-pad` (1rem) are the shared column. The `.frame` class, `.page`, and `.page-wide` all use that width and those side insets. The header and footer backgrounds stay full-bleed; their inner rows use `.frame`. `/map` keeps the map full-bleed.
 
@@ -102,4 +104,4 @@ The visible label is the words `партнёр K39`, not only a color. The title
 - Any other status uses `sad-with-broken-cable` and a reload button instead of the map.
 - Both set `robots: noindex, follow`.
 - Below the card come real links from `/api/public/error-links`: hubs, four fort places, three routes, three theme collections. If that request fails, the card still renders without them.
-- The site has no public search yet. When it gets one, add the search box to this page.
+- The public search form goes to `/poisk` (ADR 0030) and is present on this page as well as in the header.

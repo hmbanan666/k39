@@ -1,8 +1,9 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { toPublicMedia } from '../../../shared/media'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'media_list_for_collection',
   description: 'List photos attached to a collection, cover first.',
   annotations: { readOnlyHint: true },

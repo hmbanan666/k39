@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { uploadMediaFromUrl } from '../../utils/mcp/media-import'
 import { license } from '../../utils/mcp/schemas'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'media_upload_from_url',
   description: 'Download an https image from a public host, run the photo pipeline, and store it. Alt, author, license, and sourceUrl are required. License is own or a Commons license. permission is the cabinet owner upload only. url and sourceUrl must not name a banned site. A draft token cannot attach the file to a published or archived place or collection. That answer is 409 and the live page stays.',
   inputSchema: {

@@ -2,10 +2,11 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { orderPagePersonas, pagePersonasSchema } from '../../../shared/personas'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { resolveScoredPage } from '../../utils/scoring/run'
 import { pageKindSchema } from '../../utils/scoring/schemas'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'page_personas_set',
   description: 'Replace the target personas of a page (path, or pageType and slug). personas is [{code, weight 1..3, primary}] with codes from personas_list and exactly one primary. An empty array clears the list. Does not change what the page shows.',
   inputSchema: {

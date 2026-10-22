@@ -24,7 +24,7 @@ export async function refuseLiveFact(subjectType: string, subjectId: string) {
   }
   if (subjectType === 'venue') {
     const venue = await db.venues.byId(subjectId)
-    refuseDraftLivePage('edit a fact on a published venue', venue?.status, ['published', 'closed'])
+    refuseDraftLivePage('edit a fact on a published venue', venue?.status, ['published', 'closed', 'archived'])
     return
   }
   if (subjectType === 'route') {

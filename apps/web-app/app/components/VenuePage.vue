@@ -135,6 +135,7 @@
               variant="facts"
             />
             <OpeningLive
+              hide-static-status
               :schedule="venue.schedule"
               :notices="noticeWindows"
               :has-hours="Boolean(venue.schedule) || venue.hours.length > 0"

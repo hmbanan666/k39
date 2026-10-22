@@ -1,10 +1,11 @@
 import type { PublicationStatus, VisitStatus } from '@k39/database'
 import { db } from '@k39/database'
 import { z } from 'zod'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 const PUBLICATION = new Set(['draft', 'review', 'published'])
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'places_list',
   description: 'List places. Filter by hub slug, publication or visit status, region slug, or a title query. Paginated.',
   annotations: { readOnlyHint: true },

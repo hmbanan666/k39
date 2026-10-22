@@ -592,8 +592,8 @@ export class Editor {
     return { items: rows, total: countRow?.value ?? 0 }
   }
 
-  static async contentDraft(entityType: string, entityId: string) {
-    const [row] = await useDatabase().select().from(contentDrafts).where(and(
+  static async contentDraft(entityType: string, entityId: string, tx?: ContentTx) {
+    const [row] = await (tx ?? useDatabase()).select().from(contentDrafts).where(and(
       eq(contentDrafts.entityType, entityType),
       eq(contentDrafts.entityId, entityId),
     )).limit(1)
@@ -605,14 +605,14 @@ export class Editor {
     entityId: string
     publicationStatus: 'draft' | 'review'
     payload: Record<string, unknown>
-  }) {
-    const db = useDatabase()
-    const existing = await this.contentDraft(input.entityType, input.entityId)
+  }, tx?: ContentTx) {
+    const db = tx ?? useDatabase()
+    const existing = await this.contentDraft(input.entityType, input.entityId, tx)
     if (existing) {
       const [row] = await db.update(contentDrafts).set({
         publicationStatus: input.publicationStatus,
         payload: input.payload,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(Math.max(Date.now(), Date.parse(existing.updatedAt) + 1)).toISOString(),
       }).where(eq(contentDrafts.id, existing.id)).returning()
       return row ?? existing
     }

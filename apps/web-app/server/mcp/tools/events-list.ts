@@ -1,9 +1,10 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { eventFormTiming, eventUpcoming } from '../../../shared/events'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { practicalTarget } from '../../utils/practical/target'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'events_list',
   description: 'List events (ADR 0046), soonest first. Filter by a place or venue (subjectType with subjectId or slug), or set upcoming true for rows that are not cancelled, not expired, and not past. Each row names its subject.',
   annotations: { readOnlyHint: true },

@@ -23,7 +23,7 @@ export async function assertScheduleWritable(entityType: 'place' | 'venue', id?:
   refuseDraftLivePage(
     entityType === 'place' ? 'edit the schedule of a published place' : 'edit the schedule of a published venue',
     target.liveStatus,
-    entityType === 'place' ? ['published', 'archived'] : ['published', 'closed'],
+    entityType === 'place' ? ['published', 'archived'] : ['published', 'closed', 'archived'],
   )
   return target
 }

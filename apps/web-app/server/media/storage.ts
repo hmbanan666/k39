@@ -11,7 +11,7 @@ export interface MediaStorage {
 }
 
 export function mediaRoot() {
-  return process.env.MEDIA_DIR || '/app/media'
+  return process.env.MEDIA_DIR || (process.env.NODE_ENV === 'production' ? '/app/media' : resolve('.data/media'))
 }
 
 export function resolveMediaKey(root: string, key: string) {

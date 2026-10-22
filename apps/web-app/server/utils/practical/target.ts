@@ -17,7 +17,7 @@ export interface PracticalTarget<T extends PracticalSubjectType = PracticalSubje
 
 const LIVE: Record<PracticalSubjectType, readonly string[]> = {
   place: ['published', 'archived'],
-  venue: ['published', 'closed'],
+  venue: ['published', 'closed', 'archived'],
   route: ['published', 'archived'],
 }
 

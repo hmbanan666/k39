@@ -1,3 +1,4 @@
+import type { ContentTx } from '@k39/database'
 import type { FactActor } from '~~/shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '~~/shared/schedule'
 import { db } from '@k39/database'
@@ -25,12 +26,15 @@ export function unknownSpansFor(rules: ScheduleRules, at = new Date()) {
   return unknownSpans(rules, addDays(localNow(at).date, -1), WINDOW_DAYS + 1)
 }
 
-export async function saveSchedule(entityType: string, entityId: string, record: ScheduleRecord, options?: { actor?: FactActor, syncFacts?: boolean, pageStatus?: string | null }) {
+export async function saveSchedule(entityType: string, entityId: string, record: ScheduleRecord, options?: { actor?: FactActor, syncFacts?: boolean, pageStatus?: string | null }, tx?: ContentTx): Promise<{ conflict: true, queueId: string } | { conflict: false, saved: Awaited<ReturnType<typeof db.schedules.save>> }> {
   rejectBannedSites(record.sourceUrl)
+  if (!tx) {
+    return db.editor.transaction((transaction) => saveSchedule(entityType, entityId, record, options, transaction))
+  }
   const syncFacts = options?.syncFacts !== false
   const actor = options?.actor ?? 'mcp'
   if (syncFacts && (entityType === 'place' || entityType === 'venue')) {
-    const blocked = await hoursConflict(entityType, entityId, record, actor)
+    const blocked = await hoursConflict(entityType, entityId, record, actor, tx)
     if (blocked) {
       return { conflict: true as const, queueId: blocked.queueId }
     }
@@ -41,15 +45,15 @@ export async function saveSchedule(entityType: string, entityId: string, record:
     rules: record.rules as unknown as Record<string, unknown>,
     sourceUrl: record.sourceUrl,
     verifiedAt: record.verifiedAt,
-  }, intervalsFor(record.rules))
+  }, intervalsFor(record.rules), tx)
   if (syncFacts && (entityType === 'place' || entityType === 'venue')) {
-    await writeHoursFact(entityType, entityId, record, actor, options?.pageStatus)
+    await writeHoursFact(entityType, entityId, record, actor, options?.pageStatus, tx)
   }
   return { conflict: false as const, saved }
 }
 
-export async function loadSchedule(entityType: string, entityId: string): Promise<ScheduleRecord | null> {
-  const row = await db.schedules.get(entityType, entityId)
+export async function loadSchedule(entityType: string, entityId: string, tx?: ContentTx): Promise<ScheduleRecord | null> {
+  const row = await db.schedules.get(entityType, entityId, tx)
   const rules = row ? readRules(row.rules) : null
   return row && rules ? { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt } : null
 }

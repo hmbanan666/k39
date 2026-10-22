@@ -9,16 +9,16 @@
       >
         <a :href="`/admin/venues/${venue.id}`">{{ venue.name }}</a>
         <span>{{ venue.kind }} / {{ venue.status }} / {{ venue.slug }}</span>
+        <span v-if="venue.pending">есть черновик</span>
       </li>
     </ul>
   </main>
 </template>
 
 <script setup lang="ts">
-import { ofetch } from 'ofetch'
-
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
-const venues = await ofetch<Array<{ id: string, name: string, kind: string, status: string, slug: string }>>('/api/admin/venues')
+const requestFetch = useRequestFetch()
+const venues = await requestFetch<Array<{ id: string, name: string, kind: string, status: string, slug: string, pending: boolean }>>('/api/admin/venues')
 useHead({ title: 'Заведения | Админка' })
 </script>
 

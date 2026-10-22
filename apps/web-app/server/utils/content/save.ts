@@ -130,10 +130,12 @@ export async function createVenueContent(input: VenueWrite, userId: string | nul
   return { row, writingWarnings }
 }
 
-export async function updateVenueContent(id: string, input: VenueWrite, userId: string | null | undefined, gate: ContentGate) {
+export async function updateVenueContent(id: string, input: VenueWrite, userId: string | null | undefined, gate: ContentGate, tx?: EditorTx) {
   const writingWarnings = contentWarnings(gate)
-  const row = await db.venues.update(id, input, userId)
-  await afterPage('venue', row?.id)
+  const row = await db.venues.update(id, input, userId, tx)
+  if (!tx) {
+    await afterPage('venue', row?.id)
+  }
   return { row, writingWarnings }
 }
 
@@ -145,9 +147,9 @@ export async function savePassportContent(input: PassportWrite, gate: ContentGat
 }
 
 /** A pending draft does not change the live page, so section hashes stay. */
-export async function savePendingDraftContent(input: DraftWrite, gate: ContentGate) {
+export async function savePendingDraftContent(input: DraftWrite, gate: ContentGate, tx?: EditorTx) {
   const writingWarnings = contentWarnings(gate)
-  const row = await db.editor.saveContentDraft(input)
+  const row = await db.editor.saveContentDraft(input, tx)
   return { row, writingWarnings }
 }
 

@@ -1,9 +1,10 @@
 import { z } from 'zod'
 import { describeSchedule, statusFromRules } from '../../../shared/schedule'
 import { scheduleTarget } from '../../utils/mcp/schedule-target'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { loadSchedule } from '../../utils/schedule'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'schedule_get',
   description: 'Load the schedule (opening rules, source, verification date) of a place or venue, with its human text and current status. No schedule means hours are unknown.',
   annotations: { readOnlyHint: true },

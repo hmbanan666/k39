@@ -43,8 +43,14 @@ describe('fact values', () => {
     expect(classifySourceUrl('https://www.google.com/maps/place/Brikas')).toBe('map_google')
     expect(classifySourceUrl('https://maps.google.com/?q=cafe')).toBe('map_google')
     expect(classifySourceUrl('https://maps.app.goo.gl/abc')).toBe('map_google')
-    expect(classifySourceUrl('https://www.google.com/search?q=cafe')).toBe('official')
+    expect(classifySourceUrl('https://www.google.com/search?q=cafe')).toBe('none')
+    expect(classifySourceUrl('https://yandex.ru/profile/123')).toBe('none')
     expect(classifySourceUrl('https://www.openstreetmap.org/node/1')).toBe('osm')
+    expect(classifySourceUrl('https://fake-openstreetmap.example/node/1')).not.toBe('osm')
+    for (const url of ['https://zoon.ru/cafe', 'https://afisha.ru/museum', 'https://yandex.ru/eda', 'https://drive.google.com/file/d/menu']) {
+      expect(classifySourceUrl(url)).not.toBe('official')
+      expect(classifySourceUrl(url)).not.toBe('osm')
+    }
     expect(watchableSource('map_yandex', 'https://yandex.ru/maps/org/cafe/1')).toBe(false)
     expect(watchableSource('map_google', 'https://maps.google.com/?q=cafe')).toBe(false)
     expect(isUnwatchedUrl('https://www.google.com/maps/place/Brikas')).toBe(true)

@@ -1,8 +1,9 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'fact_get',
   description: 'One fact, the pages that cite it, and the latest revisions. Writes an mcp_audits row.',
   inputSchema: {

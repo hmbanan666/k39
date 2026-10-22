@@ -27,6 +27,7 @@ import { SOURCE_LINK_LIMIT, sourceLimitMessage } from '../../sources'
 import { collections, contentDrafts, facts, mcpAudits, media, pageReviews, places, quests, regions, revisions, routePoints, routes, schedules, slugRedirects, venues, verificationQueue } from '../../tables'
 import { Content, Editor } from '../content'
 import { Facts } from '../facts'
+import { Venues } from '../venues'
 
 function draftFields(result: object) {
   if (!('renderedFields' in result) || !Array.isArray(result.renderedFields)) {
@@ -616,7 +617,7 @@ describe('pending collection and route drafts', () => {
     expect(await routeDraftNotice(route.id)).toBeNull()
   })
 
-  it('still refuses publish, archive, and edits of venues, quests, and listings', async () => {
+  it('still refuses publish, archive, quests and listings while venue edits stay pending', async () => {
     await place('pending-stop-a', 'Первая остановка')
     const collection = await publishedCollection('pending-refuse-collection')
     const route = await publishedRoute('pending-refuse-route')
@@ -657,7 +658,8 @@ describe('pending collection and route drafts', () => {
     await expect(updateVenue({
       id: venue!.id,
       description: 'Другое описание заведения для проверки отказа.',
-    })).rejects.toMatchObject({ statusCode: 409 })
+    })).resolves.toMatchObject({ pendingReview: true })
+    expect((await Venues.byId(venue!.id))?.description).toBe(venue!.description)
 
     expect((await Editor.listCollections()).find((item) => item.id === collection.id)?.title).toBe('Старая подборка')
     expect((await Editor.listRoutes()).find((item) => item.id === route.id)?.title).toBe('Старый маршрут')

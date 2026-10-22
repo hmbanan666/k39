@@ -2,9 +2,10 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { toPublicMedia } from '../../../shared/media'
 import { placePhoneSource } from '../../utils/content/place-contact'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { noticesView } from '../../utils/notices/write'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'place_get',
   description: 'Load one place by id or slug, including media, sources, related published places, the official phone with phoneSourceUrl, the website, schemaType (null means the hub default), and the live dated notices (ADR 0049). pendingReview is the pending draft payload; it includes notices when a draft-token notices_set staged them.',
   annotations: { readOnlyHint: true },

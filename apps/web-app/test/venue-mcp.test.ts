@@ -5,7 +5,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { normalizeObjectSchema, safeParse } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import { describe, expect, it } from 'vitest'
-import { mcpStrictInput, venueDuplicatesInput, venueListItem, venueListResult, venuesListInput } from '../server/utils/mcp/venues'
+import { mcpStrictInput } from '../server/utils/mcp/tool'
+import { venueDuplicatesInput, venueListItem, venueListResult, venuesListInput } from '../server/utils/mcp/venues'
 
 function repoRoot() {
   const candidates = [process.cwd(), resolve(process.cwd(), '../..')]

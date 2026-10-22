@@ -1,8 +1,9 @@
 import { db } from '@k39/database'
 import { priceFreshCutoff } from '@k39/types/freshness'
 import { z } from 'zod'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'admissions_list',
   description: 'List ticket rows (ADR 0046) across places, venues, and routes, grouped by subject, with the oldest checkedAt and how many rows are hidden as older than 365 days. Use it to find tables that need a fresh check against the official site.',
   annotations: { readOnlyHint: true },

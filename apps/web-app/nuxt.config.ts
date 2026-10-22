@@ -1,3 +1,4 @@
+import process from 'node:process'
 import { DEFAULT_BASEMAP_FILE, DEFAULT_BASEMAP_SHA256, DEFAULT_BASEMAP_SOURCE_URL } from './server/utils/basemap-defaults'
 import { tablerIconList } from './shared/icons'
 import { brandHeadLinks } from './shared/seo'
@@ -5,6 +6,8 @@ import { brandHeadLinks } from './shared/seo'
 export default defineNuxtConfig({
   // Opt out in config so `nuxt dev` does not wait on the telemetry prompt.
   telemetry: false,
+  // Screenshot/agent runs can disable the badge without DOM patches.
+  devtools: { enabled: process.env.NUXT_DEVTOOLS !== '0' },
   devServer: {
     // 0.0.0.0 answers 127.0.0.1. The default host is localhost, which binds ::1 only.
     host: '0.0.0.0',
@@ -37,9 +40,9 @@ export default defineNuxtConfig({
       preload: true,
     },
     families: [
-      { name: 'Alegreya', provider: 'google', weights: [400, 700], styles: ['normal', 'italic'], display: 'swap', preload: true },
+      { name: 'Alegreya', provider: 'google', weights: ['400 800'], styles: ['normal', 'italic'], display: 'swap', preload: true },
       { name: 'Alegreya SC', provider: 'google', weights: [400], styles: ['normal'], display: 'swap', preload: true },
-      { name: 'Golos Text', provider: 'google', weights: [400, 700], styles: ['normal'], display: 'swap', preload: true },
+      { name: 'Golos Text', provider: 'google', weights: ['400 700'], styles: ['normal'], display: 'swap', preload: true },
     ],
   },
   sitemap: {

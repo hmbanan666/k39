@@ -174,7 +174,7 @@ onMounted(() => useTrack().track('page_view'))
 .lede {
   max-width: 36ch;
   margin: 0;
-  color: #433832;
+  color: var(--color-ink-soft);
   font-size: 1.15rem;
   line-height: 1.5;
 }
@@ -220,13 +220,13 @@ onMounted(() => useTrack().track('page_view'))
   align-items: center;
   margin-top: 3.2rem;
   padding: 1.4rem;
-  border: 1.5px dashed #e2b46a;
+  border: 1.5px dashed var(--color-amber-line);
   border-radius: 18px;
   background-color: var(--color-amber-soft);
   background-image: var(--noise);
 }
 .quest h2 { margin: 0.3rem 0 0.45rem; font-size: clamp(1.6rem, 1.2rem + 1vw, 2.15rem); }
-.quest p { max-width: 52ch; margin: 0; color: #4a3e35; }
+.quest p { max-width: 52ch; margin: 0; color: var(--color-quest-ink); }
 .quest .kicker { margin-bottom: 0.2rem; }
 .seal {
   display: grid;
@@ -235,7 +235,7 @@ onMounted(() => useTrack().track('page_view'))
   place-items: center;
   border-radius: 50%;
   background: var(--color-brick);
-  box-shadow: inset 0 0 0 6px var(--color-brick), inset 0 0 0 8px rgb(255 255 255 / 35%);
+  box-shadow: inset 0 0 0 6px var(--color-brick), inset 0 0 0 8px var(--color-seal-line);
   isolation: isolate;
   position: relative;
 }

@@ -2,8 +2,9 @@ import { db, VenueInputError } from '@k39/database'
 import { z } from 'zod'
 import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'venue_listing_intro_set',
   description: 'Set the intro for a venue listing. regionSlug and kind are optional; null means all regions or all kinds. An intro of at least 300 characters makes /zavedeniya/{region}/{kind} indexable. Writes an mcp_audits row.',
   inputSchema: {

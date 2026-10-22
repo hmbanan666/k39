@@ -2,8 +2,9 @@ import { z } from 'zod'
 import { deleteMediaCompletely } from '../../media/ingest'
 import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'media_delete',
   description: 'Delete a stored photo and its files, the same way /admin does.',
   annotations: { destructiveHint: true },

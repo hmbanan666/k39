@@ -1,4 +1,5 @@
 import type { ClaimChannel, VenueAuditAction, VenueMemberRole } from '../claims'
+import type { ContentTx } from './content'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { CLAIM_MAX_ATTEMPTS, claimCodesMatch, hashClaimCode } from '../claims'
 import { useDatabase } from '../database'
@@ -306,12 +307,13 @@ export class VenueClaims {
       .limit(limit)
   }
 
-  static async audit(venueId: string, actorUserId: string | null, action: VenueAuditAction, summary: Record<string, unknown>) {
-    const [row] = await useDatabase().insert(venueAudits).values({
+  static async audit(venueId: string, actorUserId: string | null, action: VenueAuditAction, summary: Record<string, unknown>, tx?: ContentTx) {
+    const [row] = await (tx ?? useDatabase()).insert(venueAudits).values({
       venueId,
       actorUserId,
       action,
       summary,
+      createdAt: new Date().toISOString(),
     }).returning()
     return row
   }

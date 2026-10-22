@@ -1,6 +1,6 @@
 import type { H3Event, MultiPartData } from 'h3'
 import type { IncomingMessage } from 'node:http'
-import { Buffer } from 'node:buffer'
+import { Blob, Buffer } from 'node:buffer'
 import { createError, readBody, readMultipartFormData } from 'h3'
 import { UPLOAD_BODY_MAX, UPLOAD_TOO_LARGE_MESSAGE } from '../media/process'
 
@@ -15,6 +15,7 @@ const RawBodySymbol = Symbol.for('h3RawBody')
 
 type Carrier = IncomingMessage & {
   rawBody?: unknown
+  body?: unknown
 } & Record<symbol, unknown>
 
 function carrier(req: IncomingMessage) {
@@ -48,7 +49,7 @@ export function isPayloadTooLarge(error: unknown) {
     && (error as { statusCode?: number }).statusCode === 413
 }
 
-async function asBuffer(value: unknown) {
+async function asBuffer(value: unknown, maxBytes: number, statusMessage: string): Promise<Buffer | undefined> {
   const resolved = await value
   if (Buffer.isBuffer(resolved)) {
     return resolved
@@ -56,25 +57,55 @@ async function asBuffer(value: unknown) {
   if (resolved instanceof Uint8Array) {
     return Buffer.from(resolved)
   }
+  if (resolved instanceof ArrayBuffer) {
+    return Buffer.from(resolved)
+  }
+  if (resolved instanceof Blob) {
+    return asBuffer(resolved.stream(), maxBytes, statusMessage)
+  }
   if (typeof resolved === 'string') {
     return Buffer.from(resolved)
   }
+  if (resolved && typeof resolved === 'object') {
+    if (Symbol.asyncIterator in resolved) {
+      const chunks: Buffer[] = []
+      let size = 0
+      for await (const chunk of resolved as AsyncIterable<Uint8Array | string>) {
+        const bytes = Buffer.from(chunk)
+        size += bytes.length
+        if (size > maxBytes) {
+          throw tooLarge(statusMessage)
+        }
+        chunks.push(bytes)
+      }
+      return Buffer.concat(chunks)
+    }
+    if (resolved instanceof URLSearchParams) {
+      return Buffer.from(resolved.toString())
+    }
+    if (resolved instanceof FormData) {
+      return asBuffer(new Response(resolved).body, maxBytes, statusMessage)
+    }
+    if (resolved.constructor === Object) {
+      return Buffer.from(JSON.stringify(resolved))
+    }
+  }
   return undefined
 }
 
-async function cachedBody(req: IncomingMessage) {
-  const raw = carrier(req)
-  if (raw[RawBodySymbol] !== undefined) {
-    return asBuffer(raw[RawBodySymbol])
-  }
-  if (raw.rawBody !== undefined) {
-    return asBuffer(raw.rawBody)
-  }
-  return undefined
+async function cachedBody(event: H3Event, maxBytes: number, statusMessage: string) {
+  const raw = carrier(event.node.req)
+  // Match the installed h3 readRawBody precedence, including Nitro internal
+  // requests. An upgrade of h3 must keep the interoperability tests passing.
+  const value = event._requestBody || event.web?.request?.body || raw[RawBodySymbol] || raw.rawBody || raw.body
+  return asBuffer(value, maxBytes, statusMessage)
 }
 
-function stash(req: IncomingMessage, bytes: Buffer) {
-  const raw = carrier(req)
+function stash(event: H3Event, bytes: Buffer) {
+  const raw = carrier(event.node.req)
+  // h3 internals, pinned to 1.15: readBody/readMultipartFormData must consume
+  // these capped bytes, not read an exhausted stream. Recheck on h3 upgrades.
+  event._requestBody = bytes as unknown as NonNullable<H3Event['_requestBody']>
   raw[RawBodySymbol] = bytes
   raw.rawBody = bytes
 }
@@ -122,11 +153,12 @@ function readStream(req: IncomingMessage, maxBytes: number, statusMessage: strin
 
 export async function readCappedBody(event: H3Event, maxBytes: number, statusMessage = 'Payload Too Large') {
   const req = event.node.req
-  const cached = await cachedBody(req)
+  const cached = await cachedBody(event, maxBytes, statusMessage)
   if (cached) {
     if (cached.length > maxBytes) {
       throw tooLarge(statusMessage)
     }
+    stash(event, cached)
     return cached
   }
   const declared = declaredLength(req)
@@ -138,7 +170,7 @@ export async function readCappedBody(event: H3Event, maxBytes: number, statusMes
     return undefined
   }
   const bytes = await readStream(req, maxBytes, statusMessage)
-  stash(req, bytes)
+  stash(event, bytes)
   return bytes
 }
 
@@ -152,9 +184,10 @@ export async function readCappedJson<T = any>(event: H3Event, maxBytes: number, 
  * so one megabyte is enough for a save and still stops a chunked body.
  */
 export const JSON_BODY_MAX = 1024 * 1024
+export const JSON_TOO_LARGE_MESSAGE = 'Сообщение слишком большое.'
 
 export function readJsonBody<T = any>(event: H3Event): Promise<T> {
-  return readCappedJson<T>(event, JSON_BODY_MAX)
+  return readCappedJson<T>(event, JSON_BODY_MAX, JSON_TOO_LARGE_MESSAGE)
 }
 
 /** Multipart upload capped at the 25 MB file plus the form-field slack. */

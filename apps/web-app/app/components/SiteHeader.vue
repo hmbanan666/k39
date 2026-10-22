@@ -182,7 +182,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
   text-decoration: none;
 }
 .nav a.active {
-  background: rgb(163 64 42 / 8%);
+  background: var(--color-brick-wash);
   color: var(--color-brick);
 }
 .search-box {

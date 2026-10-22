@@ -1,26 +1,8 @@
 import type { IconifyJSON } from '@iconify/types'
 import { getIconData } from '@iconify/utils'
 import { tablerName } from '~~/shared/icons'
+import { MAP_CATEGORY_COLORS as COLORS, MAP_COLORS, MAP_PAPER as PAPER } from './map-colors'
 
-const COLORS: Record<string, string> = {
-  forty: '#a3402a',
-  zamki: '#2e5743',
-  plyazhi: '#355468',
-  muzei: '#7a4c0b',
-  tserkvi: '#7a2e1f',
-  kurorty: '#8f5a00',
-  coffee: '#355468',
-  cafe: '#2e5743',
-  restaurant: '#7a2e1f',
-  bakery: '#8f5a00',
-  bar: '#355468',
-  market: '#2e5743',
-  fastfood: '#a3402a',
-  other: '#6a5d52',
-  eda: '#7a4c0b',
-}
-
-const PAPER = '#fffbf3'
 const SIZE = 48
 const SCALE = 2
 
@@ -77,12 +59,12 @@ async function pinCanvas(icons: IconifyJSON, color: string, name: string, sponso
   if (sponsored) {
     ctx.beginPath()
     ctx.arc(cx, cy, radius + 2.4, 0, Math.PI * 2)
-    ctx.strokeStyle = '#d68a22'
+    ctx.strokeStyle = MAP_COLORS.amber
     ctx.lineWidth = 2.5
     ctx.stroke()
     ctx.beginPath()
     ctx.arc(cx + 10, cy - 11, 4.6, 0, Math.PI * 2)
-    ctx.fillStyle = '#d68a22'
+    ctx.fillStyle = MAP_COLORS.amber
     ctx.fill()
     ctx.lineWidth = 1.4
     ctx.strokeStyle = PAPER
@@ -109,7 +91,7 @@ function stopCanvas() {
   ctx.shadowOffsetY = 1
   ctx.beginPath()
   ctx.arc(16, 16, 12, 0, Math.PI * 2)
-  ctx.fillStyle = '#a3402a'
+  ctx.fillStyle = MAP_COLORS.brick
   ctx.fill()
   ctx.restore()
   ctx.beginPath()
@@ -124,7 +106,7 @@ export async function loadMapImages() {
   const icons = await tablerCollection()
   const images: Record<string, ImageData> = { stop: stopCanvas() }
   await Promise.all(Object.keys(COLORS).map(async (id) => {
-    const color = COLORS[id] || '#a3402a'
+    const color = COLORS[id] || MAP_COLORS.brick
     const name = tablerName(id)
     images[id] = await pinCanvas(icons, color, name, false)
     images[`s-${id}`] = await pinCanvas(icons, color, name, true)

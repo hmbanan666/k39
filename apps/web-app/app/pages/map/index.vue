@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
 .visitor-map {
   position: relative;
   height: calc(100dvh - var(--site-header-offset));
-  background: #efe6d4;
+  background: var(--color-paper-2);
 }
 .sr {
   position: absolute;

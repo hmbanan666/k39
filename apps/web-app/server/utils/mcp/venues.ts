@@ -1,19 +1,5 @@
-import type { ZodRawShape } from 'zod'
 import { isStale } from '@k39/database'
 import { z } from 'zod'
-
-/**
- * `@nuxtjs/mcp-toolkit` types `inputSchema` as a raw Zod shape. The MCP SDK
- * then wraps that shape in `z.object()`, which strips unknown keys. A strict
- * Zod object is parsed as itself: `tools/list` emits `additionalProperties:
- * false`, and `tools/call` rejects `offset` before the handler. The protocol
- * test in `test/venue-mcp.test.ts` registers this cast through `McpServer`
- * (the same call the toolkit makes) and is why the cast stays. At runtime
- * the value is the strict schema.
- */
-export function mcpStrictInput(schema: z.ZodType): ZodRawShape {
-  return schema as unknown as ZodRawShape
-}
 
 const venueListShape = {
   regionSlug: z.string().optional().describe('Region slug. Unknown slug is a 400.'),

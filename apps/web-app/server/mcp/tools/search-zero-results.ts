@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { auditedAnalytics } from '../../utils/analytics/report'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { searchZeroResults } from '../../utils/search/report'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'search_zero_results',
   description: 'Site search queries that returned nothing, with search and session counts, how many were refined, and Google/Yandex impressions for the same text. These are content opportunities: a missing page, or a synonym to add to an existing summary.',
   annotations: { readOnlyHint: true },

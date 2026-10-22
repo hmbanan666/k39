@@ -79,7 +79,7 @@ const legal = LEGAL_LINKS
   border-radius: 50%;
   opacity: 0.7;
 }
-p { max-width: 18rem; color: #e7dccb; font-size: var(--step--1); }
+p { max-width: 18rem; color: var(--color-footer-muted); font-size: var(--step--1); }
 .label {
   margin-bottom: 0.4rem;
   font-family: var(--font-stamp);

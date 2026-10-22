@@ -90,7 +90,7 @@ watch(open, (value) => {
   position: fixed;
   inset: 0;
   z-index: var(--z-dialog);
-  background: rgb(36 28 22 / 35%);
+  background: var(--color-overlay);
 }
 .map-open-sheet {
   position: fixed;

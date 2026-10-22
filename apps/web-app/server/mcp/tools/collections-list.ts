@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'collections_list',
   description: 'List collections (podborki), including drafts.',
   annotations: { readOnlyHint: true },

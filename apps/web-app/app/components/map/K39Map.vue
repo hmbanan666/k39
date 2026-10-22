@@ -292,7 +292,7 @@ onBeforeUnmount(() => {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #efe6d4;
+  background: var(--color-paper-2);
 }
 .canvas { position: absolute; inset: 0; }
 .fail {
@@ -311,7 +311,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: 14px;
-  background: rgb(255 251 243 / 94%);
+  background: var(--color-surface-translucent);
   box-shadow: var(--shadow-card);
 }
 .tools button {
@@ -327,7 +327,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 .tools button:last-child { border-bottom: 0; }
-.tools button:hover { background: rgb(163 64 42 / 8%); color: var(--color-brick); }
+.tools button:hover { background: var(--color-brick-wash); color: var(--color-brick); }
 .tools svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 :deep(.maplibregl-ctrl-attrib) {
   background: transparent;
@@ -338,13 +338,13 @@ onBeforeUnmount(() => {
 :deep(.maplibregl-ctrl-bottom-left) { bottom: var(--map-ui-bottom, 0.6rem); }
 :deep(.maplibregl-ctrl-attrib.maplibregl-compact) { margin: 0 4px 4px 0; }
 :deep(.maplibregl-ctrl-attrib-button) {
-  background-color: rgb(255 251 243 / 94%) !important;
+  background-color: var(--color-surface-translucent) !important;
   border-radius: 99px;
 }
 :deep(.maplibregl-ctrl-attrib.maplibregl-compact-show) {
   padding: 2px 6px;
   border-radius: 8px;
-  background: rgb(255 251 243 / 94%);
+  background: var(--color-surface-translucent);
   color: var(--color-ink);
 }
 :deep(.maplibregl-ctrl-attrib a) { color: var(--color-sea); }
@@ -352,7 +352,7 @@ onBeforeUnmount(() => {
 :deep(.maplibregl-cooperative-gesture-screen) {
   align-items: center;
   justify-content: center;
-  background: rgb(43 36 32 / 42%);
+  background: var(--color-ink-veil);
   color: var(--color-paper);
   font-family: var(--font-body);
 }

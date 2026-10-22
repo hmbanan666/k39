@@ -208,7 +208,7 @@ function onEnd(event: TouchEvent) {
   cursor: pointer;
 }
 .x svg { width: 0.9rem; height: 0.9rem; }
-.x:hover { color: var(--color-ink); background: rgb(43 36 32 / 6%); }
+.x:hover { color: var(--color-ink); background: var(--color-ink-wash); }
 @media (min-width: 721px) {
   .card { left: 0.8rem; right: auto; width: min(24rem, calc(100% - 1.6rem)); }
 }

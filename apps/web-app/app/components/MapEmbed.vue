@@ -106,7 +106,7 @@ figure.embed {
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: 16px;
-  background: #efe6d4;
+  background: var(--color-paper-2);
 }
 .canvas { height: 100%; }
 .open {

@@ -2,6 +2,8 @@
 
 One lookup for a claim an agent is about to write or check. The decision is ADR 0033. Source priority and banned origins are `.agents/skills/k39-sources-and-facts/SKILL.md`. Do not copy this table into another doc.
 
+`DATABASE_URL=... pnpm --filter @k39/web-app exec jiti scripts/report-official-urls.ts` produces a read-only JSON report of live place/venue websites rejected by the current own-website rule, and existing `official` facts whose URL is now classified differently. Review the report, find the subject's own source, then correct each row through the editorial writer. There is no automatic URL rewrite or fact backfill. A bulk relabel requires a reviewed migration plan with affected ids and replacement sources.
+
 A gap renders «уточняйте». Maps (`map_yandex`, `map_2gis`, `map_google`, `osm`) are venue-only, and only when the official site does not state that fact. Places do not take hours, phone, address, or coordinates from a map. Prices come from the official menu or the owner, never from a map card.
 
 | Claim | Stored in | Source kinds | Freshness |

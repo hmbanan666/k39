@@ -1,6 +1,7 @@
-import { getRequestHeader, setResponseHeader, setResponseStatus } from 'h3'
+import { defineEventHandler, getRequestHeader, getRequestURL, setResponseHeader, setResponseStatus } from 'h3'
 import { CONTENT_BEARER_CHALLENGE, contentRateKey, enterContentScope, resolveContentAuth } from '../utils/access'
 import { takeContentSlot } from '../utils/mcp/rate-limit'
+import { JSON_BODY_MAX, JSON_TOO_LARGE_MESSAGE, readCappedBody } from '../utils/request-body'
 
 function mcpError(statusCode: number, message: string) {
   return {
@@ -10,7 +11,7 @@ function mcpError(statusCode: number, message: string) {
   }
 }
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname
   if (path !== '/mcp' && !path.startsWith('/mcp/')) {
     return
@@ -32,4 +33,7 @@ export default defineEventHandler((event) => {
   enterContentScope(result.scope)
   event.context.contentScope = result.scope
   takeContentSlot(contentRateKey(authorization))
+  if (event.method === 'POST') {
+    await readCappedBody(event, JSON_BODY_MAX, JSON_TOO_LARGE_MESSAGE)
+  }
 })
