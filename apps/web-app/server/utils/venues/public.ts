@@ -35,6 +35,7 @@ import { absoluteUrl, collectionDocument, socialImage, venueDocument } from '../
 import { dishMenuNode, toPublicVenueModules } from '../../../shared/venue-modules'
 import { FACT_UNKNOWN, omitFactGap, readShownFacts } from '../facts/read'
 import { attachGuestReviews, loadGuestItems } from '../guests/moderate'
+import { loadNoticeWindows, loadPublicNotices, sourcesWithNotices } from '../notices/read'
 import { loadAdmission, loadSubjectEvents } from '../practical/public'
 import { loadSchedule } from '../schedule'
 import { loadComparablePrices, peersByItem } from './comparable-prices'
@@ -79,6 +80,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
   const covers = await db.venues.coversFor(ranked.map((row) => row.id))
   // Rules only: the browser computes «открыто сейчас» from them (ADR 0028).
   const schedules = await Promise.all(ranked.map((row) => loadSchedule('venue', row.id)))
+  const windows = await loadNoticeWindows('venue', ranked.map((row) => row.id))
   const regionSlugs = new Map((ranked.length ? await db.editor.listRegions() : []).map((row) => [row.id, row.slug]))
   const now = new Date()
   return ranked.map((row, index) => {
@@ -102,6 +104,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
       avgCheck: formatAvgCheck(row.avgCheck),
       media: cover ? toPublicMedia(cover) : null,
       schedule: schedules[index] ?? null,
+      notices: windows.get(row.id) ?? [],
       regionSlug: row.regionId ? regionSlugs.get(row.regionId) ?? null : null,
     }
   })
@@ -186,6 +189,7 @@ async function loadVenue(slug: string) {
   const schedule = await loadSchedule('venue', venue.id)
   const admission = await loadAdmission('venue', venue.id)
   const upcoming = await loadSubjectEvents('venue', venue.id)
+  const notices = (await loadPublicNotices('venue', [venue.id])).get(venue.id) ?? []
   const hourLines = scheduleDetails(schedule?.rules ?? null)
   const body = publicProse(venue.description, hourLines)
   const moduleSource = publicVenueModules(venue.modules, hourLines)
@@ -328,7 +332,7 @@ async function loadVenue(slug: string) {
       staleNote: stale ? STALE_NOTE : '',
       closed,
       closedNote,
-      sources: venue.sources ?? [],
+      sources: sourcesWithNotices(venue.sources ?? [], notices),
       cuisine: cuisineLabels(venue.cuisineTags, 4),
       socials: venue.socials ?? [],
       bookingUrl: venue.bookingUrl,
@@ -346,6 +350,7 @@ async function loadVenue(slug: string) {
       schedule,
       admission,
       upcoming: upcoming.lines,
+      notices,
     },
     photos,
     cover,
@@ -438,9 +443,10 @@ async function loadListing(
   const now = new Date()
   const cardRows = [...shown, ...extras.filter((row) => facts.get(row.id)?.status !== 'closed')]
   const ids = cardRows.map((row) => row.id)
-  const [covers, scheduleRows] = await Promise.all([
+  const [covers, scheduleRows, windows] = await Promise.all([
     db.venues.coversFor(ids),
     db.schedules.forEntities('venue', ids),
+    loadNoticeWindows('venue', ids),
   ])
   const scheduleById = new Map(scheduleRows.flatMap((row) => {
     const rules = readRules(row.rules)
@@ -455,6 +461,7 @@ async function loadListing(
       kindLabel: kindLabel(row.kind),
       media: cover ? toPublicMedia(cover) : null,
       schedule: scheduleById.get(row.id) ?? null,
+      notices: windows.get(row.id) ?? [],
       stale: isStale(row.lastVerifiedAt, now),
       phone: facts.get(row.id)?.phone ?? null,
       meta: [facts.get(row.id)?.address, cuisineLabels(row.cuisineTags).join(', '), priceMarks(row.priceLevel), formatAvgCheck(row.avgCheck)].filter(Boolean).join(' · '),
@@ -520,6 +527,7 @@ async function loadListing(
         media: card?.media ?? null,
         // Rules only. The card computes «открыто» in the browser (ADR 0028).
         schedule: card?.schedule ?? null,
+        notices: card?.notices ?? [],
       }
     }),
   }
@@ -608,9 +616,10 @@ export async function loadEatNow(regionSlug: string | null) {
           longitude: located.reduce((sum, row) => sum + row.longitude, 0) / located.length,
         }
       : null
-  const [covers, schedules] = await Promise.all([
+  const [covers, schedules, windows] = await Promise.all([
     db.venues.coversFor(openRows.map((row) => row.id)),
     Promise.all(openRows.map((row) => loadSchedule('venue', row.id))),
+    loadNoticeWindows('venue', openRows.map((row) => row.id)),
   ])
   const now = new Date()
   const items = openRows.map((row, index) => {
@@ -636,6 +645,7 @@ export async function loadEatNow(regionSlug: string | null) {
       stale: isStale(row.lastVerifiedAt, now),
       media: cover ? toPublicMedia(cover) : null,
       schedule: schedules[index] ?? null,
+      notices: windows.get(row.id) ?? [],
     }
   }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
   const where = inTown(town.slug, town.label)

@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
-import { availabilityFromWindow, availabilityText, readRules, scheduleRulesSchema } from '../../../shared/schedule'
+import { liveStatusText, withNoticeStatus } from '../../../shared/notices'
+import { availabilityFromWindow, readRules, scheduleRulesSchema } from '../../../shared/schedule'
 import { unknownSpansFor } from '../../utils/schedule'
 
 // One availability query for the map and lists (ADR 0028). Never cached:
@@ -29,7 +30,9 @@ export default defineEventHandler(async (event) => {
     const verified = Boolean(row.verifiedAt) && !row.needsCheck
     const unknownRules = verified && row.unknownDayRules ? readRules(row.unknownDayRules) : null
     const unknownDays = unknownRules ? unknownSpansFor(unknownRules, at) : undefined
-    const value = availabilityFromWindow({ currentEnd: row.currentEnd, currentStart: row.currentStart, currentOpenEnded: row.currentOpenEnded, nextStart: row.nextStart, verified, alwaysOpen: row.mode === 'always', appointment: row.mode === 'appointment', closed: row.mode === 'closed', closure: readClosure(row.closure), slot: row.mode === 'slots' ? row.slotLabel ?? 'Экскурсия' : undefined, unknownDays }, at)
+    const schedule = availabilityFromWindow({ currentEnd: row.currentEnd, currentStart: row.currentStart, currentOpenEnded: row.currentOpenEnded, nextStart: row.nextStart, verified, alwaysOpen: row.mode === 'always', appointment: row.mode === 'appointment', closed: row.mode === 'closed', closure: readClosure(row.closure), slot: row.mode === 'slots' ? row.slotLabel ?? 'Экскурсия' : undefined, unknownDays }, at)
+    // A current `closed` notice (ADR 0049) wins, names no opening, and writes nothing.
+    const value = withNoticeStatus(schedule, row.closedNotices, at)
     return {
       type: row.entityType,
       slug: row.slug,
@@ -38,7 +41,7 @@ export default defineEventHandler(async (event) => {
       longitude: row.longitude,
       ...value,
       verified,
-      text: availabilityText(value, at),
+      text: liveStatusText(value, at),
     }
   }).filter((item) => !wanted || wanted.has(item.status))
   return { at: at.toISOString(), items }

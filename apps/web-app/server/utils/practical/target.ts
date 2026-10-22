@@ -5,8 +5,8 @@ import { refuseDraftLivePage } from '../mcp/draft'
 
 export type PracticalSubjectType = 'place' | 'venue' | 'route'
 
-export interface PracticalTarget {
-  type: PracticalSubjectType
+export interface PracticalTarget<T extends PracticalSubjectType = PracticalSubjectType> {
+  type: T
   id: string
   slug: string
   title: string
@@ -21,8 +21,8 @@ const LIVE: Record<PracticalSubjectType, readonly string[]> = {
   route: ['published', 'archived'],
 }
 
-/** Resolves the owner of admission rows or events by id or slug. */
-export async function practicalTarget(type: PracticalSubjectType, id?: string | null, slug?: string | null): Promise<PracticalTarget> {
+/** Resolves the owner of admission rows, events, or notices by id or slug. */
+export async function practicalTarget<T extends PracticalSubjectType>(type: T, id?: string | null, slug?: string | null): Promise<PracticalTarget<T>> {
   if (!id && !slug) {
     throw createError({ statusCode: 400, statusMessage: 'Нужен id или slug' })
   }

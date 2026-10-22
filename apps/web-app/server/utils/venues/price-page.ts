@@ -26,6 +26,7 @@ import { regionLabel } from '../../../shared/region'
 import { readRules } from '../../../shared/schedule'
 import { collectionDocument } from '../../../shared/seo'
 import { omitFactGap, readShownFacts } from '../facts/read'
+import { loadNoticeWindows } from '../notices/read'
 import { loadComparablePrices } from './comparable-prices'
 
 /** Official fresh menu prices, one per venue and item, with closed venues removed. */
@@ -110,9 +111,10 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
   const ids = points.map((point) => point.venueId)
   const venues = (await db.venues.list({ status: 'published' })).filter((row) => ids.includes(row.id))
   const byId = new Map(venues.map((row) => [row.id, row]))
-  const [covers, scheduleRows] = await Promise.all([
+  const [covers, scheduleRows, windows] = await Promise.all([
     db.venues.coversFor([...byId.keys()]),
     db.schedules.forEntities('venue', [...byId.keys()]),
+    loadNoticeWindows('venue', [...byId.keys()]),
   ])
   const scheduleById = new Map(scheduleRows.flatMap((row) => {
     const rules = readRules(row.rules)
@@ -143,6 +145,7 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
       kindLabel: kindLabel(venue.kind),
       media: cover ? toPublicMedia(cover) : null,
       schedule: scheduleById.get(venue.id) ?? null,
+      notices: windows.get(venue.id) ?? [],
       stale: isStale(venue.lastVerifiedAt, now),
       meta: shownFacts?.address?.trim() && shownFacts.address !== 'уточняйте' ? shownFacts.address.trim() : '',
       phone: omitFactGap(shownFacts?.phone),

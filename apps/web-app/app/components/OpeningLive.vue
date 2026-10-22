@@ -28,13 +28,17 @@
 </template>
 
 <script setup lang="ts">
+import type { NoticeWindow } from '~~/shared/notices'
 import type { ScheduleRecord } from '~~/shared/schedule'
-import { availabilityText, statusFromRules } from '~~/shared/schedule'
+import { liveStatus, liveStatusText } from '~~/shared/notices'
+import { availabilityText } from '~~/shared/schedule'
 
 // Computed in the browser only, after hydration: cached HTML shows the
 // schedule, never a stale «открыто сейчас».
 const props = defineProps<{
   schedule: ScheduleRecord | null
+  /** Dated notices of the page (ADR 0049). A current `closed` one wins over the schedule. */
+  notices?: NoticeWindow[] | null
   hasHours?: boolean
   /** Say «Часы неизвестны» instead of rendering nothing when there is no verified schedule. */
   showUnknown?: boolean
@@ -51,7 +55,13 @@ let timer: ReturnType<typeof setInterval> | undefined
 
 function update() {
   const now = new Date()
-  const value = statusFromRules(props.schedule, now)
+  const value = liveStatus(props.schedule, props.notices, now)
+  if (value.notice) {
+    status.value = { open: false, muted: false, text: liveStatusText(value, now) }
+    unverified.value = false
+    unknown.value = false
+    return
+  }
   // A closure's secondary part («снаружи можно посмотреть») goes on its own muted line.
   const [main, ...rest] = availabilityText(value, now).split(' · ')
   status.value = value.status === 'unknown'

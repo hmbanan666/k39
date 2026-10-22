@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-21).
+Accepted (2026-10-21). Amended by [ADR 0049](0049-temporary-notices.md): routes and collections have no `notices` key; a place or a venue payload can hold one.
 
 ## Context
 

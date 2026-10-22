@@ -170,6 +170,11 @@
       subject-type="venue"
       :subject-id="venueId"
     />
+    <AdminNoticesEditor
+      v-if="venueId"
+      subject-type="venue"
+      :subject-id="venueId"
+    />
     <section
       v-if="venueId"
       class="history"

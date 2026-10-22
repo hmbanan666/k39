@@ -923,6 +923,40 @@ export const guestSubmissions = pgTable('guest_submissions', {
   check('guest_submissions_correction_check', sql`${table.correctionKind} is null or ${table.correctionKind} in ('hours', 'phone', 'address', 'status', 'price', 'other')`),
 ])
 
+// Dated temporary notices on a place or a venue (ADR 0049). Not a fact and not
+// a schedule. The public read compares the dates itself; `expired_at` is only
+// the nightly cleanup flag.
+export const notices = pgTable('notices', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  subjectType: varchar('subject_type').notNull().$type<'place' | 'venue'>(),
+  subjectId: varchar('subject_id').notNull(),
+  kind: varchar('kind').notNull().$type<'relocation' | 'closed' | 'renovation' | 'other'>(),
+  startsOn: date('starts_on', { mode: 'string' }).notNull(),
+  // Inclusive last day. Null only with `open_ended_reason`.
+  endsOn: date('ends_on', { mode: 'string' }),
+  openEndedReason: varchar('open_ended_reason'),
+  text: varchar('text').notNull(),
+  address: varchar('address'),
+  sourceUrl: varchar('source_url').notNull(),
+  sourceTitle: varchar('source_title').notNull(),
+  checkedAt: date('checked_at', { mode: 'string' }).notNull(),
+  expiredAt: timestamp('expired_at', { precision: 3, withTimezone: true, mode: 'string' }),
+}, (table) => [
+  index('notices_subject_idx').on(table.subjectType, table.subjectId),
+  index('notices_open_idx').on(table.endsOn).where(sql`${table.expiredAt} is null`),
+  check('notices_subject_check', sql`${table.subjectType} in ('place', 'venue')`),
+  check('notices_kind_check', sql`${table.kind} in ('relocation', 'closed', 'renovation', 'other')`),
+  check('notices_dates_check', sql`${table.endsOn} is null or ${table.endsOn} >= ${table.startsOn}`),
+  check('notices_open_end_check', sql`(${table.endsOn} is null) = (${table.openEndedReason} is not null)`),
+  check('notices_address_check', sql`(${table.kind} = 'relocation') = (${table.address} is not null)`),
+  check('notices_text_check', sql`char_length(${table.text}) between 1 and 160`),
+  check('notices_address_length_check', sql`${table.address} is null or char_length(${table.address}) between 1 and 200`),
+  check('notices_reason_length_check', sql`${table.openEndedReason} is null or char_length(${table.openEndedReason}) between 1 and 200`),
+  check('notices_source_title_check', sql`char_length(${table.sourceTitle}) between 1 and 160`),
+])
+
 /** Action, submission id, actor, and time. No body, email, or file. */
 export const guestAudits = pgTable('guest_audits', {
   id: cuid2('id').defaultRandom().primaryKey(),

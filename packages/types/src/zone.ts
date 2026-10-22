@@ -37,3 +37,12 @@ export function addDays(date: string, days: number) {
   value.setUTCDate(value.getUTCDate() + days)
   return value.toISOString().slice(0, 10)
 }
+
+/** A real `YYYY-MM-DD` calendar day: `2026-02-30` and `2026-13-01` are not. */
+export function isCalendarDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false
+  }
+  const parsed = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+}

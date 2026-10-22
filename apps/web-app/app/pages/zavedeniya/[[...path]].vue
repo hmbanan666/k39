@@ -145,6 +145,7 @@
           :phone="item.phone"
           :stale="item.stale"
           :schedule="item.schedule"
+          :notices="item.notices"
           :lean="index % 2 === 0 ? 'left' : 'right'"
           sizes="(min-width: 1100px) 380px, (min-width: 720px) 46vw, 92vw"
           :priority="index < 2"
@@ -171,6 +172,7 @@
 <script setup lang="ts">
 import type { PublicListingModule } from '~~/shared/listing-modules'
 import type { PublicMedia } from '~~/shared/media'
+import type { NoticeWindow } from '~~/shared/notices'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import type { VenuePageData } from '~/components/VenuePage.vue'
@@ -192,6 +194,7 @@ interface ListingItem {
   longitude: number | null
   media: PublicMedia | null
   schedule: ScheduleRecord | null
+  notices: NoticeWindow[]
 }
 
 interface ListingPage {

@@ -82,6 +82,7 @@
           :phone="item.phone"
           :stale="item.stale"
           :schedule="item.schedule"
+          :notices="item.notices"
           lean="none"
         >
           <template #kicker>
@@ -120,6 +121,7 @@
 <script setup lang="ts">
 import type { FoodStickerSlug } from '~~/shared/food-stickers'
 import type { PublicMedia } from '~~/shared/media'
+import type { NoticeWindow } from '~~/shared/notices'
 import type { SharedPriceSource } from '~~/shared/price-compare'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
@@ -147,6 +149,7 @@ export interface PriceListingData {
     kindLabel: string
     media: PublicMedia | null
     schedule: ScheduleRecord | null
+    notices: NoticeWindow[]
     stale: boolean
     meta: string
     phone?: string | null

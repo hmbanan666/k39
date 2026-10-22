@@ -2,10 +2,11 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { toPublicMedia } from '../../../shared/media'
 import { placePhoneSource } from '../../utils/content/place-contact'
+import { noticesView } from '../../utils/notices/write'
 
 export default defineMcpTool({
   name: 'place_get',
-  description: 'Load one place by id or slug, including media, sources, related published places, the official phone with phoneSourceUrl, the website, and schemaType (null means the hub default).',
+  description: 'Load one place by id or slug, including media, sources, related published places, the official phone with phoneSourceUrl, the website, schemaType (null means the hub default), and the live dated notices (ADR 0049). pendingReview is the pending draft payload; it includes notices when a draft-token notices_set staged them.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -53,6 +54,7 @@ export default defineMcpTool({
       visitDuration: place.visitDuration,
       bestTime: place.bestTime,
       faq: place.faq ?? [],
+      notices: (await noticesView({ type: 'place', id: place.id })).notices,
       pendingReview: await pendingReview(place.id),
       media: gallery.map((item) => ({
         ...compactMedia(item.media),

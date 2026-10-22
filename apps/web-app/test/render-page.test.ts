@@ -52,6 +52,7 @@ function venueFixture(): VenuePageData {
       checkedAt: null,
       regionTitle: 'Фикстура',
       schedule: null,
+      notices: [],
       modules: null,
       admission: { stored: false, rows: [], lines: [] },
       upcoming: [],

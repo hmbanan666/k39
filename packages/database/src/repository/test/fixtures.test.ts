@@ -5,6 +5,7 @@ import { applyFixtures, FIXTURE_SLUGS } from '../../seed/fixtures'
 import { PRICE_CATALOG } from '../../seed/price-catalog'
 import { placeMedia, venues } from '../../tables'
 import { Editor } from '../content'
+import { Notices } from '../notices'
 import { Admission, CalendarEvents } from '../practical'
 import { Prices } from '../prices'
 import { Schedules } from '../schedules'
@@ -60,6 +61,11 @@ describe('ui fixtures', () => {
     expect(contact?.phone).toContain('+7 4012')
     expect(contact?.website).toBe('https://fixture.k39.test/')
     expect(contact?.schemaType).toBe('Church')
+    const contactNotices = await Notices.forSubject('place', contact!.id)
+    expect(contactNotices.map((row) => row.kind).sort()).toEqual(['closed', 'renovation'])
+    const photoNotices = await Notices.forSubject('venue', photo!.id)
+    expect(photoNotices.map((row) => row.kind).sort()).toEqual(['other', 'relocation'])
+    expect(photoNotices.find((row) => row.kind === 'relocation')?.address).toBe('Фикстура, улица Временная, 5А')
     const plainTown = await Editor.placeBySlug(FIXTURE_SLUGS.townPlain)
     expect(plainTown).toBeUndefined()
 

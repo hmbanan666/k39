@@ -28,6 +28,7 @@ import {
   venueNameKey,
   venueSlugCandidates,
 } from '../venues'
+import { Notices } from './notices'
 
 export interface VenueWrite {
   slug?: string
@@ -559,6 +560,7 @@ export class Venues {
     await useDatabase().transaction(async (tx) => {
       await tx.delete(admissionPrices).where(and(eq(admissionPrices.subjectType, 'venue'), eq(admissionPrices.subjectId, current.id)))
       await tx.delete(calendarEvents).where(and(eq(calendarEvents.subjectType, 'venue'), eq(calendarEvents.subjectId, current.id)))
+      await Notices.removeForSubject('venue', current.id, tx)
       await tx.delete(venues).where(eq(venues.id, current.id))
     })
     return { id: current.id, slug: current.slug, action: 'deleted' as const }

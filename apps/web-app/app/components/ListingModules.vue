@@ -28,6 +28,7 @@
           :phone="item.card.phone"
           :stale="item.card.stale"
           :schedule="item.card.schedule"
+          :notices="item.card.notices"
           :lean="index % 2 === 0 ? 'left' : 'right'"
           sizes="(min-width: 1100px) 380px, (min-width: 720px) 46vw, 92vw"
         >

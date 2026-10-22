@@ -72,6 +72,7 @@ Ticket prices and dated events are rows, not prose (ADR 0046). Write them with `
 - Events: the official site, or the place's or venue's own official social page (`official_social`). A listing site is refused. Times are Kaliningrad local time. A date with no stated clock is a date-only event, not a guessed hour. `ticketUrl` is the seller the official page links to.
 - Do not parse `places.price` into rows. Once rows exist, clear `places.price` (the page hides it anyway).
 - A row older than 365 days is hidden and the page says «Стоимость билета уточняйте». Re-check the official page and save the row again with today's `checkedAt`.
+- Dated notices (`notices_set`, ADR 0049): the source is the subject's own official page or, for a venue, its own VK community from `socials` (`ownOfficialSourceKind`, the same rule as events). Aggregators, maps, and other socials are refused. A notice is not a fact and does not change hours or the address.
 
 ## Unknown
 

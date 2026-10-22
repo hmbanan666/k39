@@ -47,6 +47,10 @@
         >
           {{ closedNote }}
         </p>
+        <TemporaryNotices
+          :notices="page.notices"
+          variant="hero"
+        />
         <p class="actions">
           <DirectionsLink
             v-if="page.place.latitude != null && page.place.longitude != null"
@@ -70,8 +74,13 @@
             v-if="hasFacts"
             :checked="checkedLabel"
           >
+            <TemporaryNotices
+              :notices="page.notices"
+              variant="facts"
+            />
             <OpeningLive
               :schedule="page.place.schedule"
+              :notices="noticeWindows"
               :has-hours="Boolean(page.place.hours)"
             />
             <GuideFactRow
@@ -255,12 +264,14 @@ import type { AdmissionView } from '~~/shared/admission'
 import type { EventLine } from '~~/shared/events'
 import type { GuestPublicItem } from '~~/shared/guest'
 import type { PublicMedia } from '~~/shared/media'
+import type { NoticeWindow, PublicNotice } from '~~/shared/notices'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
 import { eatNowPath } from '~~/shared/eat-now'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
+import { statusWindows } from '~~/shared/notices'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 import { guideFacts, russianDay } from '~~/shared/place-guide'
 import { regionLabel } from '~~/shared/region'
@@ -302,6 +313,7 @@ interface PlacePage {
   gallery: PublicMedia[]
   cover: PublicMedia | null
   groups: Array<{ title: string, links: PlaceLink[] }>
+  notices: PublicNotice[]
   sources: Array<{ title: string, url: string }>
   guests?: GuestPublicItem[]
   offers: Array<{ title: string, terms: string }>
@@ -315,6 +327,7 @@ interface PlacePage {
     partner: boolean
     stale: boolean
     schedule: ScheduleRecord | null
+    notices?: NoticeWindow[]
     regionSlug?: string | null
   }>
 }
@@ -346,9 +359,11 @@ const facts = rows.filter((row) => row.key !== 'phone' && row.key !== 'website')
 const contacts = rows.filter((row) => row.key === 'phone' || row.key === 'website')
 const checkedLabel = russianDay(page.checkedAt)
 const address = shortAddress(page.place.howToGet || '')
+const noticeWindows = statusWindows(page.notices)
 const hasFacts = Boolean(
   rows.length
   || page.admission.stored
+  || page.notices.length
   || address
   || (page.place.latitude != null && page.place.longitude != null),
 )

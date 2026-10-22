@@ -11,6 +11,7 @@ import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
 import { omitFactGap, readShownFacts } from './facts/read'
 import { attachGuestReviews, loadGuestItems } from './guests/moderate'
+import { loadPublicNotices, sourcesWithNotices } from './notices/read'
 import { loadAdmission, loadMemberEvents, loadSubjectEvents } from './practical/public'
 import { loadSchedule } from './schedule'
 import { eatNearby, TOWN_EAT_LIMIT } from './venues/public'
@@ -145,6 +146,7 @@ export async function loadPlace(slug: string, page = 1) {
   const schedule = await loadSchedule('place', loaded.place.id)
   const admission = await loadAdmission('place', loaded.place.id)
   const upcoming = await loadSubjectEvents('place', loaded.place.id)
+  const notices = (await loadPublicNotices('place', [loaded.place.id])).get(loaded.place.id) ?? []
   const shown = (await readShownFacts('place', [{
     id: loaded.place.id,
     latitude: loaded.place.latitude,
@@ -268,6 +270,7 @@ export async function loadPlace(slug: string, page = 1) {
     place: { ...loaded.place, schedule, latitude, longitude, status, phone: shown.phone },
     admission,
     upcoming: upcoming.lines,
+    notices,
     categoryTitle: loaded.category.title,
     categorySlug: loaded.category.slug,
     category: loaded.category,
@@ -278,7 +281,7 @@ export async function loadPlace(slug: string, page = 1) {
     cover,
     groups,
     routeBand,
-    sources: loaded.place.sources ?? [],
+    sources: sourcesWithNotices(loaded.place.sources ?? [], notices),
     guests,
     // A town page lists more of its venues, so each one gets a link from it.
     eatNearby: await eatNearby(

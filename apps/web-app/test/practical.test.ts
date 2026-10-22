@@ -4,7 +4,7 @@ import { classifyOfficialUrl } from '@k39/types/official-url'
 import { describe, expect, it } from 'vitest'
 import TicketsFact from '../app/components/TicketsFact.vue'
 import UpcomingEvents from '../app/components/UpcomingEvents.vue'
-import { admissionSourceProblem, eventSourceKind, eventSourceProblem, ticketUrlProblem } from '../server/utils/practical/sources'
+import { admissionSourceProblem, eventSourceProblem, ownOfficialSourceKind, ticketUrlProblem } from '../server/utils/practical/sources'
 import { ADMISSION_UNKNOWN, admissionFree, admissionOffers, admissionRowProblem, admissionView } from '../shared/admission'
 import { eventFormTiming, eventInstants, eventLine, eventUpcoming } from '../shared/events'
 import { guideFacts } from '../shared/place-guide'
@@ -126,12 +126,12 @@ describe('ticket and event sources', () => {
   })
 
   it('takes an event from the official site or the venue\'s own VK', () => {
-    expect(eventSourceKind('https://museum.example/afisha', null)).toBe('official')
-    expect(eventSourceKind('https://vk.com/cafe_own?w=wall-123_45', own)).toBe('official_social')
-    expect(eventSourceKind('https://vk.com/wall-123_46', own)).toBe('official_social')
-    expect(eventSourceKind('https://vk.com/other_cafe', own)).toBeNull()
-    expect(eventSourceKind('https://vk.com/cafe_own', null)).toBeNull()
-    expect(eventSourceKind('https://ticketland.ru/concert/1', own)).toBeNull()
+    expect(ownOfficialSourceKind('https://museum.example/afisha', null)).toBe('official')
+    expect(ownOfficialSourceKind('https://vk.com/cafe_own?w=wall-123_45', own)).toBe('official_social')
+    expect(ownOfficialSourceKind('https://vk.com/wall-123_46', own)).toBe('official_social')
+    expect(ownOfficialSourceKind('https://vk.com/other_cafe', own)).toBeNull()
+    expect(ownOfficialSourceKind('https://vk.com/cafe_own', null)).toBeNull()
+    expect(ownOfficialSourceKind('https://ticketland.ru/concert/1', own)).toBeNull()
     expect(eventSourceProblem('https://vk.com/other_cafe', own)).toContain('«Соцсетей» этого заведения')
     expect(eventSourceProblem('https://vk.com/museum', null)).toContain('У места нет соцсетей')
     expect(eventSourceProblem('https://kassir.ru/1', own)).toContain('Афиша-агрегатор')

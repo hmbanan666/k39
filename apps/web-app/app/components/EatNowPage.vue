@@ -58,10 +58,11 @@
 <script setup lang="ts">
 import type { EatNowGroup } from '~~/shared/eat-now'
 import type { PublicMedia } from '~~/shared/media'
+import type { NoticeWindow } from '~~/shared/notices'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import { clientDistance, clientWalk, groupEatNow, haversineKm } from '~~/shared/eat-now'
-import { statusFromRules } from '~~/shared/schedule'
+import { liveStatus } from '~~/shared/notices'
 
 interface EatNowItem {
   href: string
@@ -81,6 +82,7 @@ interface EatNowItem {
   partner?: boolean
   media: PublicMedia | null
   schedule: ScheduleRecord | null
+  notices: NoticeWindow[]
 }
 
 export type EatNowData
@@ -137,7 +139,7 @@ function refreshStatuses() {
   const now = new Date()
   const next: Record<string, EatNowGroup> = {}
   for (const item of props.page.items) {
-    const value = statusFromRules(item.schedule, now)
+    const value = liveStatus(item.schedule, item.notices, now)
     next[item.slug] = value.status === 'open' || value.status === 'closing_soon'
       ? 'open'
       : value.status === 'unknown' ? 'unknown' : 'later'

@@ -51,3 +51,4 @@ Add the row in the same commit as the SQL file. A `reserved` row holds a number 
 | 0042 | 0042_venue_vk_community_id.sql | applied |
 | 0043 | 0043_place_contact.sql | applied |
 | 0044 | 0044_admission_events.sql | applied |
+| 0045 | 0045_notices.sql | applied |
