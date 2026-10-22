@@ -1,9 +1,10 @@
 import type { VenueDish, VenueReservation, VenueWrite } from '@k39/database'
 import type { FactActor } from '../../../shared/facts'
+import type { ScheduleRecord } from '../../../shared/schedule'
 import type { VenueModule } from '../../../shared/venue-modules'
-import { db, VenueInputError } from '@k39/database'
+import { db, normalizeHours, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
-import { rulesFromVenueHours, verifiedDate } from '../../../shared/schedule'
+import { mergeWeeklyRules, verifiedDate, weeklyTableFits, weeklyTableKey, weeklyTableRules } from '../../../shared/schedule'
 import { contentScope, requireEditorContent } from '../access'
 import { contentGate, contentWarnings, createVenueContent, updateVenueContent } from '../content/save'
 import { hoursConflict, syncCoordinates, syncVenueContact } from '../facts/sync'
@@ -112,7 +113,7 @@ export async function createVenue(input: Parameters<typeof venueWriteFromInput>[
       ...venueWriteFromInput({ ...input, modules }),
       regionId: regionId === undefined ? input.regionId : regionId,
     }, userId, contentGate('venue', { ...input, modules }, input.status === 'published'))
-    await syncVenueSchedule(row, input, actor)
+    await saveVenueSchedule(row, await planVenueSchedule({ id: row.id, lastVerifiedAt: null }, input), actor)
     await syncVenueContact({
       venueId: row.id,
       actor,
@@ -179,20 +180,8 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
     }, status === 'published')
     contentWarnings(gate)
     const actor: FactActor = userId ? 'editor' : 'mcp'
-    let hoursQueue: string | null = null
-    if (input.hours !== undefined) {
-      const rules = rulesFromVenueHours(input.hours as Parameters<typeof rulesFromVenueHours>[0])
-      if (rules) {
-        const blocked = await hoursConflict('venue', current.id, {
-          rules,
-          sourceUrl: null,
-          verifiedAt: verifiedDate(input.lastVerifiedAt === undefined ? current.lastVerifiedAt : input.lastVerifiedAt),
-        }, actor)
-        if (blocked) {
-          hoursQueue = blocked.queueId
-        }
-      }
-    }
+    const schedule = await planVenueSchedule(current, input)
+    const hoursQueue = schedule ? (await hoursConflict('venue', current.id, schedule, actor))?.queueId ?? null : null
     const contact = await syncVenueContact({
       venueId: current.id,
       actor,
@@ -230,7 +219,7 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
     if (!saved) {
       throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
     }
-    const hoursBlocked = hoursQueue || await syncVenueSchedule(saved, { hours: input.hours, lastVerifiedAt: input.lastVerifiedAt }, actor)
+    const hoursBlocked = hoursQueue || await saveVenueSchedule(saved, schedule, actor)
     await recomputePriceBandsAfterStatus(
       { regionId: current.regionId, status: current.status },
       { regionId: saved.regionId, status: saved.status },
@@ -242,30 +231,57 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
   }
 }
 
+export const SCHEDULE_ONLY_HOURS = 'Часы этого заведения заданы расписанием (сезоны, перерывы или особый режим). Таблица их не покажет целиком, поэтому меняйте их через schedule_set.'
+
 /**
- * Keep the venue schedule (ADR 0028) in step with venue writes. New hours
- * replace the rules; an editor check date marks them verified. A write that
- * touches neither leaves the schedule alone, so schedule_set edits survive.
+ * The schedule a venue write stores, or null when the write leaves it alone.
+ * The `schedules` row is the only source of venue hours (ADR 0028). `hours`
+ * from a form or `venue_update` is a weekly table: it replaces the week and
+ * unknown days of its one season, and the note when it carries `note`.
+ * Other seasons, closures, exceptions, holidays, slots and the source URL
+ * stay. Rules a table cannot show are refused with 409. Hours equal to the
+ * stored ones are no write. A changed editor check date marks the schedule
+ * verified; otherwise the stored check date stays.
  */
-export async function syncVenueSchedule(
-  venue: { id: string, hours: unknown, lastVerifiedAt: Date | string | null, status?: string },
+export async function planVenueSchedule(
+  venue: { id: string, lastVerifiedAt: Date | string | null },
   input: { hours?: unknown, lastVerifiedAt?: string | null },
-  actor: FactActor = 'mcp',
-) {
-  if (input.hours === undefined && input.lastVerifiedAt === undefined) {
-    return null
-  }
+): Promise<ScheduleRecord | null> {
   const current = await loadSchedule('venue', venue.id)
-  const rules = input.hours === undefined && current
-    ? current.rules
-    : rulesFromVenueHours(venue.hours as Parameters<typeof rulesFromVenueHours>[0])
-  if (!rules) {
+  let rules = current?.rules ?? null
+  let hoursChanged = false
+  if (input.hours !== undefined) {
+    const table = weeklyTableRules(normalizeHours(input.hours))
+    const states = table.seasons[0]!.week.length > 0 || Boolean(table.seasons[0]!.unknownDays?.length) || Boolean(table.note)
+    if (rules || states) {
+      if (!weeklyTableFits(rules)) {
+        throw createError({ statusCode: 409, statusMessage: SCHEDULE_ONLY_HOURS })
+      }
+      const sendsNote = Boolean(input.hours && typeof input.hours === 'object' && 'note' in input.hours)
+      const merged = mergeWeeklyRules(rules, table, { note: sendsNote })
+      if (!rules || weeklyTableKey(merged) !== weeklyTableKey(rules)) {
+        rules = merged
+        hoursChanged = true
+      }
+    }
+  }
+  const checkChanged = input.lastVerifiedAt !== undefined && verifiedDate(input.lastVerifiedAt) !== verifiedDate(venue.lastVerifiedAt)
+  if (!rules || (!hoursChanged && !checkChanged)) {
     return null
   }
-  const saved = await saveSchedule('venue', venue.id, {
+  const checkedOn = checkChanged ? verifiedDate(input.lastVerifiedAt) : current?.verifiedAt ?? verifiedDate(venue.lastVerifiedAt)
+  return {
     rules,
     sourceUrl: current?.sourceUrl ?? null,
-    verifiedAt: rules.needsCheck ? null : verifiedDate(venue.lastVerifiedAt),
-  }, { actor, pageStatus: venue.status })
+    verifiedAt: rules.needsCheck ? null : checkedOn,
+  }
+}
+
+/** Store a planned venue schedule. Returns the queue id when an owner fact blocked it. */
+export async function saveVenueSchedule(venue: { id: string, status?: string }, record: ScheduleRecord | null, actor: FactActor = 'mcp') {
+  if (!record) {
+    return null
+  }
+  const saved = await saveSchedule('venue', venue.id, record, { actor, pageStatus: venue.status })
   return saved.conflict ? saved.queueId : null
 }

@@ -3,10 +3,11 @@ import { z } from 'zod'
 import { toPublicMedia } from '../../../shared/media'
 import { readShownFacts, shownText } from '../../utils/facts/read'
 import { auditMcp } from '../../utils/mcp/audit'
+import { loadSchedule } from '../../utils/schedule'
 
 export default defineMcpTool({
   name: 'venue_get',
-  description: 'Load one venue by id or slug, including photos (author, license, source, origin), hours, action links, signature dishes, sources, createdAt, updatedAt, and whether the facts are stale.',
+  description: 'Load one venue by id or slug, including photos (author, license, source, origin), the hours schedule (rules, sourceUrl, verifiedAt, as schedule_get returns them; null when none), action links, signature dishes, sources, createdAt, updatedAt, and whether the facts are stale.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -39,7 +40,7 @@ export default defineMcpTool({
       priceBandComputedAt: venue.priceBandComputedAt,
       priceBandBasis: venue.priceBandBasis,
       avgCheck: venue.avgCheck,
-      hours: venue.hours,
+      schedule: await loadSchedule('venue', venue.id),
       phone: shownText((await readShownFacts('venue', [{
         id: venue.id,
         phone: venue.phone,

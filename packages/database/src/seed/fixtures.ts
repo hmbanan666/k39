@@ -6,7 +6,6 @@ import { Prices } from '../repository/prices'
 import { Schedules } from '../repository/schedules'
 import { Venues } from '../repository/venues'
 import { media, placeMedia, venueMedia } from '../tables'
-import { WEEKDAYS } from '../venues'
 import { PRICE_CATALOG } from './price-catalog'
 
 /**
@@ -42,18 +41,6 @@ function fixtureProse(label: string) {
     text += sentence
   }
   return text.slice(0, 480).trim()
-}
-
-function weekHours() {
-  return {
-    note: null,
-    days: WEEKDAYS.map((weekday) => ({
-      weekday,
-      closed: false,
-      opens: '10:00',
-      closes: '20:00',
-    })),
-  }
 }
 
 function scheduleRules() {
@@ -183,7 +170,6 @@ async function ensureVenue(input: {
   longitude: number | null
   socials?: Array<{ network: string, url: string }>
   modules?: unknown[]
-  hours?: ReturnType<typeof weekHours>
 }) {
   const description = fixtureProse(input.name)
   const existing = await Venues.bySlug(input.slug)
@@ -200,7 +186,6 @@ async function ensureVenue(input: {
     phone: '+7 401 200-00-00',
     socials: input.socials ?? [],
     modules: input.modules ?? [],
-    hours: input.hours,
     noindex: true,
     menuUrl: MENU_URL,
     sources: [{ title: 'Меню фикстуры', url: MENU_URL }],
@@ -292,7 +277,6 @@ export async function applyFixtures(now = new Date()) {
     longitude: 20.502,
     socials: [{ network: 'instagram', url: INSTAGRAM }],
     modules: venueModules(),
-    hours: weekHours(),
   })
   const quiet = await ensureVenue({
     slug: FIXTURE_SLUGS.cafePlain,
@@ -300,7 +284,6 @@ export async function applyFixtures(now = new Date()) {
     regionId: town.id,
     latitude: 54.722,
     longitude: 20.503,
-    hours: weekHours(),
   })
   const peer = await ensureVenue({
     slug: FIXTURE_SLUGS.cafePeer,

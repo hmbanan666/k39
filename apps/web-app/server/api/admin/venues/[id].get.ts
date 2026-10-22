@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
 import { requireEditor } from '../../../utils/access'
 import { readShownFacts, shownText } from '../../../utils/facts/read'
+import { loadHoursForm } from '../../../utils/schedule'
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
@@ -15,5 +16,11 @@ export default defineEventHandler(async (event) => {
     address: venue.address,
     status: venue.status,
   }])).get(venue.id)
-  return { venue: { ...venue, phone: shownText(shown?.phone, venue.phone) }, gallery }
+  // Hours come from the schedule only; the legacy `venues.hours` column is not sent.
+  const { hours: _legacyHours, ...row } = venue
+  return {
+    venue: { ...row, phone: shownText(shown?.phone, venue.phone) },
+    hours: await loadHoursForm('venue', venue.id),
+    gallery,
+  }
 })

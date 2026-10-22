@@ -7,7 +7,7 @@ import { limitClaimStart, resetCabinetSlots } from '../server/utils/cabinet/rate
 import { asOwnerPrices, venuePricesWriteSchema } from '../server/utils/venues/prices'
 import { claimChannelPlan, maskEmail, maskPhone, ownerVenueSchema, pickOwnerFields, safeInternalPath, venueClaimPath } from '../shared/cabinet'
 import { describeSchedule, rulesFromVenueHours } from '../shared/schedule'
-import { HOURS_DAY_STATES, hoursDaysPayload, hoursFormDays } from '../shared/venue-hours-form'
+import { HOURS_DAY_STATES, hoursDaysPayload, hoursFormState } from '../shared/venue-hours-form'
 
 describe('cabinet claim helpers', () => {
   it('masks a mailbox and a phone and hides a short number', () => {
@@ -146,14 +146,14 @@ describe('cabinet hours keep days whose hours are unknown (ADR 0044)', () => {
   })
 
   it('loads an unknown day as its own state, not as an empty open day', () => {
-    const days = hoursFormDays(stored)
+    const { days } = hoursFormState(rulesFromVenueHours(stored), '2026-10-22')
     expect(days.find((day) => day.weekday === 'sat')).toEqual({ weekday: 'sat', state: 'unknown', opens: '', closes: '' })
     expect(days.find((day) => day.weekday === 'mon')).toEqual({ weekday: 'mon', state: 'open', opens: '10:00', closes: '19:00' })
     expect(HOURS_DAY_STATES.map((option) => option.label)).toEqual(['часы', 'выходной', 'часы уточняйте'])
   })
 
   it('keeps unknownDays through an owner save that edits an unrelated field', () => {
-    const body = { name: 'Новое название', hours: { note: null, days: hoursDaysPayload(hoursFormDays(stored), { openEnded: false }) } }
+    const body = { name: 'Новое название', hours: { note: null, days: hoursDaysPayload(hoursFormState(rulesFromVenueHours(stored), '2026-10-22').days, { openEnded: false }) } }
     const parsed = ownerVenueSchema.parse(pickOwnerFields(body))
     const saved = normalizeHours(parsed.hours)
     expect(saved.days.filter((day) => day.unknown).map((day) => day.weekday)).toEqual(['sat', 'sun'])
@@ -171,7 +171,7 @@ describe('cabinet hours keep days whose hours are unknown (ADR 0044)', () => {
         { weekday: 'sun', closed: true },
       ],
     })
-    const form = hoursFormDays(openEnded)
+    const form = hoursFormState(rulesFromVenueHours(openEnded), '2026-10-22').days
     expect(form.find((day) => day.weekday === 'sat')).toEqual({ weekday: 'sat', state: 'open', opens: '12:00', closes: '', openEnded: true })
     const body = { name: 'Новое название', hours: { note: null, days: hoursDaysPayload(form, { openEnded: false }) } }
     const saved = normalizeHours(ownerVenueSchema.parse(pickOwnerFields(body)).hours)
@@ -200,7 +200,7 @@ describe('cabinet editor page', () => {
     const page = readFileSync(resolve(__dirname, '../app/pages/kabinet/zavedeniya/[id].vue'), 'utf8')
     expect(page).toContain('<CabinetVenueEditor')
     const editor = readFileSync(resolve(__dirname, '../app/components/cabinet/VenueEditor.vue'), 'utf8')
-    expect(editor).toContain('hoursFormDays(loaded.venue.hours)')
-    expect(editor).toContain('hoursDaysPayload(form.days, { openEnded: false })')
+    expect(editor).toContain('form.days = hours.days')
+    expect(editor).toContain('hoursPayload(form.days, form.hoursNote, { openEnded: false })')
   })
 })

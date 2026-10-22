@@ -4,13 +4,14 @@ import process from 'node:process'
 import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
+import { verifiedDate } from '../../../shared/schedule'
 import { contentGate, updateVenueContent } from '../content/save'
 import { readShownFacts, shownText } from '../facts/read'
 import { setVenuePrices, syncVenueContact } from '../facts/sync'
 import { normalizeDishModules } from '../venues/dishes'
 import { recomputeTownPriceBands } from '../venues/price-band'
 import { asOwnerPrices, venuePricesWriteSchema } from '../venues/prices'
-import { syncVenueSchedule } from '../venues/write'
+import { planVenueSchedule, saveVenueSchedule } from '../venues/write'
 import { ClaimDeliveryError, claimTransportConfig, postClaimCode } from './deliver'
 import { limitClaimStart, limitCodeCheck, limitCodeSend, limitEdit } from './rate'
 
@@ -284,7 +285,6 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
       days: write.hours.days ?? [],
     }
   }
-  const touchHours = write.hours !== undefined
   if (write.modules) {
     write.modules = await normalizeDishModules(venueId, write.modules as VenueModule[], 'owner')
   }
@@ -293,9 +293,18 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     if (!current) {
       fail(404, 'Заведение не найдено')
     }
+    // Only hours that differ from the schedule count as an owner check.
+    const schedule = write.hours === undefined ? null : await planVenueSchedule(current, { hours: write.hours })
+    const checkedAt = schedule ? new Date() : null
+    if (schedule && checkedAt && !schedule.rules.needsCheck) {
+      schedule.verifiedAt = verifiedDate(checkedAt)
+    }
+    if (!schedule) {
+      delete write.hours
+    }
     const updated = await updateVenueContent(venueId, {
       ...write,
-      lastVerifiedAt: touchHours ? new Date().toISOString() : undefined,
+      lastVerifiedAt: checkedAt ? checkedAt.toISOString() : undefined,
     }, userId, contentGate('venue', {
       description: write.description,
       modules: write.modules,
@@ -308,7 +317,7 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     if (!saved) {
       fail(404, 'Заведение не найдено')
     }
-    await syncVenueSchedule(saved, { hours: touchHours ? saved.hours : undefined, lastVerifiedAt: touchHours ? saved.lastVerifiedAt : undefined }, 'owner')
+    await saveVenueSchedule(saved, schedule, 'owner')
     await syncVenueContact({
       venueId,
       actor: 'owner',

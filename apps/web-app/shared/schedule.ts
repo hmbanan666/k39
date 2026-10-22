@@ -115,6 +115,26 @@ export function isVerified(record: { rules: ScheduleRules | null, verifiedAt: st
   return Boolean(record?.rules && record.verifiedAt && !record.rules.needsCheck)
 }
 
+/**
+ * «Hours are known» for every entity type: a stored schedule that is verified
+ * and states something (a weekly entry, an occurrence, or a 24/7, by
+ * appointment, or closed mode). The `schedules` row is the only source; the
+ * legacy `venues.hours` column is not read.
+ */
+export function scheduleHoursKnown(record: { rules: ScheduleRules | null, verifiedAt: string | null } | null) {
+  if (!record?.rules || !isVerified(record)) {
+    return false
+  }
+  const rules = record.rules
+  if (rules.mode === 'hours' || rules.mode === 'slots') {
+    return rules.seasons.some((season) => season.week.length > 0)
+  }
+  if (rules.mode === 'events') {
+    return rules.occurrences.length > 0
+  }
+  return true
+}
+
 // Fixed Russian public holidays (MM-DD). Government day transfers are entered as exceptions.
 const RU_HOLIDAYS = new Set(['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '02-23', '03-08', '05-01', '05-09', '06-12', '11-04'])
 
@@ -189,7 +209,8 @@ function inSeason(season: ScheduleRules['seasons'][number], date: string) {
   return season.from <= season.to ? md >= season.from && md <= season.to : md >= season.from || md <= season.to
 }
 
-function seasonFor(rules: ScheduleRules, date: string) {
+/** The season that applies on a calendar day: a dated one first, then the all-year one. */
+export function seasonFor(rules: ScheduleRules, date: string) {
   return rules.seasons.find((season) => season.from && season.to && inSeason(season, date))
     ?? rules.seasons.find((season) => !season.from || !season.to)
 }
@@ -760,6 +781,75 @@ export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, clos
     note: hours?.note || undefined,
   })
   return parsed.success ? parsed.data : null
+}
+
+/** A weekly table as rules, with an empty week when no day is open, so a table save can clear the week. */
+export function weeklyTableRules(hours: Parameters<typeof rulesFromVenueHours>[0]): ScheduleRules {
+  const rules = rulesFromVenueHours(hours)
+  if (rules) {
+    return rules
+  }
+  const unknownDays = (hours?.days ?? []).filter((day) => day.unknown && VENUE_DAY[day.weekday] !== undefined).map((day) => VENUE_DAY[day.weekday]!)
+  return scheduleRulesSchema.parse({
+    seasons: [{ week: [], ...(unknownDays.length ? { unknownDays } : {}) }],
+    note: hours?.note || undefined,
+  })
+}
+
+/**
+ * Whether one weekly table (the admin venue form, the owner cabinet) shows
+ * these rules without losing anything: mode `hours`, at most one season with
+ * no date range, and no breaks or last entry. Closures, exceptions, holidays,
+ * the note and the source sit outside the table and survive a table save.
+ * Any other rules are edited through `schedule_set` only.
+ */
+export function weeklyTableFits(rules: ScheduleRules | null) {
+  if (!rules) {
+    return true
+  }
+  if (rules.mode !== 'hours' || rules.seasons.length > 1) {
+    return false
+  }
+  const season = rules.seasons[0]
+  if (!season) {
+    return true
+  }
+  if (season.from || season.to) {
+    return false
+  }
+  return season.week.every((entry) => !entry.breaks?.length && !entry.lastEntry)
+}
+
+/**
+ * A weekly table save on top of the stored rules. The table replaces the
+ * week and the unknown days of its one season, and the note when `note` is
+ * true. Everything else in `current` stays. Call only when
+ * `weeklyTableFits(current)`.
+ */
+export function mergeWeeklyRules(current: ScheduleRules | null, table: ScheduleRules, options: { note: boolean }): ScheduleRules {
+  if (!current) {
+    return table
+  }
+  const season = table.seasons[0]
+  const note = options.note ? table.note : current.note
+  return scheduleRulesSchema.parse({
+    ...current,
+    seasons: [{ week: season?.week ?? [], ...(season?.unknownDays?.length ? { unknownDays: season.unknownDays } : {}) }],
+    note,
+  })
+}
+
+/** What a weekly table shows of these rules: each weekday's state and times, and the note. */
+export function weeklyTableKey(rules: ScheduleRules | null) {
+  const season = rules?.seasons[0]
+  const days = [0, 1, 2, 3, 4, 5, 6].map((day) => {
+    const entry = season?.week.find((item) => item.days.includes(day))
+    if (entry) {
+      return `${entry.opens}-${entry.closes ?? ''}`
+    }
+    return season?.unknownDays?.includes(day) ? '?' : 'x'
+  })
+  return `${days.join(',')}|${rules?.note ?? ''}`
 }
 
 /** Status from the materialised window: the interval open at `at`, if any, and the next start. */
