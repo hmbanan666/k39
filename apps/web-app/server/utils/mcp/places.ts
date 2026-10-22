@@ -327,6 +327,21 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus, scope)
   if (scope === 'editor' && publicationStatus === 'published' && pending && publicationOnly(input, current.slug)) {
     const payload = pending.payload
+    const pendingPhone = typeof payload.phone === 'string' ? payload.phone : null
+    const phone = payload.phone === undefined
+      ? null
+      : await syncPlacePhone({
+          placeId: current.id,
+          actor: 'mcp',
+          pageStatus: 'published',
+          phone: pendingPhone,
+          sourceUrl: !pendingPhone
+            ? null
+            : typeof payload.phoneSourceUrl === 'string'
+              ? payload.phoneSourceUrl
+              : await placePhoneSource(current.id),
+          checkedAt: pending.updatedAt,
+        })
     const applied = await applyPendingPlaceContent(current.id, contentGate('place', {
       title: payload.title,
       summary: payload.summary,
@@ -341,24 +356,12 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       bestTime: payload.bestTime,
       faq: payload.faq,
       sources: payload.sources,
-      phone: payload.phone,
+      phone: phone?.skipped ? current.phone : payload.phone,
       phoneSourceUrl: payload.phoneSourceUrl,
       website: payload.website,
-    }, true))
+    }, true), { phone: Boolean(phone?.skipped) })
     const row = applied.row
     if (row) {
-      await syncPlacePhone({
-        placeId: current.id,
-        actor: 'mcp',
-        pageStatus: 'published',
-        phone: row.phone,
-        sourceUrl: !row.phone
-          ? null
-          : typeof payload.phoneSourceUrl === 'string'
-            ? payload.phoneSourceUrl
-            : await placePhoneSource(current.id),
-        checkedAt: pending.updatedAt,
-      })
       await syncCoordinates({
         subjectType: 'place',
         subjectId: current.id,

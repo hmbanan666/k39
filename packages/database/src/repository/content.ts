@@ -665,14 +665,16 @@ export class Editor {
   /**
    * Writes a pending place draft onto the live row and removes the draft
    * in one transaction (ADR 0035). Null when that draft is already gone.
+   * `keep` names columns that stay as stored, such as a phone whose fact the
+   * owner holds.
    */
-  static async applyPendingPlace(id: string) {
+  static async applyPendingPlace(id: string, keep: { phone?: boolean } = {}) {
     return withPendingDraft('place', id, async (tx, draft) => {
       const [existing] = await tx.select().from(places).where(eq(places.id, id)).limit(1)
       if (!existing) {
         return null
       }
-      const next = placeFromPending(existing, draft.payload)
+      const next = { ...placeFromPending(existing, draft.payload), ...(keep.phone ? { phone: existing.phone } : {}) }
       await tx.insert(revisions).values({
         entityType: 'place',
         entityId: existing.id,
