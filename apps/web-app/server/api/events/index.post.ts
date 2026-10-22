@@ -2,9 +2,12 @@ import { db, isDatabaseReady } from '@k39/database'
 import { eventCreateSchema } from '@k39/types'
 import { createId } from '@paralleldrive/cuid2'
 
+// One consented event: a type and three slugs.
+const EVENT_BODY_MAX = 2 * 1024
+
 export default defineEventHandler(async (event) => {
   try {
-    const body = eventCreateSchema.parse(await readBody(event))
+    const body = eventCreateSchema.parse(await readCappedJson(event, EVENT_BODY_MAX))
     if (!isDatabaseReady()) {
       throw createError({ statusCode: 503, statusMessage: 'Database is unavailable' })
     }

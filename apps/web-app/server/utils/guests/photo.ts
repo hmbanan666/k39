@@ -1,20 +1,17 @@
 import type { MediaLicense } from '@k39/database'
 import type { H3Event } from 'h3'
 import { db } from '@k39/database'
-import { createError, getRequestHeader } from 'h3'
+import { createError } from 'h3'
 import { GUEST_CONSENT_METHOD, GUEST_CONSENT_VERSION } from '../../../shared/consent'
 import { guestByline, inspectGuestText, lengthProblem } from '../../../shared/guest'
 import { deleteMediaCompletely, ingestImage } from '../../media/ingest'
-import { uploadBodyProblem, uploadProblem, uploadStatus } from '../../media/process'
+import { uploadProblem, uploadStatus } from '../../media/process'
 import { limitGuestPhoto } from '../cabinet/rate'
+import { readUploadForm } from '../request-body'
 import { requireGuestAuthor, requireGuestConsent, resolveGuestSubject } from './submit'
 
 export async function submitGuestPhoto(event: H3Event) {
-  const tooLarge = uploadBodyProblem(getRequestHeader(event, 'content-length'))
-  if (tooLarge) {
-    throw createError({ statusCode: uploadStatus(tooLarge.code), statusMessage: tooLarge.message })
-  }
-  const parts = await readMultipartFormData(event)
+  const parts = await readUploadForm(event)
   const text = (name: string) => parts?.find((part) => part.name === name)?.data?.toString() || ''
   requireGuestConsent(text('consent'))
   if (text('rights') !== '1') {

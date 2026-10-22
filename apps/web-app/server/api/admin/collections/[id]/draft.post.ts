@@ -5,7 +5,7 @@ import { applyAdminContentDraft, discardAdminContentDraft } from '../../../../ut
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
   const id = String(getRouterParam(event, 'id'))
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   if (body?.action === 'apply') {
     return applyAdminContentDraft('collection', id)
   }

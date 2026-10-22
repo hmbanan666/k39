@@ -1,7 +1,6 @@
 import type { MediaLicense } from '@k39/database'
 import { db } from '@k39/database'
 import { ingestImage } from '../../../../media/ingest'
-import { uploadBodyProblem, uploadStatus } from '../../../../media/process'
 import { requireAccount } from '../../../../utils/cabinet/account'
 import { requireVenueMember } from '../../../../utils/cabinet/flow'
 import { limitUpload } from '../../../../utils/cabinet/rate'
@@ -10,16 +9,12 @@ export default defineEventHandler(async (event) => {
   const user = await requireAccount(event)
   const venueId = getRouterParam(event, 'id') || ''
   await requireVenueMember(user.id, venueId)
-  const tooLarge = uploadBodyProblem(getRequestHeader(event, 'content-length'))
-  if (tooLarge) {
-    throw createError({ statusCode: uploadStatus(tooLarge.code), statusMessage: tooLarge.message })
-  }
   limitUpload(user.id)
   const venue = await db.venues.byId(venueId)
   if (!venue) {
     throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
   }
-  const parts = await readMultipartFormData(event)
+  const parts = await readUploadForm(event)
   const file = parts?.find((part) => part.name === 'file' && part.data)
   const text = (name: string) => parts?.find((part) => part.name === name)?.data?.toString() || ''
   if (text('rights') !== '1') {

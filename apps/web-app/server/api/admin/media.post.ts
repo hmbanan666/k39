@@ -1,17 +1,12 @@
 import type { MediaLicense } from '@k39/database'
 import { ingestImage } from '../../media/ingest'
-import { uploadBodyProblem, uploadStatus } from '../../media/process'
 import { requireEditor } from '../../utils/access'
 
 const LICENSES = new Set(['own', 'cc-by', 'cc-by-sa', 'cc0', 'pd', 'permission'])
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
-  const tooLarge = uploadBodyProblem(getRequestHeader(event, 'content-length'))
-  if (tooLarge) {
-    throw createError({ statusCode: uploadStatus(tooLarge.code), statusMessage: tooLarge.message })
-  }
-  const parts = await readMultipartFormData(event)
+  const parts = await readUploadForm(event)
   const file = parts?.find((part) => part.name === 'file' && part.data)
   const text = (name: string) => parts?.find((part) => part.name === name)?.data?.toString() || ''
   if (!file) {

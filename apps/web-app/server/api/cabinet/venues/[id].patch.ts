@@ -3,7 +3,7 @@ import { saveOwnerVenue } from '../../../utils/cabinet/flow'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAccount(event)
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     throw createError({ statusCode: 400, statusMessage: 'Нужны поля страницы' })
   }

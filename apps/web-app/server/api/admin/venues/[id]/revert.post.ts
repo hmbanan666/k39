@@ -4,7 +4,7 @@ import { requireEditor } from '../../../../utils/access'
 export default defineEventHandler(async (event) => {
   const admin = await requireEditor(event)
   const id = getRouterParam(event, 'id') || ''
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   const revisionId = typeof body?.revisionId === 'string' ? body.revisionId : ''
   if (!revisionId) {
     throw createError({ statusCode: 400, statusMessage: 'Нужна правка' })

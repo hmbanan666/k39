@@ -7,7 +7,7 @@ import sharp from 'sharp'
 import { afterEach, describe, expect, it } from 'vitest'
 import { categoryNames, fallbackQueries, mapCommonsLicense, plainText } from '../server/media/commons'
 import { coverSizeWarning } from '../server/media/ingest'
-import { MAX_INPUT_PIXELS, MAX_UPLOAD_BYTES, processImage, uploadBodyProblem, uploadProblem, uploadStatus } from '../server/media/process'
+import { MAX_INPUT_PIXELS, MAX_UPLOAD_BYTES, processImage, uploadProblem, uploadStatus } from '../server/media/process'
 import { mediaSlotDepth, withMediaSlot } from '../server/media/semaphore'
 import { createLocalMediaStorage } from '../server/media/storage'
 
@@ -152,10 +152,6 @@ describe('upload problems', () => {
     expect(uploadStatus('bad_type')).toBe(400)
     expect(uploadStatus('heic')).toBe(400)
     expect(uploadStatus('unreadable')).toBe(400)
-    expect(uploadBodyProblem(undefined)).toBeNull()
-    expect(uploadBodyProblem(String(MAX_UPLOAD_BYTES))?.code).toBeUndefined()
-    expect(uploadBodyProblem(String(MAX_UPLOAD_BYTES + 1024 * 1024))?.code).toBe('too_large')
-    expect(uploadStatus(uploadBodyProblem(String(MAX_UPLOAD_BYTES + 1024 * 1024))!.code)).toBe(413)
   })
 
   it('rejects corrupt bytes, a lied type, HEIC and an oversize header', async () => {
