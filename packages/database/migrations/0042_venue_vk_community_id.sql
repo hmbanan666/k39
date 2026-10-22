@@ -1,4 +1,4 @@
--- ADR 0047: the numeric id of the VK community that socials link by screen
+-- ADR 0048: the numeric id of the VK community that socials link by screen
 -- name. Album, photo, wall, and market URLs carry only that id. Null until an
 -- editor declares it; a club, public, or event link already carries it.
 ALTER TABLE "venues" ADD COLUMN IF NOT EXISTS "vk_community_id" bigint;

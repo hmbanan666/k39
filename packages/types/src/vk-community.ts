@@ -1,5 +1,5 @@
 /**
- * VK community identity for the official-menu rule (ADR 0047).
+ * VK community identity for the official-menu rule (ADR 0048).
  * A social link names a community by screen name (`vk.com/cafe`) or by
  * numeric id (`club10`, `public10`, `event10`). Albums, photos, posts, and
  * market items carry the owner id (`album-10_4`, `wall-10_3`, `?z=photo-10_1`).

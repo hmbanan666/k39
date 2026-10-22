@@ -1,4 +1,4 @@
-// The VK community id field in the admin venue form (ADR 0047). The writer
+// The VK community id field in the admin venue form (ADR 0048). The writer
 // repeats these checks; the form names the problem before the request.
 
 import { parseVkCommunityId, vkCommunityIdProblem, vkSocialLinks } from '@k39/types/vk-community'

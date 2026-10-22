@@ -332,7 +332,7 @@ export const venues = pgTable('venues', {
   phone: varchar('phone'),
   website: varchar('website'),
   socials: jsonb('socials').$type<VenueSocial[]>().notNull().default(sql`'[]'::jsonb`),
-  /** Numeric id of the VK community linked in socials by screen name (ADR 0047). */
+  /** Numeric id of the VK community linked in socials by screen name (ADR 0048). */
   vkCommunityId: bigint('vk_community_id', { mode: 'number' }),
   bookingUrl: varchar('booking_url'),
   orderUrl: varchar('order_url'),

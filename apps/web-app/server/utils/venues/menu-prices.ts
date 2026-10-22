@@ -45,7 +45,7 @@ function pickFact(rows: Array<MenuFact & { path: string }>, item: string, varian
  * Callers that build «Где дешевле» keep `comparable` rows only.
  * The venue website, socials, and VK community id are loaded here. A vk.com
  * menu counts only when the website is empty and the community matches a
- * stored VK link or the declared id (ADR 0047).
+ * stored VK link or the declared id (ADR 0048).
  */
 export async function projectMenuPrices<T extends MenuColumn>(rows: T[], now = new Date()) {
   if (!rows.length) {

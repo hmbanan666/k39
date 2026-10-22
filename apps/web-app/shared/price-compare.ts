@@ -450,7 +450,7 @@ export interface MenuVenueLinks {
  * `venues.website` is empty and the price community matches a VK link in
  * `socials`. A `w=` or `z=` object is that owner, and the path name is
  * ignored. A section path such as `feed` is not a screen name.
- * `vkCommunityId` is the numeric id of a screen-name link (ADR 0047), so an
+ * `vkCommunityId` is the numeric id of a screen-name link (ADR 0048), so an
  * `album-<id>` or `wall-<id>` price matches `vk.com/<name>`.
  */
 function isComparableVkMenu(

@@ -1,4 +1,4 @@
-# ADR 0047: Declared VK community id for menu prices
+# ADR 0048: Declared VK community id for menu prices
 
 ## Status
 

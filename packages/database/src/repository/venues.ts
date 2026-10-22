@@ -44,7 +44,7 @@ export interface VenueWrite {
   phone?: string | null
   website?: string | null
   socials?: VenueSocial[]
-  /** Numeric VK community id for a screen-name link in socials (ADR 0047). Null clears it. */
+  /** Numeric VK community id for a screen-name link in socials (ADR 0048). Null clears it. */
   vkCommunityId?: number | string | null
   bookingUrl?: string | null
   orderUrl?: string | null
