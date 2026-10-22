@@ -98,7 +98,7 @@ The Insterburg return to ул. Крупской, 3А is not a second notice. The
 
 `text` and `address` go through the stop-list (`WRITING_STOP_LIST`, `WRITING_STOP_PATTERNS`, and `VENUE_COPY_RULES` for a venue). The notice schema also rejects, as whole words: пока, сейчас, скоро, временно, сегодня, завтра, вчера, на днях. The renderer prints the dates, so the text does not need a relative word. A clock (`H:MM` or `HH:MM`) and a ruble amount (`₽` or `руб`) are rejected. Hours stay on the schedule. Prices stay on the price rows. A year and a calendar date in the text are allowed.
 
-The source is official, as in `.cursor/skills/k39-sources-and-facts/SKILL.md` and `isOfficialUrl`:
+The source is official, as in `.agents/skills/k39-sources-and-facts/SKILL.md` and `isOfficialUrl`:
 
 - A place accepts only class `official`: a page on the site of the place, the museum, or the administration. A social URL, a map card, a file host, and an aggregator are rejected. Place hours do not come from a social account, and neither does this notice.
 - A venue accepts class `official`. It also accepts the venue's own official social account when that page is what states the notice and the site does not. The VK post on Insterburg is that case. The community match is the one ADR 0048 already uses for a wall id (`socials`, plus `vk_community_id` when the URL has only the number). The menu rule that VK counts only when `website` is empty does not apply here. When the site also states the notice, `source_url` is the site. A map card, OSM, a file host, and an aggregator are rejected. A temporary address is not filled in from a map.

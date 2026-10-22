@@ -38,6 +38,7 @@ catalogs:
     typescript: ^5.9.3
     vite: ^8.3.4
     vue-tsc: ^3.1.8
+    yaml: ^2.8.2
   integrations:
     '@iconify-json/tabler': ^1.2.27
     '@iconify/utils': ^3.1.4

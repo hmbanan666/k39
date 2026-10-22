@@ -40,7 +40,8 @@ packages/types      Zod schemas shared by the API
 docker/web-app      Dockerfile for the production image
 docs                Design system, ADRs, facts, roadmap and other guides
 scripts             Repository and git helper scripts
-.cursor             Agent skills and rules
+.agents/skills      Shared Agent Skills for Codex and Cursor
+.cursor             Cursor rules and cloud environment
 ```
 
 ## Getting started
@@ -101,7 +102,13 @@ Place text is markdown stored in the database. After the first boot, content cha
 - The **editor token** can publish and edit live content.
 - The **draft token** is for agents: its writes land as drafts or a pending review and it cannot publish.
 
-Writing rules, fact sources and the publish checklist live in the skills under `.cursor/skills/`.
+Writing rules, fact sources and the publish checklist live in the skills under `.agents/skills/`.
+
+This is the single skill directory for [Codex](https://developers.openai.com/codex/skills/) and [Cursor](https://cursor.com/docs/skills). Both discover project skills there. `AGENTS.md`, ADRs, and `k39-ui` take precedence over general `frontend-design` advice. Cursor keeps its scoped UI entry point in `.cursor/rules/frontend-design.mdc`; it reads the same `k39-ui` file.
+
+Run `pnpm run check:repo` to parse every skill's YAML frontmatter, validate its name and description, check local Markdown links and explicit resource/repository paths, and reject stale skill paths. It also checks concrete `.agents/skills/` references in repository text files. Placeholder paths such as `<name>` are excluded.
+
+To check discovery after a checkout or reload, open a new Codex session from the repo root (or `apps/web-app`) and check `/skills` for all seven project skills. In Cursor, open the repository and check Customize → Skills, or type `/k39-ui` in Agent chat. The metadata should resolve to `.agents/skills/`; no tool-specific copies or symlinks are needed.
 
 ## Deployment
 

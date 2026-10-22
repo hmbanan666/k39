@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
+import { skillErrors } from './check-skills.mjs'
 
 const root = process.cwd()
 const errors = []
@@ -275,6 +276,8 @@ if (isDirectRun()) {
   checkAdrs()
   checkMigrations()
   checkTrailers()
+  const files = execSync('git ls-files --cached --others --exclude-standard -z', { encoding: 'utf8' }).split('\0').filter(Boolean)
+  errors.push(...skillErrors(root, files))
 
   if (errors.length) {
     console.error(errors.join('\n'))

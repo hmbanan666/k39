@@ -1,6 +1,6 @@
 /**
  * Banned Russian copy. `writingGuideSection()` is what `content_guide` prints.
- * `.cursor/skills/k39-writing/SKILL.md` must contain every `phrase`.
+ * `.agents/skills/k39-writing/SKILL.md` must contain every `phrase`.
  * `apps/web-app/test/writing.test.ts` fails when the two diverge.
  * Saves call `writingHits` on prose. Official names skip the stop-list
  * (`writingSplit` in `shared/writing-split.ts`). Banned sites still apply
@@ -324,14 +324,14 @@ export function writingGuideSection() {
   return [
     'Tone: plain, specific, calm. Concrete facts, not adjectives. No slogans and no invented atmosphere.',
     '',
-    'Stop-list. Source of truth: apps/web-app/shared/writing.ts (WRITING_STOP_LIST, WRITING_STOP_PATTERNS, VENUE_COPY_RULES, WRITING_BANNED_SITES). content_guide prints this section. .cursor/skills/k39-writing/SKILL.md repeats every phrase. apps/web-app/test/writing.test.ts fails if a phrase is missing from either place. Do not add a ban in only one file.',
+    'Stop-list. Source of truth: apps/web-app/shared/writing.ts (WRITING_STOP_LIST, WRITING_STOP_PATTERNS, VENUE_COPY_RULES, WRITING_BANNED_SITES). content_guide prints this section. .agents/skills/k39-writing/SKILL.md repeats every phrase. apps/web-app/test/writing.test.ts fails if a phrase is missing from either place. Do not add a ban in only one file.',
     phrases,
     'Patterns:',
     patterns,
     'Venue prose (description, modules, FAQ, tips). Prices stay in the price blocks:',
     venue,
     `Never name ${sites}. Never paste another site's sentences, photos, or structure. Write from the sources, in our words.`,
-    'Do not pad a page to reach a length minimum. A longer ceiling is only the passport length override in .cursor/skills/k39-writing/SKILL.md (ADR 0034).',
+    'Do not pad a page to reach a length minimum. A longer ceiling is only the passport length override in .agents/skills/k39-writing/SKILL.md (ADR 0034).',
     'Inflected forms are a stem plus a closed list of endings, with a letter boundary on each side. A short stem does not match a longer word: самый does not match самовар, самолёт, or самостоятельно. The comparative лучше is not banned.',
     'A draft save returns writingWarnings and still stores the row. Publishing rejects when writingHits is not empty. The check reads the prose that renders, including collection module text. A venue name, a dish name, a source title, and a price-item name are official names: the stop-list and the venue price rules skip them. Banned sites still apply to those names and to every URL.',
   ].join('\n')

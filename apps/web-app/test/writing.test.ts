@@ -5,7 +5,7 @@ import { CONTENT_GUIDE } from '../server/utils/mcp/guide'
 import { writingGate } from '../server/utils/mcp/writing-guard'
 import { VENUE_COPY_RULES, WRITING_BANNED_SITES, WRITING_STOP_LIST, WRITING_STOP_PATTERNS, writingGuideSection, writingHits } from '../shared/writing'
 
-const skill = readFileSync(resolve(import.meta.dirname, '../../../.cursor/skills/k39-writing/SKILL.md'), 'utf8')
+const skill = readFileSync(resolve(import.meta.dirname, '../../../.agents/skills/k39-writing/SKILL.md'), 'utf8')
 
 describe('writing stop-list', () => {
   it('content_guide prints the shared section', () => {

@@ -81,11 +81,11 @@ Site search (ADR 0030) is Postgres full-text (`russian`) plus `pg_trgm` over the
 
 ## UI
 
-For any UI change, read `.cursor/skills/k39-ui/SKILL.md` first. It points at `.cursor/skills/frontend-design/SKILL.md` and holds the K39 precedence. That file is Anthropic's frontend-design skill, copied verbatim from https://github.com/anthropics/skills (`skills/frontend-design`), with its Apache-2.0 `LICENSE.txt` in the same folder. `.cursor/rules/frontend-design.mdc` points at `k39-ui` for Vue and CSS files.
+For any UI change, read `.agents/skills/k39-ui/SKILL.md` first. It points at `.agents/skills/frontend-design/SKILL.md` and holds the K39 precedence. That file is Anthropic's frontend-design skill, copied verbatim from https://github.com/anthropics/skills (`skills/frontend-design`), with its Apache-2.0 `LICENSE.txt` in the same folder. `.cursor/rules/frontend-design.mdc` points at `k39-ui` for Vue and CSS files.
 
 ## Skills
 
-Read the skill before the matching task. Files are `.cursor/skills/<name>/SKILL.md`. The writing stop-list has one source, `apps/web-app/shared/writing.ts`. `content_guide` prints it. Do not add a banned phrase only in a skill.
+Read the skill before the matching task. Files are `.agents/skills/<name>/SKILL.md`, the single project skill directory discovered by both Codex and Cursor. Do not keep copies in tool-specific skill directories. `AGENTS.md`, ADRs, and `k39-ui` take precedence over general `frontend-design` advice. Repository paths in skills are relative to the repository root; bundled resources are relative to the skill directory. `pnpm run check:repo` validates skill frontmatter and internal skill paths. The writing stop-list has one source, `apps/web-app/shared/writing.ts`. `content_guide` prints it. Do not add a banned phrase only in a skill.
 
 | Skill | When to use |
 | --- | --- |

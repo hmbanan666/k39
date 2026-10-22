@@ -1,7 +1,7 @@
 ---
-description: use for any UI change; read .cursor/skills/k39-ui/SKILL.md first
+description: use for any UI change; read .agents/skills/k39-ui/SKILL.md first
 globs: apps/web-app/**/*.vue,apps/web-app/**/*.css,**/*.css,apps/web-app/**/components/**
 alwaysApply: false
 ---
 
-Read `.cursor/skills/k39-ui/SKILL.md` before changing UI.
+Read `.agents/skills/k39-ui/SKILL.md` before changing UI.
