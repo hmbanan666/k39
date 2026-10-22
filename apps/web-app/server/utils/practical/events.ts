@@ -1,13 +1,14 @@
 import type { FactActor } from '../../../shared/facts'
+import type { OwnSocialLinks } from './sources'
 import type { PracticalTarget } from './target'
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { z } from 'zod'
 import { EVENT_TITLE_MAX, eventFormTiming, eventInstants } from '../../../shared/events'
-import { classifyMenuUrl } from '../../../shared/price-compare'
+import { localNow } from '../../../shared/schedule'
 import { commitFact, retireFactSlot } from '../facts/commit'
 import { rejectBannedSites } from '../mcp/writing-guard'
-import { eventSourceProblem, ticketUrlProblem } from './sources'
+import { eventSourceKind, eventSourceProblem, ticketUrlProblem } from './sources'
 import { refuseDraftLivePractical } from './target'
 
 export const eventInput = z.object({
@@ -32,7 +33,7 @@ function slotKey(id: string) {
   return `event:${id}`
 }
 
-export function normalizeEvent(input: EventInput, now = new Date()) {
+export function normalizeEvent(input: EventInput, own: OwnSocialLinks | null, now = new Date()) {
   const timing = eventInstants({ allDay: Boolean(input.allDay), startsAt: input.startsAt, endsAt: input.endsAt, startsOn: input.startsOn, endsOn: input.endsOn })
   if (typeof timing === 'string') {
     bad(timing)
@@ -41,12 +42,12 @@ export function normalizeEvent(input: EventInput, now = new Date()) {
   if (end.getTime() <= now.getTime()) {
     bad('Событие уже прошло')
   }
-  const problem = eventSourceProblem(input.sourceUrl) ?? ticketUrlProblem(input.ticketUrl)
+  const problem = eventSourceProblem(input.sourceUrl, own) ?? ticketUrlProblem(input.ticketUrl)
   if (problem) {
     bad(problem)
   }
-  if (input.checkedAt > now.toISOString().slice(0, 10)) {
-    bad('checkedAt — день проверки, не в будущем')
+  if (input.checkedAt > localNow(now).date) {
+    bad('checkedAt: день проверки, не в будущем')
   }
   return {
     title: input.title.trim(),
@@ -69,7 +70,7 @@ async function writeEventFact(target: PracticalTarget, row: { id: string, title:
     value: { title: row.title, start: new Date(row.startsAt).toISOString(), end: row.endsAt ? new Date(row.endsAt).toISOString() : null, ticketUrl: row.ticketUrl, allDay: row.allDay },
     sourceUrl: row.sourceUrl,
     sourceTitle: row.sourceTitle,
-    sourceKind: classifyMenuUrl(row.sourceUrl) === 'social' ? 'official_social' : 'official',
+    sourceKind: eventSourceKind(row.sourceUrl, target.own) ?? 'official',
     checkedAt: `${row.checkedAt}T00:00:00.000Z`,
     confidence: 'stated',
     actor,
@@ -108,7 +109,7 @@ export async function upsertEvent(target: PracticalTarget, input: { id?: string 
   if (!input.event) {
     bad('Нужны поля события')
   }
-  const row = normalizeEvent(input.event, now)
+  const row = normalizeEvent(input.event, target.own, now)
   rejectBannedSites(row)
   let saved
   if (input.id) {
@@ -161,7 +162,7 @@ export async function updateEventFact(target: PracticalTarget, slot: string, val
       ticketUrl: value.ticketUrl,
       sourceUrl: source.sourceUrl ?? current.sourceUrl,
       sourceTitle: source.sourceTitle ?? current.sourceTitle,
-      checkedAt: (source.checkedAt ?? new Date().toISOString()).slice(0, 10),
+      checkedAt: source.checkedAt?.slice(0, 10) ?? localNow(new Date()).date,
     },
   }, 'mcp')
 }

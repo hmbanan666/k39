@@ -1,3 +1,4 @@
+import type { OwnSocialLinks } from './sources'
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { refuseDraftLivePage } from '../mcp/draft'
@@ -10,6 +11,8 @@ export interface PracticalTarget {
   slug: string
   title: string
   status: string
+  /** The subject's own social links. Only a venue has them. */
+  own: OwnSocialLinks | null
 }
 
 const LIVE: Record<PracticalSubjectType, readonly string[]> = {
@@ -26,17 +29,17 @@ export async function practicalTarget(type: PracticalSubjectType, id?: string | 
   if (type === 'place') {
     const row = id ? await db.editor.placeById(id) : await db.editor.placeBySlug(slug || '')
     if (row) {
-      return { type, id: row.id, slug: row.slug, title: row.title, status: row.publicationStatus }
+      return { type, id: row.id, slug: row.slug, title: row.title, status: row.publicationStatus, own: null }
     }
   } else if (type === 'venue') {
     const row = id ? await db.venues.byId(id) : await db.venues.bySlug(slug || '')
     if (row) {
-      return { type, id: row.id, slug: row.slug, title: row.name, status: row.status }
+      return { type, id: row.id, slug: row.slug, title: row.name, status: row.status, own: { socials: row.socials, vkCommunityId: row.vkCommunityId } }
     }
   } else {
     const row = id ? await db.editor.routeById(id) : await db.editor.routeBySlug(slug || '')
     if (row) {
-      return { type, id: row.id, slug: row.slug, title: row.title, status: row.publicationStatus }
+      return { type, id: row.id, slug: row.slug, title: row.title, status: row.publicationStatus, own: null }
     }
   }
   throw createError({ statusCode: 404, statusMessage: 'Объект не найден' })
@@ -49,14 +52,4 @@ export function isLivePractical(target: Pick<PracticalTarget, 'type' | 'status'>
 /** Draft token on a live parent: 409, and nothing is stored as a pending draft. */
 export function refuseDraftLivePractical(target: Pick<PracticalTarget, 'type' | 'status'>, what: string) {
   refuseDraftLivePage(`edit ${what} of a published ${target.type}`, target.status, LIVE[target.type])
-}
-
-export function practicalHref(type: PracticalSubjectType, slug: string) {
-  if (type === 'venue') {
-    return `/zavedeniya/${slug}`
-  }
-  if (type === 'route') {
-    return `/marshruty/${slug}`
-  }
-  return `/${slug}`
 }

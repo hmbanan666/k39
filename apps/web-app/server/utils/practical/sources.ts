@@ -1,57 +1,53 @@
-import { classifyMenuUrl } from '../../../shared/price-compare'
+import { classifyOfficialUrl } from '@k39/types/official-url'
+import { vkMenuMatchesSocial } from '@k39/types/vk-community'
 
-/** Ticket sellers, listings, and travel sites. They are not the place's own page. */
-const TICKET_AGGREGATORS = [
-  'afisha.ru',
-  'kassir.ru',
-  'ticketland.ru',
-  'radario.ru',
-  'kassy.ru',
-  'culture.ru',
-  'kudago.com',
-  'tripadvisor.ru',
-  'tripadvisor.com',
-  'tripster.ru',
-  'sputnik8.com',
-  'izi.travel',
-  'tutu.ru',
-]
-
-function hostOf(url: string) {
-  try {
-    return new URL(url).hostname.toLowerCase().replace(/^www\./, '')
-  } catch {
-    return ''
-  }
-}
-
-export function isTicketAggregator(url: string | null | undefined) {
-  const host = hostOf(url || '')
-  return Boolean(host) && TICKET_AGGREGATORS.some((site) => host === site || host.endsWith(`.${site}`))
+/** The subject's own social links. Places have none, so a place event needs its official site. */
+export interface OwnSocialLinks {
+  socials: ReadonlyArray<{ url: string }>
+  vkCommunityId?: number | null
 }
 
 /**
  * The official site of the place, the museum, or the administration.
- * A map card, an aggregator, a social page, and a document host are refused.
+ * A map card, a listing or ticket seller, a social page, and a document host are refused.
  */
 export function admissionSourceProblem(url: string | null | undefined): string | null {
-  const kind = classifyMenuUrl(url)
+  const kind = classifyOfficialUrl(url)
   if (kind === 'invalid') {
     return 'Источник цены билета: нужна ссылка http(s)'
   }
-  if (kind !== 'menu' || isTicketAggregator(url)) {
+  if (kind !== 'official') {
     return 'Источник цены билета: только официальный сайт места, музея или администрации. Карты, агрегаторы, соцсети и документы на Диске не подходят'
   }
   return null
 }
 
-/** The official page of the place or its own social page. A listing site is not the source. */
-export function eventSourceProblem(url: string) {
-  const kind = classifyMenuUrl(url)
-  if ((kind !== 'menu' && kind !== 'social') || isTicketAggregator(url)) {
-    return 'Источник события: официальный сайт или официальная страница места. Афиша-агрегатор, карта и документ на Диске не подходят'
+/**
+ * `official` for a page on the subject's own site. `official_social` for the
+ * subject's own VK page, matched against its `socials` and `vkCommunityId` by
+ * the same rule as a VK menu price. Anything else is null.
+ */
+export function eventSourceKind(url: string, own: OwnSocialLinks | null): 'official' | 'official_social' | null {
+  const kind = classifyOfficialUrl(url)
+  if (kind === 'official') {
+    return 'official'
+  }
+  if (kind === 'social' && own && vkMenuMatchesSocial(url, own.socials, own.vkCommunityId)) {
+    return 'official_social'
   }
   return null
+}
+
+export function eventSourceProblem(url: string, own: OwnSocialLinks | null) {
+  if (eventSourceKind(url, own)) {
+    return null
+  }
+  if (classifyOfficialUrl(url) === 'social') {
+    return own
+      ? 'Источник события: страница VK из «Соцсетей» этого заведения. Чужая или не указанная соцсеть не подходит'
+      : 'Источник события: официальный сайт места. У места нет соцсетей в карточке'
+  }
+  return 'Источник события: официальный сайт или официальная страница VK заведения. Афиша-агрегатор, карта и документ на Диске не подходят'
 }
 
 export function ticketUrlProblem(url: string | null | undefined) {
@@ -61,7 +57,7 @@ export function ticketUrlProblem(url: string | null | undefined) {
   if (!url.startsWith('https://')) {
     return 'ticketUrl: только https'
   }
-  const kind = classifyMenuUrl(url)
+  const kind = classifyOfficialUrl(url)
   if (kind === 'map' || kind === 'invalid') {
     return 'ticketUrl: ссылка на продавца билетов, на которого ссылается официальная страница'
   }

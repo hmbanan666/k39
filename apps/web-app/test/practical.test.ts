@@ -1,8 +1,10 @@
 import type { AdmissionRow } from '../shared/admission'
 import type { ScoreSource } from '../shared/scoring'
+import { classifyOfficialUrl } from '@k39/types/official-url'
 import { describe, expect, it } from 'vitest'
 import TicketsFact from '../app/components/TicketsFact.vue'
 import UpcomingEvents from '../app/components/UpcomingEvents.vue'
+import { admissionSourceProblem, eventSourceKind, eventSourceProblem, ticketUrlProblem } from '../server/utils/practical/sources'
 import { ADMISSION_UNKNOWN, admissionFree, admissionOffers, admissionRowProblem, admissionView } from '../shared/admission'
 import { eventFormTiming, eventInstants, eventLine, eventUpcoming } from '../shared/events'
 import { guideFacts } from '../shared/place-guide'
@@ -95,6 +97,50 @@ describe('admission rows', () => {
       'url': 'https://museum.example/tickets',
       'description': 'пенсионеры',
     }])
+  })
+})
+
+describe('ticket and event sources', () => {
+  const own = { socials: [{ url: 'https://vk.com/cafe_own' }], vkCommunityId: 123 }
+
+  it('classifies ticket sellers and listings as aggregators', () => {
+    for (const url of [
+      'https://kaliningrad.kassir.ru/teatr/1',
+      'https://www.ticketland.ru/concert/1',
+      'https://radario.ru/events/1',
+      'https://kaliningrad.kassy.ru/events/1',
+      'https://www.culture.ru/events/1',
+      'https://izi.travel/ru/1',
+      'https://www.afisha.ru/concert/1',
+    ]) {
+      expect(classifyOfficialUrl(url)).toBe('aggregator')
+    }
+  })
+
+  it('takes admission only from the official site', () => {
+    expect(admissionSourceProblem('https://museum.example/tickets')).toBeNull()
+    for (const url of ['https://radario.ru/events/1', 'https://vk.com/museum', 'https://yandex.ru/maps/org/1', 'https://disk.yandex.ru/i/1']) {
+      expect(admissionSourceProblem(url)).toContain('только официальный сайт')
+    }
+    expect(admissionSourceProblem('ftp://museum.example')).toContain('http(s)')
+  })
+
+  it('takes an event from the official site or the venue\'s own VK', () => {
+    expect(eventSourceKind('https://museum.example/afisha', null)).toBe('official')
+    expect(eventSourceKind('https://vk.com/cafe_own?w=wall-123_45', own)).toBe('official_social')
+    expect(eventSourceKind('https://vk.com/wall-123_46', own)).toBe('official_social')
+    expect(eventSourceKind('https://vk.com/other_cafe', own)).toBeNull()
+    expect(eventSourceKind('https://vk.com/cafe_own', null)).toBeNull()
+    expect(eventSourceKind('https://ticketland.ru/concert/1', own)).toBeNull()
+    expect(eventSourceProblem('https://vk.com/other_cafe', own)).toContain('«Соцсетей» этого заведения')
+    expect(eventSourceProblem('https://vk.com/museum', null)).toContain('У места нет соцсетей')
+    expect(eventSourceProblem('https://kassir.ru/1', own)).toContain('Афиша-агрегатор')
+  })
+
+  it('lets a ticket link point at a seller but not at a map', () => {
+    expect(ticketUrlProblem('https://kaliningrad.kassir.ru/teatr/1')).toBeNull()
+    expect(ticketUrlProblem('http://kassir.ru/1')).toContain('https')
+    expect(ticketUrlProblem('https://yandex.ru/maps/org/1')).toContain('продавца')
   })
 })
 

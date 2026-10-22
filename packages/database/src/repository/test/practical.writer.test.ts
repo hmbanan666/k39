@@ -57,8 +57,8 @@ async function place(slug: string, publicationStatus: 'draft' | 'review' | 'publ
   return practicalTarget('place', saved.id)
 }
 
-async function venue(slug: string, status: VenueStatus) {
-  const [saved] = await useDatabase().insert(venues).values({ slug, name: `Кафе ${slug}`, kind: 'cafe', description: 'Короткое описание.', status }).returning()
+async function venue(slug: string, status: VenueStatus, social: { socials?: Array<{ network: 'vk', url: string }>, vkCommunityId?: number } = {}) {
+  const [saved] = await useDatabase().insert(venues).values({ slug, name: `Кафе ${slug}`, kind: 'cafe', description: 'Короткое описание.', status, ...social }).returning()
   venueIds.push(saved!.id)
   return practicalTarget('venue', saved!.id)
 }
@@ -198,6 +198,25 @@ describe('event writer', () => {
     expect(await status(upsertEvent(target, { event: { title: 'http', startsAt: `${inDays(3)}T19:00`, ticketUrl: 'http://tickets.example/1', ...SOURCE } }, 'mcp'))).toBe(400)
     const liveRoute = await route('practical-events-route', 'draft')
     expect(await status(upsertEvent(liveRoute, { event: { title: 'Маршрут', startsAt: `${inDays(3)}T19:00`, ...SOURCE } }, 'mcp'))).toBe(400)
+  })
+
+  it('takes a VK post as official_social only from the venue\'s own VK', async () => {
+    const own = await venue('practical-events-vk', 'draft', { socials: [{ network: 'vk', url: 'https://vk.com/cafe_own' }], vkCommunityId: 123 })
+    const post = (url: string) => upsertEvent(own, { event: { title: 'Джаз', startsAt: `${inDays(4)}T19:00`, ...SOURCE, sourceUrl: url } }, 'mcp')
+    const byName = await post('https://vk.com/cafe_own?w=wall-123_45')
+    expect((await Facts.liveSlot('venue', own.id, `event:${byName.event!.id}`))?.sourceKind).toBe('official_social')
+    const byId = await post('https://vk.com/wall-123_46')
+    expect((await Facts.liveSlot('venue', own.id, `event:${byId.event!.id}`))?.sourceKind).toBe('official_social')
+    expect(await status(post('https://vk.com/other_cafe'))).toBe(400)
+    expect(await status(post('https://t.me/cafe_own'))).toBe(400)
+
+    const bare = await venue('practical-events-no-socials', 'draft')
+    expect(await status(upsertEvent(bare, { event: { title: 'Джаз', startsAt: `${inDays(4)}T19:00`, ...SOURCE, sourceUrl: 'https://vk.com/cafe_own' } }, 'mcp'))).toBe(400)
+
+    const museum = await place('practical-events-place-vk')
+    expect(await status(upsertEvent(museum, { event: { title: 'Лекция', startsAt: `${inDays(4)}T19:00`, ...SOURCE, sourceUrl: 'https://vk.com/museum' } }, 'mcp'))).toBe(400)
+    const site = await upsertEvent(museum, { event: { title: 'Лекция', startsAt: `${inDays(4)}T19:00`, ...SOURCE, sourceUrl: 'https://museum.example/afisha/lecture' } }, 'mcp')
+    expect((await Facts.liveSlot('place', museum.id, `event:${site.event!.id}`))?.sourceKind).toBe('official')
   })
 
   it('refuses the draft token on a live place or venue', async () => {
