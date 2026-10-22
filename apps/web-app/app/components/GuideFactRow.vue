@@ -8,30 +8,21 @@
       <p class="label">
         {{ row.label }}
       </p>
+      <PhoneLinks
+        v-if="row.phones"
+        :phones="row.phones"
+      />
       <p
-        v-if="row.links"
-        class="links"
+        v-else-if="row.href"
+        class="site"
       >
-        <template
-          v-for="(link, index) in row.links"
-          :key="`${link.href}-${index}`"
+        <UiLink
+          :href="row.href"
+          data-track="outbound"
+          data-track-name="website"
         >
-          <a
-            v-if="link.href.startsWith('tel:')"
-            :href="link.href"
-            data-track="outbound"
-            data-track-name="phone"
-          >{{ link.text }}</a>
-          <UiLink
-            v-else-if="link.href"
-            :href="link.href"
-            data-track="outbound"
-            data-track-name="website"
-          >
-            {{ link.text }}
-          </UiLink>
-          <span v-else>{{ link.text }}</span>
-        </template>
+          {{ row.value }}
+        </UiLink>
       </p>
       <p v-else>
         {{ row.value }}
@@ -44,7 +35,7 @@
 import type { GuideFact } from '~~/shared/place-guide'
 import { tablerIcon } from '~~/shared/icons'
 
-defineProps<{ row: Pick<GuideFact, 'label' | 'value' | 'links'> & { key: GuideFact['key'] | 'address' } }>()
+defineProps<{ row: Pick<GuideFact, 'label' | 'value' | 'phones' | 'href'> & { key: GuideFact['key'] | 'address' } }>()
 </script>
 
 <style scoped>
@@ -72,12 +63,6 @@ defineProps<{ row: Pick<GuideFact, 'label' | 'value' | 'links'> & { key: GuideFa
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.fact a { font-weight: 600; }
-.links {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  overflow-wrap: anywhere;
-}
+.fact :deep(a) { font-weight: 600; }
+.site { overflow-wrap: anywhere; }
 </style>

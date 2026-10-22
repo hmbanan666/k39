@@ -1,3 +1,4 @@
+import type { ParsedPhone } from './phone'
 import type { ScheduleRecord, ScheduleRules } from './schedule'
 import { nextClosureFact } from './opening-hours'
 import { parsePhones } from './phone'
@@ -19,18 +20,14 @@ export function russianDay(iso: string | null | undefined) {
   return `${day} ${month} ${match[1]}`
 }
 
-export interface GuideLink {
-  text: string
-  /** `tel:` or the official site. Empty for a fragment that is not a full number. */
-  href: string
-}
-
 export interface GuideFact {
   key: 'duration' | 'season' | 'hours' | 'closed' | 'price' | 'phone' | 'website'
   label: string
   value: string
-  /** Set for phone and website rows. The row renders these instead of `value`. */
-  links?: GuideLink[]
+  /** The phone row: `parsePhones` output, rendered by `PhoneLinks`. */
+  phones?: ParsedPhone[]
+  /** The website row: the official site. `value` is its label. */
+  href?: string
 }
 
 // The answer block rows, in reading order. Empty fields drop out, so the block can vanish.
@@ -44,8 +41,7 @@ function phoneRow(phone: string | null | undefined): GuideFact[] {
   if (!items.length) {
     return []
   }
-  const links = items.map((item) => ({ text: item.display, href: item.e164 ? `tel:${item.e164}` : '' }))
-  return [{ key: 'phone', label: 'Телефон', value: links.map((link) => link.text).join('; '), links }]
+  return [{ key: 'phone', label: 'Телефон', value: items.map((item) => item.display).join('; '), phones: items }]
 }
 
 /** Host and path for the «Сайт» row, without the scheme and `www.`. */
@@ -64,8 +60,7 @@ function websiteRow(website: string | null | undefined): GuideFact[] {
   if (!/^https?:\/\//.test(url)) {
     return []
   }
-  const text = websiteLabel(url)
-  return [{ key: 'website', label: 'Сайт', value: text, links: [{ text, href: url }] }]
+  return [{ key: 'website', label: 'Сайт', value: websiteLabel(url), href: url }]
 }
 
 export function guideFacts(place: {

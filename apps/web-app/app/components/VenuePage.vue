@@ -175,23 +175,10 @@
                 <p class="label">
                   {{ row.label }}
                 </p>
-                <p
+                <PhoneLinks
                   v-if="row.key === 'phone'"
-                  class="phones"
-                >
-                  <template
-                    v-for="(item, index) in phones"
-                    :key="`${item.e164}-${index}`"
-                  >
-                    <a
-                      v-if="item.e164"
-                      :href="`tel:${item.e164}`"
-                      data-track="outbound"
-                      data-track-name="phone"
-                    >{{ item.display }}</a>
-                    <span v-else>{{ item.display }}</span>
-                  </template>
-                </p>
+                  :phones="phones"
+                />
                 <p
                   v-for="line in row.lines"
                   v-else
@@ -667,12 +654,6 @@ function openPhoto(id: string) {
 }
 .fact svg { width: 22px; height: 22px; margin-top: 0.15rem; color: var(--color-brick); }
 .fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
-.phones {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-}
 .fact .label {
   margin-bottom: 0.2rem;
   color: var(--muted);
