@@ -65,4 +65,32 @@ describe('collection_get', () => {
     expect(plain.updatedBy).toBeNull()
     expect(plain.items).toEqual([])
   })
+
+  it('lists module fields when modules are the article', () => {
+    const row = {
+      id: 'col-october',
+      createdAt: '2026-10-01T00:00:00.000Z',
+      updatedAt: '2026-10-13T00:00:00.000Z',
+      slug: 'oktyabr',
+      title: 'Октябрь в области',
+      summary: 'Что открыто в октябре',
+      body: 'Старый текст, которого нет в модулях.',
+      seoTitle: 'Октябрь',
+      seoDescription: 'Короткое описание',
+      ogImage: '/media/october.jpg',
+      publicationStatus: 'published',
+      noindex: false,
+      firstPublishedAt: '2026-10-01T00:00:00.000Z',
+      updatedBy: 'user-1',
+      kind: 'month',
+      month: 10,
+      sources: [{ title: 'Калининградстат', url: 'https://example.com/october' }],
+      modules: [{ type: 'text' as const, variant: 'lead' as const, text: 'Лид модульной страницы.' }],
+    } satisfies Collection
+    const view = collectionView(row, [])
+    expect(view.article).toBe('modules')
+    expect(view.body).toBe(row.body)
+    expect(view.renderedFields).toContain('modules')
+    expect(view.renderedFields).not.toContain('body')
+  })
 })

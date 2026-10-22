@@ -1,5 +1,6 @@
 // Lives in the database suite so it uses that Postgres.
-// Typechecked from apps/web-app/tsconfig.writer-test.json. This package's tsc excludes the file.
+// The .writer.test.ts suffix is the typecheck rule: this package's tsc
+// excludes it, and scripts/typecheck-writer.mjs includes every match.
 import { Buffer } from 'node:buffer'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
