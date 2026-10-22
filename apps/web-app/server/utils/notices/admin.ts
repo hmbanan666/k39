@@ -7,7 +7,8 @@ import { NOTICE_SUBJECT_TYPES } from '../../../shared/notices'
 import { formatDraftUpdated } from '../../../shared/place-draft-diff'
 import { requireEditor, withContentScope } from '../access'
 import { setPublication } from '../mcp/publish'
-import { noticeDraftChange, noticesView, noticeTarget } from './write'
+import { practicalTarget } from '../practical/target'
+import { noticeDraftChange, noticesView } from './write'
 
 /** The admin subject from `/api/admin/notices/{type}/{id}`. Editors only. */
 export async function adminNoticeTarget(event: H3Event) {
@@ -16,7 +17,7 @@ export async function adminNoticeTarget(event: H3Event) {
   if (!NOTICE_SUBJECT_TYPES.includes(type)) {
     throw createError({ statusCode: 404, statusMessage: 'Неизвестный тип' })
   }
-  return noticeTarget(type, getRouterParam(event, 'id'))
+  return practicalTarget(type, getRouterParam(event, 'id'))
 }
 
 /**
@@ -47,20 +48,33 @@ export async function adminNoticesView(target: Awaited<ReturnType<typeof adminNo
   }
 }
 
-/** Apply or discard a venue's staged notices. A place uses its own draft route. */
-export async function decideVenueNoticeDraft(target: Awaited<ReturnType<typeof adminNoticeTarget>>, action: unknown) {
+/**
+ * Apply or discard a venue's staged notices. A place uses its own draft route.
+ * `updatedAt` is the draft the editor saw: a newer draft is 409 for both
+ * actions, and discard deletes only that row in one statement, as apply
+ * locks only that row.
+ */
+export async function decideVenueNoticeDraft(target: Awaited<ReturnType<typeof adminNoticeTarget>>, action: unknown, updatedAt: unknown) {
   if (target.type !== 'venue') {
     throw createError({ statusCode: 400, statusMessage: 'Черновик места применяется в форме места' })
+  }
+  if (action !== 'apply' && action !== 'discard') {
+    throw createError({ statusCode: 400, statusMessage: 'Нужно действие: применить или отбросить' })
+  }
+  const pending = await db.editor.contentDraft('venue', target.id)
+  if (!pending) {
+    throw createError({ statusCode: 409, statusMessage: 'Черновика нет' })
+  }
+  const changed = createError({ statusCode: 409, statusMessage: 'Черновик изменился. Обновите страницу и проверьте его снова.' })
+  if (typeof updatedAt !== 'string' || updatedAt !== pending.updatedAt) {
+    throw changed
   }
   if (action === 'apply') {
     return withContentScope('editor', () => setPublication({ entity: 'venue', id: target.id, publicationStatus: 'published' }))
   }
-  if (action === 'discard') {
-    if (!await db.editor.contentDraft('venue', target.id)) {
-      throw createError({ statusCode: 409, statusMessage: 'Черновика нет' })
-    }
-    await db.editor.deleteContentDraft('venue', target.id)
-    return { discarded: true as const }
+  const dropped = await db.editor.transaction((tx) => db.editor.deleteContentDraftIfUnchanged(pending.id, updatedAt, tx))
+  if (!dropped) {
+    throw changed
   }
-  throw createError({ statusCode: 400, statusMessage: 'Нужно действие: применить или отбросить' })
+  return { discarded: true as const }
 }

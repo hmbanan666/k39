@@ -1,3 +1,4 @@
+import { isCalendarDate } from '@k39/types/zone'
 import { russianDay } from './place-guide'
 import { addDays, localNow, zonedTime } from './schedule'
 
@@ -8,7 +9,6 @@ export const EVENT_SUBJECT_PAGE_LIMIT = 8
 export const EVENT_MEMBER_PAGE_LIMIT = 12
 
 const LOCAL_CLOCK = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/
-const LOCAL_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 export interface EventTiming {
   allDay: boolean
@@ -18,10 +18,6 @@ export interface EventTiming {
   /** `YYYY-MM-DD` for a date-only event. */
   startsOn?: string | null
   endsOn?: string | null
-}
-
-function realDay(value: string) {
-  return LOCAL_DAY.test(value) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value
 }
 
 /**
@@ -36,7 +32,7 @@ export function eventInstants(input: EventTiming): { startsAt: Date, endsAt: Dat
     }
     const startsOn = input.startsOn?.trim() || ''
     const endsOn = input.endsOn?.trim() || ''
-    if (!realDay(startsOn) || (endsOn && !realDay(endsOn))) {
+    if (!isCalendarDate(startsOn) || (endsOn && !isCalendarDate(endsOn))) {
       return 'Дата события: YYYY-MM-DD'
     }
     if (endsOn && endsOn < startsOn) {
@@ -48,7 +44,7 @@ export function eventInstants(input: EventTiming): { startsAt: Date, endsAt: Dat
     return 'Событие со временем: startsAt и endsAt (YYYY-MM-DDTHH:mm, время Калининграда)'
   }
   const start = LOCAL_CLOCK.exec(input.startsAt?.trim() || '')
-  if (!start || !realDay(start[1]!) || !validClock(start[2]!)) {
+  if (!start || !isCalendarDate(start[1]!) || !validClock(start[2]!)) {
     return 'Начало события: YYYY-MM-DDTHH:mm, время Калининграда'
   }
   const startsAt = zonedTime(start[1]!, start[2]!)
@@ -56,7 +52,7 @@ export function eventInstants(input: EventTiming): { startsAt: Date, endsAt: Dat
     return { startsAt, endsAt: null }
   }
   const end = LOCAL_CLOCK.exec(input.endsAt.trim())
-  if (!end || !realDay(end[1]!) || !validClock(end[2]!)) {
+  if (!end || !isCalendarDate(end[1]!) || !validClock(end[2]!)) {
     return 'Конец события: YYYY-MM-DDTHH:mm, время Калининграда'
   }
   const endsAt = zonedTime(end[1]!, end[2]!)

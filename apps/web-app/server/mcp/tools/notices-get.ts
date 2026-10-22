@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { NOTICE_SUBJECT_TYPES } from '../../../shared/notices'
 import { auditMcp } from '../../utils/mcp/audit'
-import { noticesView, noticeTarget } from '../../utils/notices/write'
+import { noticesView } from '../../utils/notices/write'
+import { practicalTarget } from '../../utils/practical/target'
 
 export default defineMcpTool({
   name: 'notices_get',
@@ -13,7 +14,7 @@ export default defineMcpTool({
     slug: z.string().optional(),
   },
   handler: async ({ subjectType, id, slug }) => {
-    const target = await noticeTarget(subjectType, id, slug)
+    const target = await practicalTarget(subjectType, id, slug)
     const view = await noticesView(target)
     await auditMcp('notices_get', target.type, target.id)
     return { subjectType: target.type, id: target.id, slug: target.slug, status: target.status, ...view }

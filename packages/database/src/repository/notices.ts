@@ -32,7 +32,7 @@ export interface NoticeListFilter {
 const ORDER = [asc(notices.startsOn), asc(notices.createdAt)]
 
 /** Keys a notices write adds to a pending `content_drafts` payload. */
-const STAGED_KEYS = new Set(['notices', 'noticesStagedAt'])
+export const NOTICE_DRAFT_KEYS: readonly string[] = ['notices', 'noticesStagedAt']
 
 export class Notices {
   static async forSubject(subjectType: NoticeSubjectType, subjectId: string, tx?: ContentTx) {
@@ -141,7 +141,7 @@ export class Notices {
         return null
       }
       const saved = await Notices.replace(subjectType, subjectId, rows, tx)
-      const rest = Object.fromEntries(Object.entries(draft.payload).filter(([key]) => !STAGED_KEYS.has(key)))
+      const rest = Object.fromEntries(Object.entries(draft.payload).filter(([key]) => !NOTICE_DRAFT_KEYS.includes(key)))
       if (Object.keys(rest).length) {
         await tx.update(contentDrafts).set({ payload: rest, updatedAt: new Date().toISOString() }).where(eq(contentDrafts.id, draft.id))
       } else {

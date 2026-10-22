@@ -1,7 +1,8 @@
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { saveQuestContent } from '../content/save'
-import { applyStagedNotices, noticeTarget, onlyNoticesStaged, stagedNotices, toNoticeValue } from '../notices/write'
+import { applyStagedNotices, onlyNoticesStaged, stagedNotices, toNoticeValue } from '../notices/write'
+import { practicalTarget } from '../practical/target'
 import { auditMcp } from './audit'
 import { saveCollectionDraft } from './collections'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
@@ -82,7 +83,7 @@ export async function setPublication(input: { entity: PublicationEntity } & Publ
  * closed venue stays closed. Today the payload can hold only `notices`.
  */
 async function applyVenueDraft(input: PublicationInput) {
-  const target = await noticeTarget('venue', input.id, input.slug)
+  const target = await practicalTarget('venue', input.id, input.slug)
   if (input.publicationStatus !== 'published') {
     throw createError({ statusCode: 400, statusMessage: 'Для заведения применяется только published' })
   }

@@ -25,9 +25,10 @@ export function admissionSourceProblem(url: string | null | undefined): string |
 /**
  * `official` for a page on the subject's own site. `official_social` for the
  * subject's own VK page, matched against its `socials` and `vkCommunityId` by
- * the same rule as a VK menu price. Anything else is null.
+ * the same rule as a VK menu price. Anything else is null. The one source rule
+ * for events (ADR 0046) and notices (ADR 0049); only their messages differ.
  */
-export function eventSourceKind(url: string, own: OwnSocialLinks | null): 'official' | 'official_social' | null {
+export function ownOfficialSourceKind(url: string, own: OwnSocialLinks | null): 'official' | 'official_social' | null {
   const kind = classifyOfficialUrl(url)
   if (kind === 'official') {
     return 'official'
@@ -39,7 +40,7 @@ export function eventSourceKind(url: string, own: OwnSocialLinks | null): 'offic
 }
 
 export function eventSourceProblem(url: string, own: OwnSocialLinks | null) {
-  if (eventSourceKind(url, own)) {
+  if (ownOfficialSourceKind(url, own)) {
     return null
   }
   if (classifyOfficialUrl(url) === 'social') {

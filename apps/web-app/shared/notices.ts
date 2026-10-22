@@ -1,7 +1,8 @@
 import type { Availability, ScheduleRules } from './schedule'
+import { addDays, isCalendarDate, localNow } from '@k39/types/zone'
 import { z } from 'zod'
 import { russianDay } from './place-guide'
-import { availabilityText, localNow, statusFromRules } from './schedule'
+import { availabilityText, statusFromRules } from './schedule'
 
 // Dated temporary notices on a place or a venue (ADR 0049). One row is one
 // dated statement. It is not a fact and not a schedule: the page compares
@@ -20,15 +21,7 @@ export const NOTICE_SOURCE_TITLE_MAX = 160
 /** An open-ended row checked longer ago than this is `needsCheck` in `notices_list`. */
 export const NOTICE_RECHECK_DAYS = 30
 
-/** Chrome, not stored text. `other` has no label. */
-export const NOTICE_KIND_LABEL: Record<NoticeKind, string> = {
-  closed: 'Закрыто',
-  renovation: 'Реконструкция',
-  relocation: 'Другой адрес',
-  other: '',
-}
-
-/** Admin and MCP names for each kind. */
+/** The name of each kind: chrome, not stored text. */
 export const NOTICE_KIND_TITLE: Record<NoticeKind, string> = {
   relocation: 'Другой адрес',
   closed: 'Закрыто',
@@ -36,17 +29,15 @@ export const NOTICE_KIND_TITLE: Record<NoticeKind, string> = {
   other: 'Другое',
 }
 
-const KIND_ORDER: NoticeKind[] = ['closed', 'renovation', 'relocation', 'other']
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-
-function isCalendarDate(value: string) {
-  if (!ISO_DATE.test(value)) {
-    return false
-  }
-  const parsed = new Date(`${value}T00:00:00Z`)
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+/**
+ * The page label before the text. `other` prints none: its text carries the
+ * whole statement, and «Другое» says nothing to a visitor.
+ */
+export function noticePageLabel(kind: NoticeKind) {
+  return kind === 'other' ? null : NOTICE_KIND_TITLE[kind]
 }
+
+const KIND_ORDER: NoticeKind[] = ['closed', 'renovation', 'relocation', 'other']
 
 const calendarDate = z.string().trim().refine(isCalendarDate, 'Дата в виде ГГГГ-ММ-ДД')
 
@@ -268,7 +259,7 @@ export function visibleNotices<T extends NoticeWindow & { text: string, address:
 export function noticeLines(notice: Pick<PublicNotice, 'kind' | 'from' | 'to' | 'text' | 'address'>) {
   return {
     dates: noticeDateLine(notice),
-    label: NOTICE_KIND_LABEL[notice.kind],
+    label: noticePageLabel(notice.kind),
     text: notice.text,
     address: notice.kind === 'relocation' ? notice.address : null,
   }
@@ -323,7 +314,7 @@ export function liveStatus(
 /** «Закрыто с 1 ноября 2026 по 13 ноября 2026» during a closed notice. */
 export function liveStatusText(value: LiveAvailability, at: Date) {
   if (value.notice) {
-    return `${NOTICE_KIND_LABEL.closed} ${noticeDateLine(value.notice)}`
+    return `${NOTICE_KIND_TITLE.closed} ${noticeDateLine(value.notice)}`
   }
   return availabilityText(value, at)
 }
@@ -333,7 +324,5 @@ export function noticeNeedsCheck(row: { to: string | null, checkedAt: string }, 
   if (row.to) {
     return false
   }
-  const checked = new Date(`${row.checkedAt}T00:00:00Z`).getTime()
-  const now = new Date(`${today}T00:00:00Z`).getTime()
-  return now - checked > NOTICE_RECHECK_DAYS * 24 * 60 * 60 * 1000
+  return row.checkedAt < addDays(today, -NOTICE_RECHECK_DAYS)
 }

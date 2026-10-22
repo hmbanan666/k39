@@ -36,7 +36,7 @@
     <GuideFactRow
       v-for="line in lines"
       :key="line.key"
-      :row="{ key: `notice-${line.kind}`, label: line.label || 'На эти даты' }"
+      :row="{ key: `notice-${line.kind}`, label: line.label ?? 'На эти даты' }"
     >
       <p
         v-if="line.address"

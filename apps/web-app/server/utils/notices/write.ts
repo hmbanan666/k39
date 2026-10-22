@@ -1,9 +1,8 @@
 import type { ContentTx, NoticeRow, NoticeWrite } from '@k39/database'
 import type { NoticeSubjectType, NoticeValue } from '../../../shared/notices'
 import type { ContentScope } from '../access'
-import { db } from '@k39/database'
-import { classifyOfficialUrl } from '@k39/types/official-url'
-import { vkMenuMatchesSocial } from '@k39/types/vk-community'
+import type { PracticalTarget } from '../practical/target'
+import { db, NOTICE_DRAFT_KEYS } from '@k39/database'
 import { createError } from 'h3'
 import { normalizeNotice, NoticeInputError, noticeListSchema, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeSummary, noticeToday } from '../../../shared/notices'
 import { contentScope } from '../access'
@@ -11,17 +10,10 @@ import { writeWithCheckedDraft } from '../content/pending-guard'
 import { contentWarnings, savePendingDraftContent } from '../content/save'
 import { auditMcp } from '../mcp/audit'
 import { rejectBannedSites } from '../mcp/writing-guard'
+import { ownOfficialSourceKind } from '../practical/sources'
+import { isLivePractical, practicalTarget } from '../practical/target'
 
-export interface NoticeTarget {
-  type: NoticeSubjectType
-  id: string
-  slug: string
-  title: string
-  /** `publication_status` of a place, `status` of a venue. */
-  status: string
-  socials: Array<{ url: string }>
-  vkCommunityId: number | null
-}
+export type NoticeTarget = PracticalTarget<NoticeSubjectType>
 
 /** Statuses whose page is public. A notice there passes the publish gate. */
 const PUBLIC: Record<NoticeSubjectType, readonly string[]> = {
@@ -29,42 +21,12 @@ const PUBLIC: Record<NoticeSubjectType, readonly string[]> = {
   venue: ['published', 'closed'],
 }
 
-/** Statuses where a draft-token write is staged instead of written live. */
-const LIVE: Record<NoticeSubjectType, readonly string[]> = {
-  place: ['published', 'archived'],
-  venue: ['published', 'closed'],
-}
-
-export async function noticeTarget(type: NoticeSubjectType, id?: string | null, slug?: string | null): Promise<NoticeTarget> {
-  if (!id && !slug) {
-    throw createError({ statusCode: 400, statusMessage: 'Нужен id или slug' })
-  }
-  if (type === 'place') {
-    const row = id ? await db.editor.placeById(id) : await db.editor.placeBySlug(slug || '')
-    if (row) {
-      return { type, id: row.id, slug: row.slug, title: row.title, status: row.publicationStatus, socials: [], vkCommunityId: null }
-    }
-    throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
-  }
-  const row = id ? await db.venues.byId(id) : await db.venues.bySlug(slug || '')
-  if (row) {
-    return { type, id: row.id, slug: row.slug, title: row.name, status: row.status, socials: row.socials ?? [], vkCommunityId: row.vkCommunityId }
-  }
-  throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
-}
-
 /**
  * A place takes only its own official site. A venue also takes its own VK
- * community when that page states the notice, matched the ADR 0048 way:
- * `socials`, plus `vk_community_id` for a numeric wall URL. The VK menu rule
- * that needs an empty website does not apply here.
+ * community from `socials`, the same rule as an event source.
  */
-export function noticeSourceProblem(target: Pick<NoticeTarget, 'type' | 'socials' | 'vkCommunityId'>, url: string) {
-  const kind = classifyOfficialUrl(url)
-  if (kind === 'official') {
-    return null
-  }
-  if (target.type === 'venue' && kind === 'social' && vkMenuMatchesSocial(url, target.socials, target.vkCommunityId)) {
+export function noticeSourceProblem(target: Pick<NoticeTarget, 'type' | 'own'>, url: string) {
+  if (ownOfficialSourceKind(url, target.own)) {
     return null
   }
   if (target.type === 'venue') {
@@ -175,10 +137,6 @@ export function storedNotice(row: NoticeRow, today: string) {
   }
 }
 
-export function isLiveNoticeSubject(target: Pick<NoticeTarget, 'type' | 'status'>) {
-  return LIVE[target.type].includes(target.status)
-}
-
 function isPublicSubject(target: Pick<NoticeTarget, 'type' | 'status'>) {
   return PUBLIC[target.type].includes(target.status)
 }
@@ -193,12 +151,12 @@ export function stagedNotices(payload: Record<string, unknown> | null | undefine
 
 /** The notices keys of a pending payload, so a later write of other keys keeps them. */
 export function stagedNoticeKeys(payload: Record<string, unknown>) {
-  return Object.fromEntries(Object.entries(payload).filter(([key]) => key === 'notices' || key === 'noticesStagedAt'))
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => NOTICE_DRAFT_KEYS.includes(key)))
 }
 
 /** True when the draft holds only the notices keys, so apply must not touch the page columns. */
 export function onlyNoticesStaged(payload: Record<string, unknown>) {
-  return Object.keys(payload).every((key) => key === 'notices' || key === 'noticesStagedAt')
+  return Object.keys(payload).every((key) => NOTICE_DRAFT_KEYS.includes(key))
 }
 
 export interface SetNoticesInput {
@@ -218,7 +176,7 @@ export interface SetNoticesInput {
  * venue is 409. Neither path writes facts, the address, or the schedule.
  */
 export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
-  const target = await noticeTarget(input.subjectType, input.id, input.slug)
+  const target = await practicalTarget(input.subjectType, input.id, input.slug)
   const scope: ContentScope = via === 'admin' ? 'editor' : contentScope()
   const today = noticeToday(new Date())
   const stored = await db.notices.forSubject(target.type, target.id)
@@ -227,7 +185,7 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
     throw createError({ statusCode: 409, statusMessage: 'Draft token cannot edit notices of an archived venue. The live page was not changed.' })
   }
   const rows = prepareNotices(target, input.notices, today, known, true)
-  if (scope === 'draft' && isLiveNoticeSubject(target)) {
+  if (scope === 'draft' && isLivePractical(target)) {
     const pending = await db.editor.contentDraft(target.type, target.id)
     const stagedAt = new Date().toISOString()
     const { row: saved, writingWarnings } = await savePendingDraftContent({

@@ -10,7 +10,8 @@ import { updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/p
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { adminNoticesView, decideVenueNoticeDraft } from '../../../../../apps/web-app/server/utils/notices/admin'
 import { loadPublicNotices, sourcesWithNotices } from '../../../../../apps/web-app/server/utils/notices/read'
-import { noticesView, noticeTarget, setNotices } from '../../../../../apps/web-app/server/utils/notices/write'
+import { noticesView, setNotices } from '../../../../../apps/web-app/server/utils/notices/write'
+import { practicalTarget } from '../../../../../apps/web-app/server/utils/practical/target'
 import { liveStatusText, noticeToday, withNoticeStatus } from '../../../../../apps/web-app/shared/notices'
 import { useDatabase } from '../../database'
 import { contentDrafts, mcpAudits, notices, places, revisions, venues } from '../../tables'
@@ -100,6 +101,11 @@ async function rejects(promise: Promise<unknown>, status: number, message?: RegE
   if (message) {
     expect(error?.statusMessage).toMatch(message)
   }
+}
+
+function stagedText(draft: { payload: Record<string, unknown> } | null) {
+  const list = draft?.payload.notices as Array<{ text: string }> | undefined
+  return list?.[0]?.text
 }
 
 describe('notices writer', () => {
@@ -230,15 +236,42 @@ describe('notices writer', () => {
     await rejects(setPublication({ entity: 'venue', id: cafe.id, publicationStatus: 'published' }), 403)
 
     enterContentScope('editor')
-    const target = await noticeTarget('venue', cafe.id)
+    const target = await practicalTarget('venue', cafe.id)
     const admin = await adminNoticesView(target)
     expect(admin.pending?.changes[0]?.draft).toContain('Кафе не принимает гостей.')
-    await decideVenueNoticeDraft(target, 'apply')
+    await decideVenueNoticeDraft(target, 'apply', admin.pending?.updatedAt)
     const live = await Notices.forSubject('venue', cafe.id)
     expect(live.map((item) => item.text)).toEqual(['Кафе не принимает гостей.'])
     expect((await Venues.byId(cafe.id))?.status).toBe('published')
     expect(await Editor.contentDraft('venue', cafe.id)).toBeNull()
     await rejects(setPublication({ entity: 'venue', id: cafe.id, publicationStatus: 'published' }), 409, /Черновика нет/)
+  })
+
+  it('discards or applies only the venue draft the editor saw', async () => {
+    const cafe = await venue('notice-discard-race')
+    enterContentScope('draft')
+    await setNotices({ subjectType: 'venue', id: cafe.id, notices: [row({ text: 'Кафе не работает.' })] }, 'mcp')
+    enterContentScope('editor')
+    const target = await practicalTarget('venue', cafe.id)
+    const seen = (await adminNoticesView(target)).pending?.updatedAt
+    expect(seen).toBeTruthy()
+
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    enterContentScope('draft')
+    await setNotices({ subjectType: 'venue', id: cafe.id, notices: [row({ text: 'Кафе не принимает гостей.' })] }, 'mcp')
+    enterContentScope('editor')
+
+    await rejects(decideVenueNoticeDraft(target, 'discard', seen), 409, /изменился/)
+    await rejects(decideVenueNoticeDraft(target, 'apply', seen), 409, /изменился/)
+    await rejects(decideVenueNoticeDraft(target, 'discard', undefined), 409, /изменился/)
+    expect(stagedText(await Editor.contentDraft('venue', cafe.id))).toBe('Кафе не принимает гостей.')
+    expect(await Notices.forSubject('venue', cafe.id)).toHaveLength(0)
+
+    const fresh = (await adminNoticesView(target)).pending?.updatedAt
+    expect(await decideVenueNoticeDraft(target, 'discard', fresh)).toEqual({ discarded: true })
+    expect(await Editor.contentDraft('venue', cafe.id)).toBeNull()
+    expect(await Notices.forSubject('venue', cafe.id)).toHaveLength(0)
+    await rejects(decideVenueNoticeDraft(target, 'discard', fresh), 409, /Черновика нет/)
   })
 
   it('drops the whole pending draft on an editor write, and the admin save asks first', async () => {

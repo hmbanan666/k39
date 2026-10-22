@@ -39,7 +39,7 @@ describe('notice windows', () => {
     expect(noticeDateLine(relocation)).toBe('с 1 ноября 2026 по 13 ноября 2026')
     expect(noticeDateLine({ from: '2026-11-01', to: null })).toBe('с 1 ноября 2026')
     expect(noticeLines(relocation)).toEqual({ dates: 'с 1 ноября 2026 по 13 ноября 2026', label: 'Другой адрес', text: relocation.text, address: 'ул. Ленина, 5А' })
-    expect(noticeLines({ ...closed, kind: 'other' }).label).toBe('')
+    expect(noticeLines({ ...closed, kind: 'other' }).label).toBeNull()
     expect(noticeLines({ ...closed, address: 'ул. Ленина, 1' }).address).toBeNull()
   })
 

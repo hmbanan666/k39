@@ -8,7 +8,7 @@ import { EVENT_TITLE_MAX, eventFormTiming, eventInstants } from '../../../shared
 import { localNow } from '../../../shared/schedule'
 import { commitFact, retireFactSlot } from '../facts/commit'
 import { rejectBannedSites } from '../mcp/writing-guard'
-import { eventSourceKind, eventSourceProblem, ticketUrlProblem } from './sources'
+import { eventSourceProblem, ownOfficialSourceKind, ticketUrlProblem } from './sources'
 import { refuseDraftLivePractical } from './target'
 
 export const eventInput = z.object({
@@ -70,7 +70,7 @@ async function writeEventFact(target: PracticalTarget, row: { id: string, title:
     value: { title: row.title, start: new Date(row.startsAt).toISOString(), end: row.endsAt ? new Date(row.endsAt).toISOString() : null, ticketUrl: row.ticketUrl, allDay: row.allDay },
     sourceUrl: row.sourceUrl,
     sourceTitle: row.sourceTitle,
-    sourceKind: eventSourceKind(row.sourceUrl, target.own) ?? 'official',
+    sourceKind: ownOfficialSourceKind(row.sourceUrl, target.own) ?? 'official',
     checkedAt: `${row.checkedAt}T00:00:00.000Z`,
     confidence: 'stated',
     actor,

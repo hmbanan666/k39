@@ -273,11 +273,14 @@ async function decide(action: 'apply' | 'discard') {
   busy.value = true
   message.value = ''
   try {
-    await $fetch(`${base}/draft`, { method: 'POST', body: { action } })
+    await $fetch(`${base}/draft`, { method: 'POST', body: { action, updatedAt: pending.value?.updatedAt } })
     await reload()
     message.value = action === 'apply' ? 'Черновик применён' : 'Черновик отброшен'
   } catch (error) {
     message.value = failure(error, 'Не получилось')
+    if ((error as FetchError)?.statusCode === 409) {
+      await reload()
+    }
   } finally {
     busy.value = false
   }
