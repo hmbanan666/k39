@@ -7,9 +7,16 @@ export interface ScoreChecks {
   results: string[]
 }
 
+/** The stored schedule row (ADR 0028). The web app parses `rules` and decides whether the hours are known. */
+export interface CatalogSchedule {
+  rules: unknown
+  verifiedAt: string | null
+}
+
 export interface ScorePlace {
   /** Schedule rules mode, null when the place has no schedule. */
   scheduleMode?: string | null
+  schedule?: CatalogSchedule | null
   id: string
   slug: string
   title: string
@@ -107,7 +114,8 @@ export interface CatalogVenue {
   name: string
   kind: string
   description: string
-  hoursSet: boolean
+  /** Hours come from this row only, never from the legacy `venues.hours` column. */
+  schedule: CatalogSchedule | null
   latitude: number | null
   longitude: number | null
   publicationStatus: 'draft' | 'published'

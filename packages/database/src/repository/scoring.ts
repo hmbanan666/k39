@@ -5,7 +5,6 @@ import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { useDatabase } from '../database'
 import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, pagePersonas, places, quests, questSteps, regions, relatedLinks, routePoints, routes, schedules, venues } from '../tables'
-import { hoursAreSet } from '../venues'
 
 const HUB_SLUGS = ['forty', 'zamki', 'plyazhi', 'kurorty', 'muzei', 'eda']
 
@@ -67,6 +66,8 @@ export class Scoring {
       updatedAt: places.updatedAt,
       firstPublishedAt: places.firstPublishedAt,
       scheduleMode: sql<string | null>`${schedules.rules}->>'mode'`,
+      scheduleRules: schedules.rules,
+      scheduleVerifiedAt: schedules.verifiedAt,
     }).from(places).leftJoin(schedules, and(eq(schedules.entityType, 'place'), eq(schedules.entityId, places.id))).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(ne(places.publicationStatus, 'archived'))
 
     const routeRows = await db.select().from(routes).where(ne(routes.publicationStatus, 'archived'))
@@ -119,7 +120,9 @@ export class Scoring {
       venue: venues,
       regionSlug: regions.slug,
       regionTitle: regions.title,
-    }).from(venues).leftJoin(regions, eq(venues.regionId, regions.id)).where(sql`${venues.status} in ('draft', 'published')`)
+      scheduleRules: schedules.rules,
+      scheduleVerifiedAt: schedules.verifiedAt,
+    }).from(venues).leftJoin(regions, eq(venues.regionId, regions.id)).leftJoin(schedules, and(eq(schedules.entityType, 'venue'), eq(schedules.entityId, venues.id))).where(sql`${venues.status} in ('draft', 'published')`)
     const venuePhotoResult = await db.execute(sql`
       select venue_id, count(*)::int as photos
       from venue_media
@@ -203,6 +206,7 @@ export class Scoring {
           updatedAt: row.updatedAt,
           firstPublishedAt: row.firstPublishedAt ?? null,
           scheduleMode: row.scheduleMode ?? null,
+          schedule: row.scheduleRules ? { rules: row.scheduleRules, verifiedAt: row.scheduleVerifiedAt } : null,
         }]
       }),
       routes: routeRows.flatMap((row) => {
@@ -244,7 +248,7 @@ export class Scoring {
           name: row.venue.name,
           kind: row.venue.kind,
           description,
-          hoursSet: hoursAreSet(row.venue.hours),
+          schedule: row.scheduleRules ? { rules: row.scheduleRules, verifiedAt: row.scheduleVerifiedAt } : null,
           latitude: row.venue.latitude,
           longitude: row.venue.longitude,
           publicationStatus,

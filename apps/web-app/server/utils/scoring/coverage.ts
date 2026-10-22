@@ -3,7 +3,7 @@ import type { CoveragePage } from '../../../shared/persona-coverage'
 import type { PersonaCode } from '../../../shared/personas'
 import { COVERAGE_GAP, pageBlocks, personaCoverage } from '../../../shared/persona-coverage'
 import { orderPagePersonas, PERSONA_CODES } from '../../../shared/personas'
-import { catalogPageRefs } from './assemble'
+import { catalogHoursKnown, catalogPageRefs } from './assemble'
 
 interface StoredPersona {
   pageType: PageKind
@@ -24,7 +24,7 @@ export function coveragePages(catalog: ContentCatalog) {
   for (const row of catalog.places) {
     pages.set(`place:${row.id}`, {
       title: row.title,
-      page: { ...emptyPage('place'), hasBody: Boolean(row.body.trim()), sources: row.sources.length, faq: row.faqCount, hours: Boolean(row.hours), price: Boolean(row.price), howToGet: Boolean(row.howToGet) },
+      page: { ...emptyPage('place'), hasBody: Boolean(row.body.trim()), sources: row.sources.length, faq: row.faqCount, hours: catalogHoursKnown(row.schedule) || Boolean(row.hours), price: Boolean(row.price), howToGet: Boolean(row.howToGet) },
     })
   }
   const articles = [
@@ -45,7 +45,7 @@ export function coveragePages(catalog: ContentCatalog) {
     pages.set(`hub:${row.id}`, { title: row.title, page: { ...emptyPage('hub'), hasBody: Boolean(row.body.trim()), stops } })
   }
   for (const row of catalog.venues) {
-    pages.set(`venue:${row.id}`, { title: row.name, page: { ...emptyPage('venue'), hasBody: Boolean(row.description.trim()), hours: row.hoursSet } })
+    pages.set(`venue:${row.id}`, { title: row.name, page: { ...emptyPage('venue'), hasBody: Boolean(row.description.trim()), hours: catalogHoursKnown(row.schedule) } })
   }
   return pages
 }

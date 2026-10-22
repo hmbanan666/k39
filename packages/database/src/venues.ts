@@ -368,11 +368,6 @@ export function normalizeHours(value: unknown): VenueHours {
   }
 }
 
-/** An opening time alone counts: the closing time may be unknown (ADR 0042). */
-export function hoursAreSet(hours: VenueHours) {
-  return Boolean(hours.note?.trim()) || hours.days.some((day) => !day.closed && day.opens)
-}
-
 export const HOURS_UNKNOWN = 'Часы уточняйте'
 
 function dayKey(day: VenueDayHours) {
