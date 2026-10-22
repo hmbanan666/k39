@@ -1,9 +1,10 @@
 // Lives in the database suite so it uses that Postgres.
-// Typechecked from apps/web-app/tsconfig.writer-test.json, where Nuxt
-// auto-imports exist. This package's tsc excludes the file.
+// The .writer.test.ts suffix is the typecheck rule: this package's tsc
+// excludes it, and scripts/typecheck-writer.mjs includes every match.
 import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope, requireEditorContent } from '../../../../../apps/web-app/server/utils/access'
+import { saveAdminCollection } from '../../../../../apps/web-app/server/utils/admin/collection-write'
 import { applyAdminContentDraft, collectionDraftNotice, discardAdminContentDraft, routeDraftNotice, withPendingGuard } from '../../../../../apps/web-app/server/utils/admin/content-draft'
 import { readCollection, saveCollectionDraft } from '../../../../../apps/web-app/server/utils/mcp/collections'
 import { refuseLiveFact, updateFact } from '../../../../../apps/web-app/server/utils/mcp/fact-write'
@@ -13,6 +14,7 @@ import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/pub
 import { writeQuest } from '../../../../../apps/web-app/server/utils/mcp/quests'
 import { readRoute, updateRouteDraft } from '../../../../../apps/web-app/server/utils/mcp/routes'
 import { assertScheduleWritable } from '../../../../../apps/web-app/server/utils/mcp/schedule-target'
+import { loadCollection } from '../../../../../apps/web-app/server/utils/public-pages'
 import { deleteVenue, updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
 import { valueHash } from '../../../../../apps/web-app/shared/facts'
 import { renderMarkdown } from '../../../../../apps/web-app/shared/markdown'
@@ -292,6 +294,83 @@ describe('pending collection and route drafts', () => {
     const row = (await Editor.listCollections()).find((item) => item.id === live.id)
     expect(row?.body).toContain('Новый лид модульной страницы.')
     expect(row?.modules).toMatchObject([{ text: 'Новый лид модульной страницы.' }])
+  })
+
+  it('stores the module projection on an editor save and on the admin patch', async () => {
+    const live = await Editor.saveCollection({
+      slug: 'editor-modules',
+      title: 'Модульная подборка',
+      summary: 'Описание модульной подборки.',
+      body: 'Старый текст, которого нет в модулях.',
+      publicationStatus: 'published',
+      modules: [{ type: 'text', variant: 'lead', text: 'Старый лид.' }],
+    })
+    collectionIds.push(live.id)
+    enterContentScope('editor')
+    const written = await saveCollectionDraft({
+      id: live.id,
+      slug: live.slug,
+      title: live.title,
+      modules: [{ type: 'text', variant: 'lead', text: 'Новый лид из редактора.' }],
+    })
+    expect(written.pendingReview).toBe(false)
+    expect(written.article).toBe('modules')
+    expect(written.renderedFields).toContain('modules')
+    expect(written.body).toBe('Новый лид из редактора.')
+    expect((await Editor.listCollections()).find((item) => item.id === live.id)?.body).toBe('Новый лид из редактора.')
+
+    await expect(saveCollectionDraft({
+      id: live.id,
+      slug: live.slug,
+      title: live.title,
+      body: 'Чужой текст, которого нет в модулях.',
+      modules: [{ type: 'text', variant: 'lead', text: 'Новый лид из редактора.' }],
+    })).rejects.toMatchObject({ statusCode: 400 })
+
+    const admin = await saveAdminCollection(live.id, {
+      slug: live.slug,
+      title: live.title,
+      summary: live.summary,
+      modules: [{ type: 'text', variant: 'lead', text: 'Лид из админки.' }],
+      publicationStatus: 'published',
+    }, null)
+    expect(admin.article).toBe('modules')
+    expect(admin.renderedFields).toContain('modules')
+    expect(admin.body).toBe('Лид из админки.')
+    expect((await Editor.listCollections()).find((item) => item.id === live.id)?.body).toBe('Лид из админки.')
+
+    await expect(saveAdminCollection(live.id, {
+      slug: live.slug,
+      title: live.title,
+      body: 'Чужой текст из формы.',
+      modules: [{ type: 'text', variant: 'lead', text: 'Лид из админки.' }],
+      publicationStatus: 'published',
+    }, null)).rejects.toMatchObject({ statusCode: 400 })
+    expect((await Editor.listCollections()).find((item) => item.id === live.id)?.body).toBe('Лид из админки.')
+  })
+
+  it('renders the module article on the public page when the stored body is stale', async () => {
+    const live = await Editor.saveCollection({
+      slug: 'public-modules',
+      title: 'Публичная модульная',
+      summary: 'Описание публичной страницы.',
+      body: 'Старый абзац без вопроса.',
+      publicationStatus: 'published',
+      modules: [{
+        type: 'text',
+        variant: 'plain',
+        title: 'Частые вопросы',
+        text: '**Можно ли зайти?**\n\nДа, можно.',
+      }],
+    })
+    collectionIds.push(live.id)
+    const page = await loadCollection(live.slug)
+    expect(page).not.toBeNull()
+    const document = JSON.stringify(page?.doc)
+    expect(document).toContain('Можно ли зайти?')
+    expect(document).not.toContain('Старый абзац без вопроса.')
+    expect(page?.html).toBe('')
+    expect(JSON.stringify(page?.modules)).toContain('Можно ли зайти?')
   })
 
   it('stores a draft-token route write and applies points, path, and the public page', async () => {

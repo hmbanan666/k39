@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { globSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, relative } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { WRITER_TEST_GLOB } from './writer-tests.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const app = join(root, 'apps/web-app')
@@ -13,10 +14,7 @@ const config = JSON.parse(readFileSync(source, 'utf8'))
 const include = Array.isArray(config.include) ? config.include : []
 config.include = [
   ...include,
-  '../../../packages/database/src/repository/test/pending-publish.test.ts',
-  '../../../packages/database/src/repository/test/media-ingest.test.ts',
-  '../../../packages/database/src/repository/test/pending-collection-route.test.ts',
-  '../../../packages/database/src/repository/test/place-contact.test.ts',
+  ...writerTestIncludes(dirname(source)),
 ]
 const target = join(dirname(source), 'tsconfig.writer-test.json')
 writeFileSync(target, JSON.stringify(config))
@@ -26,3 +24,9 @@ const result = spawnSync('pnpm', ['exec', 'vue-tsc', '--noEmit', '-p', target], 
   stdio: 'inherit',
 })
 process.exit(result.status ?? 1)
+
+function writerTestIncludes(fromDir) {
+  return globSync(WRITER_TEST_GLOB, { cwd: root })
+    .map((file) => relative(fromDir, join(root, file)).replaceAll('\\', '/'))
+    .sort()
+}

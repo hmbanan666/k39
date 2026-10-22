@@ -27,6 +27,7 @@
     "db:seed:fixtures": "pnpm --filter @k39/web-app db:seed:fixtures",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "check:quick": "node scripts/check-quick.mjs",
     "check:full": "pnpm run check:repo && pnpm run lint:fix && pnpm run typecheck && pnpm vitest run",
     "prepare": "husky && node scripts/git/chain-hooks.mjs",
     "prepare:cert": "mkdir -p .cert && mkcert -key-file ./.cert/localhost-key.pem -cert-file ./.cert/localhost.pem 'app.local'"
