@@ -126,6 +126,17 @@ export function scoresFromCatalog(
   const inCollection = new Set(catalog.collectionStops.filter((stop) => publishedCollections.has(stop.parentId)).map((stop) => stop.placeSlug))
   const metricByPath = new Map(metrics.map((row) => [row.path, row]))
   const venuePhotos = new Map((catalog.venuePhotos ?? []).map((row) => [row.venueId, row.count]))
+  const practicalRows = new Map((catalog.practical ?? []).map((row) => [`${row.subjectType}:${row.subjectId}`, row]))
+
+  function practicalFor(subjectType: 'place' | 'route', id: string, schedule: boolean): ScoreSource['practical'] {
+    const row = practicalRows.get(`${subjectType}:${id}`)
+    return {
+      schedule,
+      admissionRows: row?.admissionRows ?? 0,
+      freshAdmission: row?.freshAdmission ?? 0,
+      upcomingEvents: row?.upcomingEvents ?? 0,
+    }
+  }
 
   function photosFor(slugs: string[]) {
     return slugs.reduce((sum, slug) => sum + (photos.get(placeId.get(slug) || '') ?? 0), 0)
@@ -187,6 +198,7 @@ export function scoresFromCatalog(
         factRefs: factRefs?.get(`place:${place.id}`),
         scheduleMode: place.scheduleMode ?? null,
         hoursKnown: catalogHoursKnown(place.schedule),
+        practical: practicalFor('place', place.id, catalogHoursKnown(place.schedule)),
         firstPublishedAt: place.firstPublishedAt ?? null,
         photoCount: photos.get(place.id) ?? 0,
         inRoute: inRoute.has(place.slug),
@@ -227,6 +239,7 @@ export function scoresFromCatalog(
         factsCheckedAt: route.updatedAt,
         firstPublishedAt: route.firstPublishedAt ?? null,
         factRefs: factRefs?.get(`route:${route.id}`),
+        practical: practicalFor('route', route.id, false),
         photoCount: photosFor(members),
         inRoute: false,
         inCollection: false,
