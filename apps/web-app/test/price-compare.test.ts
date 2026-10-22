@@ -1,5 +1,6 @@
 import { isSocialWebsite } from '@k39/database'
 import { isSocialHost } from '@k39/types/social-hosts'
+import { parseVkCommunityId, vkCommunityIdProblem, vkMenuMatchesSocial, vkSocialLinks } from '@k39/types/vk-community'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import CheaperPage from '../app/components/CheaperPage.vue'
@@ -47,7 +48,6 @@ import {
   safePriceImage,
   sharedPriceSource,
   showsPriceSample,
-  vkMenuMatchesSocial,
 } from '../shared/price-compare'
 import { collectionDocument, schemaProblems } from '../shared/seo'
 import { presentVenueBlocks, toPublicVenueModules } from '../shared/venue-modules'
@@ -1137,6 +1137,62 @@ describe('vk menu rule', () => {
     const owner = resolveMenuPrice({ ...column, sourceKind: 'owner', sourceUrl: 'https://vk.com/cafe' }, null, cutoff, { website: null, socials: own })
     expect(owner?.comparable).toBe(false)
     expect(owner?.row.priceRub).toBe(200)
+  })
+
+  it('matches a numeric owner id to a screen-name social once the community id is declared', () => {
+    const socials = [{ url: 'https://vk.com/lugowen_gastro' }]
+    const album = 'https://vk.com/album-236300695_311487837'
+    const sources = [
+      album,
+      'https://vk.com/market-236300695',
+      'https://vk.com/wall-236300695_12',
+      'https://vk.com/lugowen_gastro?z=photo-236300695_457239017',
+      'https://vk.com/lugowen_gastro?w=wall-236300695_40',
+      'https://vk.com/club236300695',
+      'https://vk.com/public236300695',
+    ]
+    for (const url of sources) {
+      expect(vkMenuMatchesSocial(url, socials)).toBe(false)
+      expect(vkMenuMatchesSocial(url, socials, 236300695)).toBe(true)
+    }
+    expect(vkMenuMatchesSocial(album, socials, 71522139)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/lugowen_gastro?z=photo-71522139_1', socials, 236300695)).toBe(false)
+    expect(vkMenuMatchesSocial(album, [], 236300695)).toBe(false)
+    expect(vkMenuMatchesSocial(album, [{ url: 'https://t.me/lugowen' }], 236300695)).toBe(false)
+
+    const row = { ...column, sourceUrl: album }
+    expect(resolveMenuPrice(row, null, cutoff, { website: null, socials })).toBeNull()
+    expect(resolveMenuPrice(row, null, cutoff, { website: null, socials, vkCommunityId: 236300695 })?.comparable).toBe(true)
+    expect(resolveMenuPrice(row, null, cutoff, { website: null, socials, vkCommunityId: 71522139 })).toBeNull()
+    expect(resolveMenuPrice(row, null, cutoff, { website: 'https://lugowen.example', socials, vkCommunityId: 236300695 })).toBeNull()
+  })
+
+  it('takes the community id from a club, public, or event social without a declared id', () => {
+    for (const prefix of ['club', 'public', 'event']) {
+      const socials = [{ url: `https://vk.com/${prefix}71522139` }]
+      expect(vkSocialLinks(socials).communityIds).toEqual([71522139])
+      expect(vkMenuMatchesSocial('https://vk.com/market-71522139', socials)).toBe(true)
+      expect(resolveMenuPrice({ ...column, sourceUrl: 'https://vk.com/album-71522139_1' }, null, cutoff, { website: null, socials })?.comparable).toBe(true)
+    }
+    expect(vkSocialLinks([{ url: 'https://vk.com/clubletokafe39' }])).toEqual({ links: 1, names: ['clubletokafe39'], communityIds: [] })
+    expect(vkSocialLinks([{ url: 'https://instagram.com/cafe' }]).links).toBe(0)
+  })
+
+  it('validates a declared community id against the stored VK links', () => {
+    expect(parseVkCommunityId(236300695)).toBe(236300695)
+    expect(parseVkCommunityId(' 236300695 ')).toBe(236300695)
+    expect(parseVkCommunityId('')).toBeNull()
+    expect(parseVkCommunityId(null)).toBeNull()
+    for (const bad of [0, -5, 1.5, 'club10', '-10', '12a', Number.MAX_SAFE_INTEGER + 1, Number.NaN]) {
+      expect(parseVkCommunityId(bad)).toBe('invalid')
+    }
+    expect(vkCommunityIdProblem(null, [])).toBeNull()
+    expect(vkCommunityIdProblem(10, [])).toBe('no_vk_link')
+    expect(vkCommunityIdProblem(10, [{ url: 'https://t.me/cafe' }])).toBe('no_vk_link')
+    expect(vkCommunityIdProblem(10, [{ url: 'https://vk.com/cafe' }])).toBeNull()
+    expect(vkCommunityIdProblem(10, [{ url: 'https://vk.com/club10' }])).toBeNull()
+    expect(vkCommunityIdProblem(11, [{ url: 'https://vk.com/club10' }])).toBe('mismatch')
+    expect(vkCommunityIdProblem(11, [{ url: 'https://vk.com/club10' }, { url: 'https://vk.com/cafe' }])).toBeNull()
   })
 })
 

@@ -11,3 +11,4 @@ export const eventCreateSchema = z.object({
 export type EventCreateInput = z.infer<typeof eventCreateSchema>
 
 export { isSocialHost } from './social-hosts'
+export { parseVkCommunityId, vkCommunityIdProblem, vkMenuMatchesSocial, vkSocialLinks } from './vk-community'

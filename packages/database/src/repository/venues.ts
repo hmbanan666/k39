@@ -1,5 +1,6 @@
 import type { SourceLink } from '../types/entities'
 import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
+import { parseVkCommunityId, vkCommunityIdProblem, vkSocialLinks } from '@k39/types/vk-community'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
@@ -43,6 +44,8 @@ export interface VenueWrite {
   phone?: string | null
   website?: string | null
   socials?: VenueSocial[]
+  /** Numeric VK community id for a screen-name link in socials (ADR 0047). Null clears it. */
+  vkCommunityId?: number | string | null
   bookingUrl?: string | null
   orderUrl?: string | null
   deliveryUrl?: string | null
@@ -107,6 +110,30 @@ function cleanWebsite(value: string | null | undefined) {
     throw new VenueInputError('В поле «Сайт» укажите только собственный сайт заведения. Ссылку на соцсеть добавьте в «Соцсети».')
   }
   return text
+}
+
+/**
+ * The stored VK community id after a write. An explicit value must be a
+ * positive integer that belongs to a VK link in `socials`. Without one, the
+ * stored id stays while a VK link stays, and clears with the last VK link,
+ * so an owner who removes the VK link is not blocked by a field they cannot see.
+ */
+function nextVkCommunityId(input: VenueWrite['vkCommunityId'], current: number | null, socials: VenueSocial[]) {
+  if (input === undefined) {
+    return current != null && vkSocialLinks(socials).links ? current : null
+  }
+  const id = parseVkCommunityId(input)
+  if (id === 'invalid') {
+    throw new VenueInputError('ID сообщества ВКонтакте: целое положительное число, например 236300695')
+  }
+  const problem = vkCommunityIdProblem(id, socials)
+  if (problem === 'no_vk_link') {
+    throw new VenueInputError('ID сообщества ВКонтакте задаётся вместе со ссылкой на это сообщество в «Соцсети»')
+  }
+  if (problem === 'mismatch') {
+    throw new VenueInputError('ID сообщества ВКонтакте не совпадает со ссылкой в «Соцсети»')
+  }
+  return id
 }
 
 function cleanUrl(value: string | null | undefined) {
@@ -362,6 +389,8 @@ export class Venues {
     assertMoney(input.priceLevel, input.avgCheck)
     assertPoint(input.latitude, input.longitude)
     const hours = input.hours === undefined ? emptyHours() : normalizeHours(input.hours)
+    const socials = cleanSocials(input.socials) ?? []
+    const vkCommunityId = nextVkCommunityId(input.vkCommunityId, null, socials)
     try {
       const [created] = await useDatabase().insert(venues).values({
         slug,
@@ -377,7 +406,8 @@ export class Venues {
         hours,
         phone: cleanText(input.phone, PHONE_TEXT_MAX),
         website: cleanWebsite(input.website),
-        socials: cleanSocials(input.socials) ?? [],
+        socials,
+        vkCommunityId,
         bookingUrl: cleanUrl(input.bookingUrl),
         orderUrl: cleanUrl(input.orderUrl),
         deliveryUrl: cleanUrl(input.deliveryUrl),
@@ -439,6 +469,7 @@ export class Venues {
     const avgCheck = input.avgCheck === undefined ? current.avgCheck : input.avgCheck
     assertMoney(priceLevel, avgCheck)
     const hours = input.hours === undefined ? current.hours : normalizeHours(input.hours)
+    const socials = cleanSocials(input.socials) ?? current.socials
     const next = {
       slug: nextSlug,
       name: input.name === undefined ? current.name : input.name.trim().slice(0, 160),
@@ -453,7 +484,8 @@ export class Venues {
       hours,
       phone: input.phone === undefined ? current.phone : cleanText(input.phone, PHONE_TEXT_MAX),
       website: input.website === undefined ? current.website : cleanWebsite(input.website),
-      socials: cleanSocials(input.socials) ?? current.socials,
+      socials,
+      vkCommunityId: nextVkCommunityId(input.vkCommunityId, current.vkCommunityId, socials),
       bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : cleanUrl(input.bookingUrl),
       orderUrl: input.orderUrl === undefined ? current.orderUrl : cleanUrl(input.orderUrl),
       deliveryUrl: input.deliveryUrl === undefined ? current.deliveryUrl : cleanUrl(input.deliveryUrl),
@@ -524,7 +556,7 @@ export class Venues {
     return { id: current.id, slug: current.slug, action: 'deleted' as const }
   }
 
-  /** Website and social links for the VK menu rule. A missing id is omitted. */
+  /** Website, social links, and the VK community id for the VK menu rule. A missing id is omitted. */
   static async menuLinksFor(ids: string[]) {
     const unique = [...new Set(ids)]
     if (!unique.length) {
@@ -534,6 +566,7 @@ export class Venues {
       id: venues.id,
       website: venues.website,
       socials: venues.socials,
+      vkCommunityId: venues.vkCommunityId,
     }).from(venues).where(inArray(venues.id, unique))
   }
 
@@ -996,7 +1029,7 @@ export class Venues {
 
 const RESTORE_KEYS = [
   'slug', 'name', 'kind', 'cuisineTags', 'regionId', 'address', 'latitude', 'longitude',
-  'priceLevel', 'avgCheck', 'hours', 'phone', 'website', 'socials', 'bookingUrl', 'orderUrl',
+  'priceLevel', 'avgCheck', 'hours', 'phone', 'website', 'socials', 'vkCommunityId', 'bookingUrl', 'orderUrl',
   'deliveryUrl', 'menuUrl', 'reservation', 'takeaway', 'delivery', 'signatureDishes',
   'modules', 'contactEmail', 'description', 'sources', 'status', 'lastVerifiedAt',
   'osmId', 'seoTitle', 'seoDescription', 'noindex',

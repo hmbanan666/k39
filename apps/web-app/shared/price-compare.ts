@@ -1,5 +1,6 @@
 import type { FoodStickerSlug } from './food-stickers'
 import { isSocialHost } from '@k39/types/social-hosts'
+import { vkMenuMatchesSocial } from '@k39/types/vk-community'
 import { inTown } from './eat-now'
 import { isFoodStickerSlug } from './food-stickers'
 import { pageTitle } from './seo'
@@ -435,6 +436,13 @@ export function isMenuUrl(url: string | null | undefined) {
   return kind === 'menu' || kind === 'document'
 }
 
+/** The venue fields the VK menu rule reads. */
+export interface MenuVenueLinks {
+  website: string | null
+  socials?: Array<{ url: string }>
+  vkCommunityId?: number | null
+}
+
 /**
  * The venue's own VK page. The price column stores `official` because it
  * only allows `official` and `owner`. A VK URL is recorded on the fact as
@@ -442,11 +450,13 @@ export function isMenuUrl(url: string | null | undefined) {
  * `venues.website` is empty and the price community matches a VK link in
  * `socials`. A `w=` or `z=` object is that owner, and the path name is
  * ignored. A section path such as `feed` is not a screen name.
+ * `vkCommunityId` is the numeric id of a screen-name link (ADR 0047), so an
+ * `album-<id>` or `wall-<id>` price matches `vk.com/<name>`.
  */
 function isComparableVkMenu(
   sourceKind: string,
   sourceUrl: string | null,
-  venue: { website: string | null, socials?: Array<{ url: string }> },
+  venue: MenuVenueLinks,
 ) {
   if (venue.website?.trim()) {
     return false
@@ -454,203 +464,7 @@ function isComparableVkMenu(
   if (sourceKind !== 'official' && sourceKind !== 'official_social') {
     return false
   }
-  return vkMenuMatchesSocial(sourceUrl, venue.socials ?? [])
-}
-
-interface VkKeys {
-  names: Set<string>
-  communities: Set<string>
-  users: Set<string>
-}
-
-function emptyVkKeys(): VkKeys {
-  return { names: new Set(), communities: new Set(), users: new Set() }
-}
-
-/** VK section paths. They are not a community screen name. */
-const VK_SYSTEM_PATH = new Set([
-  'about',
-  'ads',
-  'album',
-  'albums',
-  'app',
-  'apps',
-  'audio',
-  'audios',
-  'away.php',
-  'board',
-  'bookmarks',
-  'calls',
-  'camera',
-  'clips',
-  'club',
-  'dev',
-  'doc',
-  'docs',
-  'event',
-  'events',
-  'faq',
-  'fav',
-  'fave',
-  'feed',
-  'friends',
-  'games',
-  'groups',
-  'help',
-  'id',
-  'im',
-  'invite',
-  'join',
-  'login',
-  'mail',
-  'market',
-  'notifications',
-  'pages',
-  'photo',
-  'photos',
-  'public',
-  'restore',
-  'search',
-  'settings',
-  'stats',
-  'stories',
-  'support',
-  'topic',
-  'topics',
-  'video',
-  'videos',
-  'wall',
-  'write',
-])
-
-function absorbVkToken(keys: VkKeys, token: string) {
-  const text = token.trim().replace(/^@/, '')
-  if (!text) {
-    return
-  }
-  const community = /^(?:club|public|event)(\d+)$/i.exec(text)
-  if (community?.[1]) {
-    keys.communities.add(community[1])
-    return
-  }
-  const user = /^id(\d+)$/i.exec(text)
-  if (user?.[1]) {
-    keys.users.add(user[1])
-    return
-  }
-  const wall = /^wall(-)?(\d+)(?:_\d+)?$/i.exec(text)
-  if (wall?.[2]) {
-    if (wall[1]) {
-      keys.communities.add(wall[2])
-    } else {
-      keys.users.add(wall[2])
-    }
-    return
-  }
-  const market = /^market-(\d+)(?:_\d+)?$/i.exec(text)
-  if (market?.[1]) {
-    keys.communities.add(market[1])
-    return
-  }
-  const album = /^album-(\d+)(?:_\d+)?$/i.exec(text)
-  if (album?.[1]) {
-    keys.communities.add(album[1])
-    return
-  }
-  const attachment = /^(?:photo|doc|topic|video)-(\d+)_\d+/i.exec(text)
-  if (attachment?.[1]) {
-    keys.communities.add(attachment[1])
-    return
-  }
-  if (/\.php$/i.test(text) || VK_SYSTEM_PATH.has(text.toLowerCase())) {
-    return
-  }
-  if (/^[a-z][\w.-]{0,63}$/i.test(text)) {
-    keys.names.add(text.toLowerCase())
-  }
-}
-
-/** Parts of `w` or `z` that name an object. Those owners replace the path. */
-function vkObjectTokens(parsed: URL) {
-  const tokens: string[] = []
-  for (const name of ['w', 'z']) {
-    const raw = parsed.searchParams.get(name)
-    if (!raw) {
-      continue
-    }
-    for (const part of raw.split('/')) {
-      const probe = emptyVkKeys()
-      absorbVkToken(probe, part)
-      if (probe.communities.size || probe.users.size) {
-        tokens.push(part)
-      }
-    }
-  }
-  return tokens
-}
-
-function vkKeys(url: string | null | undefined): VkKeys | null {
-  const text = url?.trim() ?? ''
-  if (!text) {
-    return null
-  }
-  let parsed: URL
-  try {
-    parsed = new URL(text)
-  } catch {
-    return null
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return null
-  }
-  const host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
-  if (host !== 'vk.com' && !host.endsWith('.vk.com') && host !== 'vk.ru' && !host.endsWith('.vk.ru')) {
-    return null
-  }
-  const keys = emptyVkKeys()
-  const objects = vkObjectTokens(parsed)
-  if (objects.length) {
-    for (const token of objects) {
-      absorbVkToken(keys, token)
-    }
-  } else {
-    absorbVkToken(keys, parsed.pathname.split('/').filter(Boolean)[0] ?? '')
-  }
-  if (!keys.names.size && !keys.communities.size && !keys.users.size) {
-    return null
-  }
-  return keys
-}
-
-function vkKeysOverlap(left: VkKeys, right: VkKeys) {
-  for (const name of left.names) {
-    if (right.names.has(name)) {
-      return true
-    }
-  }
-  for (const id of left.communities) {
-    if (right.communities.has(id)) {
-      return true
-    }
-  }
-  for (const id of left.users) {
-    if (right.users.has(id)) {
-      return true
-    }
-  }
-  return false
-}
-
-/** True when the price URL and one stored social link name the same VK community. */
-export function vkMenuMatchesSocial(priceUrl: string | null | undefined, socials: Array<{ url: string }>) {
-  const price = vkKeys(priceUrl)
-  if (!price) {
-    return false
-  }
-  return socials.some((row) => {
-    const social = vkKeys(row.url)
-    return Boolean(social && vkKeysOverlap(price, social))
-  })
+  return vkMenuMatchesSocial(sourceUrl, venue.socials ?? [], venue.vkCommunityId)
 }
 
 /** A stored menu row before the fact overlay. */
@@ -693,8 +507,9 @@ function readFactPrice(value: unknown) {
  * on the venue card and is not comparable. A fresh official menu row is
  * comparable: the venue site, or a document on Drive, Docs, or Yandex Disk.
  * The venue's own VK page is comparable only when `venue.website` is empty
- * and the price community matches a VK link in `venue.socials`. A `w=` or
- * `z=` object is that owner, and the path name is ignored.
+ * and the price community matches a VK link in `venue.socials` or the
+ * declared `venue.vkCommunityId`. A `w=` or `z=` object is that owner, and
+ * the path name is ignored.
  * Omit `venue` when the caller has not loaded those fields: VK stays out.
  * `cutoff` is `YYYY-MM-DD` from `PRICE_FRESH_DAYS`.
  */
@@ -702,7 +517,7 @@ export function resolveMenuPrice<T extends MenuColumn>(
   row: T,
   fact: MenuFact | null | undefined,
   cutoff: string,
-  venue?: { website: string | null, socials?: Array<{ url: string }> },
+  venue?: MenuVenueLinks,
 ): { row: T, comparable: boolean } | null {
   if (fact?.confidence === 'gap') {
     return null

@@ -1,4 +1,5 @@
 import { priceInName, priceInNameMessage } from '@k39/database/price-label'
+import { VK_COMMUNITY_ID_MAX } from '@k39/types/vk-community'
 import { z } from 'zod'
 import { venueModulesSchema } from '../../../shared/venue-modules'
 import { sources } from '../mcp/schemas'
@@ -30,6 +31,7 @@ export const venueFields = {
   phone: z.string().nullable().optional(),
   website: z.string().nullable().optional().describe('The venue\'s own site. Null clears it. A social host (vk.com, vk.ru, t.me, instagram, ok.ru, whatsapp, x.com, and the like) is rejected: put that link in socials'),
   socials: z.array(z.object({ network: z.string(), url: z.string() })).optional().describe('vk, telegram, instagram, whatsapp... with full URLs'),
+  vkCommunityId: z.number().int().positive().max(VK_COMMUNITY_ID_MAX).nullable().optional().describe('Numeric id of the VK community that socials link by screen name, from the venue\'s own album, photo, wall, or market URL (album-236300695_… is 236300695). Needs a VK link in socials. club, public, and event links already carry it. Never call the VK API for it. Null clears it. Omit to keep it'),
   bookingUrl: z.string().nullable().optional().describe('Official table booking page. Null clears it'),
   orderUrl: z.string().nullable().optional().describe('Official online order or pickup page'),
   deliveryUrl: z.string().nullable().optional().describe('Official delivery page or the venue page on a delivery service'),
