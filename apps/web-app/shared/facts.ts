@@ -4,6 +4,8 @@ import type { VenueModule } from './venue-modules'
 import { createHash } from 'node:crypto'
 import { isSocialHost } from '@k39/types/social-hosts'
 import { z } from 'zod'
+import { ADMISSION_AUDIENCES, ADMISSION_CONDITION_MAX, ADMISSION_LABEL_MAX } from './admission'
+import { EVENT_TITLE_MAX } from './events'
 import { addDays, localNow, scheduleRulesSchema } from './schedule'
 
 // Typed fact values (ADR 0033). Hours reuse the schedule rules. Admission and
@@ -75,13 +77,13 @@ export const statusValueSchema = z.discriminatedUnion('scope', [
 ])
 
 export const admissionValueSchema = z.object({
-  audience: z.enum(['general', 'reduced', 'family', 'foreign', 'free']),
+  audience: z.enum(ADMISSION_AUDIENCES),
   priceRub: z.number().int().nonnegative(),
-  condition: z.string().max(200).nullable(),
-  label: z.string().max(80).nullable(),
+  condition: z.string().max(ADMISSION_CONDITION_MAX).nullable(),
+  label: z.string().max(ADMISSION_LABEL_MAX).nullable(),
 })
 export const eventValueSchema = z.object({
-  title: z.string().trim().min(1).max(120),
+  title: z.string().trim().min(1).max(EVENT_TITLE_MAX),
   start: z.string().datetime({ offset: true }),
   end: z.string().datetime({ offset: true }).nullable(),
   ticketUrl: z.string().url().nullable(),

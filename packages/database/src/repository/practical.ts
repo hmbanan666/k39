@@ -46,13 +46,6 @@ export class Admission {
     return useDatabase().select().from(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId))).orderBy(asc(admissionPrices.sortOrder), asc(admissionPrices.slot))
   }
 
-  static async forSubjects(subjectType: string, subjectIds: string[]) {
-    if (!subjectIds.length) {
-      return []
-    }
-    return useDatabase().select().from(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), inArray(admissionPrices.subjectId, subjectIds))).orderBy(asc(admissionPrices.sortOrder), asc(admissionPrices.slot))
-  }
-
   static async list(subjectType?: string) {
     const query = useDatabase().select().from(admissionPrices)
     const filtered = subjectType ? query.where(eq(admissionPrices.subjectType, subjectType)) : query
