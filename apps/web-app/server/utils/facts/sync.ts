@@ -1,11 +1,11 @@
-import type { VenuePriceInput } from '@k39/database'
+import type { ContentTx, VenuePriceInput } from '@k39/database'
 import type { FactActor, SourceKind } from '../../../shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '../../../shared/schedule'
 import { db } from '@k39/database'
 import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { rejectBannedSites } from '../mcp/writing-guard'
-import { commitFact, retireFactSlot } from './commit'
+import { commitFact, factExecutor, retireFactSlot } from './commit'
 
 export async function hoursConflict(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor) {
   if (actor !== 'mcp') {
@@ -293,6 +293,8 @@ export async function syncCoordinates(input: {
   latitude?: number | null
   longitude?: number | null
   previous: { latitude: number | null, longitude: number | null }
+  /** When set, the fact write joins this save and rolls back with it. */
+  tx?: ContentTx
 }) {
   if (input.latitude === undefined && input.longitude === undefined) {
     return { skipped: false as const }
@@ -300,20 +302,21 @@ export async function syncCoordinates(input: {
   const latitude = input.latitude === undefined ? input.previous.latitude : input.latitude
   const longitude = input.longitude === undefined ? input.previous.longitude : input.longitude
   const changed = latitude !== input.previous.latitude || longitude !== input.previous.longitude
-  const existing = changed ? null : await db.facts.liveSlot(input.subjectType, input.subjectId, 'coordinates')
+  const facts = factExecutor(input.tx)
+  const existing = changed ? null : await db.facts.liveSlot(input.subjectType, input.subjectId, 'coordinates', facts)
   const hasPoint = latitude != null && longitude != null
   if (!shouldWriteContact(changed, Boolean(existing), hasPoint ? 'point' : null)) {
     return { skipped: false as const }
   }
   const value = hasPoint ? { latitude, longitude } : null
-  const blocked = await blockOwned(input, 'coordinates', value)
+  const blocked = await blockOwned(input, 'coordinates', value, input.tx)
   if (blocked) {
     return { skipped: true as const, conflict: blocked }
   }
   if (value) {
-    await writeOwnedFact(input, 'coordinates', value)
+    await writeOwnedFact(input, 'coordinates', value, input.tx)
   } else {
-    await retireFactSlot(input.subjectType, input.subjectId, 'coordinates')
+    await retireFactSlot(input.subjectType, input.subjectId, 'coordinates', input.tx)
   }
   return { skipped: false as const }
 }
@@ -325,12 +328,15 @@ export async function syncPlaceStatus(input: {
   pageStatus?: string | null
   status?: string | null
   previous: string
+  /** When set, the fact write joins this save and rolls back with it. */
+  tx?: ContentTx
 }) {
   if (input.status === undefined || input.status === null) {
     return { skipped: false as const }
   }
   const changed = input.status !== input.previous
-  const existing = changed ? null : await db.facts.liveSlot('place', input.placeId, 'status')
+  const facts = factExecutor(input.tx)
+  const existing = changed ? null : await db.facts.liveSlot('place', input.placeId, 'status', facts)
   if (!shouldWriteContact(changed, Boolean(existing), input.status)) {
     return { skipped: false as const }
   }
@@ -340,7 +346,7 @@ export async function syncPlaceStatus(input: {
     subjectId: input.placeId,
     actor: input.actor,
     pageStatus: input.pageStatus,
-  }, 'status', value)
+  }, 'status', value, input.tx)
   if (blocked) {
     return { skipped: true as const, conflict: blocked }
   }
@@ -349,7 +355,7 @@ export async function syncPlaceStatus(input: {
     subjectId: input.placeId,
     actor: input.actor,
     pageStatus: input.pageStatus,
-  }, 'status', value)
+  }, 'status', value, input.tx)
   return { skipped: false as const }
 }
 
@@ -366,18 +372,21 @@ export async function syncPlacePhone(input: {
   phone: string | null
   sourceUrl: string | null
   checkedAt: string | null
+  /** When set, the fact write joins this save and rolls back with it. */
+  tx?: ContentTx
 }) {
-  const existing = await db.facts.liveSlot('place', input.placeId, 'phone')
+  const facts = factExecutor(input.tx)
+  const existing = await db.facts.liveSlot('place', input.placeId, 'phone', facts)
   const target = { subjectType: 'place' as const, subjectId: input.placeId, actor: input.actor, pageStatus: input.pageStatus }
   if (!input.phone) {
     if (!existing) {
       return { skipped: false as const }
     }
-    const blocked = await blockOwned(target, 'phone', null)
+    const blocked = await blockOwned(target, 'phone', null, input.tx)
     if (blocked) {
       return { skipped: true as const, conflict: blocked }
     }
-    await retireFactSlot('place', input.placeId, 'phone')
+    await retireFactSlot('place', input.placeId, 'phone', input.tx)
     return { skipped: false as const }
   }
   const value = { text: input.phone }
@@ -399,7 +408,7 @@ export async function syncPlacePhone(input: {
     refs: [{ consumerType: 'place', consumerId: input.placeId, path: 'short.phone' }],
     pageType: 'place',
     pageStatus: input.pageStatus ?? 'published',
-  })
+  }, input.tx)
   return queued.conflict ? { skipped: true as const, conflict: queued.queueId } : { skipped: false as const }
 }
 
@@ -437,15 +446,16 @@ async function blockOwned(input: {
   subjectId: string
   actor: FactActor
   pageStatus?: string | null
-}, slot: 'phone' | 'address' | 'status' | 'coordinates', value: unknown) {
+}, slot: 'phone' | 'address' | 'status' | 'coordinates', value: unknown, tx?: ContentTx) {
   if (input.actor !== 'mcp') {
     return null
   }
-  const existing = await db.facts.liveSlot(input.subjectType, input.subjectId, slot)
+  const facts = factExecutor(tx)
+  const existing = await db.facts.liveSlot(input.subjectType, input.subjectId, slot, facts)
   if (!existing) {
     return null
   }
-  const latest = await db.facts.latestActor(existing.id)
+  const latest = await db.facts.latestActor(existing.id, facts)
   const same = value != null && existing.valueHash === valueHash(value)
   if (!ownerBlocksToken(latest, same)) {
     return null
@@ -459,7 +469,7 @@ async function blockOwned(input: {
       path: `short.${slot}`,
       reason: 'owner_conflict',
       proposal: { retire: true },
-    })
+    }, facts)
     return queued.id
   }
   const queued = await commitFact({
@@ -477,7 +487,7 @@ async function blockOwned(input: {
     refs: [{ consumerType: input.subjectType, consumerId: input.subjectId, path: `short.${slot}` }],
     pageType: input.subjectType,
     pageStatus: input.pageStatus ?? 'published',
-  })
+  }, tx)
   return queued.conflict ? queued.queueId : null
 }
 
@@ -486,7 +496,7 @@ async function writeOwnedFact(input: {
   subjectId: string
   actor: FactActor
   pageStatus?: string | null
-}, slot: 'coordinates' | 'status', value: unknown) {
+}, slot: 'coordinates' | 'status', value: unknown, tx?: ContentTx) {
   const owner = input.actor === 'owner'
   await commitFact({
     kind: slot,
@@ -505,7 +515,7 @@ async function writeOwnedFact(input: {
     pageType: input.subjectType,
     pageStatus: input.pageStatus ?? 'published',
     markUnseeded: !owner,
-  })
+  }, tx)
 }
 
 async function writeContact(input: { venueId: string, actor: FactActor, pageStatus?: string | null }, slot: 'phone' | 'address' | 'status', value: unknown) {

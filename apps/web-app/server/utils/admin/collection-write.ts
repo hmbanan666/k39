@@ -2,8 +2,8 @@ import { db } from '@k39/database'
 import { createError } from 'h3'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
+import { withPendingGuard } from '../content/pending-guard'
 import { contentGate, saveCollectionContent } from '../content/save'
-import { withPendingGuard } from './content-draft'
 
 /**
  * Admin collection save. Modules are the article: `body` is stored as their

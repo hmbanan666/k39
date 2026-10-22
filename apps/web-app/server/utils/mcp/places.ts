@@ -1,10 +1,11 @@
-import type { VisitStatus } from '@k39/database'
+import type { ContentTx, VisitStatus } from '@k39/database'
 import type { PlaceContactInput } from '../content/place-contact'
 import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
+import { withEditorLiveWrite } from '../content/pending-guard'
 import { phoneCheckedAt, placePhoneSource, resolvePlaceContact } from '../content/place-contact'
-import { applyPendingPlaceContent, contentGate, savePendingDraftContent, savePlaceContent } from '../content/save'
+import { applyPendingPlaceContent, contentGate, savePendingDraftContent, savePlaceContent, syncSavedPage } from '../content/save'
 import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../facts/sync'
 import { auditMcp } from './audit'
 import { resolvePublication } from './draft'
@@ -327,21 +328,6 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus, scope)
   if (scope === 'editor' && publicationStatus === 'published' && pending && publicationOnly(input, current.slug)) {
     const payload = pending.payload
-    const pendingPhone = typeof payload.phone === 'string' ? payload.phone : null
-    const phone = payload.phone === undefined
-      ? null
-      : await syncPlacePhone({
-          placeId: current.id,
-          actor: 'mcp',
-          pageStatus: 'published',
-          phone: pendingPhone,
-          sourceUrl: !pendingPhone
-            ? null
-            : typeof payload.phoneSourceUrl === 'string'
-              ? payload.phoneSourceUrl
-              : await placePhoneSource(current.id),
-          checkedAt: pending.updatedAt,
-        })
     const applied = await applyPendingPlaceContent(current.id, contentGate('place', {
       title: payload.title,
       summary: payload.summary,
@@ -356,28 +342,54 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       bestTime: payload.bestTime,
       faq: payload.faq,
       sources: payload.sources,
-      phone: phone?.skipped ? current.phone : payload.phone,
+      phone: payload.phone,
       phoneSourceUrl: payload.phoneSourceUrl,
       website: payload.website,
-    }, true), { phone: Boolean(phone?.skipped) })
+    }, true), {
+      beforeWrite: async (tx, draft) => {
+        const body = draft.payload
+        if (body.phone === undefined) {
+          return
+        }
+        const pendingPhone = typeof body.phone === 'string' ? body.phone : null
+        const phone = await syncPlacePhone({
+          placeId: current.id,
+          actor: 'mcp',
+          pageStatus: 'published',
+          phone: pendingPhone,
+          sourceUrl: !pendingPhone
+            ? null
+            : typeof body.phoneSourceUrl === 'string'
+              ? body.phoneSourceUrl
+              : await placePhoneSource(current.id, tx),
+          checkedAt: draft.updatedAt,
+          tx,
+        })
+        return { phone: phone.skipped }
+      },
+      afterWrite: async (tx, row, existing) => {
+        await syncCoordinates({
+          subjectType: 'place',
+          subjectId: current.id,
+          actor: 'mcp',
+          pageStatus: 'published',
+          latitude: row.latitude,
+          longitude: row.longitude,
+          previous: { latitude: existing.latitude, longitude: existing.longitude },
+          tx,
+        })
+        await syncPlaceStatus({
+          placeId: current.id,
+          actor: 'mcp',
+          pageStatus: 'published',
+          status: row.status,
+          previous: existing.status,
+          tx,
+        })
+      },
+    })
     const row = applied.row
     if (row) {
-      await syncCoordinates({
-        subjectType: 'place',
-        subjectId: current.id,
-        actor: 'mcp',
-        pageStatus: 'published',
-        latitude: row.latitude,
-        longitude: row.longitude,
-        previous: { latitude: current.latitude, longitude: current.longitude },
-      })
-      await syncPlaceStatus({
-        placeId: current.id,
-        actor: 'mcp',
-        pageStatus: 'published',
-        status: row.status,
-        previous: current.status,
-      })
       await auditMcp(auditTool, 'place', current.id)
       return { ...compactPlace(row), pendingReview: false, bodyLength: row.body.length, writingWarnings: applied.writingWarnings }
     }
@@ -479,60 +491,9 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     website: current.website,
     schemaType: current.schemaType,
   })
-  const point = await syncCoordinates({
-    subjectType: 'place',
-    subjectId: current.id,
-    actor: 'mcp',
-    pageStatus: publicationStatus,
-    latitude: input.latitude,
-    longitude: input.longitude,
-    previous: { latitude: current.latitude, longitude: current.longitude },
-  })
-  const visit = await syncPlaceStatus({
-    placeId: current.id,
-    actor: 'mcp',
-    pageStatus: publicationStatus,
-    status: input.status && VISIT.has(input.status) ? input.status : undefined,
-    previous: current.status,
-  })
-  const phone = await syncPlacePhone({
-    placeId: current.id,
-    actor: 'mcp',
-    pageStatus: publicationStatus,
-    phone: contact.phone,
-    sourceUrl: contact.phoneSourceUrl,
-    checkedAt: phoneCheckedAt(checked),
-  })
-  const saved = await savePlaceContent({
-    id: current.id,
-    slug,
-    title: input.title ?? current.title,
-    summary: input.summary ?? current.summary,
-    body: input.body ?? current.body,
-    ...(input.sections ? { sections: input.sections as never } : {}),
-    status: visit.skipped ? current.status : status,
-    hours: input.hours === undefined ? current.hours : input.hours,
-    price: input.price === undefined ? current.price : input.price,
-    phone: phone.skipped ? current.phone : contact.phone,
-    website: contact.website,
-    schemaType: contact.schemaType,
-    howToGet: input.howToGet === undefined ? current.howToGet : input.howToGet,
-    latitude: point.skipped || input.latitude === undefined ? current.latitude : input.latitude,
-    longitude: point.skipped || input.longitude === undefined ? current.longitude : input.longitude,
-    categoryId: await categoryId(input.categorySlug, current.categoryId),
-    regionId: await regionIdOf(input.regionSlug, current.regionId),
-    sources: input.sources ?? current.sources ?? [],
-    seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-    seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-    ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
-    publicationStatus,
-    noindex: input.noindex ?? current.noindex,
-    authorKind: current.authorKind,
-    visitDuration: input.visitDuration === undefined ? current.visitDuration : cleanText(input.visitDuration),
-    bestTime: input.bestTime === undefined ? current.bestTime : cleanText(input.bestTime),
-    faq: input.faq === undefined ? current.faq : cleanFaq(input.faq),
-    lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
-  }, null, contentGate('place', {
+  const category = await categoryId(input.categorySlug, current.categoryId)
+  const region = await regionIdOf(input.regionSlug, current.regionId)
+  const gate = contentGate('place', {
     title: input.title ?? current.title,
     summary: input.summary ?? current.summary,
     body: input.body ?? current.body,
@@ -549,13 +510,84 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     phone: contact.phone,
     phoneSourceUrl: contact.phoneSourceUrl,
     website: contact.website,
-  }, publicationStatus === 'published'))
-  const { row, writingWarnings } = saved
-  if (scope === 'editor') {
-    await db.editor.deleteContentDraft('place', current.id)
+  }, publicationStatus === 'published')
+  const writeLive = async (tx: ContentTx) => {
+    const point = await syncCoordinates({
+      subjectType: 'place',
+      subjectId: current.id,
+      actor: 'mcp',
+      pageStatus: publicationStatus,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      previous: { latitude: current.latitude, longitude: current.longitude },
+      tx,
+    })
+    const visit = await syncPlaceStatus({
+      placeId: current.id,
+      actor: 'mcp',
+      pageStatus: publicationStatus,
+      status: input.status && VISIT.has(input.status) ? input.status : undefined,
+      previous: current.status,
+      tx,
+    })
+    const phone = await syncPlacePhone({
+      placeId: current.id,
+      actor: 'mcp',
+      pageStatus: publicationStatus,
+      phone: contact.phone,
+      sourceUrl: contact.phoneSourceUrl,
+      checkedAt: phoneCheckedAt(checked),
+      tx,
+    })
+    const saved = await savePlaceContent({
+      id: current.id,
+      slug,
+      title: input.title ?? current.title,
+      summary: input.summary ?? current.summary,
+      body: input.body ?? current.body,
+      ...(input.sections ? { sections: input.sections as never } : {}),
+      status: visit.skipped ? current.status : status,
+      hours: input.hours === undefined ? current.hours : input.hours,
+      price: input.price === undefined ? current.price : input.price,
+      phone: phone.skipped ? current.phone : contact.phone,
+      website: contact.website,
+      schemaType: contact.schemaType,
+      howToGet: input.howToGet === undefined ? current.howToGet : input.howToGet,
+      latitude: point.skipped || input.latitude === undefined ? current.latitude : input.latitude,
+      longitude: point.skipped || input.longitude === undefined ? current.longitude : input.longitude,
+      categoryId: category,
+      regionId: region,
+      sources: input.sources ?? current.sources ?? [],
+      seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+      seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+      ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
+      publicationStatus,
+      noindex: input.noindex ?? current.noindex,
+      authorKind: current.authorKind,
+      visitDuration: input.visitDuration === undefined ? current.visitDuration : cleanText(input.visitDuration),
+      bestTime: input.bestTime === undefined ? current.bestTime : cleanText(input.bestTime),
+      faq: input.faq === undefined ? current.faq : cleanFaq(input.faq),
+      lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
+    }, null, gate, tx)
+    return { ...saved.row, writingWarnings: saved.writingWarnings }
+  }
+  const saved = scope === 'editor'
+    ? await withEditorLiveWrite('place', current.id, writeLive)
+    : await db.editor.transaction(async (tx) => {
+        const row = await writeLive(tx)
+        return { ...row, draftDropped: false }
+      })
+  if (scope !== 'editor') {
+    await syncSavedPage('place', saved.id)
   }
   await auditMcp(auditTool, 'place', current.id)
-  return { ...compactPlace(row), phoneSourceUrl: contact.phoneSourceUrl, pendingReview: false, writingWarnings }
+  return {
+    ...compactPlace(saved),
+    phoneSourceUrl: contact.phoneSourceUrl,
+    pendingReview: false as const,
+    writingWarnings: saved.writingWarnings,
+    ...(scope === 'editor' ? { draftDropped: saved.draftDropped } : {}),
+  }
 }
 
 export async function submitPlaceReview(input: { id?: string, slug?: string }) {

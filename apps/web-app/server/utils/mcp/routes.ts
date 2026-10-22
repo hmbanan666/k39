@@ -2,6 +2,7 @@ import { composeBody, db, readSections } from '@k39/database'
 import { createError } from 'h3'
 import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
+import { withEditorLiveWrite } from '../content/pending-guard'
 import { applyPendingRouteContent, contentGate, savePendingDraftContent, saveRouteContent } from '../content/save'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
@@ -226,7 +227,7 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
     throw createError({ statusCode: 400, statusMessage: problem })
   }
   try {
-    const { row, writingWarnings } = await saveRouteContent({
+    const write = {
       id: current.id,
       slug,
       title: input.title || current.title,
@@ -238,7 +239,8 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
       points: input.points,
       path: input.path,
-    }, null, contentGate('route', {
+    }
+    const gate = contentGate('route', {
       title: input.title || current.title,
       summary: input.summary ?? current.summary,
       body: input.body ?? current.body,
@@ -246,19 +248,23 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
       seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
       points: input.points,
-    }, publicationStatus === 'published'))
-    if (scope === 'editor') {
-      await db.editor.deleteContentDraft('route', current.id)
-    }
+    }, publicationStatus === 'published')
+    const saved = scope === 'editor'
+      ? await withEditorLiveWrite('route', current.id, async (tx) => {
+          const written = await saveRouteContent(write, null, gate, tx)
+          return { ...written.row, writingWarnings: written.writingWarnings }
+        })
+      : await saveRouteContent(write, null, gate).then((written) => ({ ...written.row, writingWarnings: written.writingWarnings, draftDropped: false }))
     await auditMcp(auditTool, 'route', current.id)
     return {
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      publicationStatus: row.publicationStatus,
-      points: orderedStopView(await db.editor.routePoints(row.id)),
+      id: saved.id,
+      slug: saved.slug,
+      title: saved.title,
+      publicationStatus: saved.publicationStatus,
+      points: orderedStopView(await db.editor.routePoints(saved.id)),
       pendingReview: false as const,
-      writingWarnings,
+      writingWarnings: saved.writingWarnings,
+      ...(scope === 'editor' ? { draftDropped: saved.draftDropped } : {}),
     }
   } catch (error) {
     rethrowContentWrite(error)

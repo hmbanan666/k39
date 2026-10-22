@@ -1,4 +1,4 @@
-import type { FactRefWrite } from '@k39/database'
+import type { ContentTx, FactExecutor, FactRefWrite } from '@k39/database'
 import type { FactActor, FactConfidence, FactKind, FactProposal, FactSubject, SourceKind } from '../../../shared/facts'
 import { db } from '@k39/database'
 import { createError } from 'h3'
@@ -26,7 +26,13 @@ export interface CommitFactInput {
   markUnseeded?: boolean
 }
 
-export async function commitFact(input: CommitFactInput) {
+/** A place-save transaction and the pool share the fact query methods. */
+export function factExecutor(tx?: ContentTx): FactExecutor | undefined {
+  return tx as FactExecutor | undefined
+}
+
+export async function commitFact(input: CommitFactInput, tx?: ContentTx) {
+  const facts = factExecutor(tx)
   rejectBannedSites({ sourceUrl: input.sourceUrl, sourceTitle: input.sourceTitle })
   if (!mapSourceAllowed(input.subjectType, input.kind, input.sourceKind)) {
     throw createError({ statusCode: 400, statusMessage: 'Карта подходит только заведению и только для адреса, часов, телефона, статуса и координат' })
@@ -37,7 +43,7 @@ export async function commitFact(input: CommitFactInput) {
   }
   const hash = valueHash(value)
   const ttlDays = input.ttlDays ?? defaultTtl(input.kind)
-  const existing = await db.facts.liveSlot(input.subjectType, input.subjectId, input.slot)
+  const existing = await db.facts.liveSlot(input.subjectType, input.subjectId, input.slot, facts)
   const proposal: FactProposal = {
     value,
     sourceUrl: input.sourceUrl,
@@ -48,7 +54,7 @@ export async function commitFact(input: CommitFactInput) {
     checkedAt: input.checkedAt,
   }
   if (existing && input.actor === 'mcp') {
-    const actor = await db.facts.latestActor(existing.id)
+    const actor = await db.facts.latestActor(existing.id, facts)
     const same = existing.valueHash === hash
       && existing.sourceKind === input.sourceKind
       && (existing.sourceUrl ?? null) === input.sourceUrl
@@ -71,7 +77,7 @@ export async function commitFact(input: CommitFactInput) {
           ttlDays: proposal.ttlDays,
           checkedAt: proposal.checkedAt,
         },
-      })
+      }, facts)
       return { conflict: true as const, queueId: queued.id, fact: existing }
     }
   }
@@ -89,13 +95,13 @@ export async function commitFact(input: CommitFactInput) {
     ttlDays,
     confidence: input.confidence,
     actor: input.actor,
-  }, input.refs)
+  }, input.refs, facts)
   if (input.sourceUrl && watchableSource(input.sourceKind, input.sourceUrl)) {
     const base = input.checkedAt ? new Date(input.checkedAt).getTime() : Date.now()
-    await db.facts.ensureSource(input.sourceUrl, new Date(base + ttlDays * 86_400_000).toISOString())
+    await db.facts.ensureSource(input.sourceUrl, new Date(base + ttlDays * 86_400_000).toISOString(), facts)
   }
   if (input.checkedAt) {
-    await db.facts.closeForFact(fact.id)
+    await db.facts.closeForFact(fact.id, facts)
   }
   if ((!input.checkedAt || input.markUnseeded) && queueMayOpen(input.pageStatus ?? null, 'unseeded')) {
     await db.facts.enqueue({
@@ -106,11 +112,11 @@ export async function commitFact(input: CommitFactInput) {
       path: input.refs[0]?.path ?? input.slot,
       reason: 'unseeded',
       priority: priorityFor(input.kind, 'unseeded', 1),
-    })
+    }, facts)
   }
   return { conflict: false as const, fact }
 }
 
-export async function retireFactSlot(subjectType: FactSubject, subjectId: string, slot: string) {
-  await db.facts.retireSlot(subjectType, subjectId, slot)
+export async function retireFactSlot(subjectType: FactSubject, subjectId: string, slot: string, tx?: ContentTx) {
+  await db.facts.retireSlot(subjectType, subjectId, slot, factExecutor(tx))
 }

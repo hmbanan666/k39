@@ -4,6 +4,7 @@ import { createError } from 'h3'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
+import { withEditorLiveWrite } from '../content/pending-guard'
 import { applyPendingCollectionContent, contentGate, saveCollectionContent, savePendingDraftContent } from '../content/save'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
@@ -224,7 +225,7 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
     throw createError({ statusCode: 400, statusMessage: COLLECTION_BODY_REJECTED })
   }
   try {
-    const { row, writingWarnings } = await saveCollectionContent({
+    const write = {
       id: current?.id ?? input.id,
       slug,
       title: (input.title ?? current?.title ?? '').trim(),
@@ -240,7 +241,8 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
       month: input.kind === 'theme' ? null : input.month,
       sources: input.sources,
       modules: input.modules,
-    }, null, contentGate('collection', {
+    }
+    const gate = contentGate('collection', {
       title: input.title ?? current?.title,
       summary: input.summary === undefined ? current?.summary : input.summary,
       copy: plan.copy,
@@ -248,26 +250,34 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
       seoDescription: input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
       items: input.items,
       sources: input.sources === undefined ? current?.sources : input.sources,
-    }, publicationStatus === 'published'))
-    if (scope === 'editor' && current) {
-      await db.editor.deleteContentDraft('collection', current.id)
-    }
-    await auditMcp(auditTool, 'collection', row.id)
+    }, publicationStatus === 'published')
+    const saved = scope === 'editor' && current
+      ? await withEditorLiveWrite('collection', current.id, async (tx) => {
+          const written = await saveCollectionContent(write, null, gate, tx)
+          return { ...written.row, writingWarnings: written.writingWarnings }
+        })
+      : await saveCollectionContent(write, null, gate).then((written) => ({
+          ...written.row,
+          writingWarnings: written.writingWarnings,
+          draftDropped: false,
+        }))
+    await auditMcp(auditTool, 'collection', saved.id)
     return {
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      publicationStatus: row.publicationStatus,
-      kind: row.kind,
-      month: row.month,
-      sources: row.sources,
-      body: row.body,
-      modules: row.modules,
+      id: saved.id,
+      slug: saved.slug,
+      title: saved.title,
+      publicationStatus: saved.publicationStatus,
+      kind: saved.kind,
+      month: saved.month,
+      sources: saved.sources,
+      body: saved.body,
+      modules: saved.modules,
       article: plan.article,
       renderedFields: plan.renderedFields,
-      items: orderedStopView(await db.editor.collectionItems(row.id)),
+      items: orderedStopView(await db.editor.collectionItems(saved.id)),
       pendingReview: false as const,
-      writingWarnings,
+      writingWarnings: saved.writingWarnings,
+      ...(scope === 'editor' && current ? { draftDropped: saved.draftDropped } : {}),
     }
   } catch (error) {
     rethrowContentWrite(error)

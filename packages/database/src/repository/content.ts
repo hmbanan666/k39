@@ -665,15 +665,29 @@ export class Editor {
   /**
    * Writes a pending place draft onto the live row and removes the draft
    * in one transaction (ADR 0035). Null when that draft is already gone.
-   * `keep` names columns that stay as stored, such as a phone whose fact the
-   * owner holds.
+   * `beforeWrite` runs before the row update, still in that transaction, so
+   * a phone fact and an owner-skip (`phone: true` keeps the stored column)
+   * commit or roll back with the row. `afterWrite` runs after the row update
+   * and before the draft delete.
    */
-  static async applyPendingPlace(id: string, keep: { phone?: boolean } = {}) {
+  static async applyPendingPlace(id: string, hooks?: {
+    beforeWrite?: (
+      tx: ContentTx,
+      draft: typeof contentDrafts.$inferSelect,
+      existing: typeof places.$inferSelect,
+    ) => Promise<{ phone?: boolean } | void>
+    afterWrite?: (
+      tx: ContentTx,
+      updated: typeof places.$inferSelect,
+      existing: typeof places.$inferSelect,
+    ) => Promise<void>
+  }) {
     return withPendingDraft('place', id, async (tx, draft) => {
       const [existing] = await tx.select().from(places).where(eq(places.id, id)).limit(1)
       if (!existing) {
         return null
       }
+      const keep = (await hooks?.beforeWrite?.(tx, draft, existing)) ?? {}
       const next = { ...placeFromPending(existing, draft.payload), ...(keep.phone ? { phone: existing.phone } : {}) }
       await tx.insert(revisions).values({
         entityType: 'place',
@@ -690,7 +704,12 @@ export class Editor {
         updatedBy: null,
         updatedAt: new Date().toISOString(),
       }).where(eq(places.id, existing.id)).returning()
-      return updated ?? null
+      const row = updated ?? null
+      if (!row) {
+        return null
+      }
+      await hooks?.afterWrite?.(tx, row, existing)
+      return row
     })
   }
 
@@ -798,13 +817,15 @@ export class Editor {
     return row
   }
 
-  static async savePlace(input: PlaceDraft & { slug: string }, userId?: string | null) {
+  static async savePlace(input: PlaceDraft & { slug: string }, userId?: string | null, tx?: ContentTx) {
     const data = { ...input, ...syncedBody(input) }
     if (input.sources !== undefined) {
       data.sources = pageSources(input.sources)
     }
-    const db = useDatabase()
-    const existing = data.id ? await this.placeById(data.id) : await this.placeBySlug(data.slug)
+    const db = tx ?? useDatabase()
+    const [existing] = data.id
+      ? await db.select().from(places).where(eq(places.id, data.id)).limit(1)
+      : await db.select().from(places).where(eq(places.slug, data.slug)).limit(1)
     if (existing) {
       await db.insert(revisions).values({
         entityType: 'place',
@@ -813,7 +834,7 @@ export class Editor {
         updatedBy: userId ?? null,
       })
       if (existing.slug !== data.slug) {
-        await upsertRedirect(`/${existing.slug}`, `/${data.slug}`)
+        await upsertRedirect(`/${existing.slug}`, `/${data.slug}`, tx)
       }
       const status = data.publicationStatus ?? existing.publicationStatus
       const [updated] = await db.update(places).set({
@@ -898,12 +919,16 @@ export class Editor {
     return useDatabase().transaction(run)
   }
 
-  /** Deletes the draft only when it is still the row the caller checked. */
+  /**
+   * Deletes the draft only when it is still the row the caller checked.
+   * False when a newer write has replaced that row.
+   */
   static async deleteContentDraftIfUnchanged(id: string, updatedAt: string, tx: ContentTx) {
-    await tx.delete(contentDrafts).where(and(
+    const rows = await tx.delete(contentDrafts).where(and(
       eq(contentDrafts.id, id),
       eq(contentDrafts.updatedAt, updatedAt),
-    ))
+    )).returning({ id: contentDrafts.id })
+    return rows.length > 0
   }
 
   static async collectionItems(collectionId: string) {
