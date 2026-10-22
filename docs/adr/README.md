@@ -69,6 +69,7 @@ Proposed.
 | 0043 | [Anonymous event rows are not a session](0043-anonymous-events-session.md) | Accepted |
 | 0044 | [Weekdays with unknown hours](0044-schedule-unknown-days.md) | Accepted |
 | 0045 | [Goal grace and the status check](0045-goal-grace-and-status-check.md) | Accepted |
+| 0046 | [Structured practical info](0046-structured-practical-info.md) | Proposed |
 
 ## Redirects
 
