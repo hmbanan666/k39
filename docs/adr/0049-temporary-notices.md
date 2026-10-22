@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted (2026-10-22, accepted by Nick).
 
 Compatible with [ADR 0028](0028-schedule.md), [ADR 0042](0042-open-ended-hours.md), [ADR 0044](0044-schedule-unknown-days.md), and [ADR 0046](0046-structured-practical-info.md). It does not add a field to schedule `rules`. The schedule stays the only hours. When this record is implemented, the pending payload from [ADR 0035](0035-draft-content-token.md), [ADR 0041](0041-collection-route-drafts.md), and [ADR 0047](0047-venue-pending-drafts.md) gains a `notices` key. Those three records gain an "amended by" line in that implementation. This record does not edit them.
 

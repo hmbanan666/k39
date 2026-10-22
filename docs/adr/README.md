@@ -72,7 +72,7 @@ Proposed.
 | 0046 | [Structured practical info](0046-structured-practical-info.md) | Accepted |
 | 0047 | [Pending drafts for published venues](0047-venue-pending-drafts.md) | Accepted |
 | 0048 | [Declared VK community id for menu prices](0048-vk-community-id.md) | Accepted |
-| 0049 | [Dated temporary notices](0049-temporary-notices.md) | Proposed |
+| 0049 | [Dated temporary notices](0049-temporary-notices.md) | Accepted |
 
 ## Redirects
 
