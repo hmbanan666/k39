@@ -9,6 +9,6 @@ export default defineEventHandler(async (event) => {
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
   }
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   return updatePlaceDraft(placeWriteFromBody(body ?? {}, current))
 })

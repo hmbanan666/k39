@@ -115,8 +115,11 @@ tell, in one glance, whether this place is cheap or expensive.
   when `venues.website` is empty and the price community matches a VK link
   in `socials`: the same screen name, or the same numeric id from `club`,
   `public`, `event`, `wall-`, `market-`, `album-`, `photo-`, `doc-`,
-  `topic-`, or `video-`. A `w=` or `z=` object is that owner, and the path
+  `topic-`, `video-`, or `product-`. A `w=` or `z=` object is that owner, and the path
   screen name is ignored. A section path such as `feed` is not a screen name.
+  `venues.vk_community_id` is the numeric id of a screen-name link, so
+  `vk.com/cafe` and `album-<id>_…` are the same community once it is set
+  (ADR 0048).
   `website` is only the venue's own site. A social host is rejected there
   and belongs in `socials`.
   Other social networks are not a menu. Set with `venue_prices_set` (replaces

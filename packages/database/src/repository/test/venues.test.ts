@@ -249,6 +249,44 @@ describe('venue repository', () => {
     expect(kept?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/cafe' }])
   })
 
+  it('stores a VK community id only beside a VK link and clears it when socials stop supporting it', async () => {
+    const vk = [{ network: 'vk', url: 'https://vk.com/lugowen_gastro' }]
+    await expect(Venues.create({ name: 'Без ВК', kind: 'cafe', vkCommunityId: 236300695 }))
+      .rejects
+      .toThrow('ID сообщества ВКонтакте задаётся вместе со ссылкой на это сообщество в «Соцсети»')
+    for (const bad of [0, -1, 1.5, 'club236300695']) {
+      await expect(Venues.create({ name: 'Неверный ID', kind: 'cafe', socials: vk, vkCommunityId: bad }))
+        .rejects
+        .toThrow('ID сообщества ВКонтакте: целое положительное число, например 236300695')
+    }
+    const created = await Venues.create({ name: 'Луговень', kind: 'cafe', socials: vk, vkCommunityId: '236300695' })
+    expect(created.vkCommunityId).toBe(236300695)
+    expect((await Venues.menuLinksFor([created.id]))[0]?.vkCommunityId).toBe(236300695)
+
+    const kept = await Venues.update(created.id, { socials: [{ network: 'vk', url: 'https://vk.com/lugowen' }] })
+    expect(kept?.vkCommunityId).toBe(236300695)
+    await expect(Venues.update(created.id, { socials: [{ network: 'vk', url: 'https://vk.com/club10' }], vkCommunityId: 11 }))
+      .rejects
+      .toThrow('ID сообщества ВКонтакте не совпадает со ссылкой в «Соцсети»')
+    const cleared = await Venues.update(created.id, { socials: [{ network: 'telegram', url: 'https://t.me/lugowen' }] })
+    expect(cleared?.vkCommunityId).toBeNull()
+    const restored = await Venues.update(created.id, { socials: vk, vkCommunityId: 236300695 })
+    expect(restored?.vkCommunityId).toBe(236300695)
+    const unset = await Venues.update(created.id, { vkCommunityId: null })
+    expect(unset?.vkCommunityId).toBeNull()
+
+    const moved = await Venues.update(created.id, { socials: vk, vkCommunityId: 236300695 })
+    expect(moved?.vkCommunityId).toBe(236300695)
+    const owner = await Venues.update(created.id, { socials: [{ network: 'vk', url: 'https://vk.com/club10' }] })
+    expect(owner?.vkCommunityId).toBeNull()
+    expect(owner?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/club10' }])
+    const next = await Venues.update(created.id, { phone: '+7 4012 00-00-01' })
+    expect(next?.vkCommunityId).toBeNull()
+    await expect(useDatabase().update(venues).set({ vkCommunityId: -5 }).where(eq(venues.id, created.id)))
+      .rejects
+      .toThrow()
+  })
+
   it('orders nearby food venues and hides rows older than a year', async () => {
     const now = new Date('2026-10-13T12:00:00.000Z')
     const fresh = new Date(now.getTime() - 10 * DAY).toISOString()

@@ -74,6 +74,7 @@ export function venueWriteFromInput(input: {
   phone?: string | null
   website?: string | null
   socials?: Array<{ network: string, url: string }>
+  vkCommunityId?: number | string | null
   bookingUrl?: string | null
   orderUrl?: string | null
   deliveryUrl?: string | null

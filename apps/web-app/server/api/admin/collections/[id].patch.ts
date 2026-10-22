@@ -7,7 +7,7 @@ import { contentGate, saveCollectionContent } from '../../../utils/content/save'
 
 export default defineEventHandler(async (event) => {
   const user = await requireEditor(event)
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   const problem = slugError(String(body.slug || ''))
   if (problem) {
     throw createError({ statusCode: 400, statusMessage: problem })

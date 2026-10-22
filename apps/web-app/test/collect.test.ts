@@ -172,6 +172,11 @@ describe('collect http limits', () => {
     expect(second.status).toBe(204)
   })
 
+  it('answers 413 when the declared length is over the cap', async () => {
+    const response = await postCollect('203.0.113.52', 'Mozilla/5.0', Buffer.alloc(COLLECT_BODY_MAX + 1))
+    expect(response.status).toBe(413)
+  })
+
   it('answers 413 when a chunked body grows past the cap', async () => {
     const body = Readable.from((async function* () {
       yield Buffer.alloc(COLLECT_BODY_MAX, 0x61)

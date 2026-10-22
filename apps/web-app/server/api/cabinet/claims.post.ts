@@ -3,7 +3,7 @@ import { startClaim } from '../../utils/cabinet/flow'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAccount(event)
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   const channel = body?.channel
   if (channel !== 'email' && channel !== 'phone' && channel !== 'manual') {
     throw createError({ statusCode: 400, statusMessage: 'Выберите способ проверки' })
