@@ -66,11 +66,10 @@
           v-if="hasFacts || page.offers.length"
           #lead
         >
-          <section
+          <FactsCard
             v-if="hasFacts"
-            class="facts"
+            :checked="checkedLabel"
           >
-            <h2>Коротко</h2>
             <OpeningLive
               :schedule="page.place.schedule"
               :has-hours="Boolean(page.place.hours)"
@@ -80,6 +79,7 @@
               :key="row.key"
               :row="row"
             />
+            <TicketsFact :admission="page.admission" />
             <GuideFactRow
               v-if="address"
               :row="{ key: 'address', label: 'Адрес', value: address }"
@@ -98,14 +98,7 @@
               :address="address"
               :entity="`/${slug}`"
             />
-            <p
-              v-if="checkedLabel"
-              class="checked"
-            >
-              <Icon :name="tablerIcon('checked')" size="16" />
-              Проверено {{ checkedLabel }}
-            </p>
-          </section>
+          </FactsCard>
           <div
             v-if="page.offers.length"
             class="offers"
@@ -119,6 +112,11 @@
           </div>
         </template>
         <template #after>
+          <UpcomingEvents
+            :id="SECTIONS.upcoming.id"
+            :items="page.upcoming"
+            :title="SECTIONS.upcoming.title"
+          />
           <section
             v-if="hasCoords || page.directionsHtml"
             :id="SECTIONS.directions.id"
@@ -253,13 +251,14 @@
 </template>
 
 <script setup lang="ts">
+import type { AdmissionView } from '~~/shared/admission'
+import type { EventLine } from '~~/shared/events'
 import type { GuestPublicItem } from '~~/shared/guest'
 import type { PublicMedia } from '~~/shared/media'
 import type { ScheduleRecord } from '~~/shared/schedule'
 import type { SeoDocument } from '~~/shared/seo'
 import { shortAddress } from '~~/shared/address'
 import { eatNowPath } from '~~/shared/eat-now'
-import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
@@ -294,6 +293,8 @@ interface PlacePage {
     longitude: number | null
     schedule: ScheduleRecord | null
   }
+  admission: AdmissionView
+  upcoming: EventLine[]
   categoryTitle: string
   categorySlug: string
   region: { title: string, shortTitle?: string | null } | null
@@ -340,13 +341,14 @@ function openPhoto(id: string) {
 const closedByStatus = page.place.status === 'closed' && !isVerified(page.place.schedule)
 const closedNote = closedByStatus ? 'Закрыто для посещения' : ''
 // Contacts follow the address, so the block reads: visit facts, where, how to reach.
-const rows = guideFacts(page.place)
+const rows = guideFacts({ ...page.place, admissionStored: page.admission.stored })
 const facts = rows.filter((row) => row.key !== 'phone' && row.key !== 'website')
 const contacts = rows.filter((row) => row.key === 'phone' || row.key === 'website')
 const checkedLabel = russianDay(page.checkedAt)
 const address = shortAddress(page.place.howToGet || '')
 const hasFacts = Boolean(
   rows.length
+  || page.admission.stored
   || address
   || (page.place.latitude != null && page.place.longitude != null),
 )
@@ -360,6 +362,7 @@ const eatNowHref = eatNowSlug ? eatNowPath(eatNowSlug) : ''
 // Text-width blocks (food nearby, directions, FAQ) stay in the article column
 // beside the rail; only the wide «Рядом» grid runs full width after it.
 const sectionsAfter = presentSections([
+  [SECTIONS.upcoming, page.upcoming.length > 0],
   [SECTIONS.directions, Boolean(hasCoords || page.directionsHtml)],
   [SECTIONS.eatNearby, (page.eatNearby?.length ?? 0) > 0],
   [SECTIONS.placeRoutes, routes.length > 0],
@@ -422,35 +425,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 }
 .place-body { margin-top: 2.4rem; }
 .offers { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.2rem; }
-.facts {
-  position: relative;
-  overflow: hidden;
-  padding: 1.2rem 1.15rem 0.4rem;
-  border: 1px solid var(--color-line);
-  border-radius: 14px;
-  background: var(--color-surface);
-}
-.facts::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 6px;
-  background: repeating-linear-gradient(90deg, var(--color-brick) 0 18px, transparent 18px 26px, var(--color-sea) 26px 44px, transparent 44px 52px);
-}
-.facts h2 { margin: 0.35rem 0 0.3rem; font-size: 1.35rem; }
-.checked {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  margin: 0;
-  padding: 0.7rem 0 0.8rem;
-  border-top: 1px dashed var(--color-line);
-  color: var(--color-pine, var(--muted));
-  font: 600 0.8rem/1.2 var(--font-body);
-}
-.checked svg { flex: none; }
 .faq { margin-top: 3rem; }
 .faq h2 { margin: 0 0 0.9rem; }
 .faq-item {

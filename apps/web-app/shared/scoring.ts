@@ -81,6 +81,8 @@ export interface ScoreSource {
   scheduleMode?: string | null
   /** Places and venues: `scheduleHoursKnown` of the stored schedule. */
   hoursKnown?: boolean
+  /** Structured practical rows of a place or route (ADR 0046). `schedule` is `hoursKnown` for a place. */
+  practical?: { schedule: boolean, admissionRows: number, freshAdmission: number, upcomingEvents: number }
   // Collection stops only. city is the place region id. access is the item note plus the place address.
   stops?: Array<{ city: string | null, access: string | null }>
   photoCount: number
@@ -461,11 +463,15 @@ function collectionDirections(page: ScoreSource, text: string) {
 }
 
 /**
- * Known schedule hours count first. Free-text `places.hours` and `places.price`
- * still count, so a place without a schedule row keeps its points (ADR 0046).
+ * Known schedule hours, fresh admission rows, or an upcoming event count first.
+ * Free-text `places.hours` and `places.price` still count, so a place without
+ * a schedule row keeps its points (ADR 0046).
  */
-function hasPractical(text: string, hoursKnown: boolean, hours: string | null, price: string | null) {
-  if (hoursKnown || hours?.trim() || price?.trim()) {
+function hasPractical(text: string, hours: string | null, price: string | null, practical?: ScoreSource['practical']) {
+  if (hours?.trim() || price?.trim()) {
+    return true
+  }
+  if (practical && (practical.schedule || practical.freshAdmission > 0 || practical.upcomingEvents > 0)) {
     return true
   }
   if (markdownHeadings(text).some((heading) => PRICE_HEADING.test(heading))) {
@@ -519,10 +525,14 @@ function sectionPoints(page: ScoreSource, text: string) {
   } else {
     checks.push('no Как добраться')
   }
-  if (hasPractical(text, page.kind === 'place' && Boolean(page.hoursKnown), page.kind === 'place' ? page.hours : null, page.kind === 'place' ? page.price : null)) {
+  if (hasPractical(text, page.kind === 'place' ? page.hours : null, page.kind === 'place' ? page.price : null, page.practical)) {
     points += 10
   } else {
     checks.push('no prices')
+  }
+  // The table replaces the column on the page. The string is a reminder to clear it; the points stay.
+  if (page.kind === 'place' && page.price?.trim() && (page.practical?.admissionRows ?? 0) > 0) {
+    checks.push('price text conflicts')
   }
   return { points: points + faq.points, checks: [...checks, ...faq.checks], questions: faq.questions }
 }
@@ -1137,6 +1147,7 @@ export function issueLabel(check: string) {
     [/^no FAQ$/, () => 'Нет частых вопросов'],
     [/^FAQ (\d+), need 6$/, (match) => `Частых вопросов: ${match[1]}, нужно 6`],
     [/^no prices$/, () => 'Нет цен или режима'],
+    [/^price text conflicts$/, () => 'Цена в тексте спорит с таблицей билетов'],
     [/^no Как добраться$/, () => 'Нет блока «Как добраться»'],
     [/^0 photos$/, () => 'Нет фотографий'],
     [/^(\d+) photos?, need (\d+)$/, (match) => `Фотографий: ${match[1]}, нужно ${match[2]}`],

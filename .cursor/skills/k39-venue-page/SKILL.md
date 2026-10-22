@@ -21,7 +21,9 @@ The main column then renders, via `presentVenueBlocks`:
 
 Stored order stays as the editor wrote it. Do not move `prices` to the top of the JSON to change the page.
 
-After that the page adds «Как внутри», «Как добраться» (the `how-to-get` text plus the map), «Рядом посмотреть», «Источники», and the owner note. Each one hides without data.
+A venue that sells entry or hosts dated events (a concert hall, a museum café) takes ticket rows with `admission_set` and events with `event_upsert` (ADR 0046). «Коротко» then shows «Билеты» and the page shows «Ближайшее». Sources follow `k39-sources-and-facts`. These are not modules and not menu prices. Do not retell them in the description.
+
+After that the page adds «Ближайшее» (upcoming events), «Как внутри», «Как добраться» (the `how-to-get` text plus the map), «Рядом посмотреть», «Источники», and the owner note. Each one hides without data.
 
 ## Modules
 

@@ -5,6 +5,7 @@ import { applyFixtures, FIXTURE_SLUGS } from '../../seed/fixtures'
 import { PRICE_CATALOG } from '../../seed/price-catalog'
 import { placeMedia, venues } from '../../tables'
 import { Editor } from '../content'
+import { Admission, CalendarEvents } from '../practical'
 import { Prices } from '../prices'
 import { Schedules } from '../schedules'
 import { Venues } from '../venues'
@@ -68,5 +69,14 @@ describe('ui fixtures', () => {
 
     const rows = await useDatabase().select().from(venues).where(eq(venues.slug, FIXTURE_SLUGS.cafePhoto))
     expect(rows).toHaveLength(1)
+
+    const museum = await Editor.placeBySlug(FIXTURE_SLUGS.placeTickets)
+    expect((await Admission.forSubject('place', museum!.id)).map((row) => row.audience)).toEqual(['general', 'reduced', 'family', 'free'])
+    const stored = await CalendarEvents.forSubject('place', museum!.id)
+    expect(stored).toHaveLength(4)
+    const upcoming = await CalendarEvents.upcomingFor('place', [museum!.id], new Date().toISOString(), 8)
+    expect(upcoming.map((row) => row.title)).toEqual(['Фикстура: вечерний концерт', 'Фикстура: день открытых дверей'])
+    const route = await Editor.routeBySlug(FIXTURE_SLUGS.route)
+    expect(await Admission.forSubject('route', route!.id)).toHaveLength(1)
   })
 })

@@ -156,8 +156,6 @@ describe('eat-nearby card helpers', () => {
 
 describe('venue modules', async () => {
   const { dishMenuNode, dishPhotoProblem, dishPriceIsFresh, stampDishModules, toPublicVenueModules, venueModulesSchema } = await import('../shared/venue-modules')
-  const { DISH_PRICE_FRESH_DAYS } = await import('../shared/venue-modules')
-  const { PRICE_FRESH_DAYS } = await import('@k39/database')
   const { absoluteUrl, schemaProblems, searchBlurb, venueDocument, venueTitleBase } = await import('../shared/seo')
   it('renders only valid lists and pulls how-to-get out of the blocks', () => {
     expect(toPublicVenueModules([], (text) => text)).toBeNull()
@@ -175,7 +173,6 @@ describe('venue modules', async () => {
     expect(venueModulesSchema.safeParse([item, item]).success).toBe(false)
   })
   it('caps the showcase at 8 and keeps a legacy note readable', () => {
-    expect(DISH_PRICE_FRESH_DAYS).toBe(PRICE_FRESH_DAYS)
     const item = { name: 'Смёрреброд с форелью', priceRub: 540, note: '350 г' }
     const nine = Array.from({ length: 9 }, () => item)
     expect(venueModulesSchema.safeParse([{ type: 'dishes', items: nine }]).success).toBe(false)

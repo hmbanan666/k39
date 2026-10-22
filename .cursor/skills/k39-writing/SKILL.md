@@ -87,9 +87,9 @@ The rendered title (with `| K39`) is 30–65 characters. The description is 110�
 Place order is ADR 0020. Do not add blocks.
 
 1. Summary: one or two sentences, what it is and why a visitor stops.
-2. «Коротко»: `visitDuration`, `bestTime`, hours, price, address. Empty fields hide. Example shape: «1–2 часа», «май–сентябрь, утром».
+2. «Коротко»: `visitDuration`, `bestTime`, hours, price, address. Empty fields hide. Example shape: «1–2 часа», «май–сентябрь, утром». Ticket prices are rows (`admission_set`, ADR 0046): once they exist, «Билеты» replaces `price`, so clear that field.
 3. Article sections (ADR 0027): intro, then only sections the sources support. `useful` renders «Полезно знать». `directions` renders «Как добраться».
-4. Hours are a schedule (ADR 0028), not a guessed sentence. `howToGet` is the short address only.
+4. Hours are a schedule (ADR 0028), not a guessed sentence. `howToGet` is the short address only. Ticket amounts and event dates live in the rows (`admission_set`, `event_upsert`) and render in «Билеты» and «Ближайшее». Do not repeat them in the body.
 5. «Вопросы перед поездкой», then «Источники».
 
 Routes, collections, and quests: ordered stops that already exist, then the practical bits (how to get there, what it costs). A collection whose stops share one region does not need a directions heading. Module pages: ADR 0023 and `content_guide`. Reuse existing prose when moving an article into modules. Edit `modules`. `body` is derived from them and is not a second article. A different `body` is rejected. The stop-list applies to that module text.
@@ -129,4 +129,5 @@ Good: «Во внутреннем дворе есть стол и две ска�
 - Length is inside the table, or inside a justified passport override (at most 20000) whose extra sections each have their own sourced facts.
 - Place FAQ is the `faq` field (3 to 6), not a second body section. Other articles use `## Частые вопросы` with 6 questions.
 - Summary is not repeated as the opening paragraph.
+- With ticket rows or events stored, `price` is empty and the body does not repeat their amounts or dates.
 - `seoTitle` and `seoDescription` sit in the score window.

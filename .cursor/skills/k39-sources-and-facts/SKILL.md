@@ -64,12 +64,21 @@ Use «уточняйте» only when the official site says nothing about that f
 
 `venue_import_osm` still creates a draft and does not publish. After import, check the official site and overwrite any conflicting address, hours, phone, or menu before publish. A map card may fill a fact the site still does not state. Put that card in `sources`.
 
+## Tickets and events
+
+Ticket prices and dated events are rows, not prose (ADR 0046). Write them with `admission_set` and `event_upsert`. Read with `admission_get`, `admissions_list`, `event_get`, and `events_list`. The draft token cannot write them on a live page (409), so a published page waits for the editor token.
+
+- Ticket prices: the official site of the place, museum, or administration only, including its ticket page. Ticket sellers, listings, and travel sites (afisha.ru, kassir.ru, ticketland.ru, radario.ru, culture.ru, kudago.com, tripster.ru and similar), maps, social pages, and documents on Drive or Disk are refused. `reduced`, `family`, and `foreign` need the condition the page states. Free entry is audience `free` at 0.
+- Events: the official site, or the place's or venue's own official social page (`official_social`). A listing site is refused. Times are Kaliningrad local time. A date with no stated clock is a date-only event, not a guessed hour. `ticketUrl` is the seller the official page links to.
+- Do not parse `places.price` into rows. Once rows exist, clear `places.price` (the page hides it anyway).
+- A row older than 365 days is hidden and the page says «Стоимость билета уточняйте». Re-check the official page and save the row again with today's `checkedAt`.
+
 ## Unknown
 
 For a place, write «уточняйте» (or leave the field empty where the template already says that) when the official source is silent. Place hours, phone, address, and coordinates do not come from Yandex Maps, 2GIS, or Google Maps.
 
 - Place hours with no official source: no schedule, or `needsCheck`. The hours text stays a human summary of a real schedule only.
-- Ticket or bill unknown: leave `price` empty. Do not guess a range.
+- Ticket or bill unknown: leave `price` empty and save no ticket row. Do not guess a range.
 - Status unknown: `unknown`.
 - A dish or a price you did not see on an official menu: omit the row.
 - Venue fields: follow the order above. «уточняйте» is the last step, after the official site and after a map or OSM fill-in.
@@ -106,7 +115,9 @@ Good: `commons_import` of a CC BY file, or our own photo with `author` and `lice
 
 Bad: «Билет около 300 ₽» because a blog said so.
 
-Good: an empty price, and the sentence «Стоимость билета уточняйте», until the official page states a number.
+Good: an empty price, and the sentence «Стоимость билета уточняйте», until the official page states a number. Then `admission_set` with that page as `sourceUrl`.
+
+Bad: a ticket row or an event whose source is afisha.ru or kassir.ru. The writer refuses it. Find the museum's own page.
 
 Bad: the cafe site says 10:00–22:00 and a map or OSM says 11:00–23:00, and the page stores the map or OSM hours.
 
@@ -125,6 +136,7 @@ Good: a price row on `disk.yandex.ru/i/...` that the venue's site links as «М�
 - Yandex Maps, 2GIS, and Google Maps, when used, are only for a venue that exists and operates, and only for hours, phone, address, operating status, and coordinates. The card URL is in `sources`. No text, description, photo, review, rating, average check, or price comes from them. Google Maps is `map_google`, below the official site, same as the other map cards.
 - Yandex Business, Yandex food cards, aggregators, delivery apps, and venue-site photos are unused.
 - A venue address, hours, phone, operating status, and coordinates come from the official site first. Maps and OSM fill a fact the site does not state. A conflict keeps the site. Then «уточняйте». Prices and menu lines stay the official menu. Menu documents on Drive, Docs, or Yandex Disk count. VK (`vk.com` or `vk.ru`) counts only when `website` is empty and the community matches a VK link in `socials`.
+- Ticket prices and events are rows from `admission_set` and `event_upsert`, sourced from the official page (events may use the place's own social page), never from a ticket seller or listing.
 - «уточняйте» is the last step. Nothing is guessed.
 - `sources` and `factsCheckedAt` or `lastVerifiedAt` match this check.
 - Photo `alt`, `author`, `license`, and `sourceUrl` are set. The credit is in JSON-LD and «Источники», not in the article.

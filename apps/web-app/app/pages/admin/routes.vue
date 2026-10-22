@@ -1,66 +1,71 @@
 <template>
   <main class="admin">
     <h1>Маршруты</h1>
-    <form
+    <template
       v-for="item in items"
       :key="item.id"
-      @submit.prevent="save(item)"
     >
-      <AdminPlaceDraftNotice
-        v-if="item.pending"
-        :pending="item.pending"
-        :busy="busyId === item.id"
-        :heading-id="`route-draft-${item.id}`"
-        @apply="onApply(item)"
-        @discard="onDiscard(item)"
+      <form @submit.prevent="save(item)">
+        <AdminPlaceDraftNotice
+          v-if="item.pending"
+          :pending="item.pending"
+          :busy="busyId === item.id"
+          :heading-id="`route-draft-${item.id}`"
+          @apply="onApply(item)"
+          @discard="onDiscard(item)"
+        />
+        <label>Название <input v-model="item.title"></label>
+        <label>Slug <input v-model="item.slug"></label>
+        <label>Кратко <textarea v-model="item.summary" rows="2" /></label>
+        <label>Текст <textarea v-model="item.body" rows="6" /></label>
+        <label>Статус
+          <select v-model="item.publicationStatus">
+            <option value="draft">черновик</option>
+            <option value="review">на проверке</option>
+            <option value="published">опубликовано</option>
+            <option value="archived">в архиве</option>
+          </select>
+        </label>
+        <label>SEO title <input v-model="item.seoTitle"></label>
+        <p>{{ (item.seoTitle || item.title || '').length }} знаков в заголовке</p>
+        <label>SEO description <textarea
+          v-model="item.seoDescription"
+          rows="2"
+        /></label>
+        <p>{{ (item.seoDescription || item.summary || '').length }} знаков в описании</p>
+        <label>Картинка для соцсетей <input v-model="item.ogImage"></label>
+        <label><input
+          v-model="item.noindex"
+          type="checkbox"
+        > Не индексировать</label>
+        <AdminDraftChoice
+          v-if="choice[item.id]"
+          :choice="chosen(item.id)"
+          :choice-id="`route-draft-choice-${item.id}`"
+          :text="choiceText(item)"
+          :busy="busyId === item.id"
+          @save="saveAndDiscard(item)"
+          @apply="confirmApply(item)"
+          @back="choice[item.id] = undefined"
+        />
+        <button
+          type="submit"
+          :disabled="busyId === item.id"
+        >
+          Сохранить
+        </button>
+        <p
+          v-if="message[item.id]"
+          aria-live="polite"
+        >
+          {{ message[item.id] }}
+        </p>
+      </form>
+      <AdminPracticalEditor
+        subject-type="route"
+        :subject-id="item.id"
       />
-      <label>Название <input v-model="item.title"></label>
-      <label>Slug <input v-model="item.slug"></label>
-      <label>Кратко <textarea v-model="item.summary" rows="2" /></label>
-      <label>Текст <textarea v-model="item.body" rows="6" /></label>
-      <label>Статус
-        <select v-model="item.publicationStatus">
-          <option value="draft">черновик</option>
-          <option value="review">на проверке</option>
-          <option value="published">опубликовано</option>
-          <option value="archived">в архиве</option>
-        </select>
-      </label>
-      <label>SEO title <input v-model="item.seoTitle"></label>
-      <p>{{ (item.seoTitle || item.title || '').length }} знаков в заголовке</p>
-      <label>SEO description <textarea
-        v-model="item.seoDescription"
-        rows="2"
-      /></label>
-      <p>{{ (item.seoDescription || item.summary || '').length }} знаков в описании</p>
-      <label>Картинка для соцсетей <input v-model="item.ogImage"></label>
-      <label><input
-        v-model="item.noindex"
-        type="checkbox"
-      > Не индексировать</label>
-      <AdminDraftChoice
-        v-if="choice[item.id]"
-        :choice="chosen(item.id)"
-        :choice-id="`route-draft-choice-${item.id}`"
-        :text="choiceText(item)"
-        :busy="busyId === item.id"
-        @save="saveAndDiscard(item)"
-        @apply="confirmApply(item)"
-        @back="choice[item.id] = undefined"
-      />
-      <button
-        type="submit"
-        :disabled="busyId === item.id"
-      >
-        Сохранить
-      </button>
-      <p
-        v-if="message[item.id]"
-        aria-live="polite"
-      >
-        {{ message[item.id] }}
-      </p>
-    </form>
+    </template>
   </main>
 </template>
 

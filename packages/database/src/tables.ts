@@ -1,6 +1,6 @@
 import type { BodySection } from './body-sections'
 import type { ClaimChannel, ClaimStatus, VenueMemberRole } from './claims'
-import type { AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
+import type { AdmissionAudience, AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
 import type { LengthOverride, ScoreChecks } from './types/scoring'
 import type { VenueDish, VenueHours, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from './venues'
 import { cuid2 } from 'drizzle-cuid2/postgres'
@@ -701,6 +701,52 @@ export const schedules = pgTable('schedules', {
   uniqueIndex('schedules_entity').on(table.entityType, table.entityId),
 ])
 
+// Ticket list of a place, venue, or route (ADR 0046). Not the menu catalog.
+export const admissionPrices = pgTable('admission_prices', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  subjectType: varchar('subject_type').notNull(),
+  subjectId: varchar('subject_id').notNull(),
+  slot: varchar('slot').notNull(),
+  audience: varchar('audience').notNull().$type<AdmissionAudience>(),
+  priceRub: integer('price_rub').notNull(),
+  condition: text('condition'),
+  label: varchar('label'),
+  sourceUrl: varchar('source_url').notNull(),
+  sourceTitle: varchar('source_title').notNull(),
+  checkedAt: date('checked_at', { mode: 'string' }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  updatedAt: updatedAt(),
+}, (table) => [
+  uniqueIndex('admission_prices_subject_slot').on(table.subjectType, table.subjectId, table.slot),
+  check('admission_prices_subject_check', sql`${table.subjectType} in ('place', 'venue', 'route')`),
+  check('admission_prices_audience_check', sql`${table.audience} in ('general', 'reduced', 'family', 'foreign', 'free')`),
+  check('admission_prices_price_check', sql`(${table.audience} = 'free' and ${table.priceRub} = 0) or (${table.audience} <> 'free' and ${table.priceRub} > 0)`),
+])
+
+// Dated performances of a place or venue (ADR 0046). `events` is the ADR 0004 action log.
+export const calendarEvents = pgTable('calendar_events', {
+  id: cuid2('id').defaultRandom().primaryKey(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  subjectType: varchar('subject_type').notNull(),
+  subjectId: varchar('subject_id').notNull(),
+  title: varchar('title').notNull(),
+  startsAt: timestamp('starts_at', { precision: 3, withTimezone: true, mode: 'string' }).notNull(),
+  endsAt: timestamp('ends_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  allDay: boolean('all_day').notNull().default(false),
+  ticketUrl: varchar('ticket_url'),
+  sourceUrl: varchar('source_url').notNull(),
+  sourceTitle: varchar('source_title').notNull(),
+  checkedAt: date('checked_at', { mode: 'string' }).notNull(),
+  cancelledAt: timestamp('cancelled_at', { precision: 3, withTimezone: true, mode: 'string' }),
+  expiredAt: timestamp('expired_at', { precision: 3, withTimezone: true, mode: 'string' }),
+}, (table) => [
+  index('calendar_events_subject_idx').on(table.subjectType, table.subjectId, table.startsAt),
+  index('calendar_events_live_idx').on(table.startsAt).where(sql`${table.cancelledAt} is null and ${table.expiredAt} is null`),
+  check('calendar_events_subject_check', sql`${table.subjectType} in ('place', 'venue')`),
+  check('calendar_events_end_check', sql`${table.endsAt} is null or ${table.endsAt} > ${table.startsAt}`),
+])
+
 // Typed claims (ADR 0033). One live row per kind, subject, and slot.
 export const facts = pgTable('facts', {
   id: cuid2('id').defaultRandom().primaryKey(),
@@ -721,7 +767,7 @@ export const facts = pgTable('facts', {
 }, (table) => [
   uniqueIndex('facts_live_key_idx').on(table.kind, table.subjectType, table.subjectId, table.slot).where(sql`${table.retiredAt} is null`),
   index('facts_kind_checked_idx').on(table.kind, table.checkedAt),
-  check('facts_kind_check', sql`${table.kind} in ('hours', 'price', 'phone', 'address', 'coordinates', 'status')`),
+  check('facts_kind_check', sql`${table.kind} in ('hours', 'price', 'phone', 'address', 'coordinates', 'status', 'admission', 'event')`),
   check('facts_subject_check', sql`${table.subjectType} in ('place', 'venue', 'route', 'route_stop', 'region')`),
   check('facts_source_check', sql`${table.sourceKind} in ('official', 'official_social', 'map_yandex', 'map_2gis', 'map_google', 'osm', 'owner', 'none')`),
   check('facts_confidence_check', sql`${table.confidence} in ('stated', 'owner', 'gap')`),

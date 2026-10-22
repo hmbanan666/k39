@@ -5,9 +5,11 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
+    "./freshness": "./src/freshness.ts",
     "./official-url": "./src/official-url.ts",
     "./social-hosts": "./src/social-hosts.ts",
-    "./vk-community": "./src/vk-community.ts"
+    "./vk-community": "./src/vk-community.ts",
+    "./zone": "./src/zone.ts"
   },
   "scripts": {
     "clean:modules": "rm -rf node_modules",

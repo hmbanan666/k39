@@ -198,6 +198,11 @@
         {{ message }}
       </p>
     </form>
+    <AdminPracticalEditor
+      v-if="placeId"
+      subject-type="place"
+      :subject-id="placeId"
+    />
     <MetaFootnote />
   </main>
 </template>

@@ -143,6 +143,16 @@ export interface ContentCatalog {
   photos: Array<{ placeId: string, count: number }>
   venuePhotos: Array<{ venueId: string, count: number }>
   passports: CatalogPassport[]
+  /** Admission rows and upcoming events per subject (ADR 0046). */
+  practical?: CatalogPractical[]
+}
+
+export interface CatalogPractical {
+  subjectType: string
+  subjectId: string
+  admissionRows: number
+  freshAdmission: number
+  upcomingEvents: number
 }
 
 export interface PageMetric {

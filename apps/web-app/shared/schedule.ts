@@ -1,4 +1,5 @@
 import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
+import { addDays, localNow, zonedTime, zoneParts } from '@k39/types/zone'
 import { z } from 'zod'
 import { parsePlaceHours } from './opening-hours'
 
@@ -6,7 +7,7 @@ import { parsePlaceHours } from './opening-hours'
 // times in Europe/Kaliningrad; intervals, status, text and schema.org markup
 // are all derived here, on the server and in the browser alike.
 
-export const SCHEDULE_TZ = 'Europe/Kaliningrad'
+export { addDays, localNow, SCHEDULE_TZ, zonedTime } from '@k39/types/zone'
 export const SCHEDULE_ENTITY_TYPES = ['place', 'venue', 'event', 'route_stop', 'offer'] as const
 export type ScheduleEntityType = (typeof SCHEDULE_ENTITY_TYPES)[number]
 
@@ -155,41 +156,6 @@ const SCHEMA_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fr
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 // --- time zone helpers -------------------------------------------------------
-
-function zoneParts(at: Date) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
-    timeZone: SCHEDULE_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(at).map((part) => [part.type, part.value]))
-  return parts as Record<'year' | 'month' | 'day' | 'hour' | 'minute', string>
-}
-
-/** Local calendar date (YYYY-MM-DD) and minute of day in Kaliningrad. */
-export function localNow(at: Date) {
-  const parts = zoneParts(at)
-  return { date: `${parts.year}-${parts.month}-${parts.day}`, minutes: Number(parts.hour) * 60 + Number(parts.minute) }
-}
-
-/** A Kaliningrad wall-clock time as an absolute instant. */
-export function zonedTime(date: string, time: string) {
-  const [year, month, day] = date.split('-').map(Number)
-  const [hour, minute] = time.split(':').map(Number)
-  const guess = Date.UTC(year!, month! - 1, day!, hour!, minute!)
-  const parts = zoneParts(new Date(guess))
-  const asLocal = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute))
-  return new Date(guess - (asLocal - guess))
-}
-
-export function addDays(date: string, days: number) {
-  const value = new Date(`${date}T00:00:00Z`)
-  value.setUTCDate(value.getUTCDate() + days)
-  return value.toISOString().slice(0, 10)
-}
 
 function weekday(date: string) {
   return new Date(`${date}T00:00:00Z`).getUTCDay()

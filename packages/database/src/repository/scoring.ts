@@ -1,5 +1,6 @@
 import type { PageKind, PrimaryAction, SourceLink, StoredPageModule } from '../types/entities'
 import type { CatalogArticle, CatalogHub, CatalogPassport, CatalogStop, CatalogVenue, ContentCatalog, PageMetric, PassportWrite, ScorePlace, StoredScore } from '../types/scoring'
+import { priceFreshCutoff } from '@k39/types/freshness'
 import { createId } from '@paralleldrive/cuid2'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
@@ -127,6 +128,19 @@ export class Scoring {
       select venue_id, count(*)::int as photos
       from venue_media
       group by venue_id
+    `)
+    const freshCutoff = priceFreshCutoff()
+    const practicalResult = await db.execute(sql`
+      select subject_type, subject_id, sum(rows)::int as rows, sum(fresh)::int as fresh, sum(upcoming)::int as upcoming
+      from (
+        select subject_type, subject_id, 1 as rows, (checked_at >= ${freshCutoff})::int as fresh, 0 as upcoming
+        from admission_prices
+        union all
+        select subject_type, subject_id, 0, 0, 1
+        from calendar_events
+        where cancelled_at is null and expired_at is null and coalesce(ends_at, starts_at) > now()
+      ) practical
+      group by subject_type, subject_id
     `)
 
     const article = (row: { id: string, slug: string, title: string, summary: string | null, body: string, publicationStatus: string, noindex: boolean, seoTitle: string | null, seoDescription: string | null, updatedAt: string, firstPublishedAt?: string | null, modules?: StoredPageModule[], sources?: SourceLink[] }, routeSlug: string | null = null): CatalogArticle | null => {
@@ -270,6 +284,13 @@ export class Scoring {
       venuePhotos: rowsOf<{ venue_id: string, photos: number }>(venuePhotoResult).map((row) => ({
         venueId: row.venue_id,
         count: num(row.photos),
+      })),
+      practical: rowsOf<{ subject_type: string, subject_id: string, rows: number, fresh: number, upcoming: number }>(practicalResult).map((row) => ({
+        subjectType: row.subject_type,
+        subjectId: row.subject_id,
+        admissionRows: num(row.rows),
+        freshAdmission: num(row.fresh),
+        upcomingEvents: num(row.upcoming),
       })),
       passports: passports.map((row): CatalogPassport => ({
         id: row.id,
