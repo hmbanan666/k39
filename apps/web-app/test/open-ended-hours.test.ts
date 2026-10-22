@@ -74,6 +74,8 @@ describe('open-ended hours on the page and the card', () => {
         regionTitle: 'Фикстура',
         schedule,
         modules: null,
+        admission: { stored: false, rows: [], lines: [] },
+        upcoming: [],
       },
       photos: [],
       cover: null,

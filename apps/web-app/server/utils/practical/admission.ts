@@ -41,6 +41,9 @@ export function normalizeAdmission(rows: AdmissionRowInput[], now = new Date()):
   const today = now.toISOString().slice(0, 10)
   const seen = new Set<string>()
   return rows.map((row, index) => {
+    if (!PRACTICAL_SLOT.test(row.slot)) {
+      bad(`slot «${row.slot}»: [a-z0-9-], до 40 символов`)
+    }
     if (seen.has(row.slot)) {
       bad(`slot «${row.slot}» повторяется`)
     }

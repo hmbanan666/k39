@@ -2,6 +2,7 @@ import type { StoredPageModule } from '../types'
 import { eq } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { Content, Editor } from '../repository/content'
+import { Admission, CalendarEvents } from '../repository/practical'
 import { Prices } from '../repository/prices'
 import { Schedules } from '../repository/schedules'
 import { Venues } from '../repository/venues'
@@ -26,6 +27,9 @@ export const FIXTURE_SLUGS = {
   cafeUnknownDays: 'fixture-cafe-weekdays',
   cafeSeasons: 'fixture-cafe-seasons',
   collection: 'fixture-modules',
+  placeTickets: 'fixture-museum',
+  placeStaleTickets: 'fixture-tickets-stale',
+  route: 'fixture-route',
 } as const
 
 const MENU_URL = 'https://fixture.k39.test/menu'
@@ -33,6 +37,8 @@ const HOURS_URL = 'https://fixture.k39.test/hours'
 const INSTAGRAM = 'https://instagram.com/k39_fixture'
 const SITE_URL = 'https://fixture.k39.test/'
 const CONTACTS_URL = 'https://fixture.k39.test/contacts'
+const TICKETS_URL = 'https://fixture.k39.test/tickets'
+const AFISHA_URL = 'https://fixture.k39.test/afisha'
 
 function fixtureProse(label: string) {
   const sentence = `${label}. Проверка вёрстки, не статья о месте. `
@@ -197,6 +203,37 @@ async function ensureVenue(input: {
     throw new Error(`Fixture venue missing: ${input.slug}`)
   }
   return row
+}
+
+function localDay(now: Date, days: number) {
+  return new Date(now.getTime() + days * 86_400_000).toISOString().slice(0, 10)
+}
+
+/** Kaliningrad is UTC+2 all year. */
+function kaliningrad(day: string, time: string) {
+  return new Date(`${day}T${time}:00+02:00`).toISOString()
+}
+
+/** Example ticket rows and events, dated from `now`. Labels only, not a real tariff. */
+async function applyPracticalFixtures(placeId: string, staleId: string, now: Date) {
+  const day = now.toISOString().slice(0, 10)
+  const source = { sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: day }
+  await Admission.replace('place', placeId, [
+    { slot: 'adult', audience: 'general', priceRub: 400, condition: null, label: null, sortOrder: 0, ...source },
+    { slot: 'reduced', audience: 'reduced', priceRub: 200, condition: 'Школьники, студенты очной формы, пенсионеры', label: null, sortOrder: 1, ...source },
+    { slot: 'family', audience: 'family', priceRub: 900, condition: 'Двое взрослых и до трёх детей', label: null, sortOrder: 2, ...source },
+    { slot: 'kids', audience: 'free', priceRub: 0, condition: 'Дети до 7 лет', label: null, sortOrder: 3, ...source },
+  ])
+  await Admission.replace('place', staleId, [
+    { slot: 'adult', audience: 'general', priceRub: 300, condition: null, label: null, sortOrder: 0, sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: localDay(now, -400) },
+  ])
+  await CalendarEvents.removeForSubject('place', placeId)
+  const event = { subjectType: 'place' as const, subjectId: placeId, sourceUrl: AFISHA_URL, sourceTitle: 'Афиша фикстуры', checkedAt: day }
+  await CalendarEvents.insert({ ...event, title: 'Фикстура: вечерний концерт', startsAt: kaliningrad(localDay(now, 3), '19:00'), endsAt: kaliningrad(localDay(now, 3), '21:00'), allDay: false, ticketUrl: TICKETS_URL })
+  await CalendarEvents.insert({ ...event, title: 'Фикстура: день открытых дверей', startsAt: kaliningrad(localDay(now, 10), '00:00'), endsAt: kaliningrad(localDay(now, 12), '00:00'), allDay: true, ticketUrl: null })
+  await CalendarEvents.insert({ ...event, title: 'Фикстура: прошедший концерт', startsAt: kaliningrad(localDay(now, -2), '19:00'), endsAt: null, allDay: false, ticketUrl: TICKETS_URL })
+  const cancelled = await CalendarEvents.insert({ ...event, title: 'Фикстура: отменённый концерт', startsAt: kaliningrad(localDay(now, 5), '18:00'), endsAt: null, allDay: false, ticketUrl: null })
+  await CalendarEvents.cancel(cancelled.id, now.toISOString())
 }
 
 export async function applyFixtures(now = new Date()) {
@@ -369,6 +406,51 @@ export async function applyFixtures(now = new Date()) {
     verifiedAt: day,
   }, [])
 
+  const tickets = await Editor.savePlace({
+    slug: FIXTURE_SLUGS.placeTickets,
+    title: 'Фикстура: музей с билетами',
+    summary: 'Таблица билетов и ближайшие события.',
+    body: 'Фикстура места. Не статья.',
+    // A free-text price that the ticket table replaces on the page.
+    price: 'Фикстура: строка цены, скрытая таблицей',
+    status: 'unknown',
+    publicationStatus: 'published',
+    noindex: true,
+    regionId: town.id,
+    latitude: 54.7215,
+    longitude: 20.5015,
+    sources: [],
+  })
+  const staleTickets = await Editor.savePlace({
+    slug: FIXTURE_SLUGS.placeStaleTickets,
+    title: 'Фикстура: билеты старше года',
+    summary: 'Все строки билетов устарели.',
+    body: 'Фикстура места. Не статья.',
+    price: 'Фикстура: строка цены, скрытая таблицей',
+    status: 'unknown',
+    publicationStatus: 'published',
+    noindex: true,
+    regionId: town.id,
+    latitude: 54.7218,
+    longitude: 20.5018,
+    sources: [],
+  })
+  await applyPracticalFixtures(tickets.id, staleTickets.id, now)
+
+  await Editor.saveRoute({
+    slug: FIXTURE_SLUGS.route,
+    title: 'Фикстура: маршрут',
+    summary: 'Маршрут с билетом и событиями остановок.',
+    body: 'Фикстура маршрута.',
+    publicationStatus: 'published',
+    noindex: true,
+    points: [{ placeSlug: FIXTURE_SLUGS.placeStop }, { placeSlug: FIXTURE_SLUGS.placeTickets }],
+  })
+  const route = await Editor.routeBySlug(FIXTURE_SLUGS.route)
+  await Admission.replace('route', route!.id, [
+    { slot: 'tour', audience: 'general', priceRub: 1200, condition: 'Экскурсия с гидом, группа до 15 человек', label: 'Экскурсия', sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: now.toISOString().slice(0, 10), sortOrder: 0 },
+  ])
+
   await Editor.saveCollection({
     slug: FIXTURE_SLUGS.collection,
     title: 'Фикстура: модули',
@@ -376,7 +458,7 @@ export async function applyFixtures(now = new Date()) {
     body: 'Фикстура подборки.',
     publicationStatus: 'published',
     noindex: true,
-    items: [{ placeSlug: FIXTURE_SLUGS.placeStop }, { placeSlug: FIXTURE_SLUGS.placeHub }],
+    items: [{ placeSlug: FIXTURE_SLUGS.placeStop }, { placeSlug: FIXTURE_SLUGS.placeHub }, { placeSlug: FIXTURE_SLUGS.placeTickets }],
     modules: collectionModules(),
   })
 
@@ -384,5 +466,6 @@ export async function applyFixtures(now = new Date()) {
     slugs: FIXTURE_SLUGS,
     catalog: PRICE_CATALOG.length,
     venues: [photo.slug, quiet.slug, peer.slug, nowhere.slug, openEnded.slug, unknownDays.slug, seasons.slug],
+    places: [tickets.slug, staleTickets.slug],
   }
 }
