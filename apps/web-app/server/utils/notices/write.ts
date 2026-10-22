@@ -7,7 +7,7 @@ import { vkMenuMatchesSocial } from '@k39/types/vk-community'
 import { createError } from 'h3'
 import { normalizeNotice, NoticeInputError, noticeListSchema, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeSummary, noticeToday } from '../../../shared/notices'
 import { contentScope } from '../access'
-import { contentWarnings } from '../content/save'
+import { contentWarnings, savePendingDraftContent } from '../content/save'
 import { auditMcp } from '../mcp/audit'
 import { rejectBannedSites } from '../mcp/writing-guard'
 
@@ -119,13 +119,17 @@ export function prepareNotices(target: NoticeTarget, input: unknown, today: stri
   return rows
 }
 
-/** The stop-list over text, address, and the editorial reason. */
-export function noticeWarnings(target: NoticeTarget, rows: NoticeValue[], publishing: boolean) {
-  return contentWarnings({
+/** The stop-list gate over text, address, and the editorial reason. */
+function noticeGate(target: NoticeTarget, rows: NoticeValue[], publishing: boolean) {
+  return {
     prose: rows.flatMap((row) => [row.text, row.address ?? '', row.openEndedReason ?? '']),
     publishing,
     venue: target.type === 'venue',
-  })
+  }
+}
+
+export function noticeWarnings(target: NoticeTarget, rows: NoticeValue[], publishing: boolean) {
+  return contentWarnings(noticeGate(target, rows, publishing))
 }
 
 export function toNoticeWrite(row: NoticeValue): NoticeWrite {
@@ -224,14 +228,13 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
   const rows = prepareNotices(target, input.notices, today, known, true)
   const pending = await db.editor.contentDraft(target.type, target.id)
   if (scope === 'draft' && isLiveNoticeSubject(target)) {
-    const writingWarnings = noticeWarnings(target, rows, false)
     const stagedAt = new Date().toISOString()
-    const saved = await db.editor.saveContentDraft({
+    const { row: saved, writingWarnings } = await savePendingDraftContent({
       entityType: target.type,
       entityId: target.id,
       publicationStatus: pending?.publicationStatus ?? 'review',
       payload: { ...(pending?.payload ?? {}), notices: rows, noticesStagedAt: stagedAt },
-    })
+    }, noticeGate(target, rows, false))
     if (via === 'mcp') {
       await auditMcp('notices_set', target.type, target.id)
     }
