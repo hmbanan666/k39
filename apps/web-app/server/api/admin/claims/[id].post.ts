@@ -3,7 +3,7 @@ import { decideClaim } from '../../../utils/cabinet/flow'
 
 export default defineEventHandler(async (event) => {
   const admin = await requireEditor(event)
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   if (body?.confirmed !== true) {
     throw createError({ statusCode: 400, statusMessage: 'Подтвердите, что заявка проверена' })
   }

@@ -18,8 +18,16 @@ interface ClientSearchEvent {
 
 // Search and click events (ADR 0030). Cookieless like ADR 0013: the daily
 // HMAC visitor key, and the session of the visitor's latest page view.
+// The handler keeps ten events. Each one is an id, a query, and a path.
+const SEARCH_EVENT_BODY_MAX = 16 * 1024
+
 export default defineEventHandler(async (event) => {
-  const body = await readBody<{ events?: ClientSearchEvent[] }>(event).catch(() => null)
+  const body = await readCappedJson<{ events?: ClientSearchEvent[] }>(event, SEARCH_EVENT_BODY_MAX).catch((error: unknown) => {
+    if (isPayloadTooLarge(error)) {
+      throw error
+    }
+    return null
+  })
   const incoming = Array.isArray(body?.events) ? body.events.slice(0, 10) : []
   if (!incoming.length || await editorRequest(event)) {
     return { ok: true, stored: 0 }

@@ -1,9 +1,8 @@
 import type { H3Event } from 'h3'
 import type { HitEntity } from '../../../shared/analytics'
-import { Buffer } from 'node:buffer'
-import { createError, getRequestHeader } from 'h3'
 import { z } from 'zod'
 import { COLLECT_TYPES } from '../../../shared/analytics'
+import { readCappedBody } from '../request-body'
 
 /** Same cap as analytics_hits.path. */
 export const COLLECT_PATH_MAX = 500
@@ -167,61 +166,13 @@ export async function resolveCollectSubjects(
 }
 
 export async function readCollectJson(event: H3Event): Promise<unknown> {
-  if (collectBodyDeclaredTooLarge(getRequestHeader(event, 'content-length'))) {
-    throw createError({ statusCode: 413, statusMessage: 'Payload Too Large' })
-  }
-  const raw = await readBoundedUtf8(event, COLLECT_BODY_MAX)
-  if (!raw) {
+  const raw = await readCappedBody(event, COLLECT_BODY_MAX)
+  if (!raw?.length) {
     return null
   }
   try {
-    return JSON.parse(raw) as unknown
+    return JSON.parse(raw.toString('utf8')) as unknown
   } catch {
     return null
   }
-}
-
-function readBoundedUtf8(event: H3Event, max: number): Promise<string | undefined> {
-  const req = event.node.req
-  const chunked = /\bchunked\b/i.test(String(req.headers['transfer-encoding'] ?? ''))
-  const declared = Number.parseInt(req.headers['content-length'] || '', 10)
-  if (!declared && !chunked) {
-    return Promise.resolve(undefined)
-  }
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = []
-    let size = 0
-    let settled = false
-    const fail = (error: unknown) => {
-      if (settled) {
-        return
-      }
-      settled = true
-      // Stop buffering. The 413 response closes the socket; destroying it here
-      // would drop that status on a chunked upload.
-      req.pause()
-      reject(error)
-    }
-    req.on('error', (error) => {
-      fail(error)
-    })
-    req.on('data', (chunk: Buffer) => {
-      if (settled) {
-        return
-      }
-      size += chunk.length
-      if (size > max) {
-        fail(createError({ statusCode: 413, statusMessage: 'Payload Too Large' }))
-        return
-      }
-      chunks.push(chunk)
-    })
-    req.on('end', () => {
-      if (settled) {
-        return
-      }
-      settled = true
-      resolve(Buffer.concat(chunks).toString('utf8'))
-    })
-  })
 }

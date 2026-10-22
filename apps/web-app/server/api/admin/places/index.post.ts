@@ -6,7 +6,7 @@ import { syncCoordinates, syncPlaceStatus } from '../../../utils/facts/sync'
 
 export default defineEventHandler(async (event) => {
   const user = await requireEditor(event)
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   const slug = String(body.slug || '')
   const problem = slugError(slug)
   if (problem) {

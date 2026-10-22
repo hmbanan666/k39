@@ -4,7 +4,7 @@ import { passportWriteSchema } from '../../../utils/scoring/schemas'
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
-  const input = passportWriteSchema.parse(await readBody(event))
+  const input = passportWriteSchema.parse(await readJsonBody(event))
   const page = await resolveScoredPage(input)
   if (!page) {
     throw createError({ statusCode: 404, statusMessage: 'Страница не найдена' })

@@ -10,7 +10,7 @@ const bodySchema = z.object({
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
-  const body = bodySchema.parse(await readBody(event))
+  const body = bodySchema.parse(await readJsonBody(event))
   const row = await db.facts.queueById(body.id)
   if (!row || row.resolvedAt || row.reason !== 'owner_conflict' || !row.factId) {
     throw createError({ statusCode: 404, statusMessage: 'Конфликт не найден' })

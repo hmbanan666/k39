@@ -3,6 +3,6 @@ import { createPlaceDraft } from '../../../utils/mcp/places'
 
 export default defineEventHandler(async (event) => {
   requireContentToken(event)
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   return createPlaceDraft(body)
 })

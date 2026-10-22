@@ -8,7 +8,7 @@ const LICENSES = new Set(['own', 'cc-by', 'cc-by-sa', 'cc0', 'pd', 'permission']
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
   const id = String(getRouterParam(event, 'id') || '')
-  const body = await readBody<Record<string, unknown>>(event)
+  const body = await readJsonBody<Record<string, unknown>>(event)
   const current = await db.editor.mediaById(id)
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Фото не найдено' })

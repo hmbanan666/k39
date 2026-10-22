@@ -4,7 +4,7 @@ import { saveHubContent } from '../../../utils/content/save'
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
-  const body = await readBody(event)
+  const body = await readJsonBody(event)
   const { row, writingWarnings } = await saveHubContent(String(getRouterParam(event, 'id')), {
     title: String(body.title || ''),
     description: String(body.description || ''),

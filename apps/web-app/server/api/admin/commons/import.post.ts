@@ -5,7 +5,7 @@ import { requireEditor } from '../../../utils/access'
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
-  const body = await readBody<{
+  const body = await readJsonBody<{
     fileUrl?: string
     pageUrl?: string
     alt?: string

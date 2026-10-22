@@ -14,8 +14,11 @@ export const MAX_INPUT_PIXELS = 40_000_000
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 // The multipart body also carries the alt and the consent fields.
-// h3 1.15 readRawBody has no byte cap, and routeRules cannot set one.
-const UPLOAD_BODY_SLACK = 256 * 1024
+// readUploadForm enforces this cap. h3 1.15 readRawBody has no byte cap,
+// and Nitro routeRules cannot set one.
+export const UPLOAD_BODY_SLACK = 256 * 1024
+export const UPLOAD_BODY_MAX = MAX_UPLOAD_BYTES + UPLOAD_BODY_SLACK
+export const UPLOAD_TOO_LARGE_MESSAGE = 'Файл больше 25 МБ.'
 
 const ACCEPTED_FORMATS = new Set(['jpeg', 'png', 'webp'])
 const HEIC_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'heif', 'mif1', 'msf1'])
@@ -28,7 +31,7 @@ export interface UploadProblem {
 }
 
 const PROBLEM_TEXT: Record<UploadProblemCode, string> = {
-  too_large: 'Файл больше 25 МБ.',
+  too_large: UPLOAD_TOO_LARGE_MESSAGE,
   bad_type: 'Нужен файл JPEG, PNG или WebP.',
   heic: 'Формат HEIC не поддерживается. Сохраните фото как JPEG.',
   unreadable: 'Не удалось прочитать изображение.',
@@ -162,18 +165,6 @@ export async function processImage(input: Buffer, mediaId: string, storage: Medi
     sourceWidth,
     sourceHeight,
   }
-}
-
-/** Refuses a declared body that cannot fit a 25 MB file plus the form fields. */
-export function uploadBodyProblem(contentLength: string | undefined): UploadProblem | null {
-  if (!contentLength) {
-    return null
-  }
-  const size = Number(contentLength)
-  if (!Number.isFinite(size) || size <= MAX_UPLOAD_BYTES + UPLOAD_BODY_SLACK) {
-    return null
-  }
-  return problem('too_large')
 }
 
 /**
