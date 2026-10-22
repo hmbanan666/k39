@@ -253,12 +253,12 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
     throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
   }
   const writingWarnings = noticeWarnings(target, rows, isPublicSubject(target))
-  const saved = await db.editor.transaction(async (tx) => {
+  const { saved, draftDropped } = await db.editor.transaction(async (tx) => {
     const written = await db.notices.replace(target.type, target.id, rows.map(toNoticeWrite), tx)
-    if (scope === 'editor' && pending) {
-      await db.editor.deleteContentDraftIfUnchanged(pending.id, pending.updatedAt, tx)
-    }
-    return written
+    const dropped = scope === 'editor' && pending
+      ? await db.editor.deleteContentDraftIfUnchanged(pending.id, pending.updatedAt, tx)
+      : false
+    return { saved: written, draftDropped: dropped }
   })
   if (via === 'mcp') {
     await auditMcp('notices_set', target.type, target.id)
@@ -271,6 +271,7 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
     pendingReview: false as const,
     notices: saved.map((row) => storedNotice(row, today)),
     writingWarnings,
+    draftDropped,
   }
 }
 
