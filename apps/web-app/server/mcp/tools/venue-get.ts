@@ -3,11 +3,12 @@ import { z } from 'zod'
 import { toPublicMedia } from '../../../shared/media'
 import { readShownFacts, shownText } from '../../utils/facts/read'
 import { auditMcp } from '../../utils/mcp/audit'
+import { noticesView } from '../../utils/notices/write'
 import { loadSchedule } from '../../utils/schedule'
 
 export default defineMcpTool({
   name: 'venue_get',
-  description: 'Load one venue by id or slug, including photos (author, license, source, origin), the hours schedule (rules, sourceUrl, verifiedAt, as schedule_get returns them; null when none), action links, signature dishes, sources, createdAt, updatedAt, and whether the facts are stale.',
+  description: 'Load one venue by id or slug, including photos (author, license, source, origin), the hours schedule (rules, sourceUrl, verifiedAt, as schedule_get returns them; null when none), action links, signature dishes, sources, createdAt, updatedAt, whether the facts are stale, and the live dated notices (ADR 0049). pendingReview is null, or the pending draft with the notices a draft-token notices_set staged.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -22,6 +23,7 @@ export default defineMcpTool({
     const regions = await db.editor.listRegions()
     const found = regions.find((item) => item.id === venue.regionId)
     await auditMcp('venue_get', 'venue', venue.id)
+    const notices = await noticesView({ type: 'venue', id: venue.id })
     return {
       id: venue.id,
       createdAt: venue.createdAt,
@@ -72,6 +74,8 @@ export default defineMcpTool({
       seoTitle: venue.seoTitle,
       seoDescription: venue.seoDescription,
       noindex: venue.noindex,
+      notices: notices.notices,
+      pendingReview: notices.pendingReview,
       media: gallery.map((item) => ({
         ...toPublicMedia(item.media),
         isCover: item.isCover,

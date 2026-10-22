@@ -39,6 +39,11 @@ export interface AvailabilityEntity {
    * Intervals store nothing for those days, so the caller reads them here.
    */
   unknownDayRules: Record<string, unknown> | null
+  /**
+   * `closed` notices (ADR 0049) whose window holds the Kaliningrad date of
+   * `at`. A subject with one is listed even without a schedule.
+   */
+  closedNotices: Array<{ kind: 'closed', from: string, to: string | null }>
 }
 
 // Schedules and their materialised intervals (ADR 0028).
@@ -99,6 +104,7 @@ export class Schedules {
         coalesce(s.rules->>'mode', 'hours') as mode,
         s.rules->'closure' as closure,
         coalesce(s.rules->'slots'->>'label', 'Экскурсия') as slot_label,
+        coalesce(closed_notices.rows, '[]'::jsonb) as closed_notices,
         cur.ends_at as current_end,
         cur.starts_at as current_start,
         coalesce(cur.open_ended, false) as current_open_ended,
@@ -107,12 +113,18 @@ export class Schedules {
           where i.entity_type = e.entity_type and i.entity_id = e.entity_id and i.starts_at > ${at}::timestamptz
           order by i.starts_at limit 1) as next_start
       from entities e
-      join schedules s on s.entity_type = e.entity_type and s.entity_id = e.entity_id
+      left join schedules s on s.entity_type = e.entity_type and s.entity_id = e.entity_id
+      left join lateral (select jsonb_agg(jsonb_build_object('kind', n.kind, 'from', n.starts_on::text, 'to', n.ends_on::text)) as rows
+        from notices n
+        where n.subject_type = e.entity_type and n.subject_id = e.entity_id and n.kind = 'closed'
+          and n.starts_on <= (${at}::timestamptz at time zone 'Europe/Kaliningrad')::date
+          and (n.ends_on is null or n.ends_on >= (${at}::timestamptz at time zone 'Europe/Kaliningrad')::date)) closed_notices on true
       left join lateral (select i.starts_at, i.ends_at, i.open_ended from schedule_intervals i
         where i.entity_type = e.entity_type and i.entity_id = e.entity_id
           and i.starts_at <= ${at}::timestamptz and i.ends_at > ${at}::timestamptz
         order by i.ends_at desc limit 1) cur on true
       where e.entity_type in ${types}
+        and (s.id is not null or closed_notices.rows is not null)
         ${box ? sql`and e.longitude between ${box[0]} and ${box[2]} and e.latitude between ${box[1]} and ${box[3]}` : sql``}
     `)
     const rows = Array.isArray(result) ? result as Record<string, unknown>[] : (result as unknown as { rows?: Record<string, unknown>[] }).rows ?? []
@@ -133,6 +145,7 @@ export class Schedules {
       currentOpenEnded: row.current_open_ended === true || row.current_open_ended === 't',
       nextStart: row.next_start ? new Date(String(row.next_start)).toISOString() : null,
       unknownDayRules: row.unknown_day_rules && typeof row.unknown_day_rules === 'object' ? row.unknown_day_rules as Record<string, unknown> : null,
+      closedNotices: Array.isArray(row.closed_notices) ? row.closed_notices as AvailabilityEntity['closedNotices'] : [],
     }))
   }
 

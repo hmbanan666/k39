@@ -9,6 +9,7 @@ import { Facts } from './facts'
 import { Guests } from './guests'
 import { MapCatalog } from './map'
 import { Admission, CalendarEvents, practicalSubjects } from './practical'
+import { Notices } from './notices'
 import { Prices } from './prices'
 import { Schedules } from './schedules'
 import { Scoring } from './scoring'
@@ -28,6 +29,7 @@ class Repository {
   readonly eventLog = EventLog
   readonly map = MapCatalog
   readonly practicalSubjects = practicalSubjects
+  readonly notices = Notices
   readonly prices = Prices
   readonly schedules = Schedules
   readonly scoring = Scoring

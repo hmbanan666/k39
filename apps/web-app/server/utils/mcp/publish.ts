@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { saveQuestContent } from '../content/save'
+import { applyStagedNotices, noticeTarget, onlyNoticesStaged, stagedNotices, toNoticeValue } from '../notices/write'
 import { auditMcp } from './audit'
 import { saveCollectionDraft } from './collections'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
@@ -12,20 +13,24 @@ type PublicationInput = {
   publicationStatus: string
 }
 
-type PublicationEntity = 'place' | 'route' | 'collection' | 'quest'
+type PublicationEntity = 'place' | 'route' | 'collection' | 'quest' | 'venue'
 
 type QuestPublication = { id: string, slug: string, publicationStatus: string, writingWarnings: string[] }
+
+type VenuePublication = Awaited<ReturnType<typeof applyVenueDraft>>
 
 type AnyPublication
   = | Awaited<ReturnType<typeof updatePlaceDraft>>
     | Awaited<ReturnType<typeof updateRouteDraft>>
     | Awaited<ReturnType<typeof saveCollectionDraft>>
     | QuestPublication
+    | VenuePublication
 
 export function setPublication(input: { entity: 'place' } & PublicationInput): ReturnType<typeof updatePlaceDraft>
 export function setPublication(input: { entity: 'route' } & PublicationInput): ReturnType<typeof updateRouteDraft>
 export function setPublication(input: { entity: 'collection' } & PublicationInput): ReturnType<typeof saveCollectionDraft>
 export function setPublication(input: { entity: 'quest' } & PublicationInput): Promise<QuestPublication>
+export function setPublication(input: { entity: 'venue' } & PublicationInput): Promise<VenuePublication>
 export function setPublication(input: { entity: PublicationEntity } & PublicationInput): Promise<AnyPublication>
 export async function setPublication(input: { entity: PublicationEntity } & PublicationInput): Promise<AnyPublication> {
   if (input.entity === 'place') {
@@ -33,6 +38,9 @@ export async function setPublication(input: { entity: PublicationEntity } & Publ
   }
   if (input.entity === 'route') {
     return updateRouteDraft({ id: input.id, slug: input.slug, publicationStatus: input.publicationStatus }, 'content_set_publication')
+  }
+  if (input.entity === 'venue') {
+    return applyVenueDraft(input)
   }
   if (input.entity === 'collection') {
     return saveCollectionDraft({ id: input.id, slug: input.slug, publicationStatus: input.publicationStatus }, 'content_set_publication', { create: false })
@@ -65,4 +73,33 @@ export async function setPublication(input: { entity: PublicationEntity } & Publ
   })
   await auditMcp('content_set_publication', 'quest', current.id)
   return { id: row.id, slug: row.slug, publicationStatus: row.publicationStatus, writingWarnings }
+}
+
+/**
+ * Editor apply of a venue's pending draft (ADR 0047, ADR 0049). Only
+ * `published` with no other fields. The venue status is not changed: a
+ * closed venue stays closed. Today the payload can hold only `notices`.
+ */
+async function applyVenueDraft(input: PublicationInput) {
+  const target = await noticeTarget('venue', input.id, input.slug)
+  if (input.publicationStatus !== 'published') {
+    throw createError({ statusCode: 400, statusMessage: 'Для заведения применяется только published' })
+  }
+  resolvePublication(input.publicationStatus, target.status)
+  const pending = await db.editor.contentDraft('venue', target.id)
+  if (!pending || !stagedNotices(pending.payload)) {
+    throw createError({ statusCode: 409, statusMessage: 'Черновика нет' })
+  }
+  if (!onlyNoticesStaged(pending.payload)) {
+    throw createError({ statusCode: 409, statusMessage: 'В черновике заведения есть поля, которые этот сервер ещё не применяет. Живая карточка не изменилась.' })
+  }
+  const saved = await applyStagedNotices(target, pending)
+  await auditMcp('content_set_publication', 'venue', target.id)
+  return {
+    id: target.id,
+    slug: target.slug,
+    status: target.status,
+    pendingReview: false as const,
+    notices: (saved ?? []).map(toNoticeValue),
+  }
 }

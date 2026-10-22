@@ -1,0 +1,327 @@
+import type { NoticeRow, NoticeWrite } from '@k39/database'
+import type { ContentScope } from '../access'
+import type { NoticeSubjectType, NoticeValue } from '../../../shared/notices'
+import { db } from '@k39/database'
+import { classifyOfficialUrl } from '@k39/types/official-url'
+import { vkMenuMatchesSocial } from '@k39/types/vk-community'
+import { createError } from 'h3'
+import { normalizeNotice, NoticeInputError, noticeListSchema, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeToday } from '../../../shared/notices'
+import { contentScope } from '../access'
+import { contentWarnings } from '../content/save'
+import { auditMcp } from '../mcp/audit'
+import { rejectBannedSites } from '../mcp/writing-guard'
+
+export interface NoticeTarget {
+  type: NoticeSubjectType
+  id: string
+  slug: string
+  title: string
+  /** `publication_status` of a place, `status` of a venue. */
+  status: string
+  socials: Array<{ url: string }>
+  vkCommunityId: number | null
+}
+
+/** Statuses whose page is public. A notice there passes the publish gate. */
+const PUBLIC: Record<NoticeSubjectType, readonly string[]> = {
+  place: ['published'],
+  venue: ['published', 'closed'],
+}
+
+/** Statuses where a draft-token write is staged instead of written live. */
+const LIVE: Record<NoticeSubjectType, readonly string[]> = {
+  place: ['published', 'archived'],
+  venue: ['published', 'closed'],
+}
+
+export async function noticeTarget(type: NoticeSubjectType, id?: string | null, slug?: string | null): Promise<NoticeTarget> {
+  if (!id && !slug) {
+    throw createError({ statusCode: 400, statusMessage: 'Нужен id или slug' })
+  }
+  if (type === 'place') {
+    const row = id ? await db.editor.placeById(id) : await db.editor.placeBySlug(slug || '')
+    if (row) {
+      return { type, id: row.id, slug: row.slug, title: row.title, status: row.publicationStatus, socials: [], vkCommunityId: null }
+    }
+    throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
+  }
+  const row = id ? await db.venues.byId(id) : await db.venues.bySlug(slug || '')
+  if (row) {
+    return { type, id: row.id, slug: row.slug, title: row.name, status: row.status, socials: row.socials ?? [], vkCommunityId: row.vkCommunityId }
+  }
+  throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
+}
+
+/**
+ * A place takes only its own official site. A venue also takes its own VK
+ * community when that page states the notice, matched the ADR 0048 way:
+ * `socials`, plus `vk_community_id` for a numeric wall URL. The VK menu rule
+ * that needs an empty website does not apply here.
+ */
+export function noticeSourceProblem(target: Pick<NoticeTarget, 'type' | 'socials' | 'vkCommunityId'>, url: string) {
+  const kind = classifyOfficialUrl(url)
+  if (kind === 'official') {
+    return null
+  }
+  if (target.type === 'venue' && kind === 'social' && vkMenuMatchesSocial(url, target.socials, target.vkCommunityId)) {
+    return null
+  }
+  if (target.type === 'venue') {
+    return 'Источник объявления: официальный сайт заведения или его собственное сообщество ВКонтакте из «Соцсетей». Карта, OSM, агрегатор и файл на Диске не подходят'
+  }
+  return 'Источник объявления: только официальный сайт места, музея или администрации. Соцсеть, карта, агрегатор и файл на Диске не подходят'
+}
+
+/**
+ * Parses, normalizes, and checks a full list for one subject. `known` is
+ * the stored ids of that subject: `strict` refuses another id, otherwise it
+ * becomes an insert (a staged row whose live row was removed since).
+ */
+export function prepareNotices(target: NoticeTarget, input: unknown, today: string, known: ReadonlySet<string>, strict: boolean): NoticeValue[] {
+  const parsed = noticeListSchema.safeParse(input)
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    const where = issue?.path.length ? `notices.${issue.path.join('.')}: ` : ''
+    throw createError({ statusCode: 400, statusMessage: `${where}${issue?.message || 'Проверьте объявления'}` })
+  }
+  const rows: NoticeValue[] = []
+  for (const item of parsed.data) {
+    let row: NoticeValue
+    try {
+      row = normalizeNotice(item, today)
+    } catch (error) {
+      if (error instanceof NoticeInputError) {
+        throw createError({ statusCode: 400, statusMessage: error.message })
+      }
+      throw error
+    }
+    if (row.id && !known.has(row.id)) {
+      if (strict) {
+        throw createError({ statusCode: 400, statusMessage: `Объявление ${row.id} не найдено у этой страницы` })
+      }
+      delete row.id
+    }
+    const source = noticeSourceProblem(target, row.sourceUrl)
+    if (source) {
+      throw createError({ statusCode: 400, statusMessage: source })
+    }
+    rows.push(row)
+  }
+  const ids = rows.flatMap((row) => row.id ? [row.id] : [])
+  if (new Set(ids).size !== ids.length) {
+    throw createError({ statusCode: 400, statusMessage: 'Один id объявления указан дважды' })
+  }
+  const overlap = noticeOverlapProblem(rows, today)
+  if (overlap) {
+    throw createError({ statusCode: 400, statusMessage: overlap })
+  }
+  rejectBannedSites(rows.map((row) => row.sourceUrl))
+  return rows
+}
+
+/** The stop-list over text, address, and the editorial reason. */
+export function noticeWarnings(target: NoticeTarget, rows: NoticeValue[], publishing: boolean) {
+  return contentWarnings({
+    prose: rows.flatMap((row) => [row.text, row.address ?? '', row.openEndedReason ?? '']),
+    publishing,
+    venue: target.type === 'venue',
+  })
+}
+
+export function toNoticeWrite(row: NoticeValue): NoticeWrite {
+  return {
+    ...(row.id ? { id: row.id } : {}),
+    kind: row.kind,
+    startsOn: row.from,
+    endsOn: row.to,
+    openEndedReason: row.openEndedReason,
+    text: row.text,
+    address: row.address,
+    sourceUrl: row.sourceUrl,
+    sourceTitle: row.sourceTitle,
+    checkedAt: row.checkedAt,
+  }
+}
+
+export function toNoticeValue(row: NoticeRow): NoticeValue {
+  return {
+    id: row.id,
+    kind: row.kind,
+    from: row.startsOn,
+    to: row.endsOn,
+    openEndedReason: row.openEndedReason,
+    text: row.text,
+    address: row.address,
+    sourceUrl: row.sourceUrl,
+    sourceTitle: row.sourceTitle,
+    checkedAt: row.checkedAt,
+  }
+}
+
+/** A stored row with its window state on `today`, for the tools and the admin list. */
+export function storedNotice(row: NoticeRow, today: string) {
+  const value = toNoticeValue(row)
+  return {
+    ...value,
+    state: noticeState(value, today),
+    expiredAt: row.expiredAt,
+    needsCheck: noticeNeedsCheck(value, today),
+    updatedAt: row.updatedAt,
+  }
+}
+
+export function isLiveNoticeSubject(target: Pick<NoticeTarget, 'type' | 'status'>) {
+  return LIVE[target.type].includes(target.status)
+}
+
+function isPublicSubject(target: Pick<NoticeTarget, 'type' | 'status'>) {
+  return PUBLIC[target.type].includes(target.status)
+}
+
+/** The staged list on a `content_drafts` payload, or null when this key was never sent. */
+export function stagedNotices(payload: Record<string, unknown> | null | undefined): NoticeValue[] | null {
+  if (!payload || !Object.hasOwn(payload, 'notices') || !Array.isArray(payload.notices)) {
+    return null
+  }
+  return payload.notices as NoticeValue[]
+}
+
+/** The notices keys of a pending payload, so a later write of other keys keeps them. */
+export function stagedNoticeKeys(payload: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => key === 'notices' || key === 'noticesStagedAt'))
+}
+
+/** True when the draft holds only the notices keys, so apply must not touch the page columns. */
+export function onlyNoticesStaged(payload: Record<string, unknown>) {
+  return Object.keys(payload).every((key) => key === 'notices' || key === 'noticesStagedAt')
+}
+
+export interface SetNoticesInput {
+  subjectType: NoticeSubjectType
+  id?: string
+  slug?: string
+  notices: unknown
+  /** Admin only: `discard` writes the list and deletes the pending draft that was checked. */
+  pendingDraft?: string
+}
+
+/**
+ * `notices_set` and the admin editor (ADR 0049). Replaces the whole list.
+ * The editor writes the live table and drops the whole pending draft in the
+ * same transaction. The draft token on a live place or venue stages the list
+ * on the existing `content_drafts` payload under `notices`; an archived
+ * venue is 409. Neither path writes facts, the address, or the schedule.
+ */
+export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
+  const target = await noticeTarget(input.subjectType, input.id, input.slug)
+  const scope: ContentScope = via === 'admin' ? 'editor' : contentScope()
+  const today = noticeToday(new Date())
+  const stored = await db.notices.forSubject(target.type, target.id)
+  const known = new Set(stored.map((row) => row.id))
+  if (scope === 'draft' && target.type === 'venue' && target.status === 'archived') {
+    throw createError({ statusCode: 409, statusMessage: 'Draft token cannot edit notices of an archived venue. The live page was not changed.' })
+  }
+  const rows = prepareNotices(target, input.notices, today, known, true)
+  const pending = await db.editor.contentDraft(target.type, target.id)
+  if (scope === 'draft' && isLiveNoticeSubject(target)) {
+    const writingWarnings = noticeWarnings(target, rows, false)
+    const stagedAt = new Date().toISOString()
+    const saved = await db.editor.saveContentDraft({
+      entityType: target.type,
+      entityId: target.id,
+      publicationStatus: pending?.publicationStatus ?? 'review',
+      payload: { ...(pending?.payload ?? {}), notices: rows, noticesStagedAt: stagedAt },
+    })
+    if (via === 'mcp') {
+      await auditMcp('notices_set', target.type, target.id)
+    }
+    return {
+      subjectType: target.type,
+      id: target.id,
+      slug: target.slug,
+      status: target.status,
+      pendingReview: true as const,
+      notices: stagedNotices(saved.payload) ?? rows,
+      noticesStagedAt: stagedAt,
+      writingWarnings,
+    }
+  }
+  if (via === 'admin' && pending && input.pendingDraft !== 'discard') {
+    throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
+  }
+  const writingWarnings = noticeWarnings(target, rows, isPublicSubject(target))
+  const saved = await db.editor.transaction(async (tx) => {
+    const written = await db.notices.replace(target.type, target.id, rows.map(toNoticeWrite), tx)
+    if (scope === 'editor' && pending) {
+      await db.editor.deleteContentDraftIfUnchanged(pending.id, pending.updatedAt, tx)
+    }
+    return written
+  })
+  if (via === 'mcp') {
+    await auditMcp('notices_set', target.type, target.id)
+  }
+  return {
+    subjectType: target.type,
+    id: target.id,
+    slug: target.slug,
+    status: target.status,
+    pendingReview: false as const,
+    notices: saved.map((row) => storedNotice(row, today)),
+    writingWarnings,
+  }
+}
+
+/**
+ * Writes the staged `notices` key of a pending draft through the same
+ * checks, with the publish gate. Used by `content_set_publication` when the
+ * draft has nothing else for the page columns. Status is not changed.
+ */
+export async function applyStagedNotices(target: NoticeTarget, pending: { id: string, updatedAt: string, payload: Record<string, unknown> }) {
+  const rows = await stagedForApply(target, pending.payload)
+  if (!rows) {
+    return null
+  }
+  const saved = await db.notices.applyStaged(target.type, target.id, { id: pending.id, updatedAt: pending.updatedAt }, rows.map(toNoticeWrite))
+  if (!saved) {
+    throw createError({ statusCode: 409, statusMessage: 'Черновик изменился. Обновите страницу.' })
+  }
+  return saved
+}
+
+/** Re-checks a staged list for apply. Null when the draft has no `notices` key. */
+export async function stagedForApply(target: NoticeTarget, payload: Record<string, unknown>) {
+  const staged = stagedNotices(payload)
+  if (!staged) {
+    return null
+  }
+  const today = noticeToday(new Date())
+  const known = new Set((await db.notices.forSubject(target.type, target.id)).map((row) => row.id))
+  const rows = prepareNotices(target, staged, today, known, false)
+  noticeWarnings(target, rows, isPublicSubject(target))
+  return rows
+}
+
+/**
+ * The live list with each row's window state, plus the staged list when a
+ * pending draft has the `notices` key. Shared by `notices_get`, `place_get`,
+ * `venue_get`, and the admin editor.
+ */
+export async function noticesView(target: Pick<NoticeTarget, 'type' | 'id'>, now = new Date()) {
+  const today = noticeToday(now)
+  const [rows, pending] = await Promise.all([
+    db.notices.forSubject(target.type, target.id),
+    db.editor.contentDraft(target.type, target.id),
+  ])
+  const staged = stagedNotices(pending?.payload)
+  return {
+    notices: rows.map((row) => storedNotice(row, today)),
+    pendingReview: pending && staged
+      ? {
+          id: pending.id,
+          updatedAt: pending.updatedAt,
+          noticesStagedAt: typeof pending.payload.noticesStagedAt === 'string' ? pending.payload.noticesStagedAt : null,
+          notices: staged.map((row) => ({ ...row, state: noticeState(row, today) })),
+        }
+      : null,
+  }
+}

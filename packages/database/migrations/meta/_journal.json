@@ -316,6 +316,13 @@
       "when": 1792220000000,
       "tag": "0044_admission_events",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792230000000,
+      "tag": "0045_notices",
+      "breakpoints": true
     }
   ]
 }

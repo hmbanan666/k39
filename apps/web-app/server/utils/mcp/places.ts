@@ -7,6 +7,7 @@ import { liveWriteRow, withEditorLiveWrite } from '../content/pending-guard'
 import { phoneCheckedAt, placePhoneSource, resolvePlaceContact } from '../content/place-contact'
 import { applyPendingPlaceContent, contentGate, savePendingDraftContent, savePlaceContent, syncSavedPage } from '../content/save'
 import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../facts/sync'
+import { applyStagedNotices, onlyNoticesStaged, stagedForApply, stagedNoticeKeys, toNoticeValue, toNoticeWrite } from '../notices/write'
 import { auditMcp } from './audit'
 import { resolvePublication } from './draft'
 import { parseFactsCheckedAt } from './facts'
@@ -328,6 +329,13 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus, scope)
   if (scope === 'editor' && publicationStatus === 'published' && pending && publicationOnly(input, current.slug)) {
     const payload = pending.payload
+    const noticeTarget = { type: 'place' as const, id: current.id, slug: current.slug, title: current.title, status: current.publicationStatus, socials: [], vkCommunityId: null }
+    if (onlyNoticesStaged(payload)) {
+      const saved = await applyStagedNotices(noticeTarget, pending)
+      await auditMcp(auditTool, 'place', current.id)
+      return { ...compactPlace(current), pendingReview: false, bodyLength: current.body.length, writingWarnings: [] as string[], notices: (saved ?? []).map(toNoticeValue) }
+    }
+    const notices = await stagedForApply(noticeTarget, payload)
     const applied = await applyPendingPlaceContent(current.id, contentGate('place', {
       title: payload.title,
       summary: payload.summary,
@@ -386,6 +394,9 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
           previous: existing.status,
           tx,
         })
+        if (notices) {
+          await db.notices.replace('place', current.id, notices.map(toNoticeWrite), tx)
+        }
       },
     })
     const row = applied.row
@@ -449,6 +460,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
         : cleanFaq(input.faq),
       lastVerifiedAt: checked === undefined ? (base.lastVerifiedAt as string | null | undefined) ?? current.lastVerifiedAt : checked,
       authorKind: current.authorKind,
+      ...stagedNoticeKeys(base),
     }
     const storedDraft = await savePendingDraftContent({
       entityType: 'place',
