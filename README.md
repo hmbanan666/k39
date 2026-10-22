@@ -46,7 +46,7 @@ scripts             Repository and git helper scripts
 
 ## Getting started
 
-Requirements: Node.js (the exact version is in `.nvmrc`), pnpm via Corepack, and a PostgreSQL database.
+Requirements: Node.js (the exact version is in `.nvmrc`), the exact pnpm version from `package.json` via Corepack, and a PostgreSQL database. The current pnpm pin is 12.15.0. Avoid using an unrelated global pnpm version.
 
 ```
 pnpm install

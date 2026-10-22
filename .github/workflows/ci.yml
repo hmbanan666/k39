@@ -8,6 +8,8 @@ on:
       - "!.github/workflows/ci.yml"
     branches:
       - main
+      # Validate the migration before opening its PR; removed after that run.
+      - chore/pnpm-12
   # No path filter on pull requests: every PR head gets build and docker,
   # so the checks a merge waits for always exist.
   pull_request:
@@ -50,7 +52,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Repository checks
         run: |
