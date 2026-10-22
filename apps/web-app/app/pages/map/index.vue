@@ -20,6 +20,8 @@
       :points="panelPoints"
       :routes="page.routes"
       :open-now="openNow"
+      :open-loading="openLoading"
+      :open-error="openError"
       :state="state"
       :selected-id="selectedId"
       :bounds="bounds"
@@ -94,10 +96,14 @@ const sheetHeight = ref(180)
 // never in the cached HTML. Only verified schedules count.
 const openNow = ref(false)
 const openKeys = ref<Set<string> | null>(null)
+const openError = ref(false)
+const openLoading = computed(() => openNow.value && openKeys.value === null)
+const filterOpen = computed(() => openNow.value && openKeys.value !== null)
+let availabilityRequest = 0
 const isOpen = (point: MapPoint) => openKeys.value?.has(`${point.group === 'food' ? 'venue' : 'place'}:${point.slug}`) ?? false
-const panelPoints = computed(() => (openNow.value ? page.points.filter(isOpen) : page.points))
+const panelPoints = computed(() => (filterOpen.value ? page.points.filter(isOpen) : page.points))
 const visible = computed(() => {
-  if (!openNow.value) {
+  if (!filterOpen.value) {
     return shownPoints(page.points, state.value)
   }
   const plain = !state.value.q.trim() && !activeCategory(state.value)
@@ -105,10 +111,30 @@ const visible = computed(() => {
 })
 
 async function toggleOpen() {
+  const request = ++availabilityRequest
   openNow.value = !openNow.value
-  if (openNow.value) {
-    const result = await $fetch<{ items: Array<{ type: string, slug: string }> }>('/api/public/availability', { query: { status: 'open,closing_soon' } }).catch(() => ({ items: [] }))
-    openKeys.value = new Set(result.items.map((item) => `${item.type}:${item.slug}`))
+  openKeys.value = null
+  openError.value = false
+  if (!openNow.value) {
+    return
+  }
+  if (mobile.value && snap.value === 'peek') {
+    snap.value = 'half'
+  }
+  try {
+    const result = await $fetch<{ items: Array<{ type: string, slug: string }> }>('/api/public/availability', {
+      query: { status: 'open,closing_soon' },
+      retry: 0,
+      timeout: 10_000,
+    })
+    if (request === availabilityRequest) {
+      openKeys.value = new Set(result.items.map((item) => `${item.type}:${item.slug}`))
+    }
+  } catch {
+    if (request === availabilityRequest) {
+      openNow.value = false
+      openError.value = true
+    }
   }
 }
 const selectedRoute = computed(() => page.routes.find((item) => item.slug === state.value.route) || null)
@@ -264,6 +290,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  availabilityRequest++
   noticeObserver?.disconnect()
   window.removeEventListener('resize', syncChrome)
   document.documentElement.style.removeProperty('--map-panel')
