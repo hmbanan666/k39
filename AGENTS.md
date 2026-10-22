@@ -135,13 +135,17 @@ pnpm --filter @k39/database db:generate
 ## Test and build
 
 ```bash
+pnpm run check:quick
 pnpm run lint
 pnpm run typecheck
 pnpm test
 pnpm --filter @k39/web-app build
+pnpm run check:full
 ```
 
-`pnpm test` runs the database suite and web-app checks for titles, canonicals, JSON-LD, redirects, robots.txt and orphan links. Set `DATABASE_URL_TEST` to a local database whose name ends with `_test`. If only `DATABASE_URL` is set and it is local, the suite creates and resets the sibling `<name>_test` database and does not drop the dev database. With no URL, tests start Postgres 18 in Testcontainers. A remote URL is refused. `pnpm run check:repo` checks ADR numbers, migration prefixes, and `Co-authored-by` trailers.
+`pnpm run check:quick` is the iterate loop. It runs `check:repo`, eslint on files changed against `origin/main` (committed and uncommitted), the typecheck of each touched package, and vitest on those changed files plus tests related to the changed sources. A `*.writer.test.ts` file is typechecked with the web-app server project, because the database `tsc` project excludes that suffix. Use the quick loop while editing. `pnpm run check:full` is still required before opening a PR: `check:repo`, eslint --fix, every package typecheck, and the full vitest suite.
+
+`pnpm test` runs the database suite and web-app checks for titles, canonicals, JSON-LD, redirects, robots.txt and orphan links. Set `DATABASE_URL_TEST` to a local database whose name ends with `_test`. If only `DATABASE_URL` is set and it is local, the suite creates and resets the sibling `<name>_test` database and does not drop the dev database. With no URL, tests start Postgres 18 in Testcontainers. A remote URL is refused. `pnpm run check:repo` checks ADR numbers, migration prefixes, journal `idx` and `when` order, tag prefixes, and `Co-authored-by` trailers.
 
 ## Deploy
 
