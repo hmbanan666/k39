@@ -53,6 +53,42 @@
       <label>Средний чек, ₽ <input v-model="form.avgCheck" inputmode="numeric"></label>
       <label>Телефон <input v-model="form.phone"></label>
       <label>Сайт <input v-model="form.website"></label>
+      <div class="field">
+        <label>ID сообщества ВКонтакте
+          <input
+            v-model="form.vkCommunityId"
+            inputmode="numeric"
+            :placeholder="vkField.disabled ? '' : '236300695'"
+            :disabled="vkField.disabled && !form.vkCommunityId"
+            :aria-invalid="vkField.error ? 'true' : undefined"
+            aria-describedby="vk-community-hint"
+          >
+        </label>
+        <p
+          id="vk-community-hint"
+          class="hint"
+        >
+          <template v-if="vkField.disabled">
+            В «Соцсети» нет ссылки ВКонтакте. ID задаётся вместе с ней.
+          </template>
+          <template v-else>
+            Нужен, когда в «Соцсети» ссылка по имени<template v-if="vkField.screenNames.length">
+              ({{ vkField.screenNames.map((name) => `vk.com/${name}`).join(', ') }})
+            </template>,
+            а меню лежит в альбоме, фото, записи или товарах. Число берите из адреса:
+            vk.com/album-236300695_311487837 даёт 236300695.
+            <template v-if="vkField.impliedIds.length">
+              Ссылки в «Соцсети» уже дают ID {{ vkField.impliedIds.join(', ') }}.
+            </template>
+          </template>
+        </p>
+        <p
+          v-if="vkField.error"
+          class="error"
+        >
+          {{ vkField.error }}
+        </p>
+      </div>
       <label>Проверено <input v-model="form.lastVerifiedAt" placeholder="2026-10-13"></label>
       <fieldset>
         <legend>Часы</legend>
@@ -182,6 +218,7 @@
 
 <script setup lang="ts">
 import { blankHoursDays, HOURS_DAY_STATES, hoursDaysPayload, hoursFormDays } from '~~/shared/venue-hours-form'
+import { vkCommunityField } from '~~/shared/venue-vk-form'
 
 const props = defineProps<{ venueId?: string }>()
 const requestFetch = useRequestFetch()
@@ -208,12 +245,16 @@ const form = reactive({
   avgCheck: '',
   phone: '',
   website: '',
+  vkCommunityId: '',
   lastVerifiedAt: '',
   hoursNote: '',
   description: '',
   sources: '',
   days: blankHoursDays(),
 })
+
+const socials = ref<Array<{ network: string, url: string }>>([])
+const vkField = computed(() => vkCommunityField(form.vkCommunityId, socials.value))
 
 const meta = await requestFetch<{ regions: Array<{ id: string, slug: string, title: string }> }>('/api/admin/meta')
 regions.value = meta.regions
@@ -234,6 +275,8 @@ if (props.venueId) {
       avgCheck: number | null
       phone: string | null
       website: string | null
+      socials: Array<{ network: string, url: string }>
+      vkCommunityId: number | null
       lastVerifiedAt: string | null
       description: string
       sources: Array<{ title: string, url: string }>
@@ -254,6 +297,8 @@ if (props.venueId) {
   form.avgCheck = venue.avgCheck == null ? '' : String(venue.avgCheck)
   form.phone = venue.phone || ''
   form.website = venue.website || ''
+  socials.value = venue.socials || []
+  form.vkCommunityId = venue.vkCommunityId == null ? '' : String(venue.vkCommunityId)
   form.lastVerifiedAt = venue.lastVerifiedAt ? venue.lastVerifiedAt.slice(0, 10) : ''
   form.hoursNote = venue.hours?.note || ''
   form.description = venue.description
@@ -284,6 +329,7 @@ function payload() {
     avgCheck: form.avgCheck ? Number(form.avgCheck) : null,
     phone: form.phone || null,
     website: form.website || null,
+    vkCommunityId: vkField.value.value ?? null,
     lastVerifiedAt: form.lastVerifiedAt || null,
     description: form.description,
     sources: form.sources.split('\n').flatMap((line) => {
@@ -299,6 +345,10 @@ function payload() {
 
 async function save() {
   error.value = ''
+  if (vkField.value.error) {
+    error.value = 'Проверьте поле «ID сообщества ВКонтакте»'
+    return
+  }
   try {
     if (props.venueId) {
       await requestFetch(`/api/admin/venues/${props.venueId}`, { method: 'PATCH', body: payload() })
@@ -371,9 +421,12 @@ async function upload() {
 .admin { max-width: 46rem; margin: 0 auto; padding: 1.5rem; }
 form { display: grid; gap: 0.7rem; }
 label { display: grid; gap: 0.25rem; }
-input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; }
-.day { grid-template-columns: 2.5rem 11rem 5.5rem 7.5rem; align-items: center; justify-content: start; }
+input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; min-width: 0; }
+.day { grid-template-columns: 2.5rem minmax(0, 11rem) minmax(0, 5.5rem) minmax(0, 7.5rem); align-items: center; justify-content: start; }
+.hint { overflow-wrap: anywhere; }
 .hint, .error { margin: 0; }
+.field { display: grid; gap: 0.25rem; }
+input[aria-invalid='true'] { outline: 2px solid var(--color-danger); }
 .error { color: var(--color-danger); }
 .photo, .history { margin-top: 2rem; }
 .history li { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; justify-content: space-between; padding: 0.4rem 0; }
