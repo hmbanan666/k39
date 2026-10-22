@@ -46,6 +46,11 @@ describe('ui fixtures', () => {
     const unknownDays = await Venues.bySlug(FIXTURE_SLUGS.cafeUnknownDays)
     const unknownDaysSchedule = await Schedules.get('venue', unknownDays!.id)
     expect((unknownDaysSchedule?.rules as { seasons: Array<{ unknownDays?: number[] }> }).seasons[0]?.unknownDays).toEqual([6, 0])
+    const seasons = await Venues.bySlug(FIXTURE_SLUGS.cafeSeasons)
+    const seasonsRules = (await Schedules.get('venue', seasons!.id))?.rules as { seasons: unknown[], closures: unknown[], exceptions: unknown[] }
+    expect(seasonsRules.seasons).toHaveLength(2)
+    expect(seasonsRules.closures).toHaveLength(1)
+    expect(seasonsRules.exceptions).toHaveLength(1)
 
     const hub = await Editor.placeBySlug(FIXTURE_SLUGS.placeHub)
     const covers = await useDatabase().select().from(placeMedia).where(eq(placeMedia.placeId, hub!.id))

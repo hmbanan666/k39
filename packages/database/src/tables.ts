@@ -334,6 +334,7 @@ export const venues = pgTable('venues', {
   /** How many of this venue's prices had a town comparison when the band was stored. */
   priceBandBasis: integer('price_band_basis'),
   avgCheck: integer('avg_check'),
+  /** Legacy weekday JSON. Not read: `schedules` is the source of venue hours. Only `schedules_migrate` copies it once. */
   hours: jsonb('hours').$type<VenueHours>().notNull().default(sql`'{"days":[],"note":null}'::jsonb`),
   phone: varchar('phone'),
   website: varchar('website'),

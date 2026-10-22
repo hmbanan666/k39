@@ -79,6 +79,8 @@ export interface ScoreSource {
   factRefs?: { count: number, stale: number }
   /** Places only: schedule rules mode, null without a schedule. */
   scheduleMode?: string | null
+  /** Places and venues: `scheduleHoursKnown` of the stored schedule. */
+  hoursKnown?: boolean
   // Collection stops only. city is the place region id. access is the item note plus the place address.
   stops?: Array<{ city: string | null, access: string | null }>
   photoCount: number
@@ -458,8 +460,12 @@ function collectionDirections(page: ScoreSource, text: string) {
   return sameCity(stops) || stops.every((stop) => accessLine(stop.access))
 }
 
-function hasPractical(text: string, hours: string | null, price: string | null) {
-  if (hours?.trim() || price?.trim()) {
+/**
+ * Known schedule hours count first. Free-text `places.hours` and `places.price`
+ * still count, so a place without a schedule row keeps its points (ADR 0046).
+ */
+function hasPractical(text: string, hoursKnown: boolean, hours: string | null, price: string | null) {
+  if (hoursKnown || hours?.trim() || price?.trim()) {
     return true
   }
   if (markdownHeadings(text).some((heading) => PRICE_HEADING.test(heading))) {
@@ -513,7 +519,7 @@ function sectionPoints(page: ScoreSource, text: string) {
   } else {
     checks.push('no Как добраться')
   }
-  if (hasPractical(text, page.kind === 'place' ? page.hours : null, page.kind === 'place' ? page.price : null)) {
+  if (hasPractical(text, page.kind === 'place' && Boolean(page.hoursKnown), page.kind === 'place' ? page.hours : null, page.kind === 'place' ? page.price : null)) {
     points += 10
   } else {
     checks.push('no prices')
@@ -696,7 +702,7 @@ function venueQuality(page: ScoreSource, now: Date) {
   } else {
     checks.push('0 photos')
   }
-  if (page.hours?.trim()) {
+  if (page.hoursKnown) {
     points += 15
   } else {
     checks.push('no hours')

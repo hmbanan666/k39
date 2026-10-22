@@ -1,7 +1,13 @@
-import type { CatalogStop, ContentCatalog, PageMetric, StoredScore } from '@k39/database'
+import type { CatalogSchedule, CatalogStop, ContentCatalog, PageMetric, StoredScore } from '@k39/database'
 import type { LinkCatalog, PageKind, PageScore, PassportFields, ScoreSource } from '../../../shared/scoring'
 import { collectionArticle } from '../../../shared/page-modules'
+import { readRules, scheduleHoursKnown } from '../../../shared/schedule'
 import { emptyResults, linkStats, scorePage, searchTotalsForPath } from '../../../shared/scoring'
+
+/** Whether a catalog schedule row states known hours. The same rule for places and venues. */
+export function catalogHoursKnown(schedule: CatalogSchedule | null | undefined) {
+  return schedule ? scheduleHoursKnown({ rules: readRules(schedule.rules), verifiedAt: schedule.verifiedAt }) : false
+}
 
 export function catalogPageRefs(catalog: ContentCatalog) {
   return [
@@ -180,6 +186,7 @@ export function scoresFromCatalog(
         factsCheckedAt: place.factsCheckedAt,
         factRefs: factRefs?.get(`place:${place.id}`),
         scheduleMode: place.scheduleMode ?? null,
+        hoursKnown: catalogHoursKnown(place.schedule),
         firstPublishedAt: place.firstPublishedAt ?? null,
         photoCount: photos.get(place.id) ?? 0,
         inRoute: inRoute.has(place.slug),
@@ -364,7 +371,8 @@ export function scoresFromCatalog(
         summary: venue.description,
         body: venue.description,
         howToGet: null,
-        hours: venue.hoursSet ? 'set' : null,
+        hours: null,
+        hoursKnown: catalogHoursKnown(venue.schedule),
         price: null,
         categorySlug: venue.kind,
         categoryTitle: null,

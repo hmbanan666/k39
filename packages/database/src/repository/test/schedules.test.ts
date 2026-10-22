@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { scheduleIntervals, schedules, venues } from '../../tables'
-import { formatHoursLines, hoursAreSet, normalizeHours, VenueInputError } from '../../venues'
+import { formatHoursLines, normalizeHours, VenueInputError } from '../../venues'
 import { Schedules } from '../schedules'
 import { Venues } from '../venues'
 
@@ -76,7 +76,6 @@ describe('venue hours with an opening time only', () => {
   it('keeps the day open-ended instead of rejecting it', () => {
     const hours = normalizeHours({ days: [{ weekday: 'sat', closed: false, opens: '12:00', closes: null }] })
     expect(hours.days.find((day) => day.weekday === 'sat')).toEqual({ weekday: 'sat', closed: false, opens: '12:00', closes: null })
-    expect(hoursAreSet(hours)).toBe(true)
     expect(formatHoursLines(hours)).toContain('сб с 12:00, закрытие уточняйте')
     expect(() => normalizeHours({ days: [{ weekday: 'sat', closed: false, opens: null, closes: '22:00' }] })).toThrow(VenueInputError)
   })

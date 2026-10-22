@@ -1,6 +1,7 @@
 import type { SourceLink } from './types/entities'
 import { ownWebsiteProblem } from '@k39/types/official-url'
 import { isSocialHost } from '@k39/types/social-hosts'
+import { HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG } from './hours-note'
 import { PHONE_TEXT_MAX } from './phone'
 
 export const FOOD_KINDS = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other'] as const
@@ -336,7 +337,10 @@ const CLOCK = /^(?:[01]\d|2[0-3]):[0-5]\d$/
 
 export function normalizeHours(value: unknown): VenueHours {
   const raw = value && typeof value === 'object' ? value as { days?: unknown, note?: unknown } : {}
-  const note = typeof raw.note === 'string' ? raw.note.trim().slice(0, 300) || null : null
+  const note = typeof raw.note === 'string' ? raw.note.trim() || null : null
+  if (note && note.length > HOURS_NOTE_MAX) {
+    throw new VenueInputError(HOURS_NOTE_TOO_LONG)
+  }
   const given = new Map<Weekday, VenueDayHours>()
   if (Array.isArray(raw.days)) {
     for (const item of raw.days) {
@@ -366,11 +370,6 @@ export function normalizeHours(value: unknown): VenueHours {
     days: WEEKDAYS.map((weekday) => given.get(weekday) ?? { weekday, closed: true, opens: null, closes: null }),
     note,
   }
-}
-
-/** An opening time alone counts: the closing time may be unknown (ADR 0042). */
-export function hoursAreSet(hours: VenueHours) {
-  return Boolean(hours.note?.trim()) || hours.days.some((day) => !day.closed && day.opens)
 }
 
 export const HOURS_UNKNOWN = 'Часы уточняйте'
@@ -572,10 +571,10 @@ export function parseOsmHours(raw: string | undefined): VenueHours {
     parsed += 1
   }
   if (!parsed) {
-    return emptyHours(text.slice(0, 300))
+    return emptyHours(text.slice(0, HOURS_NOTE_MAX))
   }
   if (parsed < rules.length) {
-    hours.note = text.slice(0, 300)
+    hours.note = text.slice(0, HOURS_NOTE_MAX)
   }
   return hours
 }

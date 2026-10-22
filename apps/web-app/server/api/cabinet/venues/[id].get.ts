@@ -3,6 +3,7 @@ import { toPublicMedia } from '../../../../shared/media'
 import { requireAccount } from '../../../utils/cabinet/account'
 import { requireVenueMember } from '../../../utils/cabinet/flow'
 import { readShownFacts, shownText } from '../../../utils/facts/read'
+import { loadHoursForm } from '../../../utils/schedule'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAccount(event)
@@ -50,8 +51,8 @@ export default defineEventHandler(async (event) => {
       priceBandBasis: venue.priceBandBasis,
       avgCheck: venue.avgCheck,
       modules: venue.modules,
-      hours: venue.hours,
     },
+    hours: await loadHoursForm('venue', venue.id),
     prices,
     catalog: catalog.map((item) => ({
       slug: item.slug,

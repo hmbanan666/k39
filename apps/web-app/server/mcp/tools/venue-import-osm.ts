@@ -2,6 +2,7 @@ import { db, VenueInputError } from '@k39/database'
 import { z } from 'zod'
 import { auditMcp } from '../../utils/mcp/audit'
 import { fetchOverpass } from '../../utils/venues/overpass'
+import { saveImportedHours } from '../../utils/venues/write'
 
 const area = z.union([
   z.object({
@@ -19,7 +20,7 @@ const area = z.union([
 
 export default defineMcpTool({
   name: 'venue_import_osm',
-  description: 'Import OpenStreetMap cafes, restaurants, bars, fast food, pubs, ice cream, and bakeries as drafts. Pass a point and radiusMeters, or a bbox (south, west, north, east). Dedupes by osmId and never publishes. Writes an mcp_audits row.',
+  description: 'Import OpenStreetMap cafes, restaurants, bars, fast food, pubs, ice cream, and bakeries as drafts. Pass a point and radiusMeters, or a bbox (south, west, north, east). Dedupes by osmId and never publishes. OSM opening hours become an unverified schedule; hoursSkipped lists drafts whose hours could not be stored. Writes an mcp_audits row.',
   inputSchema: {
     area,
     regionSlug: z.string().optional(),
@@ -31,9 +32,10 @@ export default defineMcpTool({
     }
     try {
       const drafts = await fetchOverpass(box)
-      const result = await db.venues.importDrafts(drafts, region?.id ?? null)
+      const { createdDrafts, ...result } = await db.venues.importDrafts(drafts, region?.id ?? null)
+      const hoursSkipped = await saveImportedHours(createdDrafts)
       await auditMcp('venue_import_osm', 'venue', null)
-      return { fetched: drafts.length, ...result }
+      return { fetched: drafts.length, ...result, hoursSkipped }
     } catch (error) {
       if (error instanceof VenueInputError) {
         throw createError({ statusCode: 400, statusMessage: error.message })

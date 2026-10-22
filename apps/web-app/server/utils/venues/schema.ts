@@ -27,7 +27,7 @@ export const venueFields = {
   hours: z.object({
     days: z.array(day).optional(),
     note: z.string().nullable().optional(),
-  }).optional(),
+  }).optional().describe('A weekly table merged into the schedule (ADR 0028): days replace the week of its one season, note replaces the note (at most 200 characters). Omit days to keep the week. Closures, exceptions, holidays, and the source stay. days against a schedule with seasons, breaks, or another mode return 409; use schedule_set.'),
   phone: z.string().nullable().optional(),
   website: z.string().nullable().optional().describe('The venue\'s own site. Null clears it. A social host (vk.com, vk.ru, t.me, instagram, ok.ru, whatsapp, x.com, and the like) is rejected: put that link in socials'),
   socials: z.array(z.object({ network: z.string(), url: z.string() })).optional().describe('vk, telegram, instagram, whatsapp... with full URLs'),

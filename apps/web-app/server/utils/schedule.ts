@@ -2,6 +2,7 @@ import type { FactActor } from '~~/shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '~~/shared/schedule'
 import { db } from '@k39/database'
 import { addDays, expandIntervals, localNow, readRules, unknownSpans } from '~~/shared/schedule'
+import { hoursFormState } from '~~/shared/venue-hours-form'
 import { hoursConflict, writeHoursFact } from './facts/sync'
 import { rejectBannedSites } from './mcp/writing-guard'
 
@@ -51,6 +52,12 @@ export async function loadSchedule(entityType: string, entityId: string): Promis
   const row = await db.schedules.get(entityType, entityId)
   const rules = row ? readRules(row.rules) : null
   return row && rules ? { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt } : null
+}
+
+/** The hours block of the admin venue form and the owner cabinet, from the stored schedule. */
+export async function loadHoursForm(entityType: string, entityId: string, at = new Date()) {
+  const record = await loadSchedule(entityType, entityId)
+  return hoursFormState(record?.rules ?? null, localNow(at).date)
 }
 
 /** Daily job: slide every window forward. */

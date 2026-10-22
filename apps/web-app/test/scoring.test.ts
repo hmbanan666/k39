@@ -1,8 +1,8 @@
-import type { CatalogArticle, CatalogHub, ContentCatalog, ScorePlace } from '@k39/database'
+import type { CatalogArticle, CatalogHub, CatalogVenue, ContentCatalog, ScorePlace } from '@k39/database'
 import type { LengthOverride } from '../shared/length-override'
 import type { LinkCatalog, ScoreSource } from '../shared/scoring'
 import { describe, expect, it } from 'vitest'
-import { catalogPageRefs, scoresFromCatalog } from '../server/utils/scoring/assemble'
+import { catalogHoursKnown, catalogPageRefs, scoresFromCatalog } from '../server/utils/scoring/assemble'
 import { personaCoverageReport } from '../server/utils/scoring/coverage'
 import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, REPEATED_PARAGRAPH } from '../shared/length-override'
 import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage } from '../shared/scoring'
@@ -745,6 +745,60 @@ describe('score run', () => {
     expect(hub?.signals.faqCount).toBe(1)
     expect(hub?.checks.linking).not.toContain('no outbound')
     expect(hub?.checks.quality).not.toContain('no Как добраться')
+  })
+})
+
+describe('hours known from the schedule', () => {
+  const verified = {
+    rules: { seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00' }] }] },
+    verifiedAt: '2026-10-01',
+  }
+
+  function catalogVenue(patch: Partial<CatalogVenue> = {}): CatalogVenue {
+    return {
+      id: 'venue-1',
+      slug: 'cafe-a',
+      name: 'Кафе А',
+      kind: 'cafe',
+      description: '',
+      schedule: null,
+      latitude: null,
+      longitude: null,
+      publicationStatus: 'published',
+      noindex: false,
+      seoTitle: null,
+      seoDescription: null,
+      factsCheckedAt: null,
+      regionSlug: null,
+      regionTitle: null,
+      updatedAt: UPDATED,
+      ...patch,
+    }
+  }
+
+  it('scores the hours of a schedule-only venue and not of an unverified one', () => {
+    const [known] = scoresFromCatalog(catalog({ venues: [catalogVenue({ schedule: verified })] }), [], [], false)
+    const [unverified] = scoresFromCatalog(catalog({ venues: [catalogVenue({ schedule: { ...verified, verifiedAt: null } })] }), [], [], false)
+    const [missing] = scoresFromCatalog(catalog({ venues: [catalogVenue()] }), [], [], false)
+    expect(known?.checks.quality).not.toContain('no hours')
+    expect(unverified?.checks.quality).toContain('no hours')
+    expect(missing?.checks.quality).toContain('no hours')
+    expect(known!.quality).toBeGreaterThan(missing!.quality)
+  })
+
+  it('uses the same rule for a place, with free-text hours as the fallback', () => {
+    const [scheduled] = scoresFromCatalog(catalog({ places: [catalogPlace({ schedule: verified })] }), [], [], false)
+    const [text] = scoresFromCatalog(catalog({ places: [catalogPlace({ hours: '10-18' })] }), [], [], false)
+    const [none] = scoresFromCatalog(catalog({ places: [catalogPlace()] }), [], [], false)
+    expect(scheduled!.quality).toBeGreaterThan(none!.quality)
+    expect(scheduled!.quality).toBe(text!.quality)
+  })
+
+  it('counts a 24/7 schedule and ignores one that still needs a check', () => {
+    expect(catalogHoursKnown({ rules: { mode: 'always' }, verifiedAt: '2026-10-01' })).toBe(true)
+    expect(catalogHoursKnown({ rules: { seasons: [{ week: [] }] }, verifiedAt: '2026-10-01' })).toBe(false)
+    expect(catalogHoursKnown({ ...verified, rules: { ...verified.rules, needsCheck: true } })).toBe(false)
+    expect(catalogHoursKnown(null)).toBe(false)
   })
 })
 

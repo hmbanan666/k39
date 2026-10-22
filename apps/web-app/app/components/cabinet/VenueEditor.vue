@@ -39,46 +39,33 @@
     </div>
     <fieldset>
       <legend>Часы</legend>
-      <p class="muted">
-        Сохранение часов отмечает расписание проверенным. День без часов считается выходным. Если часы дня пока неизвестны, выберите «часы уточняйте».
-      </p>
-      <label
-        v-for="day in form.days"
-        :key="day.weekday"
-        class="day"
-      >
-        <span>{{ labels[day.weekday] }}</span>
-        <select
-          v-model="day.state"
-          :aria-label="`${labels[day.weekday]}: часы`"
-        >
-          <option
-            v-for="option in hoursStates"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-        <input
-          v-model="day.opens"
-          placeholder="09:00"
-          :disabled="day.state !== 'open'"
-        >
-        <input
-          v-model="day.closes"
-          :placeholder="day.openEnded ? '?' : '21:00'"
-          :disabled="day.state !== 'open'"
-        >
-      </label>
       <p
-        v-if="form.days.some((day) => day.openEnded)"
+        v-if="hours.editable"
+        class="muted"
+      >
+        Изменённые часы отмечают расписание проверенным. День без часов считается выходным. Если часы дня пока неизвестны, выберите «часы уточняйте».
+      </p>
+      <VenueHoursTable
+        v-model:days="form.days"
+        :editable="hours.editable"
+        :table="hours.table"
+        :lines="hours.lines"
+        owner
+      />
+      <p
+        v-if="hours.editable && form.days.some((day) => day.openEnded)"
         class="muted"
       >
         Пустое закрытие: на сайте «закрытие уточняйте». Впишите время, когда оно известно.
       </p>
-      <UiField label="Заметка к часам">
-        <UiInput v-model="form.hoursNote" />
+      <UiField
+        v-if="hours.editable"
+        label="Заметка к часам"
+      >
+        <UiInput
+          v-model="form.hoursNote"
+          :maxlength="HOURS_NOTE_MAX"
+        />
       </UiField>
     </fieldset>
     <fieldset>
@@ -604,23 +591,15 @@
 </template>
 
 <script setup lang="ts">
+import type { HoursFormState } from '~~/shared/venue-hours-form'
+import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
 import { metaProductFromHref } from '~~/shared/meta-links'
 import { socialLabel } from '~~/shared/venue-actions'
-import { blankHoursDays, HOURS_DAY_STATES, hoursDaysPayload, hoursFormDays } from '~~/shared/venue-hours-form'
+import { hoursPayload } from '~~/shared/venue-hours-form'
 import { AUDIENCE_ICONS, DISH_SHOWCASE_MAX, dishPriceIsFresh, isDishId, PRACTICAL_KEYS, VENUE_MODULE_TITLES } from '~~/shared/venue-modules'
 
 const props = defineProps<{ venueId: string }>()
 
-const labels: Record<string, string> = {
-  mon: 'пн',
-  tue: 'вт',
-  wed: 'ср',
-  thu: 'чт',
-  fri: 'пт',
-  sat: 'сб',
-  sun: 'вс',
-}
-const hoursStates = HOURS_DAY_STATES
 const requestFetch = useRequestFetch()
 
 interface Photo {
@@ -690,7 +669,7 @@ const form = reactive({
   prices: [] as Array<{ item: string, variant: string, priceRub: string }>,
   modules: [] as ModuleDraft[],
   dishes: [] as Array<{ name: string, priceRub: string, note: string }>,
-  days: blankHoursDays(),
+  days: [] as HoursFormState['days'],
 })
 
 const metaContacts = computed(() => {
@@ -930,8 +909,8 @@ const loaded = await requestFetch<{
     avgCheck: number | null
     modules: unknown[]
     signatureDishes: Array<{ name: string, note?: string | null, priceRub?: number | null }>
-    hours: { days: Array<{ weekday: string, closed: boolean, unknown?: boolean, opens: string | null, closes: string | null }>, note: string | null }
   }
+  hours: HoursFormState
   prices: Array<{ item: string, variant: string, priceRub: number }>
   catalog: CatalogItem[]
   photos: Photo[]
@@ -949,7 +928,8 @@ form.deliveryUrl = loaded.venue.deliveryUrl || ''
 form.menuUrl = loaded.venue.menuUrl || ''
 form.priceLevel = loaded.venue.priceLevel == null ? '' : String(loaded.venue.priceLevel)
 form.avgCheck = loaded.venue.avgCheck == null ? '' : String(loaded.venue.avgCheck)
-form.hoursNote = loaded.venue.hours?.note || ''
+const hours = loaded.hours
+form.hoursNote = hours.note
 form.socials = loaded.venue.socials.length ? loaded.venue.socials.map((row) => ({ ...row })) : [{ network: '', url: '' }]
 catalog.value = loaded.catalog
 form.prices = loaded.prices.map((row) => ({
@@ -968,8 +948,20 @@ form.dishes = loaded.venue.signatureDishes.map((row) => ({
   priceRub: row.priceRub == null ? '' : String(row.priceRub),
   note: row.note || '',
 }))
-form.days = hoursFormDays(loaded.venue.hours)
+form.days = hours.days
 photos.value = loaded.photos
+// The hours as loaded. A save sends `hours` only when the table or the note differs,
+// so a description save does not mark the schedule checked.
+let savedHours = JSON.stringify(hoursField())
+
+function hoursField() {
+  return hoursPayload(form.days, form.hoursNote, { openEnded: false })
+}
+
+function changedHours() {
+  const next = hoursField()
+  return hours.editable && JSON.stringify(next) !== savedHours ? next : undefined
+}
 
 function payload() {
   return {
@@ -1008,10 +1000,7 @@ function payload() {
       }
       return [{ name: row.name.trim(), priceRub: intOrNull(row.priceRub), note: row.note.trim() || null }]
     }),
-    hours: {
-      note: form.hoursNote || null,
-      days: hoursDaysPayload(form.days, { openEnded: false }),
-    },
+    hours: changedHours(),
   }
 }
 
@@ -1023,6 +1012,7 @@ async function save() {
     // Typed routes resolve this template to the [id] GET handler only, so widen it to reach [id].patch.ts.
     const url: string = `/api/cabinet/venues/${props.venueId}`
     await $fetch(url, { method: 'PATCH', body: payload() })
+    savedHours = JSON.stringify(hoursField())
     saved.value = true
   } catch (reason) {
     error.value = problem(reason, 'Не удалось сохранить')
@@ -1128,14 +1118,6 @@ fieldset {
 }
 legend { padding: 0; font-weight: 700; }
 .grid { display: grid; gap: 0.6rem; }
-.day {
-  display: grid;
-  grid-template-columns: 2rem minmax(0, 10.5rem) 4.6rem 4.6rem;
-  gap: 0.4rem;
-  align-items: center;
-  margin: 0.35rem 0;
-}
-.day select, .day input { min-width: 0; font: inherit; padding: 0.4rem 0.35rem; }
 .muted { margin: 0.2rem 0 0.4rem; color: var(--muted); font-size: 0.92rem; }
 .socials { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin: 0.4rem 0 0; }
 .error { color: var(--color-danger, var(--color-brick)); }

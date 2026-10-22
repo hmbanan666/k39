@@ -92,37 +92,24 @@
       <label>Проверено <input v-model="form.lastVerifiedAt" placeholder="2026-10-13"></label>
       <fieldset>
         <legend>Часы</legend>
-        <label
-          v-for="day in form.days"
-          :key="day.weekday"
-          class="day"
+        <VenueHoursTable
+          v-model:days="form.days"
+          :editable="hours.editable"
+          :table="hours.table"
+          :lines="hours.lines"
+        />
+        <p
+          v-if="hours.editable"
+          class="hint"
         >
-          <span>{{ day.weekday }}</span>
-          <select v-model="day.state">
-            <option
-              v-for="option in HOURS_DAY_STATES"
-              :key="option.value"
-              :value="option.value"
-            >
-              {{ option.label }}
-            </option>
-          </select>
-          <input
-            v-model="day.opens"
-            placeholder="09:00"
-            :disabled="day.state !== 'open'"
-          >
-          <input
-            v-model="day.closes"
-            placeholder="уточняйте"
-            :disabled="day.state !== 'open'"
-          >
-        </label>
-        <p class="hint">
           Источник называет только время открытия? Оставьте закрытие пустым: на сайте будет «с 12:00, закрытие уточняйте».
           Источник молчит про день? Выберите «часы уточняйте»: на сайте день не станет выходным.
         </p>
-        <label>Заметка <input v-model="form.hoursNote"></label>
+        <label>Заметка <input
+          v-model="form.hoursNote"
+          :maxlength="HOURS_NOTE_MAX"
+          :disabled="!hours.editable"
+        ></label>
       </fieldset>
       <label>Описание
         <textarea
@@ -217,7 +204,9 @@
 </template>
 
 <script setup lang="ts">
-import { blankHoursDays, HOURS_DAY_STATES, hoursDaysPayload, hoursFormDays } from '~~/shared/venue-hours-form'
+import type { HoursFormState } from '~~/shared/venue-hours-form'
+import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
+import { emptyHoursForm, hoursPayload } from '~~/shared/venue-hours-form'
 import { vkCommunityField } from '~~/shared/venue-vk-form'
 
 const props = defineProps<{ venueId?: string }>()
@@ -250,8 +239,11 @@ const form = reactive({
   hoursNote: '',
   description: '',
   sources: '',
-  days: blankHoursDays(),
+  days: emptyHoursForm().days,
 })
+const hours = ref<HoursFormState>(emptyHoursForm())
+// The hours as loaded. A save sends `hours` only when the table or the note differs.
+const savedHours = ref('')
 
 const socials = ref<Array<{ network: string, url: string }>>([])
 const vkField = computed(() => vkCommunityField(form.vkCommunityId, socials.value))
@@ -280,8 +272,8 @@ if (props.venueId) {
       lastVerifiedAt: string | null
       description: string
       sources: Array<{ title: string, url: string }>
-      hours: { days: Array<{ weekday: string, closed: boolean, unknown?: boolean, opens: string | null, closes: string | null }>, note: string | null }
     }
+    hours: HoursFormState
   }>(`/api/admin/venues/${props.venueId}`)
   const venue = loaded.venue
   form.name = venue.name
@@ -300,10 +292,22 @@ if (props.venueId) {
   socials.value = venue.socials || []
   form.vkCommunityId = venue.vkCommunityId == null ? '' : String(venue.vkCommunityId)
   form.lastVerifiedAt = venue.lastVerifiedAt ? venue.lastVerifiedAt.slice(0, 10) : ''
-  form.hoursNote = venue.hours?.note || ''
   form.description = venue.description
   form.sources = (venue.sources || []).map((item) => `${item.title} | ${item.url}`).join('\n')
-  form.days = hoursFormDays(venue.hours)
+  hours.value = loaded.hours
+  form.days = loaded.hours.days
+  form.hoursNote = loaded.hours.note
+}
+savedHours.value = JSON.stringify(hoursField())
+
+function hoursField() {
+  return hoursPayload(form.days, form.hoursNote, { openEnded: true })
+}
+
+/** The weekly table, only when it is editable and differs from what was loaded or saved. */
+function changedHours() {
+  const next = hoursField()
+  return hours.value.editable && JSON.stringify(next) !== savedHours.value ? next : undefined
 }
 
 function numberOrNull(value: string) {
@@ -336,10 +340,7 @@ function payload() {
       const [title, url] = line.split('|').map((item) => item.trim())
       return title && url ? [{ title, url }] : []
     }),
-    hours: {
-      note: form.hoursNote || null,
-      days: hoursDaysPayload(form.days, { openEnded: true }),
-    },
+    hours: changedHours(),
   }
 }
 
@@ -352,6 +353,7 @@ async function save() {
   try {
     if (props.venueId) {
       await requestFetch(`/api/admin/venues/${props.venueId}`, { method: 'PATCH', body: payload() })
+      savedHours.value = JSON.stringify(hoursField())
       return
     }
     const created = await requestFetch<{ id: string }>('/api/admin/venues', { method: 'POST', body: payload() })
@@ -422,7 +424,6 @@ async function upload() {
 form { display: grid; gap: 0.7rem; }
 label { display: grid; gap: 0.25rem; }
 input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; min-width: 0; }
-.day { grid-template-columns: 2.5rem minmax(0, 11rem) minmax(0, 5.5rem) minmax(0, 7.5rem); align-items: center; justify-content: start; }
 .hint { overflow-wrap: anywhere; }
 .hint, .error { margin: 0; }
 .field { display: grid; gap: 0.25rem; }

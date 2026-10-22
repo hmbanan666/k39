@@ -6,7 +6,6 @@ import { Prices } from '../repository/prices'
 import { Schedules } from '../repository/schedules'
 import { Venues } from '../repository/venues'
 import { media, placeMedia, venueMedia } from '../tables'
-import { WEEKDAYS } from '../venues'
 import { PRICE_CATALOG } from './price-catalog'
 
 /**
@@ -25,6 +24,7 @@ export const FIXTURE_SLUGS = {
   cafeNoCoords: 'fixture-cafe-nocoords',
   cafeOpenEnded: 'fixture-cafe-open',
   cafeUnknownDays: 'fixture-cafe-weekdays',
+  cafeSeasons: 'fixture-cafe-seasons',
   collection: 'fixture-modules',
 } as const
 
@@ -41,18 +41,6 @@ function fixtureProse(label: string) {
     text += sentence
   }
   return text.slice(0, 480).trim()
-}
-
-function weekHours() {
-  return {
-    note: null,
-    days: WEEKDAYS.map((weekday) => ({
-      weekday,
-      closed: false,
-      opens: '10:00',
-      closes: '20:00',
-    })),
-  }
 }
 
 function scheduleRules() {
@@ -88,6 +76,22 @@ function unknownDaysRules() {
     closures: [],
     holidays: 'as-usual',
     exceptions: [],
+    occurrences: [],
+    needsCheck: false,
+  }
+}
+
+/** Summer and the rest of the year, a monthly closure, and a one-off date. One weekly table cannot show it. */
+function seasonalRules(now: Date) {
+  return {
+    mode: 'hours',
+    seasons: [
+      { from: '06-01', to: '08-31', week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '23:00', breaks: [] }] },
+      { week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }, { days: [6], opens: '11:00', closes: '17:00', breaks: [] }] },
+    ],
+    closures: [{ weekday: 1, nth: -1, label: 'Санитарный день' }],
+    holidays: 'as-usual',
+    exceptions: [{ date: `${now.getUTCFullYear()}-12-31`, closed: true, note: 'Фикстура: закрыто' }],
     occurrences: [],
     needsCheck: false,
   }
@@ -166,7 +170,6 @@ async function ensureVenue(input: {
   longitude: number | null
   socials?: Array<{ network: string, url: string }>
   modules?: unknown[]
-  hours?: ReturnType<typeof weekHours>
 }) {
   const description = fixtureProse(input.name)
   const existing = await Venues.bySlug(input.slug)
@@ -183,7 +186,6 @@ async function ensureVenue(input: {
     phone: '+7 401 200-00-00',
     socials: input.socials ?? [],
     modules: input.modules ?? [],
-    hours: input.hours,
     noindex: true,
     menuUrl: MENU_URL,
     sources: [{ title: 'Меню фикстуры', url: MENU_URL }],
@@ -275,7 +277,6 @@ export async function applyFixtures(now = new Date()) {
     longitude: 20.502,
     socials: [{ network: 'instagram', url: INSTAGRAM }],
     modules: venueModules(),
-    hours: weekHours(),
   })
   const quiet = await ensureVenue({
     slug: FIXTURE_SLUGS.cafePlain,
@@ -283,7 +284,6 @@ export async function applyFixtures(now = new Date()) {
     regionId: town.id,
     latitude: 54.722,
     longitude: 20.503,
-    hours: weekHours(),
   })
   const peer = await ensureVenue({
     slug: FIXTURE_SLUGS.cafePeer,
@@ -312,6 +312,13 @@ export async function applyFixtures(now = new Date()) {
     regionId: town.id,
     latitude: 54.7245,
     longitude: 20.506,
+  })
+  const seasons = await ensureVenue({
+    slug: FIXTURE_SLUGS.cafeSeasons,
+    name: 'Фикстура: кафе с сезонами',
+    regionId: town.id,
+    latitude: 54.725,
+    longitude: 20.507,
   })
   await ensureCover({ venueId: photo.id }, 'Фикстура кафе')
 
@@ -354,6 +361,13 @@ export async function applyFixtures(now = new Date()) {
     sourceUrl: HOURS_URL,
     verifiedAt: day,
   }, [])
+  await Schedules.save({
+    entityType: 'venue',
+    entityId: seasons.id,
+    rules: seasonalRules(now),
+    sourceUrl: HOURS_URL,
+    verifiedAt: day,
+  }, [])
 
   await Editor.saveCollection({
     slug: FIXTURE_SLUGS.collection,
@@ -369,6 +383,6 @@ export async function applyFixtures(now = new Date()) {
   return {
     slugs: FIXTURE_SLUGS,
     catalog: PRICE_CATALOG.length,
-    venues: [photo.slug, quiet.slug, peer.slug, nowhere.slug, openEnded.slug, unknownDays.slug],
+    venues: [photo.slug, quiet.slug, peer.slug, nowhere.slug, openEnded.slug, unknownDays.slug, seasons.slug],
   }
 }
