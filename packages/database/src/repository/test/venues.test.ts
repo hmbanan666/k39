@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { ownWebsiteMessage } from '@k39/types/official-url'
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
@@ -153,6 +154,10 @@ describe('venue policy', () => {
     })
     expect(vkSite?.website).toBeNull()
     expect(vkSite?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/leto' }])
+    const osmSite = (website: string) => osmElementToDraft({ type: 'node', id: 46, lat: FORT.latitude, lon: FORT.longitude, tags: { amenity: 'cafe', name: 'Лето', website } })?.website
+    expect(osmSite('leto.example')).toBe('https://leto.example')
+    expect(osmSite('https://www.tripadvisor.ru/Restaurant_Review-g1-d2.html')).toBeNull()
+    expect(osmSite('https://yandex.ru/maps/org/1')).toBeNull()
     expect(osmElementToDraft({ type: 'node', id: 1, lat: 1, lon: 1, tags: { amenity: 'cafe' } })).toBeNull()
     const query = overpassQuery({ latitude: 54.7, longitude: 20.5, radiusMeters: 800 })
     expect(query).toContain('around:800,54.7,20.5')
@@ -222,7 +227,7 @@ describe('venue repository', () => {
     expect(isSocialWebsite('t.me/cafe')).toBe(true)
     expect(isSocialWebsite('https://ok.ru/group')).toBe(true)
     expect(isSocialWebsite('https://cafe.example')).toBe(false)
-    const socialWebsite = 'В поле «Сайт» укажите только собственный сайт заведения. Ссылку на соцсеть добавьте в «Соцсети».'
+    const socialWebsite = ownWebsiteMessage('social')
     await expect(Venues.create({
       name: 'ВК как сайт',
       kind: 'cafe',
@@ -237,6 +242,9 @@ describe('venue repository', () => {
     await expect(Venues.update(created.id, { website: 'https://instagram.com/cafe' })).rejects.toThrow(socialWebsite)
     await expect(Venues.update(created.id, { website: 'https://ok.ru/group' })).rejects.toThrow(socialWebsite)
     await expect(Venues.update(created.id, { website: 'https://vk.ru/cafe' })).rejects.toThrow(socialWebsite)
+    await expect(Venues.update(created.id, { website: 'https://www.tripadvisor.ru/Restaurant_Review-g1-d2.html' })).rejects.toThrow(ownWebsiteMessage('aggregator'))
+    await expect(Venues.update(created.id, { website: 'https://yandex.ru/profile/1234567890' })).rejects.toThrow(ownWebsiteMessage('map'))
+    await expect(Venues.update(created.id, { website: 'cafe.example' })).rejects.toThrow(ownWebsiteMessage('invalid'))
     const moved = await Venues.update(created.id, {
       website: null,
       socials: [{ network: 'vk', url: 'https://vk.com/cafe' }],

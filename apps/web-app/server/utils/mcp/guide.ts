@@ -1,4 +1,5 @@
 import { SOURCE_LINK_LIMIT } from '@k39/database'
+import { PLACE_SCHEMA_TYPES } from '../../../shared/seo'
 import { writingGuideSection } from '../../../shared/writing'
 
 export const CONTENT_GUIDE = `K39 place pages are Russian. Write for a visitor who will go there, not for a brochure.
@@ -12,12 +13,14 @@ Structure:
 - hours, price: copy from sources or leave empty. Never guess a timetable or a ticket price.
 - howToGet: the short address only, such as "Неман, ул. Победы, 47". The route itself belongs in the directions section, not in this field.
 - status: open, ruins, closed, or unknown. unknown if the source does not say.
+- phone, website: official contacts of the place (a museum desk, a church office). Take the phone only from the place's own site, never from Yandex Maps or a Yandex business card (yandex.ru/profile), 2GIS, Google Maps, OSM, or a listing or guide (Tripadvisor, KudaGo, Afisha, Wikipedia). Send phoneSourceUrl, the page that states the number; without it the stored source or the website is used, and a phone with neither is rejected. A place has no socials field to prove a social page is its own, so the place's VK or Telegram page counts as the phone source only while website is empty; once website is set, take the phone from that site. website is the place's own http(s) site, the same rule as a venue «Сайт»: not a social page, a map card, a listing, or a file host. «Коротко» shows «Телефон» as a tel: link and «Сайт»; JSON-LD gets telephone and url. Never write the number in the article text. Leave both empty when no official source states them.
+- schemaType: the schema.org subtype when the hub default is wrong. The default comes from the hub: muzei is Museum, forty and zamki are LandmarksOrHistoricalBuildings, plyazhi is Beach, others are TouristAttraction. Set Church or PlaceOfWorship for a church or a kircha (a ruined church is still Church), Park for a park, PerformingArtsTheater for a theatre in a kircha, MusicVenue for a concert hall. Allowed: ${PLACE_SCHEMA_TYPES.join(', ')}. Null returns to the hub default. Decide from what the place is, not from its title.
 
 Verification starts at queue_list. Do not scan places_list to re-check a fact that is still inside its TTL. fact_get reads one fact, fact_confirm accepts the value hash you just read, and fact_update writes a new value. page_mark_reviewed stores section hashes. If the latest revision actor is owner, fact_update does not overwrite that fact: the conflict waits for an editor in /admin. schedule_set and venue_prices_set still write those shapes and the fact row in the same save.
 
 Facts: if a source does not state it, do not write it. Coordinates, names, and dates come from the source list. Put each source in sources as { title, url }. factsCheckedAt is an ISO date (YYYY-MM-DD or a full timestamp) for the last fact check. place_update and place_draft_update store it as last_verified_at. Send it alone with id or slug to record a check without editing the article. Null clears it. Omit it to keep the stored date. Routes, collections, and hubs have no such field.
 
-Place guide template (ADR 0020): the answer block at the top shows summary, visitDuration ("1–2 часа"), bestTime, hours and price, stamped «проверено <factsCheckedAt>». faq is 3 to 6 real visitor questions, each answered only from facts already in sources. Every block hides when its field is empty, so leave a field empty rather than guess. Do not put a «Частые вопросы» section in body when faq is set.
+Place guide template (ADR 0020): the answer block at the top shows summary, visitDuration ("1–2 часа"), bestTime, hours, price, phone and website, stamped «проверено <factsCheckedAt>». faq is 3 to 6 real visitor questions, each answered only from facts already in sources. Every block hides when its field is empty, so leave a field empty rather than guess. Do not put a «Частые вопросы» section in body when faq is set.
 
 SEO: seoTitle stays under 70 characters, seoDescription under 170. The visible H1 is the place title. Do not keyword-stuff.
 

@@ -77,6 +77,9 @@ function splitPlace(input: Record<string, unknown>, prose: string[], names: stri
   walkProse(input.sections, prose, PAGE_SKIP)
   walkProse(input.faq, prose, PAGE_SKIP)
   splitSources(input.sources, names)
+  pushText(names, input.phone)
+  pushText(names, input.phoneSourceUrl)
+  pushText(names, input.website)
 }
 
 function splitCollection(input: Record<string, unknown>, prose: string[], names: string[]) {

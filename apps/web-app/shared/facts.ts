@@ -312,6 +312,14 @@ export function mapSourceAllowed(subjectType: string, kind: string, sourceKind: 
   return subjectType === 'venue' && MAP_FIELDS.has(kind)
 }
 
+/**
+ * One rule for «the subject's own page» (place or venue website, place phone
+ * source, venue menu). The classifier lives in `@k39/types` so the database
+ * venue writer applies the same check.
+ */
+export { classifyOfficialUrl, isOfficialUrl, ownWebsiteMessage, ownWebsiteProblem } from '@k39/types/official-url'
+export type { OfficialUrlClass, OwnWebsiteProblem } from '@k39/types/official-url'
+
 /** Write the contact fact when the value changed, or when the column was saved before a fact row existed. */
 export function shouldWriteContact(changed: boolean, hasFact: boolean, next: string | null) {
   if (changed) {

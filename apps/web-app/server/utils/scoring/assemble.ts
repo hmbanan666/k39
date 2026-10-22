@@ -167,6 +167,7 @@ export function scoresFromCatalog(
         price: place.price,
         categorySlug: place.categorySlug,
         categoryTitle: place.categoryTitle,
+        schemaType: place.schemaType ?? null,
         regionTitle: place.regionTitle,
         latitude: place.latitude,
         longitude: place.longitude,

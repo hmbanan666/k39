@@ -1,10 +1,11 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { toPublicMedia } from '../../../shared/media'
+import { placePhoneSource } from '../../utils/content/place-contact'
 
 export default defineMcpTool({
   name: 'place_get',
-  description: 'Load one place by id or slug, including media, sources, and related published places.',
+  description: 'Load one place by id or slug, including media, sources, related published places, the official phone with phoneSourceUrl, the website, and schemaType (null means the hub default).',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -34,6 +35,10 @@ export default defineMcpTool({
       publicationStatus: place.publicationStatus,
       hours: place.hours,
       price: place.price,
+      phone: place.phone,
+      phoneSourceUrl: place.phone ? await placePhoneSource(place.id) : null,
+      website: place.website,
+      schemaType: place.schemaType,
       howToGet: place.howToGet,
       latitude: place.latitude,
       longitude: place.longitude,

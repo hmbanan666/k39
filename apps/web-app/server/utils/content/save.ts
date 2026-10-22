@@ -160,8 +160,8 @@ async function applyPending<T extends { id: string }>(pageType: string, gate: Co
   }
 }
 
-export async function applyPendingPlaceContent(id: string, gate: ContentGate) {
-  return applyPending('place', gate, () => db.editor.applyPendingPlace(id))
+export async function applyPendingPlaceContent(id: string, gate: ContentGate, keep: { phone?: boolean } = {}) {
+  return applyPending('place', gate, () => db.editor.applyPendingPlace(id, keep))
 }
 
 export async function applyPendingRouteContent(id: string, gate: ContentGate) {

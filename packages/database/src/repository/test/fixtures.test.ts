@@ -50,6 +50,10 @@ describe('ui fixtures', () => {
     const hub = await Editor.placeBySlug(FIXTURE_SLUGS.placeHub)
     const covers = await useDatabase().select().from(placeMedia).where(eq(placeMedia.placeId, hub!.id))
     expect(covers.some((row) => row.isCover)).toBe(true)
+    const contact = await Editor.placeBySlug(FIXTURE_SLUGS.placeContact)
+    expect(contact?.phone).toContain('+7 4012')
+    expect(contact?.website).toBe('https://fixture.k39.test/')
+    expect(contact?.schemaType).toBe('Church')
     const plainTown = await Editor.placeBySlug(FIXTURE_SLUGS.townPlain)
     expect(plainTown).toBeUndefined()
 

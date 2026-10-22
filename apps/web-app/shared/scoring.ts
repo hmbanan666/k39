@@ -60,6 +60,8 @@ export interface ScoreSource {
   price: string | null
   categorySlug: string | null
   categoryTitle: string | null
+  /** Places only: stored schema.org subtype. */
+  schemaType?: string | null
   regionTitle: string | null
   latitude: number | null
   longitude: number | null
@@ -735,6 +737,7 @@ function rendered(page: ScoreSource) {
       summary: page.summary,
       categorySlug: page.categorySlug || 'place',
       categoryTitle: page.categoryTitle || 'Раздел',
+      schemaType: page.schemaType,
       regionTitle: page.regionTitle,
       latitude: page.latitude,
       longitude: page.longitude,
@@ -774,7 +777,7 @@ function expectedTypes(page: ScoreSource) {
     return ['BreadcrumbList', venueSchemaType(page.categorySlug || 'other')]
   }
   if (page.kind === 'place') {
-    return ['BreadcrumbList', placeSchemaType(page.categorySlug || '')]
+    return ['BreadcrumbList', placeSchemaType(page.categorySlug || '', page.schemaType)]
   }
   if (page.kind === 'route' || page.kind === 'quest') {
     return ['BreadcrumbList', 'TouristTrip']

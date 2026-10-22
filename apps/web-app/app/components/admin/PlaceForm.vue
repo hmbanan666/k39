@@ -67,6 +67,42 @@
       <UiField label="Цена">
         <UiInput v-model="form.price" />
       </UiField>
+      <UiField
+        label="Телефон"
+        hint="Только с официального сайта места. Карты, агрегаторы и справочники не подходят."
+      >
+        <UiInput
+          v-model="form.phone"
+          placeholder="+7 4012 30-30-40"
+        />
+      </UiField>
+      <UiField
+        label="Где указан телефон"
+        hint="Ссылка на страницу с номером. Если поле пустое, источником считается официальный сайт места. Соцсеть места подходит, только когда сайта нет."
+      >
+        <UiInput
+          v-model="form.phoneSourceUrl"
+          placeholder="https://..."
+        />
+      </UiField>
+      <UiField
+        label="Официальный сайт"
+        hint="Собственный сайт места. Соцсети, карты и агрегаторы сюда не подходят."
+      >
+        <UiInput
+          v-model="form.website"
+          placeholder="https://..."
+        />
+      </UiField>
+      <UiField
+        label="Тип для поисковиков (schema.org)"
+        hint="«По разделу» берёт тип из раздела. Выберите свой, если раздел не подходит: церковь или парк в разделе «Музеи»."
+      >
+        <UiSelect
+          v-model="form.schemaType"
+          :options="schemaTypeOptions"
+        />
+      </UiField>
       <UiField label="Адрес">
         <UiTextarea
           v-model="form.howToGet"
@@ -170,7 +206,7 @@
 import type { FetchError } from 'ofetch'
 import type { PlaceDraftNotice } from '~~/shared/place-draft-diff'
 import { renderMarkdown } from '~~/shared/markdown'
-import { descriptionWarning, metaDescription, pageTitle, slugError, titleWarning, transliterateSlug } from '~~/shared/seo'
+import { descriptionWarning, metaDescription, pageTitle, PLACE_SCHEMA_TYPES, slugError, titleWarning, transliterateSlug } from '~~/shared/seo'
 
 interface AdminCategory { id: string, slug: string, title: string }
 interface AdminPlace {
@@ -184,6 +220,10 @@ interface AdminPlace {
   body: string
   hours: string | null
   price: string | null
+  phone: string | null
+  phoneSourceUrl: string | null
+  website: string | null
+  schemaType: string | null
   howToGet: string | null
   latitude: number | null
   longitude: number | null
@@ -194,6 +234,23 @@ interface AdminPlace {
 }
 
 const props = defineProps<{ placeId?: string }>()
+// Reka UI refuses an empty item value, so «по разделу» has its own key.
+const SCHEMA_BY_HUB = 'hub'
+const SCHEMA_LABELS: Record<string, string> = {
+  TouristAttraction: 'Достопримечательность',
+  LandmarksOrHistoricalBuildings: 'Историческое здание',
+  Museum: 'Музей',
+  Beach: 'Пляж',
+  Park: 'Парк',
+  Church: 'Церковь',
+  PlaceOfWorship: 'Место богослужения',
+  PerformingArtsTheater: 'Театр',
+  MusicVenue: 'Концертный зал',
+}
+const schemaTypeOptions = [
+  { value: SCHEMA_BY_HUB, label: 'По разделу' },
+  ...PLACE_SCHEMA_TYPES.map((type) => ({ value: type, label: `${SCHEMA_LABELS[type] ?? type} (${type})` })),
+]
 const requestFetch = useRequestFetch()
 const shots = ref<Array<{ media: { id: string, alt: string }, isCover: boolean }>>([])
 if (props.placeId) {
@@ -210,6 +267,10 @@ const form = reactive({
   body: '',
   hours: '',
   price: '',
+  phone: '',
+  phoneSourceUrl: '',
+  website: '',
+  schemaType: SCHEMA_BY_HUB,
   howToGet: '',
   latitude: '' as string | number,
   longitude: '' as string | number,
@@ -235,6 +296,10 @@ function fill(current: AdminPlace | undefined) {
   form.body = current?.body || ''
   form.hours = current?.hours || ''
   form.price = current?.price || ''
+  form.phone = current?.phone || ''
+  form.phoneSourceUrl = current?.phoneSourceUrl || ''
+  form.website = current?.website || ''
+  form.schemaType = current?.schemaType || SCHEMA_BY_HUB
   form.howToGet = current?.howToGet || ''
   form.latitude = current?.latitude ?? ''
   form.longitude = current?.longitude ?? ''
@@ -304,6 +369,7 @@ function payload(discard: boolean) {
     ...form,
     latitude: form.latitude === '' ? null : Number(form.latitude),
     longitude: form.longitude === '' ? null : Number(form.longitude),
+    schemaType: form.schemaType === SCHEMA_BY_HUB ? null : form.schemaType,
     ...(discard ? { pendingDraft: 'discard' } : {}),
   }
 }

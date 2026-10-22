@@ -264,12 +264,36 @@ const SCHEMA_BY_CATEGORY: Record<string, string> = {
   eda: 'TouristAttraction',
 }
 
-export function placeSchemaType(categorySlug: string) {
+/**
+ * Subtypes an editor may store on a place (`places.schema_type`). The stored
+ * value overrides the hub mapping. Nothing guesses it from the title or slug.
+ */
+export const PLACE_SCHEMA_TYPES = [
+  'TouristAttraction',
+  'LandmarksOrHistoricalBuildings',
+  'Museum',
+  'Beach',
+  'Park',
+  'Church',
+  'PlaceOfWorship',
+  'PerformingArtsTheater',
+  'MusicVenue',
+] as const
+export type PlaceSchemaType = (typeof PLACE_SCHEMA_TYPES)[number]
+
+export function isPlaceSchemaType(value: unknown): value is PlaceSchemaType {
+  return typeof value === 'string' && (PLACE_SCHEMA_TYPES as readonly string[]).includes(value)
+}
+
+export function placeSchemaType(categorySlug: string, stored?: string | null) {
+  if (isPlaceSchemaType(stored)) {
+    return stored
+  }
   return SCHEMA_BY_CATEGORY[categorySlug] ?? 'TouristAttraction'
 }
 
-export function placeNodeTypes(categorySlug: string): string | string[] {
-  const specific = placeSchemaType(categorySlug)
+export function placeNodeTypes(categorySlug: string, stored?: string | null): string | string[] {
+  const specific = placeSchemaType(categorySlug, stored)
   if (specific === 'TouristAttraction') {
     return 'TouristAttraction'
   }
@@ -743,9 +767,15 @@ export interface PlaceSeoInput {
   summary: string
   categorySlug: string
   categoryTitle: string
+  /** Stored subtype from `PLACE_SCHEMA_TYPES`. Wins over the hub mapping. */
+  schemaType?: string | null
   regionTitle: string | null
   latitude: number | null
   longitude: number | null
+  /** Shown phone fact text. Only complete numbers reach `telephone`. */
+  phone?: string | null
+  /** Official site of the place. Becomes the node `url`. */
+  website?: string | null
   hours: string | null
   // Structured schedule (ADR 0028), preferred over parsing `hours`.
   schedule?: ScheduleRecord | null
@@ -813,12 +843,20 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   ]
   const image = input.image ?? DEFAULT_OG_IMAGE
   const photos = (input.images ?? []).filter((item) => item.url.trim())
+  const website = input.website?.trim()
   const node: Record<string, unknown> = {
-    '@type': placeNodeTypes(input.categorySlug),
+    '@type': placeNodeTypes(input.categorySlug, input.schemaType),
     '@id': `${absoluteUrl(path)}#place`,
     'name': input.title,
     'description': description,
-    'url': absoluteUrl(path),
+    // The place node is the place itself; our article is the WebPage that is `about` it.
+    'url': website && /^https?:\/\//.test(website) ? website : absoluteUrl(path),
+  }
+  const phones = phoneE164List(input.phone)
+  if (phones.length === 1) {
+    node.telephone = phones[0]
+  } else if (phones.length > 1) {
+    node.telephone = phones
   }
   if (photos.length) {
     node.image = photos.map((item) => imageObject(item))
@@ -1160,6 +1198,11 @@ const SCHEMA_TYPES = new Set([
   'LandmarksOrHistoricalBuildings',
   'Beach',
   'Museum',
+  'Park',
+  'Church',
+  'PlaceOfWorship',
+  'PerformingArtsTheater',
+  'MusicVenue',
   'TouristTrip',
   'ItemList',
   'CollectionPage',

@@ -10,5 +10,7 @@ export const eventCreateSchema = z.object({
 
 export type EventCreateInput = z.infer<typeof eventCreateSchema>
 
+export { classifyOfficialUrl, isOfficialUrl, ownWebsiteMessage, ownWebsiteProblem } from './official-url'
+export type { OfficialUrlClass, OwnWebsiteProblem } from './official-url'
 export { isSocialHost } from './social-hosts'
 export { parseVkCommunityId, vkCommunityIdProblem, vkMenuMatchesSocial, vkSocialLinks } from './vk-community'

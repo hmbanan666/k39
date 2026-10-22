@@ -9,7 +9,7 @@ import { categoryTags, collectionArticle, toPublicModules } from '../../shared/p
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
-import { readShownFacts } from './facts/read'
+import { omitFactGap, readShownFacts } from './facts/read'
 import { attachGuestReviews, loadGuestItems } from './guests/moderate'
 import { loadSchedule } from './schedule'
 import { eatNearby, TOWN_EAT_LIMIT } from './venues/public'
@@ -147,6 +147,7 @@ export async function loadPlace(slug: string, page = 1) {
     latitude: loaded.place.latitude,
     longitude: loaded.place.longitude,
     status: loaded.place.status,
+    phone: loaded.place.phone,
   }])).get(loaded.place.id)!
   const latitude = shown.latitude
   const longitude = shown.longitude
@@ -180,9 +181,12 @@ export async function loadPlace(slug: string, page = 1) {
     summary: loaded.place.summary,
     categorySlug: loaded.category.slug,
     categoryTitle: loaded.category.title,
+    schemaType: loaded.place.schemaType,
     regionTitle: loaded.region?.title ?? null,
     latitude,
     longitude,
+    phone: omitFactGap(shown.phone),
+    website: loaded.place.website,
     hours: loaded.place.hours,
     schedule,
     price: loaded.place.price,
@@ -257,7 +261,7 @@ export async function loadPlace(slug: string, page = 1) {
     directionsHtml: directionsSource ? renderMarkdown(directionsSource, { headingPrefix: 'directions-' }) : '',
     faq: structuredFaq,
     checkedAt: isoDay(loaded.place.lastVerifiedAt),
-    place: { ...loaded.place, schedule, latitude, longitude, status },
+    place: { ...loaded.place, schedule, latitude, longitude, status, phone: shown.phone },
     categoryTitle: loaded.category.title,
     categorySlug: loaded.category.slug,
     category: loaded.category,

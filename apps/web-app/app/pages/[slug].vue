@@ -75,31 +75,20 @@
               :schedule="page.place.schedule"
               :has-hours="Boolean(page.place.hours)"
             />
-            <div
+            <GuideFactRow
               v-for="row in facts"
               :key="row.key"
-              class="fact"
-            >
-              <Icon :name="tablerIcon(row.key)" size="22" />
-              <div>
-                <p class="label">
-                  {{ row.label }}
-                </p>
-                <p>{{ row.value }}</p>
-              </div>
-            </div>
-            <div
+              :row="row"
+            />
+            <GuideFactRow
               v-if="address"
-              class="fact"
-            >
-              <Icon :name="tablerIcon('address')" size="22" />
-              <div>
-                <p class="label">
-                  Адрес
-                </p>
-                <p>{{ address }}</p>
-              </div>
-            </div>
+              :row="{ key: 'address', label: 'Адрес', value: address }"
+            />
+            <GuideFactRow
+              v-for="row in contacts"
+              :key="row.key"
+              :row="row"
+            />
             <!-- Coordinates stay in schema.org markup only. -->
             <MapOpenDialog
               v-if="hasCoords"
@@ -298,6 +287,8 @@ interface PlacePage {
     status: string
     hours: string | null
     price: string | null
+    phone: string | null
+    website: string | null
     howToGet: string | null
     latitude: number | null
     longitude: number | null
@@ -348,11 +339,14 @@ function openPhoto(id: string) {
 // the place is closed.
 const closedByStatus = page.place.status === 'closed' && !isVerified(page.place.schedule)
 const closedNote = closedByStatus ? 'Закрыто для посещения' : ''
-const facts = guideFacts(page.place)
+// Contacts follow the address, so the block reads: visit facts, where, how to reach.
+const rows = guideFacts(page.place)
+const facts = rows.filter((row) => row.key !== 'phone' && row.key !== 'website')
+const contacts = rows.filter((row) => row.key === 'phone' || row.key === 'website')
 const checkedLabel = russianDay(page.checkedAt)
 const address = shortAddress(page.place.howToGet || '')
 const hasFacts = Boolean(
-  facts.length
+  rows.length
   || address
   || (page.place.latitude != null && page.place.longitude != null),
 )
@@ -446,31 +440,6 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   background: repeating-linear-gradient(90deg, var(--color-brick) 0 18px, transparent 18px 26px, var(--color-sea) 26px 44px, transparent 44px 52px);
 }
 .facts h2 { margin: 0.35rem 0 0.3rem; font-size: 1.35rem; }
-.fact {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 0.7rem;
-  padding: 0.8rem 0;
-  border-top: 1px dashed var(--color-line);
-}
-.fact:first-of-type { border-top: 0; }
-.fact svg {
-  width: 22px;
-  height: 22px;
-  margin-top: 0.15rem;
-  fill: none;
-  stroke: var(--color-brick);
-  stroke-width: 1.7;
-}
-.fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
-.fact .label {
-  margin-bottom: 0.3rem;
-  color: var(--muted);
-  font: 600 0.72rem/1 var(--font-body);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.fact a { font-weight: 600; }
 .checked {
   display: flex;
   gap: 0.4rem;

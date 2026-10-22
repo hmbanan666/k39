@@ -1,9 +1,11 @@
 import type { VisitStatus } from '@k39/database'
+import type { PlaceContactInput } from '../content/place-contact'
 import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
+import { phoneCheckedAt, placePhoneSource, resolvePlaceContact } from '../content/place-contact'
 import { applyPendingPlaceContent, contentGate, savePendingDraftContent, savePlaceContent } from '../content/save'
-import { syncCoordinates, syncPlaceStatus } from '../facts/sync'
+import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../facts/sync'
 import { auditMcp } from './audit'
 import { resolvePublication } from './draft'
 import { parseFactsCheckedAt } from './facts'
@@ -11,7 +13,7 @@ import { isPublicationOnly, mergedField, pendingDraftFields, pendingPublication 
 
 const VISIT = new Set(['open', 'ruins', 'closed', 'unknown'])
 
-export interface PlaceDraftInput {
+export interface PlaceDraftInput extends PlaceContactInput {
   id?: string
   slug?: string
   title?: string
@@ -57,6 +59,9 @@ function compactPlace(row: {
   status: string
   updatedAt?: string
   lastVerifiedAt?: string | null
+  phone?: string | null
+  website?: string | null
+  schemaType?: string | null
 }) {
   return {
     id: row.id,
@@ -66,6 +71,9 @@ function compactPlace(row: {
     publicationStatus: row.publicationStatus,
     updatedAt: row.updatedAt,
     factsCheckedAt: row.lastVerifiedAt ?? null,
+    phone: row.phone ?? null,
+    website: row.website ?? null,
+    schemaType: row.schemaType ?? null,
   }
 }
 
@@ -103,6 +111,8 @@ const PLACE_RENDERED_FIELDS = [
   'bestTime',
   'hours',
   'price',
+  'phone',
+  'website',
   'howToGet',
   'faq',
   'seoTitle',
@@ -122,6 +132,10 @@ const PLACE_CONTENT_KEYS = [
   'sections',
   'hours',
   'price',
+  'phone',
+  'phoneSourceUrl',
+  'website',
+  'schemaType',
   'howToGet',
   'latitude',
   'longitude',
@@ -152,6 +166,9 @@ function storedDraftResponse(
     status: string
     updatedAt?: string
     lastVerifiedAt?: string | null
+    phone?: string | null
+    website?: string | null
+    schemaType?: string | null
   },
   payload: Record<string, unknown>,
   pendingStatus: 'draft' | 'review',
@@ -164,8 +181,14 @@ function storedDraftResponse(
   const factsCheckedAt = Object.hasOwn(payload, 'lastVerifiedAt')
     ? (payload.lastVerifiedAt as string | null)
     : current.lastVerifiedAt
+  const contact = {
+    phone: mergedField(undefined, payload, 'phone', current.phone ?? null) as string | null,
+    website: mergedField(undefined, payload, 'website', current.website ?? null) as string | null,
+    schemaType: mergedField(undefined, payload, 'schemaType', current.schemaType ?? null) as string | null,
+  }
   return {
-    ...compactPlace({ ...current, slug, title, status, lastVerifiedAt: factsCheckedAt }),
+    ...compactPlace({ ...current, slug, title, status, lastVerifiedAt: factsCheckedAt, ...contact }),
+    phoneSourceUrl: mergedField(undefined, payload, 'phoneSourceUrl', null) as string | null,
     ...pendingDraftFields(body, pendingStatus, PLACE_RENDERED_FIELDS, writingWarnings),
   }
 }
@@ -183,6 +206,10 @@ export function placeWriteFromBody(body: Record<string, unknown>, current: { id:
     sections: Array.isArray(body.sections) ? body.sections : undefined,
     hours: body.hours as string | null | undefined,
     price: body.price as string | null | undefined,
+    phone: body.phone as string | null | undefined,
+    phoneSourceUrl: body.phoneSourceUrl as string | null | undefined,
+    website: body.website as string | null | undefined,
+    schemaType: body.schemaType as string | null | undefined,
     howToGet: body.howToGet as string | null | undefined,
     latitude: body.latitude as number | null | undefined,
     longitude: body.longitude as number | null | undefined,
@@ -211,6 +238,7 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
   }
   const checked = parseFactsCheckedAt(input.factsCheckedAt)
   const status = (VISIT.has(input.status || '') ? input.status : 'unknown') as VisitStatus
+  const contact = await resolvePlaceContact(input, { placeId: null, phone: null, website: null, schemaType: null })
   const { row, writingWarnings } = await savePlaceContent({
     slug,
     title: input.title.trim(),
@@ -220,6 +248,9 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     status,
     hours: input.hours || null,
     price: input.price || null,
+    phone: contact.phone,
+    website: contact.website,
+    schemaType: contact.schemaType,
     howToGet: input.howToGet || null,
     latitude: input.latitude ?? null,
     longitude: input.longitude ?? null,
@@ -250,6 +281,9 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     bestTime: input.bestTime,
     faq: input.faq,
     sources: input.sources,
+    phone: contact.phone,
+    phoneSourceUrl: contact.phoneSourceUrl,
+    website: contact.website,
   }, publicationStatus === 'published'))
   await syncCoordinates({
     subjectType: 'place',
@@ -259,6 +293,14 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
     latitude: input.latitude,
     longitude: input.longitude,
     previous: { latitude: null, longitude: null },
+  })
+  await syncPlacePhone({
+    placeId: row.id,
+    actor: 'mcp',
+    pageStatus: publicationStatus,
+    phone: contact.phone,
+    sourceUrl: contact.phoneSourceUrl,
+    checkedAt: phoneCheckedAt(checked),
   })
   await syncPlaceStatus({
     placeId: row.id,
@@ -285,6 +327,21 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus, scope)
   if (scope === 'editor' && publicationStatus === 'published' && pending && publicationOnly(input, current.slug)) {
     const payload = pending.payload
+    const pendingPhone = typeof payload.phone === 'string' ? payload.phone : null
+    const phone = payload.phone === undefined
+      ? null
+      : await syncPlacePhone({
+          placeId: current.id,
+          actor: 'mcp',
+          pageStatus: 'published',
+          phone: pendingPhone,
+          sourceUrl: !pendingPhone
+            ? null
+            : typeof payload.phoneSourceUrl === 'string'
+              ? payload.phoneSourceUrl
+              : await placePhoneSource(current.id),
+          checkedAt: pending.updatedAt,
+        })
     const applied = await applyPendingPlaceContent(current.id, contentGate('place', {
       title: payload.title,
       summary: payload.summary,
@@ -299,7 +356,10 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       bestTime: payload.bestTime,
       faq: payload.faq,
       sources: payload.sources,
-    }, true))
+      phone: phone?.skipped ? current.phone : payload.phone,
+      phoneSourceUrl: payload.phoneSourceUrl,
+      website: payload.website,
+    }, true), { phone: Boolean(phone?.skipped) })
     const row = applied.row
     if (row) {
       await syncCoordinates({
@@ -339,6 +399,13 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
         : input.factsCheckedAt,
     )
     const pendingStatus = pendingPublication(input.publicationStatus)
+    const contact = await resolvePlaceContact(input, {
+      placeId: current.id,
+      phone: mergedField(undefined, base, 'phone', current.phone),
+      website: mergedField(undefined, base, 'website', current.website),
+      schemaType: mergedField(undefined, base, 'schemaType', current.schemaType),
+      ...(Object.hasOwn(base, 'phoneSourceUrl') ? { phoneSourceUrl: base.phoneSourceUrl as string | null } : {}),
+    })
     const payload = {
       slug,
       title: input.title ?? (base.title as string | undefined) ?? current.title,
@@ -348,6 +415,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       status: input.status && VISIT.has(input.status) ? input.status : (base.status as string | undefined) ?? current.status,
       hours: text('hours', input.hours, current.hours),
       price: text('price', input.price, current.price),
+      ...contact,
       howToGet: text('howToGet', input.howToGet, current.howToGet),
       latitude: input.latitude === undefined ? (base.latitude as number | null | undefined) ?? current.latitude : input.latitude,
       longitude: input.longitude === undefined ? (base.longitude as number | null | undefined) ?? current.longitude : input.longitude,
@@ -389,6 +457,9 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       bestTime: payload.bestTime,
       faq: payload.faq,
       sources: payload.sources,
+      phone: payload.phone,
+      phoneSourceUrl: payload.phoneSourceUrl,
+      website: payload.website,
     }, false))
     const stored = storedDraft.row
     const writingWarnings = storedDraft.writingWarnings
@@ -402,6 +473,12 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   }
   const checked = parseFactsCheckedAt(input.factsCheckedAt)
   const status = (input.status && VISIT.has(input.status) ? input.status : current.status) as VisitStatus
+  const contact = await resolvePlaceContact(input, {
+    placeId: current.id,
+    phone: current.phone,
+    website: current.website,
+    schemaType: current.schemaType,
+  })
   const point = await syncCoordinates({
     subjectType: 'place',
     subjectId: current.id,
@@ -418,6 +495,14 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     status: input.status && VISIT.has(input.status) ? input.status : undefined,
     previous: current.status,
   })
+  const phone = await syncPlacePhone({
+    placeId: current.id,
+    actor: 'mcp',
+    pageStatus: publicationStatus,
+    phone: contact.phone,
+    sourceUrl: contact.phoneSourceUrl,
+    checkedAt: phoneCheckedAt(checked),
+  })
   const saved = await savePlaceContent({
     id: current.id,
     slug,
@@ -428,6 +513,9 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     status: visit.skipped ? current.status : status,
     hours: input.hours === undefined ? current.hours : input.hours,
     price: input.price === undefined ? current.price : input.price,
+    phone: phone.skipped ? current.phone : contact.phone,
+    website: contact.website,
+    schemaType: contact.schemaType,
     howToGet: input.howToGet === undefined ? current.howToGet : input.howToGet,
     latitude: point.skipped || input.latitude === undefined ? current.latitude : input.latitude,
     longitude: point.skipped || input.longitude === undefined ? current.longitude : input.longitude,
@@ -458,13 +546,16 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     bestTime: input.bestTime === undefined ? current.bestTime : input.bestTime,
     faq: input.faq === undefined ? current.faq : input.faq,
     sources: input.sources ?? current.sources,
+    phone: contact.phone,
+    phoneSourceUrl: contact.phoneSourceUrl,
+    website: contact.website,
   }, publicationStatus === 'published'))
   const { row, writingWarnings } = saved
   if (scope === 'editor') {
     await db.editor.deleteContentDraft('place', current.id)
   }
   await auditMcp(auditTool, 'place', current.id)
-  return { ...compactPlace(row), pendingReview: false, writingWarnings }
+  return { ...compactPlace(row), phoneSourceUrl: contact.phoneSourceUrl, pendingReview: false, writingWarnings }
 }
 
 export async function submitPlaceReview(input: { id?: string, slug?: string }) {

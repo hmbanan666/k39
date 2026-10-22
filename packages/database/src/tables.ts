@@ -84,6 +84,12 @@ export const places = pgTable('places', {
   status: varchar('status').notNull().default('unknown').$type<VisitStatus>(),
   hours: varchar('hours'),
   price: varchar('price'),
+  // Copy of the `phone` fact text (ADR 0033), official sources only. Same max as `venues.phone`.
+  phone: varchar('phone'),
+  // The place's own official site. A social page or a map card is rejected by the writer.
+  website: varchar('website'),
+  // schema.org subtype from `PLACE_SCHEMA_TYPES`. Null falls back to the hub mapping.
+  schemaType: varchar('schema_type'),
   howToGet: text('how_to_get'),
   summary: text('summary').notNull().default(''),
   body: text('body').notNull().default(''),
