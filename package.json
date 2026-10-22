@@ -51,7 +51,8 @@
     "vite": "catalog:dev",
     "vitest": "catalog:test",
     "vitest-browser-vue": "catalog:test",
-    "vue-tsc": "catalog:dev"
+    "vue-tsc": "catalog:dev",
+    "yaml": "catalog:dev"
   },
   "lint-staged": {
     "*.{js,ts,tsx,vue,md,json}": [

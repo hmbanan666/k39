@@ -1,6 +1,6 @@
 # Facts and freshness
 
-One lookup for a claim an agent is about to write or check. The decision is ADR 0033. Source priority and banned origins are `.cursor/skills/k39-sources-and-facts/SKILL.md`. Do not copy this table into another doc.
+One lookup for a claim an agent is about to write or check. The decision is ADR 0033. Source priority and banned origins are `.agents/skills/k39-sources-and-facts/SKILL.md`. Do not copy this table into another doc.
 
 A gap renders «уточняйте». Maps (`map_yandex`, `map_2gis`, `map_google`, `osm`) are venue-only, and only when the official site does not state that fact. Places do not take hours, phone, address, or coordinates from a map. Prices come from the official menu or the owner, never from a map card.
 
