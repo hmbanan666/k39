@@ -2,6 +2,7 @@
 // Typechecked from apps/web-app/tsconfig.writer-test.json, where Nuxt
 // auto-imports exist. This package's tsc excludes the file.
 import type { AdmissionRowInput } from '../../../../../apps/web-app/server/utils/practical/admission'
+import type { VenueStatus } from '../../venues'
 import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
@@ -56,7 +57,7 @@ async function place(slug: string, publicationStatus: 'draft' | 'review' | 'publ
   return practicalTarget('place', saved.id)
 }
 
-async function venue(slug: string, status: string) {
+async function venue(slug: string, status: VenueStatus) {
   const [saved] = await useDatabase().insert(venues).values({ slug, name: `Кафе ${slug}`, kind: 'cafe', description: 'Короткое описание.', status }).returning()
   venueIds.push(saved!.id)
   return practicalTarget('venue', saved!.id)
