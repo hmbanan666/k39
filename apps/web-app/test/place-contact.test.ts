@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import GuideFactRow from '../app/components/GuideFactRow.vue'
+import PhoneLinks from '../app/components/PhoneLinks.vue'
+import { ownWebsiteMessage, ownWebsiteProblem } from '../shared/facts'
 import { checkPlacePhone, checkPlacePhoneSource, checkPlaceSchemaType, checkPlaceWebsite } from '../shared/place-contact'
 import { placeDraftChanges } from '../shared/place-draft-diff'
 import { guideFacts, websiteLabel } from '../shared/place-guide'
@@ -41,16 +43,45 @@ describe('place contact checks', () => {
     expect(checkPlaceWebsite('https://vk.com/museum').ok).toBe(false)
     expect(checkPlaceWebsite('https://yandex.ru/maps/org/123').ok).toBe(false)
     expect(checkPlaceWebsite('https://2gis.ru/kaliningrad/firm/1').ok).toBe(false)
+    expect(checkPlaceWebsite('https://www.tripadvisor.ru/Attraction_Review-g298500-d1.html').ok).toBe(false)
+    expect(checkPlaceWebsite('https://yandex.ru/profile/1234567890').ok).toBe(false)
+    expect(checkPlaceWebsite('https://kudago.com/kgd/place/kirha/').ok).toBe(false)
   })
 
-  it('takes the phone from an official page or the place social page, never a map', () => {
-    expect(checkPlacePhoneSource('https://museum.example.org/contacts')).toEqual({ ok: true, value: 'https://museum.example.org/contacts' })
-    expect(checkPlacePhoneSource('https://vk.com/museum')).toEqual({ ok: true, value: 'https://vk.com/museum' })
-    expect(checkPlacePhoneSource(null).ok).toBe(false)
-    expect(checkPlacePhoneSource('ftp://museum.example.org').ok).toBe(false)
-    for (const url of ['https://yandex.ru/maps/org/123', 'https://2gis.ru/kaliningrad/firm/1', 'https://www.openstreetmap.org/node/1', 'https://maps.app.goo.gl/abc']) {
-      expect(checkPlacePhoneSource(url).ok).toBe(false)
+  it('shares one «Сайт» rule and message with venues', () => {
+    expect(ownWebsiteProblem('https://cafe.example')).toBeNull()
+    expect(ownWebsiteProblem('cafe.example')).toBe('invalid')
+    expect(ownWebsiteProblem('https://t.me/cafe')).toBe('social')
+    expect(ownWebsiteProblem('https://www.tripadvisor.com/Restaurant_Review-g1-d2.html')).toBe('aggregator')
+    expect(ownWebsiteProblem('https://yandex.ru/profile/1234567890')).toBe('map')
+    expect(ownWebsiteProblem('https://drive.google.com/file/d/abc/view')).toBe('document')
+    const message = checkPlaceWebsite('https://vk.com/museum')
+    expect(message).toEqual({ ok: false, message: ownWebsiteMessage('social') })
+    expect(ownWebsiteMessage('social')).not.toMatch(/заведения\./)
+  })
+
+  it('takes the phone from an own-site page, never a map, a listing, or a Yandex card', () => {
+    expect(checkPlacePhoneSource('https://museum.example.org/contacts', 'https://museum.example.org/')).toEqual({ ok: true, value: 'https://museum.example.org/contacts' })
+    expect(checkPlacePhoneSource(null, null).ok).toBe(false)
+    expect(checkPlacePhoneSource('ftp://museum.example.org', null).ok).toBe(false)
+    for (const url of [
+      'https://yandex.ru/maps/org/123',
+      'https://yandex.ru/profile/1234567890',
+      'https://2gis.ru/kaliningrad/firm/1',
+      'https://www.openstreetmap.org/node/1',
+      'https://maps.app.goo.gl/abc',
+      'https://www.tripadvisor.ru/Attraction_Review-g298500-d1.html',
+      'https://kudago.com/kgd/place/kirha/',
+      'https://www.afisha.ru/kaliningrad/place/1/',
+      'https://ru.wikipedia.org/wiki/Кирха',
+    ]) {
+      expect(checkPlacePhoneSource(url, null).ok, url).toBe(false)
     }
+  })
+
+  it('takes the place social page only while the place has no website', () => {
+    expect(checkPlacePhoneSource('https://vk.com/museum', null)).toEqual({ ok: true, value: 'https://vk.com/museum' })
+    expect(checkPlacePhoneSource('https://vk.com/museum', 'https://museum.example.org/').ok).toBe(false)
   })
 
   it('limits the subtype to the allowlist', () => {
@@ -98,6 +129,14 @@ describe('place contact markup', () => {
     expect(page.url).toBe('https://k39.online/kirha-test')
   })
 
+  it('keeps the WebPage about the place node when url is the official site', () => {
+    const doc = placeDocument({ ...base, schemaType: 'Church', phone: '+7 4012 30-30-40', website: 'https://kirha.example.org/' })
+    const page = doc.jsonLd.find((item) => item['@type'] === 'WebPage')!
+    const node = placeNode(doc)
+    expect(node['@id']).toBe('https://k39.online/kirha-test#place')
+    expect(page.about).toEqual({ '@id': node['@id'] })
+  })
+
   it('lists several numbers and keeps the page url without a website', () => {
     const node = placeNode(placeDocument({ ...base, phone: '+7 4012 30-30-40; 8 (911) 851-68-55' }))
     expect(node.telephone).toEqual(['+74012303040', '+79118516855'])
@@ -116,12 +155,12 @@ describe('practical block rows', () => {
     expect(rows.map((row) => row.key)).toEqual(['price', 'phone', 'website'])
     expect(rows[1]).toMatchObject({
       label: 'Телефон',
-      links: [
-        { text: '+7 4012 30-30-40', href: 'tel:+74012303040' },
-        { text: '+7 911 851-68-55', href: 'tel:+79118516855' },
+      phones: [
+        { display: '+7 4012 30-30-40', e164: '+74012303040' },
+        { display: '+7 911 851-68-55', e164: '+79118516855' },
       ],
     })
-    expect(rows[2]).toMatchObject({ label: 'Сайт', value: 'kirha.example.org', links: [{ href: 'https://www.kirha.example.org/' }] })
+    expect(rows[2]).toMatchObject({ label: 'Сайт', value: 'kirha.example.org', href: 'https://www.kirha.example.org/' })
   })
 
   it('drops empty contacts and a website that is not a URL', () => {
@@ -135,6 +174,7 @@ describe('practical block rows', () => {
     expect(phoneHtml).toContain('Телефон')
     expect(phoneHtml).toContain('href="tel:+74012303040"')
     expect(phoneHtml).toContain('+7 4012 30-30-40')
+    expect(phoneHtml).toContain('data-track-name="phone"')
     const siteHtml = await renderPage(GuideFactRow, { row: website })
     expect(siteHtml).toContain('Сайт')
     expect(siteHtml).toContain('href="https://kirha.example.org/"')
@@ -143,6 +183,14 @@ describe('practical block rows', () => {
     const plain = await renderPage(GuideFactRow, { row: { key: 'price', label: 'Цена', value: '300 ₽' } })
     expect(plain).toContain('300 ₽')
     expect(plain).not.toContain('href')
+  })
+
+  it('renders one PhoneLinks for places and venues, with a fragment as text', async () => {
+    const html = await renderPage(PhoneLinks, { phones: [{ display: '+7 4012 30-30-40', e164: '+74012303040' }, { display: 'доб. 6', e164: '' }] })
+    expect(html).toContain('href="tel:+74012303040"')
+    expect(html).toContain('data-track="outbound"')
+    expect(html).toMatch(/<span[^>]*>доб. 6<\/span>/)
+    expect(html.match(/href=/g)).toHaveLength(1)
   })
 })
 

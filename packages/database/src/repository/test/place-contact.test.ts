@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
 import { adminPlaceDraftView, saveAdminPlace } from '../../../../../apps/web-app/server/utils/admin/place-draft'
 import { readShownFacts } from '../../../../../apps/web-app/server/utils/facts/read'
+import { syncPlacePhone } from '../../../../../apps/web-app/server/utils/facts/sync'
 import { createPlaceDraft, placeWriteFromBody, updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/places'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { useDatabase } from '../../database'
@@ -114,7 +115,10 @@ describe('place phone, website and schema type writer', () => {
     await expect(created('contact-vk-site', { website: 'https://vk.com/contact_museum' })).rejects.toMatchObject({ statusCode: 400 })
     await expect(created('contact-gap', { phone: 'уточняйте', website: SITE })).rejects.toMatchObject({ statusCode: 400 })
     await expect(created('contact-type', { schemaType: 'Castle' })).rejects.toMatchObject({ statusCode: 400 })
-    for (const slug of ['contact-nosource', 'contact-map', 'contact-2gis', 'contact-vk-site', 'contact-gap', 'contact-type']) {
+    await expect(created('contact-trip', { phone: '+7 4012 30-30-40', phoneSourceUrl: 'https://www.tripadvisor.ru/Attraction_Review-g298500-d1.html' })).rejects.toMatchObject({ statusCode: 400 })
+    await expect(created('contact-profile', { phone: '+7 4012 30-30-40', website: 'https://yandex.ru/profile/1234567890' })).rejects.toMatchObject({ statusCode: 400 })
+    await expect(created('contact-vk-with-site', { phone: '+7 4012 30-30-40', phoneSourceUrl: 'https://vk.com/contact_museum', website: SITE })).rejects.toMatchObject({ statusCode: 400 })
+    for (const slug of ['contact-nosource', 'contact-map', 'contact-2gis', 'contact-vk-site', 'contact-gap', 'contact-type', 'contact-trip', 'contact-profile', 'contact-vk-with-site']) {
       expect(await Editor.placeBySlug(slug)).toBeUndefined()
     }
   })
@@ -177,6 +181,21 @@ describe('place phone, website and schema type writer', () => {
     expect(row).toMatchObject({ phone: '+7 4012 30-30-40', website: SITE, schemaType: 'Church', summary: 'Описание из второго черновика.' })
     expect(await livePhoneFact(live.id)).toMatchObject({ value: { text: '+7 4012 30-30-40' }, sourceUrl: CONTACTS, sourceKind: 'official' })
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
+  })
+
+  it('keeps the live phone when the owner holds the fact and the editor applies a pending draft', async () => {
+    const live = await publishedPlace('contact-owner')
+    enterContentScope('editor')
+    await updatePlaceDraft({ id: live.id, phone: '+7 4012 30-30-40', phoneSourceUrl: CONTACTS, website: SITE }, 'place_update')
+    await syncPlacePhone({ placeId: live.id, actor: 'owner', pageStatus: 'published', phone: '+7 4012 30-30-40', sourceUrl: SITE, checkedAt: '2026-10-20' })
+    enterContentScope('draft')
+    await updatePlaceDraft({ id: live.id, phone: '+7 911 851-68-55', summary: 'Описание из черновика.' }, 'place_update')
+    enterContentScope('editor')
+    await setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })
+    expect(await Editor.placeById(live.id)).toMatchObject({ phone: '+7 4012 30-30-40', summary: 'Описание из черновика.' })
+    expect((await livePhoneFact(live.id))?.value).toEqual({ text: '+7 4012 30-30-40' })
+    const queued = await useDatabase().select().from(verificationQueue).where(and(eq(verificationQueue.entityId, live.id), eq(verificationQueue.reason, 'owner_conflict')))
+    expect(queued).toHaveLength(1)
   })
 
   it('saves contacts from the admin form as the editor', async () => {
