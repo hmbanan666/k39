@@ -73,6 +73,7 @@ describe('days with unknown hours on the page and the card (ADR 0044)', () => {
         checkedAt: null,
         regionTitle: 'Фикстура',
         schedule,
+        notices: [],
         modules: null,
         admission: { stored: false, rows: [], lines: [] },
         upcoming: [],

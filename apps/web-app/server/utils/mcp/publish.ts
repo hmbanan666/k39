@@ -1,4 +1,5 @@
 import { db } from '@k39/database'
+import { createError } from 'h3'
 import { saveQuestContent } from '../content/save'
 import { applyStagedNotices, noticeTarget, onlyNoticesStaged, stagedNotices, toNoticeValue } from '../notices/write'
 import { auditMcp } from './audit'

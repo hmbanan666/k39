@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amended by [ADR 0041](0041-collection-route-drafts.md) for collections and routes. Venues, quests, listings, and archive stay refused.
+Accepted. Amended by [ADR 0041](0041-collection-route-drafts.md) for collections and routes. Venues, quests, listings, and archive stay refused. Amended by [ADR 0049](0049-temporary-notices.md): the pending payload of a place or a venue can hold a `notices` key, applied by the editor publish without a status change.
 
 ## Context
 

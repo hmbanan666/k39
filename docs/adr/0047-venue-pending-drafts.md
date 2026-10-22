@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-22). Amends [ADR 0035](0035-draft-content-token.md) and [ADR 0041](0041-collection-route-drafts.md) for a published or closed venue, and amends the draft-versus-live rule in [ADR 0046](0046-structured-practical-info.md) for the venue opening schedule and for menu prices. Refs #249, part 2.
+Accepted (2026-10-22). Amends [ADR 0035](0035-draft-content-token.md) and [ADR 0041](0041-collection-route-drafts.md) for a published or closed venue, and amends the draft-versus-live rule in [ADR 0046](0046-structured-practical-info.md) for the venue opening schedule and for menu prices. Refs #249, part 2. Amended by [ADR 0049](0049-temporary-notices.md): the pending payload of a place or a venue can hold a `notices` key, applied by the editor publish without a status change.
 
 ## Context
 

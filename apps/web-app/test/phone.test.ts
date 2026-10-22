@@ -155,6 +155,7 @@ describe('russian phone display', () => {
             checkedAt: null,
             regionTitle: 'Калининград',
             schedule: null,
+            notices: [],
             modules: null,
             admission: { stored: false, rows: [], lines: [] },
             upcoming: [],

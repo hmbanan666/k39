@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { Content, Editor } from '../repository/content'
 import { Admission, CalendarEvents } from '../repository/practical'
+import { Notices } from '../repository/notices'
 import { Prices } from '../repository/prices'
 import { Schedules } from '../repository/schedules'
 import { Venues } from '../repository/venues'
@@ -40,6 +41,7 @@ const SITE_URL = 'https://fixture.k39.test/'
 const CONTACTS_URL = 'https://fixture.k39.test/contacts'
 const TICKETS_URL = 'https://fixture.k39.test/tickets'
 const AFISHA_URL = 'https://fixture.k39.test/afisha'
+const NEWS_URL = 'https://fixture.k39.test/news'
 
 function fixtureProse(label: string) {
   const sentence = `${label}. Проверка вёрстки, не статья о месте. `
@@ -449,6 +451,24 @@ export async function applyFixtures(now = new Date()) {
   await Admission.replace('route', route!.id, [
     { slot: 'tour', audience: 'general', priceRub: 1200, condition: 'Экскурсия с гидом, группа до 15 человек', label: 'Экскурсия', sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: localNow(now).date, sortOrder: 0 },
   ])
+  // Dated notices (ADR 0049), relative to the seed day so each one stays in its window state.
+  const noticeDay = localNow(now).date
+  const shift = (days: number) => addDays(noticeDay, days)
+  const notice = { openEndedReason: null, address: null, sourceUrl: NEWS_URL, sourceTitle: 'Новости фикстуры', checkedAt: noticeDay }
+  await Notices.replace('venue', photo.id, [
+    { ...notice, kind: 'relocation', startsOn: shift(-1), endsOn: shift(12), text: 'Фикстура: кафе работает по другому адресу.', address: 'Фикстура, улица Временная, 5А' },
+    { ...notice, kind: 'other', startsOn: shift(-30), endsOn: shift(-10), text: 'Фикстура: прошедшее объявление, на странице его нет.' },
+  ])
+  await Notices.replace('venue', quiet.id, [
+    { ...notice, kind: 'closed', startsOn: shift(7), endsOn: shift(9), text: 'Фикстура: кафе не работает в эти дни.' },
+  ])
+  const contact = await Editor.placeBySlug(FIXTURE_SLUGS.placeContact)
+  if (contact) {
+    await Notices.replace('place', contact.id, [
+      { ...notice, kind: 'closed', startsOn: shift(-2), endsOn: shift(5), text: 'Фикстура: место закрыто для посетителей.' },
+      { ...notice, kind: 'renovation', startsOn: shift(20), endsOn: shift(80), text: 'Фикстура: в здании идёт реконструкция, снаружи можно посмотреть.' },
+    ])
+  }
 
   await Editor.saveCollection({
     slug: FIXTURE_SLUGS.collection,
