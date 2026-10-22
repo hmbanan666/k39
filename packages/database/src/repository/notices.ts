@@ -66,11 +66,14 @@ export class Notices {
       filter.expired === true ? and(isNotNull(notices.endsOn), lt(notices.endsOn, filter.today)) : undefined,
       filter.expired === false ? or(isNull(notices.endsOn), gte(notices.endsOn, filter.today)) : undefined,
     )
-    return useDatabase().select({
-      notice: notices,
-      subjectSlug: sql<string | null>`coalesce(${places.slug}, ${venues.slug})`,
-      subjectTitle: sql<string | null>`coalesce(${places.title}, ${venues.name})`,
-    }).from(notices)
+    const database = useDatabase()
+    return database
+      .select({
+        notice: notices,
+        subjectSlug: sql<string | null>`coalesce(${places.slug}, ${venues.slug})`,
+        subjectTitle: sql<string | null>`coalesce(${places.title}, ${venues.name})`,
+      })
+      .from(notices)
       .leftJoin(places, and(eq(notices.subjectType, 'place'), eq(places.id, notices.subjectId)))
       .leftJoin(venues, and(eq(notices.subjectType, 'venue'), eq(venues.id, notices.subjectId)))
       .where(where)

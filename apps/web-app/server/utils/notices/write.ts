@@ -1,6 +1,6 @@
 import type { NoticeRow, NoticeWrite } from '@k39/database'
-import type { ContentScope } from '../access'
 import type { NoticeSubjectType, NoticeValue } from '../../../shared/notices'
+import type { ContentScope } from '../access'
 import { db } from '@k39/database'
 import { classifyOfficialUrl } from '@k39/types/official-url'
 import { vkMenuMatchesSocial } from '@k39/types/vk-community'

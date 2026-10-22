@@ -54,11 +54,13 @@ function squash(value: string) {
   return value.replace(/\s+/g, ' ').trim()
 }
 
-const optionalText = (max: number, label: string) => z.string()
-  .transform(squash)
-  .pipe(z.string().max(max, `${label}: не больше ${max} символов`))
-  .nullable()
-  .optional()
+function optionalText(max: number, label: string) {
+  return z.string()
+    .transform(squash)
+    .pipe(z.string().max(max, `${label}: не больше ${max} символов`))
+    .nullable()
+    .optional()
+}
 
 /** One row as `notices_set` and the admin editor send it. `id` keeps a stored row. */
 export const noticeInputSchema = z.object({

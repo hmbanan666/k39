@@ -6,7 +6,6 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
 import { PHONE_TEXT_MAX } from '../phone'
-import { Notices } from './notices'
 import { priceInName, priceInNameMessage } from '../price-label'
 import { prepareSourceLinks, SourceInputError } from '../sources'
 import { admissionPrices, calendarEvents, media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
@@ -29,6 +28,7 @@ import {
   venueNameKey,
   venueSlugCandidates,
 } from '../venues'
+import { Notices } from './notices'
 
 export interface VenueWrite {
   slug?: string

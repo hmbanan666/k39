@@ -6,7 +6,7 @@ import { nextTick } from 'vue'
 import OpeningLive from '../app/components/OpeningLive.vue'
 import TemporaryNotices from '../app/components/TemporaryNotices.vue'
 import VenuePage from '../app/components/VenuePage.vue'
-import { liveStatus, liveStatusText, noticeDateLine, noticeInputSchema, noticeLines, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeTextProblem, noticeToday, normalizeNotice, statusWindows, visibleNotices } from '../shared/notices'
+import { liveStatus, liveStatusText, normalizeNotice, noticeDateLine, noticeInputSchema, noticeLines, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeTextProblem, noticeToday, statusWindows, visibleNotices } from '../shared/notices'
 import { scheduleDetails, scheduleRulesSchema } from '../shared/schedule'
 import { renderPage } from './helpers/render-page'
 

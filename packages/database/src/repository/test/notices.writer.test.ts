@@ -4,7 +4,6 @@
 import type { NoticeInput } from '../../../../../apps/web-app/shared/notices'
 import { and, eq, inArray } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
-import { liveStatusText, noticeToday, withNoticeStatus } from '../../../../../apps/web-app/shared/notices'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
 import { adminPlaceDraftView } from '../../../../../apps/web-app/server/utils/admin/place-draft'
 import { updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/places'
@@ -12,6 +11,7 @@ import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/pub
 import { adminNoticesView, decideVenueNoticeDraft } from '../../../../../apps/web-app/server/utils/notices/admin'
 import { loadPublicNotices, sourcesWithNotices } from '../../../../../apps/web-app/server/utils/notices/read'
 import { noticesView, noticeTarget, setNotices } from '../../../../../apps/web-app/server/utils/notices/write'
+import { liveStatusText, noticeToday, withNoticeStatus } from '../../../../../apps/web-app/shared/notices'
 import { useDatabase } from '../../database'
 import { contentDrafts, mcpAudits, notices, places, revisions, venues } from '../../tables'
 import { Editor } from '../content'
@@ -131,7 +131,9 @@ describe('notices writer', () => {
       row({ to: null, openEndedReason: 'На странице музея нет даты окончания', text: 'Год 2026 и дата 1 мая в тексте можно.' }),
       row({ kind: 'renovation', from: shift(today, -20), to: shift(today, -2), text: 'Шла реконструкция.' }),
     ])
-    expect(saved.pendingReview).toBe(false)
+    if (saved.pendingReview) {
+      throw new Error('expected a live write')
+    }
     expect(saved.notices.map((item) => item.kind).sort()).toEqual(['closed', 'renovation'])
     expect(saved.notices.find((item) => item.kind === 'renovation')?.state).toBe('expired')
     expect(await Editor.placeById(live.id)).toMatchObject({ publicationStatus: 'published' })
