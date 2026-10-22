@@ -193,9 +193,31 @@
                 type="button"
                 class="sub"
                 :aria-pressed="openNow"
+                :aria-busy="openLoading"
                 @click="emit('toggleOpen')"
               >
                 Открыто сейчас
+              </button>
+            </div>
+            <p
+              v-if="openLoading"
+              class="note"
+              role="status"
+            >
+              Проверяем, что открыто сейчас…
+            </p>
+            <div
+              v-if="openError"
+              class="availability-error"
+              role="alert"
+            >
+              <p>Не удалось проверить, что открыто сейчас. Фильтр выключен.</p>
+              <button
+                type="button"
+                class="sub"
+                @click="emit('toggleOpen')"
+              >
+                Повторить
               </button>
             </div>
             <div
@@ -425,6 +447,8 @@ const props = defineProps<{
   mobile: boolean
   snap: 'peek' | 'half' | 'full'
   openNow?: boolean
+  openLoading?: boolean
+  openError?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -769,6 +793,8 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   line-height: 1.3;
 }
 .note, .empty { margin: 0.2rem 0 0.5rem; color: var(--muted); font-size: 0.88rem; }
+.availability-error { color: var(--color-brick-dark); font-size: 0.88rem; }
+.availability-error p { margin: 0 0 0.5rem; }
 .detail { display: grid; gap: 0.75rem; }
 .back {
   display: grid;
