@@ -6,7 +6,7 @@ const bodySchema = z.object({ rows: admissionListInput })
 
 export default defineEventHandler(async (event) => {
   const target = await adminPracticalTarget(event)
-  const parsed = bodySchema.safeParse(await readBody(event))
+  const parsed = bodySchema.safeParse(await readJsonBody(event))
   if (!parsed.success) {
     throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]?.message || 'Проверьте строки билетов' })
   }
