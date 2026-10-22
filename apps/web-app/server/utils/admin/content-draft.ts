@@ -4,10 +4,7 @@ import { createError } from 'h3'
 import { collectionDraftChanges, routeDraftChanges } from '../../../shared/content-draft-diff'
 import { formatDraftUpdated } from '../../../shared/place-draft-diff'
 import { withContentScope } from '../access'
-import { syncSavedPage } from '../content/save'
 import { setPublication } from '../mcp/publish'
-
-type EditorTx = NonNullable<Parameters<typeof db.editor.saveCollection>[2]>
 
 type Stop = { placeSlug: string, note?: string | null }
 
@@ -145,35 +142,6 @@ export async function attachDraftNotices<T extends { id: string }>(
   return rows
     .map((row) => ({ ...row, pending: notices.get(row.id) ?? null }))
     .sort((left, right) => Number(Boolean(right.pending)) - Number(Boolean(left.pending)))
-}
-
-/**
- * A pending draft blocks an admin save until the body sets `pendingDraft`
- * to `discard`. The discard deletes only the draft that was checked, in the
- * same transaction as the save, so a newer draft written in between stays.
- */
-export async function withPendingGuard<T extends { id: string }>(
-  entity: 'collection' | 'route',
-  id: string,
-  pendingDraft: unknown,
-  write: (tx: EditorTx) => Promise<T>,
-) {
-  const pending = await db.editor.contentDraft(entity, id)
-  if (pending && pendingDraft !== 'discard') {
-    throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
-  }
-  const stamp = pending && pendingDraft === 'discard'
-    ? { id: pending.id, updatedAt: pending.updatedAt }
-    : null
-  const saved = await db.editor.transaction(async (tx) => {
-    const result = await write(tx)
-    if (stamp) {
-      await db.editor.deleteContentDraftIfUnchanged(stamp.id, stamp.updatedAt, tx)
-    }
-    return result
-  })
-  await syncSavedPage(entity, saved.id)
-  return saved
 }
 
 export async function applyAdminContentDraft(entity: 'collection' | 'route', id: string) {

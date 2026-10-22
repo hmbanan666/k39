@@ -1,3 +1,4 @@
+import type { ContentTx } from '@k39/database'
 import type { Checked } from '../../../shared/place-contact'
 import { db } from '@k39/database'
 import { createError } from 'h3'
@@ -28,8 +29,8 @@ function must<T>(checked: Checked<T>): T {
 }
 
 /** Source URL of the live phone fact, or null. */
-export async function placePhoneSource(placeId: string) {
-  return (await db.facts.liveSlot('place', placeId, 'phone'))?.sourceUrl ?? null
+export async function placePhoneSource(placeId: string, tx?: ContentTx) {
+  return (await db.facts.liveSlot('place', placeId, 'phone', tx))?.sourceUrl ?? null
 }
 
 /**

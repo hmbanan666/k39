@@ -125,9 +125,10 @@ describe('pending place publish', () => {
     await updatePlaceDraft({ id: live.id, body: 'Текст черновика, который редактор заменяет.' }, 'place_update')
     enterContentScope('editor')
     const editorBody = 'Текст редактора на живой странице.'
-    await updatePlaceDraft({ id: live.id, body: editorBody }, 'place_update')
+    const written = await updatePlaceDraft({ id: live.id, body: editorBody }, 'place_update')
     const row = await Editor.placeById(live.id)
     expect(row?.body).toBe(editorBody)
+    expect(written).toMatchObject({ draftDropped: true, pendingReview: false })
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
   })
 

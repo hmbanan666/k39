@@ -5,11 +5,13 @@ import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope, requireEditorContent } from '../../../../../apps/web-app/server/utils/access'
 import { saveAdminCollection } from '../../../../../apps/web-app/server/utils/admin/collection-write'
-import { applyAdminContentDraft, collectionDraftNotice, discardAdminContentDraft, routeDraftNotice, withPendingGuard } from '../../../../../apps/web-app/server/utils/admin/content-draft'
+import { applyAdminContentDraft, collectionDraftNotice, discardAdminContentDraft, routeDraftNotice } from '../../../../../apps/web-app/server/utils/admin/content-draft'
+import { withEditorLiveWrite, withPendingGuard } from '../../../../../apps/web-app/server/utils/content/pending-guard'
 import { readCollection, saveCollectionDraft } from '../../../../../apps/web-app/server/utils/mcp/collections'
 import { refuseLiveFact, updateFact } from '../../../../../apps/web-app/server/utils/mcp/fact-write'
 import { importCommonsPhoto, uploadMediaFromUrl } from '../../../../../apps/web-app/server/utils/mcp/media-import'
 import { attachCollectionPhoto, attachPlacePhoto, detachCollectionPhoto, refuseIncomingPhoto, refuseVenuePhoto } from '../../../../../apps/web-app/server/utils/mcp/photos'
+import { updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/places'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { writeQuest } from '../../../../../apps/web-app/server/utils/mcp/quests'
 import { readRoute, updateRouteDraft } from '../../../../../apps/web-app/server/utils/mcp/routes'
@@ -694,6 +696,141 @@ describe('pending collection and route drafts', () => {
     expect(kept?.updatedAt).not.toBe(checked?.updatedAt)
     expect(kept?.payload).toMatchObject({ title: 'Свежий черновик' })
     expect((await Editor.listCollections()).find((item) => item.id === collection.id)?.title).toBe('Правка редактора')
+  })
+
+  it('keeps a place draft that changed while the admin save discarded the one it checked', async () => {
+    const live = await place('pending-race-place', 'Живое место')
+    enterContentScope('draft')
+    await updatePlaceDraft({ id: live.id, body: 'Текст черновика места про ров.' }, 'place_update')
+    const checked = await Editor.contentDraft('place', live.id)
+    enterContentScope('editor')
+    await withPendingGuard('place', live.id, 'discard', async (tx) => {
+      await useDatabase().update(contentDrafts).set({
+        payload: { title: 'Свежий черновик', body: 'Текст, который пришёл во время сохранения.' },
+        updatedAt: '2099-01-01T00:00:00.000Z',
+      }).where(eq(contentDrafts.id, checked!.id))
+      return Editor.savePlace({
+        id: live.id,
+        slug: live.slug,
+        title: 'Правка редактора',
+        summary: live.summary,
+        body: 'Текст формы на живой странице.',
+        publicationStatus: 'published',
+      }, null, tx)
+    })
+    const kept = await Editor.contentDraft('place', live.id)
+    expect(kept?.id).toBe(checked?.id)
+    expect(kept?.updatedAt).not.toBe(checked?.updatedAt)
+    expect(kept?.payload).toMatchObject({ title: 'Свежий черновик' })
+    expect((await Editor.placeById(live.id))?.title).toBe('Правка редактора')
+  })
+
+  it('drops the pending draft an editor write saw and keeps a newer one', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const collection = await publishedCollection('editor-drop-collection')
+    const route = await publishedRoute('editor-drop-route')
+    const live = await place('editor-drop-place', 'Живое место')
+    enterContentScope('draft')
+    await saveCollectionDraft({
+      id: collection.id,
+      slug: collection.slug,
+      title: 'Черновик подборки',
+      body: 'Текст черновика подборки про ров.',
+    })
+    await updateRouteDraft({
+      id: route.id,
+      title: 'Черновик маршрута',
+      body: 'Текст черновика маршрута про ров.',
+    })
+    await updatePlaceDraft({
+      id: live.id,
+      title: 'Черновик места',
+      body: 'Текст черновика места про ров.',
+    }, 'place_update')
+    enterContentScope('editor')
+
+    const droppedCollection = await saveCollectionDraft({
+      id: collection.id,
+      slug: collection.slug,
+      title: 'Правка подборки',
+      body: 'Текст редактора подборки на живой странице.',
+    })
+    expect(droppedCollection).toMatchObject({ draftDropped: true, pendingReview: false, title: 'Правка подборки' })
+    expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
+
+    const droppedRoute = await updateRouteDraft({
+      id: route.id,
+      title: 'Правка маршрута',
+      body: 'Текст редактора маршрута на живой странице.',
+    })
+    expect(droppedRoute).toMatchObject({ draftDropped: true, pendingReview: false, title: 'Правка маршрута' })
+    expect(await Editor.contentDraft('route', route.id)).toBeNull()
+
+    const droppedPlace = await updatePlaceDraft({
+      id: live.id,
+      title: 'Правка места',
+      body: 'Текст редактора места на живой странице.',
+    }, 'place_update')
+    expect(droppedPlace).toMatchObject({ draftDropped: true, pendingReview: false, title: 'Правка места' })
+    expect(await Editor.contentDraft('place', live.id)).toBeNull()
+
+    enterContentScope('draft')
+    await saveCollectionDraft({
+      id: collection.id,
+      slug: collection.slug,
+      title: 'Второй черновик подборки',
+      body: 'Текст второго черновика подборки про ров.',
+    })
+    await updateRouteDraft({ id: route.id, body: 'Текст второго черновика маршрута про ров.' })
+    await updatePlaceDraft({ id: live.id, body: 'Текст второго черновика места про ров.' }, 'place_update')
+    const freshCollection = await Editor.contentDraft('collection', collection.id)
+    const freshRoute = await Editor.contentDraft('route', route.id)
+    const freshPlace = await Editor.contentDraft('place', live.id)
+    enterContentScope('editor')
+    const bumped = {
+      payload: { title: 'Свежий черновик', body: 'Текст, который пришёл во время сохранения.' },
+      updatedAt: '2099-01-01T00:00:00.000Z',
+    }
+    const racedCollection = await withEditorLiveWrite('collection', collection.id, async (tx) => {
+      await useDatabase().update(contentDrafts).set(bumped).where(eq(contentDrafts.id, freshCollection!.id))
+      return Editor.saveCollection({
+        id: collection.id,
+        slug: collection.slug,
+        title: 'Правка после гонки',
+        body: 'Текст формы на живой странице.',
+        publicationStatus: 'published',
+      }, null, tx)
+    })
+    const racedRoute = await withEditorLiveWrite('route', route.id, async (tx) => {
+      await useDatabase().update(contentDrafts).set(bumped).where(eq(contentDrafts.id, freshRoute!.id))
+      return Editor.saveRoute({
+        id: route.id,
+        slug: route.slug,
+        title: 'Правка маршрута после гонки',
+        body: 'Текст формы на живой странице.',
+        publicationStatus: 'published',
+      }, null, tx)
+    })
+    const racedPlace = await withEditorLiveWrite('place', live.id, async (tx) => {
+      await useDatabase().update(contentDrafts).set(bumped).where(eq(contentDrafts.id, freshPlace!.id))
+      return Editor.savePlace({
+        id: live.id,
+        slug: live.slug,
+        title: 'Правка места после гонки',
+        summary: live.summary,
+        body: 'Текст формы на живой странице.',
+        publicationStatus: 'published',
+      }, null, tx)
+    })
+    expect(racedCollection.draftDropped).toBe(false)
+    expect(racedRoute.draftDropped).toBe(false)
+    expect(racedPlace.draftDropped).toBe(false)
+    expect((await Editor.contentDraft('collection', collection.id))?.payload).toMatchObject({ title: 'Свежий черновик' })
+    expect((await Editor.contentDraft('route', route.id))?.payload).toMatchObject({ title: 'Свежий черновик' })
+    expect((await Editor.contentDraft('place', live.id))?.payload).toMatchObject({ title: 'Свежий черновик' })
+    expect((await Editor.collectionById(collection.id))?.title).toBe('Правка после гонки')
+    expect((await Editor.routeById(route.id))?.title).toBe('Правка маршрута после гонки')
+    expect((await Editor.placeById(live.id))?.title).toBe('Правка места после гонки')
   })
 })
 

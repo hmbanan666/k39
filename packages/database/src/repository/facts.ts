@@ -1,8 +1,14 @@
+import type { ContentTx } from './content'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { analyticsDaily, analyticsSearchQueries, contentImports, factRefs, factRevisions, facts, pageReviews, sourceDocuments, verificationQueue } from '../tables'
 
-type Executor = Pick<ReturnType<typeof useDatabase>, 'insert' | 'select' | 'update' | 'delete'>
+/** The pool, or the transaction a content save already opened. */
+export type FactExecutor = ReturnType<typeof useDatabase> | ContentTx
+
+function client(tx?: FactExecutor): FactExecutor {
+  return tx ?? useDatabase()
+}
 
 export interface FactWrite {
   kind: string
@@ -49,7 +55,8 @@ export class Facts {
     await useDatabase().insert(contentImports).values({ id }).onConflictDoNothing()
   }
 
-  static async liveSlot(subjectType: string, subjectId: string, slot: string, db: Executor = useDatabase()) {
+  static async liveSlot(subjectType: string, subjectId: string, slot: string, tx?: FactExecutor) {
+    const db = client(tx)
     const [row] = await db.select().from(facts).where(and(
       eq(facts.subjectType, subjectType),
       eq(facts.subjectId, subjectId),
@@ -64,8 +71,9 @@ export class Facts {
     return row ?? null
   }
 
-  static async latestActor(factId: string) {
-    const [row] = await useDatabase().select({ actor: factRevisions.actor }).from(factRevisions).where(eq(factRevisions.factId, factId)).orderBy(desc(factRevisions.recordedAt)).limit(1)
+  static async latestActor(factId: string, tx?: FactExecutor) {
+    const db = client(tx)
+    const [row] = await db.select({ actor: factRevisions.actor }).from(factRevisions).where(eq(factRevisions.factId, factId)).orderBy(desc(factRevisions.recordedAt)).limit(1)
     return row?.actor ?? null
   }
 
@@ -81,7 +89,8 @@ export class Facts {
     return useDatabase().select().from(facts).where(and(eq(facts.sourceUrl, url), isNull(facts.retiredAt)))
   }
 
-  static async upsert(input: FactWrite, refs: FactRefWrite[], db: Executor = useDatabase()) {
+  static async upsert(input: FactWrite, refs: FactRefWrite[], tx?: FactExecutor) {
+    const db = client(tx)
     const current = await Facts.liveSlot(input.subjectType, input.subjectId, input.slot, db)
     const sameClaim = current
       && current.valueHash === input.valueHash
@@ -109,7 +118,7 @@ export class Facts {
       await Facts.replaceRefs(current.id, refs, db)
       const revised = current.sourceTitle !== input.sourceTitle
       if (revised) {
-        await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind)
+        await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind, db)
       }
       return { fact: row ?? current, revised }
     }
@@ -135,7 +144,7 @@ export class Facts {
       }
       await db.insert(factRevisions).values(revisionOf(created, input.actor))
       await Facts.replaceRefs(created.id, refs, db)
-      await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind)
+      await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind, db)
       return { fact: created, revised: true }
     }
     const [row] = await db.update(facts).set({
@@ -153,11 +162,12 @@ export class Facts {
     const fact = row ?? current
     await db.insert(factRevisions).values(revisionOf(fact, input.actor))
     await Facts.replaceRefs(fact.id, refs, db)
-    await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind)
+    await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind, db)
     return { fact, revised: true }
   }
 
-  static async replaceRefs(factId: string, refs: FactRefWrite[], db: Executor = useDatabase()) {
+  static async replaceRefs(factId: string, refs: FactRefWrite[], tx?: FactExecutor) {
+    const db = client(tx)
     await db.delete(factRefs).where(eq(factRefs.factId, factId))
     if (refs.length) {
       await db.insert(factRefs).values(refs.map((ref) => ({ factId, ...ref })))
@@ -177,21 +187,23 @@ export class Facts {
     return { ok: true as const, fact: row ?? current }
   }
 
-  static async retire(id: string) {
+  static async retire(id: string, tx?: FactExecutor) {
+    const db = client(tx)
     const now = new Date().toISOString()
-    await useDatabase().update(facts).set({ retiredAt: now, updatedAt: now }).where(and(eq(facts.id, id), isNull(facts.retiredAt)))
-    await useDatabase().delete(factRefs).where(eq(factRefs.factId, id))
-    await Facts.closeForFact(id)
+    await db.update(facts).set({ retiredAt: now, updatedAt: now }).where(and(eq(facts.id, id), isNull(facts.retiredAt)))
+    await db.delete(factRefs).where(eq(factRefs.factId, id))
+    await Facts.closeForFact(id, db)
   }
 
-  static async retireSlot(subjectType: string, subjectId: string, slot: string) {
-    const current = await Facts.liveSlot(subjectType, subjectId, slot)
+  static async retireSlot(subjectType: string, subjectId: string, slot: string, tx?: FactExecutor) {
+    const current = await Facts.liveSlot(subjectType, subjectId, slot, tx)
     if (current) {
-      await Facts.retire(current.id)
+      await Facts.retire(current.id, tx)
     }
   }
 
-  static async closeForFact(factId: string, db: Executor = useDatabase()) {
+  static async closeForFact(factId: string, tx?: FactExecutor) {
+    const db = client(tx)
     await db.update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(eq(verificationQueue.factId, factId), isNull(verificationQueue.resolvedAt)))
   }
 
@@ -199,8 +211,8 @@ export class Facts {
     await useDatabase().update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(eq(verificationQueue.id, id), isNull(verificationQueue.resolvedAt)))
   }
 
-  static async enqueue(input: QueueWrite) {
-    const db = useDatabase()
+  static async enqueue(input: QueueWrite, tx?: FactExecutor) {
+    const db = client(tx)
     const match = input.target === 'fact'
       ? and(eq(verificationQueue.target, 'fact'), eq(verificationQueue.factId, input.factId ?? ''), eq(verificationQueue.reason, input.reason), isNull(verificationQueue.resolvedAt))
       : and(
@@ -363,8 +375,9 @@ export class Facts {
     return useDatabase().select().from(pageReviews)
   }
 
-  static async ensureSource(url: string, nextFetchAt: string) {
-    await useDatabase().insert(sourceDocuments).values({ url, nextFetchAt, failCount: 0 }).onConflictDoNothing()
+  static async ensureSource(url: string, nextFetchAt: string, tx?: FactExecutor) {
+    const db = client(tx)
+    await db.insert(sourceDocuments).values({ url, nextFetchAt, failCount: 0 }).onConflictDoNothing()
   }
 
   static async dueSources(limit: number, nowIso: string) {
@@ -495,11 +508,12 @@ export class Facts {
     }).from(verificationQueue).leftJoin(facts, eq(facts.id, verificationQueue.factId)).where(isNull(verificationQueue.resolvedAt))
   }
 
-  static async closeGuestReportSections(subjectType: string, subjectId: string, kind: string) {
+  static async closeGuestReportSections(subjectType: string, subjectId: string, kind: string, tx?: FactExecutor) {
     if (subjectType !== 'place' && subjectType !== 'venue') {
       return
     }
-    await useDatabase().update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(
+    const db = client(tx)
+    await db.update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(
       eq(verificationQueue.target, 'section'),
       eq(verificationQueue.pageType, subjectType),
       eq(verificationQueue.entityId, subjectId),

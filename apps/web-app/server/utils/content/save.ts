@@ -72,11 +72,13 @@ export async function syncSavedPage(pageType: string, entityId: string | undefin
   await afterPage(pageType, entityId)
 }
 
-export async function savePlaceContent(input: PlaceWrite, userId: string | null | undefined, gate: ContentGate) {
+export async function savePlaceContent(input: PlaceWrite, userId: string | null | undefined, gate: ContentGate, tx?: EditorTx) {
   const writingWarnings = contentWarnings(gate)
   try {
-    const row = await db.editor.savePlace(input, userId)
-    await afterPage('place', row.id)
+    const row = await db.editor.savePlace(input, userId, tx)
+    if (!tx) {
+      await afterPage('place', row.id)
+    }
     return { row, writingWarnings }
   } catch (error) {
     sourceWriteError(error)
@@ -160,8 +162,8 @@ async function applyPending<T extends { id: string }>(pageType: string, gate: Co
   }
 }
 
-export async function applyPendingPlaceContent(id: string, gate: ContentGate, keep: { phone?: boolean } = {}) {
-  return applyPending('place', gate, () => db.editor.applyPendingPlace(id, keep))
+export async function applyPendingPlaceContent(id: string, gate: ContentGate, hooks?: Parameters<typeof db.editor.applyPendingPlace>[1]) {
+  return applyPending('place', gate, () => db.editor.applyPendingPlace(id, hooks))
 }
 
 export async function applyPendingRouteContent(id: string, gate: ContentGate) {

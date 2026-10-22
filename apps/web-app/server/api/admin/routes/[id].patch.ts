@@ -1,6 +1,6 @@
 import { slugError } from '../../../../shared/seo'
 import { requireEditor } from '../../../utils/access'
-import { withPendingGuard } from '../../../utils/admin/content-draft'
+import { withPendingGuard } from '../../../utils/content/pending-guard'
 import { contentGate, saveRouteContent } from '../../../utils/content/save'
 
 export default defineEventHandler(async (event) => {

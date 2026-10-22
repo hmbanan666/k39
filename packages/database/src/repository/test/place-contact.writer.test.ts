@@ -10,6 +10,7 @@ import { syncPlacePhone } from '../../../../../apps/web-app/server/utils/facts/s
 import { createPlaceDraft, placeWriteFromBody, updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/places'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { useDatabase } from '../../database'
+import { SOURCE_LINK_LIMIT } from '../../sources'
 import { categories, contentDrafts, factRefs, facts, mcpAudits, pageReviews, places, revisions, sourceDocuments, verificationQueue } from '../../tables'
 import { Editor } from '../content'
 
@@ -52,10 +53,14 @@ async function phoneFact(placeId: string) {
 }
 
 async function livePhoneFact(placeId: string) {
+  return slotFact(placeId, 'phone')
+}
+
+async function slotFact(placeId: string, slot: string) {
   const rows = await useDatabase().select().from(facts).where(and(
     eq(facts.subjectType, 'place'),
     eq(facts.subjectId, placeId),
-    eq(facts.slot, 'phone'),
+    eq(facts.slot, slot),
   ))
   return rows.find((row) => !row.retiredAt) ?? null
 }
@@ -214,5 +219,104 @@ describe('place phone, website and schema type writer', () => {
     await saveAdminPlace(live.id, { phone: '', website: '', schemaType: null }, null)
     expect(await Editor.placeById(live.id)).toMatchObject({ phone: null, website: null, schemaType: null })
     expect(await livePhoneFact(live.id)).toBeNull()
+  })
+
+  it('writes no phone fact when a live editor save or an admin save is rejected', async () => {
+    enterContentScope('editor')
+    const live = await created('contact-reject-live')
+    await Editor.savePlace({
+      id: live.id,
+      slug: live.slug,
+      title: live.title,
+      summary: 'Живое описание',
+      body: 'Живой текст страницы.',
+      publicationStatus: 'published',
+    })
+    const phone = {
+      phone: '+7 4012 30-30-40',
+      phoneSourceUrl: CONTACTS,
+      website: SITE,
+    }
+    await expect(updatePlaceDraft({
+      id: live.id,
+      body: 'Это уютная атмосфера у вокзала.',
+      ...phone,
+    }, 'place_update')).rejects.toMatchObject({ statusCode: 400 })
+    expect((await Editor.placeById(live.id))?.phone).toBeNull()
+    expect(await livePhoneFact(live.id)).toBeNull()
+
+    await expect(saveAdminPlace(live.id, {
+      body: 'Это уютная атмосфера у вокзала.',
+      publicationStatus: 'published',
+      ...phone,
+    }, null)).rejects.toMatchObject({ statusCode: 400 })
+    expect(await livePhoneFact(live.id)).toBeNull()
+  })
+
+  it('writes no phone fact when a pending draft is still in the way of an admin save', async () => {
+    const live = await publishedPlace('contact-admin-pending')
+    enterContentScope('draft')
+    await updatePlaceDraft({ id: live.id, body: 'Текст черновика места про ров.' }, 'place_update')
+    enterContentScope('editor')
+    await expect(saveAdminPlace(live.id, {
+      phone: '+7 4012 30-30-40',
+      phoneSourceUrl: CONTACTS,
+      website: SITE,
+      publicationStatus: 'published',
+    }, null)).rejects.toMatchObject({ statusCode: 409 })
+    expect(await livePhoneFact(live.id)).toBeNull()
+    expect((await Editor.placeById(live.id))?.phone).toBeNull()
+    expect(await Editor.contentDraft('place', live.id)).not.toBeNull()
+  })
+
+  it('writes no phone fact when applying a pending draft fails', async () => {
+    const live = await publishedPlace('contact-apply-fail')
+    await Editor.saveContentDraft({
+      entityType: 'place',
+      entityId: live.id,
+      publicationStatus: 'review',
+      payload: {
+        phone: '+7 4012 30-30-40',
+        phoneSourceUrl: CONTACTS,
+        website: SITE,
+        title: 'Черновик с телефоном',
+        sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+          title: `Источник ${index + 1}`,
+          url: `https://contact-museum.example.org/src/${index + 1}`,
+        })),
+      },
+    })
+    enterContentScope('editor')
+    await expect(setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })).rejects.toMatchObject({
+      statusCode: 400,
+      statusMessage: expect.stringContaining('источников'),
+    })
+    expect((await Editor.placeById(live.id))?.phone).toBeNull()
+    expect((await Editor.placeById(live.id))?.title).toBe('Живая кирха')
+    expect(await livePhoneFact(live.id)).toBeNull()
+    expect(await Editor.contentDraft('place', live.id)).not.toBeNull()
+  })
+
+  it('writes no coordinate or status fact when a live editor save or an admin save is rejected', async () => {
+    const live = await publishedPlace('contact-reject-point')
+    enterContentScope('editor')
+    const point = { latitude: 54.71, longitude: 20.51, status: 'open' as const }
+    await expect(updatePlaceDraft({
+      id: live.id,
+      body: 'Это уютная атмосфера у вокзала.',
+      ...point,
+    }, 'place_update')).rejects.toMatchObject({ statusCode: 400 })
+    expect(await Editor.placeById(live.id)).toMatchObject({ latitude: null, longitude: null, status: 'unknown' })
+    expect(await slotFact(live.id, 'coordinates')).toBeNull()
+    expect(await slotFact(live.id, 'status')).toBeNull()
+
+    await expect(saveAdminPlace(live.id, {
+      body: 'Это уютная атмосфера у вокзала.',
+      publicationStatus: 'published',
+      ...point,
+    }, null)).rejects.toMatchObject({ statusCode: 400 })
+    expect(await Editor.placeById(live.id)).toMatchObject({ latitude: null, longitude: null, status: 'unknown' })
+    expect(await slotFact(live.id, 'coordinates')).toBeNull()
+    expect(await slotFact(live.id, 'status')).toBeNull()
   })
 })

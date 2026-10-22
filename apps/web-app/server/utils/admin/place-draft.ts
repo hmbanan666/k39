@@ -6,6 +6,7 @@ import { createError } from 'h3'
 import { formatDraftUpdated, placeDraftChanges } from '../../../shared/place-draft-diff'
 import { slugError } from '../../../shared/seo'
 import { withContentScope } from '../access'
+import { withPendingGuard } from '../content/pending-guard'
 import { phoneCheckedAt, resolvePlaceContact } from '../content/place-contact'
 import { contentGate, savePlaceContent } from '../content/save'
 import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../facts/sync'
@@ -127,95 +128,95 @@ export async function discardAdminPlaceDraft(id: string) {
 
 /**
  * Admin form save. A pending draft blocks the write until the body sets
- * `pendingDraft` to `discard`, which stores the form and then deletes the draft.
+ * `pendingDraft` to `discard`. The discard deletes only the draft that was
+ * checked, in the same transaction as the row and its coordinate, status,
+ * and phone facts. A newer draft stays. A refused save writes no fact.
  */
 export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: string | null) {
   const current = await db.editor.placeById(id)
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
   }
-  const pending = await db.editor.contentDraft('place', id)
-  if (pending && body.pendingDraft !== 'discard') {
-    throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
-  }
-  const slug = String(body.slug || current.slug)
-  const problem = slugError(slug)
-  if (problem) {
-    throw createError({ statusCode: 400, statusMessage: problem })
-  }
-  const category = body.categorySlug ? await db.content.categoryBySlug(String(body.categorySlug)) : null
-  const publicationStatus = asPublication(body.publicationStatus, current.publicationStatus)
-  const visitStatus = asVisit(body.status)
-  const contact = await resolvePlaceContact(body, {
-    placeId: id,
-    phone: current.phone,
-    website: current.website,
-    schemaType: current.schemaType,
+  return withPendingGuard('place', id, body.pendingDraft, async (tx) => {
+    const slug = String(body.slug || current.slug)
+    const problem = slugError(slug)
+    if (problem) {
+      throw createError({ statusCode: 400, statusMessage: problem })
+    }
+    const category = body.categorySlug ? await db.content.categoryBySlug(String(body.categorySlug)) : null
+    const publicationStatus = asPublication(body.publicationStatus, current.publicationStatus)
+    const visitStatus = asVisit(body.status)
+    const contact = await resolvePlaceContact(body, {
+      placeId: id,
+      phone: current.phone,
+      website: current.website,
+      schemaType: current.schemaType,
+    })
+    const point = await syncCoordinates({
+      subjectType: 'place',
+      subjectId: id,
+      actor: 'editor',
+      pageStatus: publicationStatus,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      previous: { latitude: current.latitude, longitude: current.longitude },
+      tx,
+    })
+    const visit = await syncPlaceStatus({
+      placeId: id,
+      actor: 'editor',
+      pageStatus: publicationStatus,
+      status: visitStatus,
+      previous: current.status,
+      tx,
+    })
+    const phone = await syncPlacePhone({
+      placeId: id,
+      actor: 'editor',
+      pageStatus: publicationStatus,
+      phone: contact.phone,
+      sourceUrl: contact.phoneSourceUrl,
+      checkedAt: phoneCheckedAt(null),
+      tx,
+    })
+    const { row, writingWarnings } = await savePlaceContent({
+      id,
+      slug,
+      title: String(body.title ?? current.title),
+      summary: String(body.summary ?? current.summary),
+      body: String(body.body ?? current.body),
+      status: (visit.skipped || body.status == null ? current.status : body.status) as VisitStatus,
+      hours: body.hours ?? current.hours,
+      price: body.price ?? current.price,
+      phone: phone.skipped ? current.phone : contact.phone,
+      website: contact.website,
+      schemaType: contact.schemaType,
+      howToGet: body.howToGet ?? current.howToGet,
+      latitude: point.skipped || body.latitude == null ? current.latitude : body.latitude,
+      longitude: point.skipped || body.longitude == null ? current.longitude : body.longitude,
+      categoryId: category?.id ?? current.categoryId,
+      regionId: body.regionId ?? current.regionId,
+      sources: Array.isArray(body.sources) ? body.sources as typeof current.sources : current.sources,
+      seoTitle: body.seoTitle ?? current.seoTitle,
+      seoDescription: body.seoDescription ?? current.seoDescription,
+      ogImage: body.ogImage ?? current.ogImage,
+      publicationStatus,
+      noindex: body.noindex ?? current.noindex,
+      authorKind: asAuthor(body.authorKind, current.authorKind),
+    }, userId, contentGate('place', {
+      title: body.title ?? current.title,
+      summary: body.summary ?? current.summary,
+      body: body.body ?? current.body,
+      hours: body.hours ?? current.hours,
+      price: body.price ?? current.price,
+      howToGet: body.howToGet ?? current.howToGet,
+      seoTitle: body.seoTitle ?? current.seoTitle,
+      seoDescription: body.seoDescription ?? current.seoDescription,
+      sources: Array.isArray(body.sources) ? body.sources : current.sources,
+      phone: contact.phone,
+      phoneSourceUrl: contact.phoneSourceUrl,
+      website: contact.website,
+    }, publicationStatus === 'published'), tx)
+    return { ...row, phoneSourceUrl: contact.phoneSourceUrl, writingWarnings }
   })
-  const point = await syncCoordinates({
-    subjectType: 'place',
-    subjectId: id,
-    actor: 'editor',
-    pageStatus: publicationStatus,
-    latitude: body.latitude,
-    longitude: body.longitude,
-    previous: { latitude: current.latitude, longitude: current.longitude },
-  })
-  const visit = await syncPlaceStatus({
-    placeId: id,
-    actor: 'editor',
-    pageStatus: publicationStatus,
-    status: visitStatus,
-    previous: current.status,
-  })
-  const phone = await syncPlacePhone({
-    placeId: id,
-    actor: 'editor',
-    pageStatus: publicationStatus,
-    phone: contact.phone,
-    sourceUrl: contact.phoneSourceUrl,
-    checkedAt: phoneCheckedAt(null),
-  })
-  const { row, writingWarnings } = await savePlaceContent({
-    id,
-    slug,
-    title: String(body.title ?? current.title),
-    summary: String(body.summary ?? current.summary),
-    body: String(body.body ?? current.body),
-    status: (visit.skipped || body.status == null ? current.status : body.status) as VisitStatus,
-    hours: body.hours ?? current.hours,
-    price: body.price ?? current.price,
-    phone: phone.skipped ? current.phone : contact.phone,
-    website: contact.website,
-    schemaType: contact.schemaType,
-    howToGet: body.howToGet ?? current.howToGet,
-    latitude: point.skipped || body.latitude == null ? current.latitude : body.latitude,
-    longitude: point.skipped || body.longitude == null ? current.longitude : body.longitude,
-    categoryId: category?.id ?? current.categoryId,
-    regionId: body.regionId ?? current.regionId,
-    sources: Array.isArray(body.sources) ? body.sources as typeof current.sources : current.sources,
-    seoTitle: body.seoTitle ?? current.seoTitle,
-    seoDescription: body.seoDescription ?? current.seoDescription,
-    ogImage: body.ogImage ?? current.ogImage,
-    publicationStatus,
-    noindex: body.noindex ?? current.noindex,
-    authorKind: asAuthor(body.authorKind, current.authorKind),
-  }, userId, contentGate('place', {
-    title: body.title ?? current.title,
-    summary: body.summary ?? current.summary,
-    body: body.body ?? current.body,
-    hours: body.hours ?? current.hours,
-    price: body.price ?? current.price,
-    howToGet: body.howToGet ?? current.howToGet,
-    seoTitle: body.seoTitle ?? current.seoTitle,
-    seoDescription: body.seoDescription ?? current.seoDescription,
-    sources: Array.isArray(body.sources) ? body.sources : current.sources,
-    phone: contact.phone,
-    phoneSourceUrl: contact.phoneSourceUrl,
-    website: contact.website,
-  }, publicationStatus === 'published'))
-  if (pending) {
-    await db.editor.deleteContentDraft('place', id)
-  }
-  return { ...row, phoneSourceUrl: contact.phoneSourceUrl, writingWarnings }
 }
