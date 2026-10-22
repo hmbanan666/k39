@@ -53,10 +53,14 @@ async function phoneFact(placeId: string) {
 }
 
 async function livePhoneFact(placeId: string) {
+  return slotFact(placeId, 'phone')
+}
+
+async function slotFact(placeId: string, slot: string) {
   const rows = await useDatabase().select().from(facts).where(and(
     eq(facts.subjectType, 'place'),
     eq(facts.subjectId, placeId),
-    eq(facts.slot, 'phone'),
+    eq(facts.slot, slot),
   ))
   return rows.find((row) => !row.retiredAt) ?? null
 }
@@ -291,5 +295,28 @@ describe('place phone, website and schema type writer', () => {
     expect((await Editor.placeById(live.id))?.title).toBe('Живая кирха')
     expect(await livePhoneFact(live.id)).toBeNull()
     expect(await Editor.contentDraft('place', live.id)).not.toBeNull()
+  })
+
+  it('writes no coordinate or status fact when a live editor save or an admin save is rejected', async () => {
+    const live = await publishedPlace('contact-reject-point')
+    enterContentScope('editor')
+    const point = { latitude: 54.71, longitude: 20.51, status: 'open' as const }
+    await expect(updatePlaceDraft({
+      id: live.id,
+      body: 'Это уютная атмосфера у вокзала.',
+      ...point,
+    }, 'place_update')).rejects.toMatchObject({ statusCode: 400 })
+    expect(await Editor.placeById(live.id)).toMatchObject({ latitude: null, longitude: null, status: 'unknown' })
+    expect(await slotFact(live.id, 'coordinates')).toBeNull()
+    expect(await slotFact(live.id, 'status')).toBeNull()
+
+    await expect(saveAdminPlace(live.id, {
+      body: 'Это уютная атмосфера у вокзала.',
+      publicationStatus: 'published',
+      ...point,
+    }, null)).rejects.toMatchObject({ statusCode: 400 })
+    expect(await Editor.placeById(live.id)).toMatchObject({ latitude: null, longitude: null, status: 'unknown' })
+    expect(await slotFact(live.id, 'coordinates')).toBeNull()
+    expect(await slotFact(live.id, 'status')).toBeNull()
   })
 })

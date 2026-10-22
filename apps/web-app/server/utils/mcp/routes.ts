@@ -2,7 +2,7 @@ import { composeBody, db, readSections } from '@k39/database'
 import { createError } from 'h3'
 import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
-import { withEditorLiveWrite } from '../content/pending-guard'
+import { liveWriteRow, withEditorLiveWrite } from '../content/pending-guard'
 import { applyPendingRouteContent, contentGate, savePendingDraftContent, saveRouteContent } from '../content/save'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
@@ -252,9 +252,9 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
     const saved = scope === 'editor'
       ? await withEditorLiveWrite('route', current.id, async (tx) => {
           const written = await saveRouteContent(write, null, gate, tx)
-          return { ...written.row, writingWarnings: written.writingWarnings }
+          return liveWriteRow(written.row, written.writingWarnings)
         })
-      : await saveRouteContent(write, null, gate).then((written) => ({ ...written.row, writingWarnings: written.writingWarnings, draftDropped: false }))
+      : await saveRouteContent(write, null, gate).then((written) => liveWriteRow(written.row, written.writingWarnings))
     await auditMcp(auditTool, 'route', current.id)
     return {
       id: saved.id,

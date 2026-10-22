@@ -3,7 +3,6 @@ import type { Checked } from '../../../shared/place-contact'
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { checkPlacePhone, checkPlacePhoneSource, checkPlaceSchemaType, checkPlaceWebsite } from '../../../shared/place-contact'
-import { factExecutor } from '../facts/commit'
 
 /** Writer fields for #238 and #239. `undefined` keeps the stored value. */
 export interface PlaceContactInput {
@@ -31,7 +30,7 @@ function must<T>(checked: Checked<T>): T {
 
 /** Source URL of the live phone fact, or null. */
 export async function placePhoneSource(placeId: string, tx?: ContentTx) {
-  return (await db.facts.liveSlot('place', placeId, 'phone', factExecutor(tx)))?.sourceUrl ?? null
+  return (await db.facts.liveSlot('place', placeId, 'phone', tx))?.sourceUrl ?? null
 }
 
 /**

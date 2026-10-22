@@ -4,7 +4,7 @@ import { createError } from 'h3'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
-import { withEditorLiveWrite } from '../content/pending-guard'
+import { liveWriteRow, withEditorLiveWrite } from '../content/pending-guard'
 import { applyPendingCollectionContent, contentGate, saveCollectionContent, savePendingDraftContent } from '../content/save'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
@@ -254,13 +254,9 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
     const saved = scope === 'editor' && current
       ? await withEditorLiveWrite('collection', current.id, async (tx) => {
           const written = await saveCollectionContent(write, null, gate, tx)
-          return { ...written.row, writingWarnings: written.writingWarnings }
+          return liveWriteRow(written.row, written.writingWarnings)
         })
-      : await saveCollectionContent(write, null, gate).then((written) => ({
-          ...written.row,
-          writingWarnings: written.writingWarnings,
-          draftDropped: false,
-        }))
+      : await saveCollectionContent(write, null, gate).then((written) => liveWriteRow(written.row, written.writingWarnings))
     await auditMcp(auditTool, 'collection', saved.id)
     return {
       id: saved.id,

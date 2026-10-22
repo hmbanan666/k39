@@ -1,9 +1,10 @@
+import type { ContentTx } from './content'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { analyticsDaily, analyticsSearchQueries, contentImports, factRefs, factRevisions, facts, pageReviews, sourceDocuments, verificationQueue } from '../tables'
 
-/** Pool or a transaction. Both expose the same query methods. */
-export type FactExecutor = Pick<ReturnType<typeof useDatabase>, 'insert' | 'select' | 'update' | 'delete'>
+/** The pool, or the transaction a content save already opened. */
+export type FactExecutor = ReturnType<typeof useDatabase> | ContentTx
 
 function client(tx?: FactExecutor): FactExecutor {
   return tx ?? useDatabase()

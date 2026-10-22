@@ -7,6 +7,14 @@ type EditorTx = NonNullable<Parameters<typeof db.editor.saveCollection>[2]>
 export type DraftEntity = 'place' | 'collection' | 'route'
 
 /**
+ * Live row plus the gate warnings. `draftDropped` stays false until
+ * `withEditorLiveWrite` replaces it with the checked-draft result.
+ */
+export function liveWriteRow<T extends { id: string }>(row: T, writingWarnings: string[]) {
+  return { ...row, writingWarnings, draftDropped: false as const }
+}
+
+/**
  * Runs `write` and, when `stamp` is set, deletes that draft only if it is
  * still the row the caller checked. One transaction, so a newer draft stays.
  */

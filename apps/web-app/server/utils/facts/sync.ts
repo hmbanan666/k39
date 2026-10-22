@@ -5,7 +5,7 @@ import { db } from '@k39/database'
 import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { rejectBannedSites } from '../mcp/writing-guard'
-import { commitFact, factExecutor, retireFactSlot } from './commit'
+import { commitFact, retireFactSlot } from './commit'
 
 export async function hoursConflict(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor) {
   if (actor !== 'mcp') {
@@ -302,8 +302,7 @@ export async function syncCoordinates(input: {
   const latitude = input.latitude === undefined ? input.previous.latitude : input.latitude
   const longitude = input.longitude === undefined ? input.previous.longitude : input.longitude
   const changed = latitude !== input.previous.latitude || longitude !== input.previous.longitude
-  const facts = factExecutor(input.tx)
-  const existing = changed ? null : await db.facts.liveSlot(input.subjectType, input.subjectId, 'coordinates', facts)
+  const existing = changed ? null : await db.facts.liveSlot(input.subjectType, input.subjectId, 'coordinates', input.tx)
   const hasPoint = latitude != null && longitude != null
   if (!shouldWriteContact(changed, Boolean(existing), hasPoint ? 'point' : null)) {
     return { skipped: false as const }
@@ -335,8 +334,7 @@ export async function syncPlaceStatus(input: {
     return { skipped: false as const }
   }
   const changed = input.status !== input.previous
-  const facts = factExecutor(input.tx)
-  const existing = changed ? null : await db.facts.liveSlot('place', input.placeId, 'status', facts)
+  const existing = changed ? null : await db.facts.liveSlot('place', input.placeId, 'status', input.tx)
   if (!shouldWriteContact(changed, Boolean(existing), input.status)) {
     return { skipped: false as const }
   }
@@ -375,8 +373,7 @@ export async function syncPlacePhone(input: {
   /** When set, the fact write joins this save and rolls back with it. */
   tx?: ContentTx
 }) {
-  const facts = factExecutor(input.tx)
-  const existing = await db.facts.liveSlot('place', input.placeId, 'phone', facts)
+  const existing = await db.facts.liveSlot('place', input.placeId, 'phone', input.tx)
   const target = { subjectType: 'place' as const, subjectId: input.placeId, actor: input.actor, pageStatus: input.pageStatus }
   if (!input.phone) {
     if (!existing) {
@@ -450,12 +447,11 @@ async function blockOwned(input: {
   if (input.actor !== 'mcp') {
     return null
   }
-  const facts = factExecutor(tx)
-  const existing = await db.facts.liveSlot(input.subjectType, input.subjectId, slot, facts)
+  const existing = await db.facts.liveSlot(input.subjectType, input.subjectId, slot, tx)
   if (!existing) {
     return null
   }
-  const latest = await db.facts.latestActor(existing.id, facts)
+  const latest = await db.facts.latestActor(existing.id, tx)
   const same = value != null && existing.valueHash === valueHash(value)
   if (!ownerBlocksToken(latest, same)) {
     return null
@@ -469,7 +465,7 @@ async function blockOwned(input: {
       path: `short.${slot}`,
       reason: 'owner_conflict',
       proposal: { retire: true },
-    }, facts)
+    }, tx)
     return queued.id
   }
   const queued = await commitFact({

@@ -3,7 +3,7 @@ import type { PlaceContactInput } from '../content/place-contact'
 import { db } from '@k39/database'
 import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
-import { withEditorLiveWrite } from '../content/pending-guard'
+import { liveWriteRow, withEditorLiveWrite } from '../content/pending-guard'
 import { phoneCheckedAt, placePhoneSource, resolvePlaceContact } from '../content/place-contact'
 import { applyPendingPlaceContent, contentGate, savePendingDraftContent, savePlaceContent, syncSavedPage } from '../content/save'
 import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../facts/sync'
@@ -569,14 +569,11 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       faq: input.faq === undefined ? current.faq : cleanFaq(input.faq),
       lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
     }, null, gate, tx)
-    return { ...saved.row, writingWarnings: saved.writingWarnings }
+    return liveWriteRow(saved.row, saved.writingWarnings)
   }
   const saved = scope === 'editor'
     ? await withEditorLiveWrite('place', current.id, writeLive)
-    : await db.editor.transaction(async (tx) => {
-        const row = await writeLive(tx)
-        return { ...row, draftDropped: false }
-      })
+    : await db.editor.transaction(writeLive)
   if (scope !== 'editor') {
     await syncSavedPage('place', saved.id)
   }
