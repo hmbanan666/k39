@@ -2,7 +2,7 @@
 
 [K39](https://k39.online) is a Russian-language site for tourists in Kaliningrad Oblast. Every place (forts, castles, beaches, resort towns, food) gets its own page, and a visitor map, routes and quests tie them together. Local businesses will later attach pay-per-result offers to places and routes.
 
-This repository is the clean base for that product. The earlier social product (reviews, follows, pins, feed, advent calendar, badges) has been removed.
+This repository contains the current product and several partially developed workflows. See [product state](docs/product-state.md) for the implementation inventory and known gaps, and [roadmap](docs/roadmap.md) for the proposed stabilization order. The former social product was removed; moderated guest reviews, tips, photos, and corrections now exist as a separate workflow.
 
 The UI and place articles are in Russian. Documentation, ADRs and code comments are in English.
 
@@ -10,7 +10,7 @@ The UI and place articles are in Russian. Documentation, ADRs and code comments 
 
 - **Place pages** at `/{slug}`, with hubs for forts, castles, beaches, resorts, museums and food.
 - **Visitor map** at `/map`, built on MapLibre GL with a self-hosted PMTiles basemap and an OpenFreeMap fallback.
-- **Routes, collections and quests** with progress stored in the browser.
+- **Routes, collections and quests** with ordered places and editorial content. Quest completion and saved visit progress are not implemented.
 - **Venues** (cafes and restaurants) with schedules, price anchors and a verified-facts layer.
 - **Site search** powered by Postgres full-text search and `pg_trgm`.
 - **Admin area** at `/admin` for editors, plus a cabinet at `/kabinet` where venue owners can claim and edit their listing.
@@ -37,6 +37,7 @@ The UI and place articles are in Russian. Documentation, ADRs and code comments 
 apps/web-app        Nuxt application (pages, server API, admin, MCP)
 packages/database   Drizzle schema, repositories, SQL migrations, seed
 packages/types      Zod schemas shared by the API
+packages/map        Shared map scene and style core
 docker/web-app      Dockerfile for the production image
 docs                Design system, ADRs, facts, roadmap and other guides
 scripts             Repository and git helper scripts

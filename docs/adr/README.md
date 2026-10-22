@@ -1,5 +1,7 @@
 # ADR index
 
+An accepted record is an architectural decision, not a completion certificate. Some records contain future phases; others have drifted from the implementation. See [product state](../product-state.md) for dated evidence and known gaps, and [roadmap](../roadmap.md) for current work. Preserve historical decisions when correcting implementation claims.
+
 One record per number. The heading is `# ADR NNNN: Title`. CI rejects a duplicate number, a filename whose prefix does not match that heading, and any other first heading. A split record keeps the old filename as a redirect whose heading is `# Redirect: <filename>`.
 
 Fetch `origin/main` before choosing a number. The next number is one higher than the highest record below. Land the ADR on `main` before the implementation PR. An open pull request does not reserve the number.
