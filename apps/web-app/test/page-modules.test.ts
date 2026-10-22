@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { scoresFromCatalog } from '../server/utils/scoring/assemble'
 import { monthName } from '../shared/month-guide'
 import { categoryTags, COLLECTION_BODY_REJECTED, collectionArticle, collectionWritePlan, fitsPicker, HUB_RENDERED_FIELDS, modulesArticle, pageModulesSchema, parsePickerQuery, pickerFit, pickerQuery, rankByPicker, toPublicModules } from '../shared/page-modules'
 import { collectionDocument, tuneRobots } from '../shared/seo'
@@ -170,32 +171,50 @@ describe('collection article', () => {
     expect(writingHits('уютная атмосфера в архиве').map((hit) => hit.phrase)).toContain('уютная атмосфера')
   })
 
-  it('save paths report the fields that render', () => {
+  it('shows the module notice on the admin form', () => {
+    // The sentence is template copy. The page fetches the admin API at setup,
+    // so a mount never reaches the notice without a session. This file owns it.
+    const source = readFileSync(resolve(import.meta.dirname, '../app/pages/admin/collections.vue'), 'utf8')
+    expect(source).toContain('Страница собрана из модулей')
+  })
+})
+
+describe('module prose on the score', () => {
+  it('scores the module projection when the stored body is stale', () => {
+    const lead = 'Лид модульной страницы, который длиннее старого тела.'
+    const stale = 'Старый.'
+    const [score] = scoresFromCatalog({
+      places: [],
+      routes: [],
+      routeStops: [],
+      collections: [{
+        id: 'col-modules',
+        slug: 'modules',
+        title: 'Модули',
+        summary: 'Кратко о модулях.',
+        body: stale,
+        publicationStatus: 'published',
+        noindex: false,
+        seoTitle: null,
+        seoDescription: null,
+        updatedAt: '2026-10-01T00:00:00.000Z',
+        routeSlug: null,
+        modules: [{ type: 'text', variant: 'lead', text: lead }],
+        sourcesCount: 0,
+        firstPublishedAt: '2026-10-01T00:00:00.000Z',
+      }],
+      collectionStops: [],
+      quests: [],
+      questStops: [],
+      hubs: [],
+      venues: [],
+      related: [],
+      photos: [],
+      venuePhotos: [],
+      passports: [],
+    }, [], [], false)
+    expect(score?.signals.bodyChars).toBe(lead.length)
+    expect(score?.signals.bodyChars).not.toBe(stale.length)
     expect(HUB_RENDERED_FIELDS).toContain('body')
-    const root = resolve(import.meta.dirname, '..')
-    for (const file of [
-      'server/utils/mcp/collections.ts',
-      'server/api/admin/collections/[id].patch.ts',
-      'server/utils/public-pages.ts',
-      'server/utils/scoring/assemble.ts',
-    ]) {
-      const source = readFileSync(resolve(root, file), 'utf8')
-      expect(source, file).toMatch(/collectionWritePlan|collectionArticle/)
-    }
-    for (const file of [
-      'server/mcp/tools/collection-save.ts',
-      'server/utils/mcp/publish.ts',
-    ]) {
-      expect(readFileSync(resolve(root, file), 'utf8'), file).toContain('saveCollectionDraft')
-    }
-    for (const file of [
-      'server/mcp/tools/collection-get.ts',
-      'server/mcp/tools/hub-update.ts',
-      'server/mcp/tools/hubs-list.ts',
-      'server/api/admin/categories/[id].patch.ts',
-    ]) {
-      expect(readFileSync(resolve(root, file), 'utf8'), file).toContain('renderedFields')
-    }
-    expect(readFileSync(resolve(root, 'app/pages/admin/collections.vue'), 'utf8')).toContain('Страница собрана из модулей')
   })
 })

@@ -1,6 +1,6 @@
 // Lives in the database suite so it uses that Postgres.
-// Typechecked from apps/web-app/tsconfig.writer-test.json, where Nuxt
-// auto-imports exist. This package's tsc excludes the file.
+// The .writer.test.ts suffix is the typecheck rule: this package's tsc
+// excludes it, and scripts/typecheck-writer.mjs includes every match.
 import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
