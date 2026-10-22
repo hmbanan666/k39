@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. Amends [ADR 0028](0028-schedule.md) so one place, venue, or route can hold several schedules. Names the admission rows and the event rows that [ADR 0033](0033-typed-shared-facts.md) left as later fact kinds. [ADR 0042](0042-open-ended-hours.md) and [ADR 0044](0044-schedule-unknown-days.md) still apply to every schedule row.
+Accepted (2026-10-22). Amends [ADR 0028](0028-schedule.md) so one place, venue, or route can hold several schedules. Names the admission rows and the event rows that [ADR 0033](0033-typed-shared-facts.md) left as later fact kinds. [ADR 0042](0042-open-ended-hours.md) and [ADR 0044](0044-schedule-unknown-days.md) still apply to every schedule row.
 
 ## Context
 
