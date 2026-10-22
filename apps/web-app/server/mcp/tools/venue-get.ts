@@ -50,6 +50,7 @@ export default defineMcpTool({
       }])).get(venue.id)?.phone, venue.phone),
       website: venue.website,
       socials: venue.socials,
+      vkCommunityId: venue.vkCommunityId,
       bookingUrl: venue.bookingUrl,
       orderUrl: venue.orderUrl,
       deliveryUrl: venue.deliveryUrl,

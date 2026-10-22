@@ -43,8 +43,9 @@ function pickFact(rows: Array<MenuFact & { path: string }>, item: string, varian
 /**
  * Overlay cited price facts on menu columns. A missing fact keeps the column.
  * Callers that build «Где дешевле» keep `comparable` rows only.
- * The venue website and socials are loaded here. A vk.com menu counts only
- * when the website is empty and the community matches a stored VK link.
+ * The venue website, socials, and VK community id are loaded here. A vk.com
+ * menu counts only when the website is empty and the community matches a
+ * stored VK link or the declared id (ADR 0048).
  */
 export async function projectMenuPrices<T extends MenuColumn>(rows: T[], now = new Date()) {
   if (!rows.length) {
@@ -65,7 +66,7 @@ export async function projectMenuPrices<T extends MenuColumn>(rows: T[], now = n
   }
   return rows.flatMap((row) => {
     const link = links.get(row.venueId)
-    const venue = link ? { website: link.website, socials: link.socials } : undefined
+    const venue = link ? { website: link.website, socials: link.socials, vkCommunityId: link.vkCommunityId } : undefined
     const resolved = resolveMenuPrice(row, pickFact(byVenue.get(row.venueId) ?? [], row.item, row.variant), cutoff, venue)
     return resolved ? [resolved] : []
   })

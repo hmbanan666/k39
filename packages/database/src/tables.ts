@@ -332,6 +332,8 @@ export const venues = pgTable('venues', {
   phone: varchar('phone'),
   website: varchar('website'),
   socials: jsonb('socials').$type<VenueSocial[]>().notNull().default(sql`'[]'::jsonb`),
+  /** Numeric id of the VK community linked in socials by screen name (ADR 0048). */
+  vkCommunityId: bigint('vk_community_id', { mode: 'number' }),
   bookingUrl: varchar('booking_url'),
   orderUrl: varchar('order_url'),
   deliveryUrl: varchar('delivery_url'),
@@ -364,6 +366,7 @@ export const venues = pgTable('venues', {
   check('venues_avg_check_check', sql`${table.avgCheck} is null or ${table.avgCheck} >= 0`),
   check('venues_status_check', sql`${table.status} in ('draft', 'published', 'closed', 'archived')`),
   check('venues_reservation_check', sql`${table.reservation} is null or ${table.reservation} in ('yes', 'no', 'required', 'recommended')`),
+  check('venues_vk_community_id_check', sql`${table.vkCommunityId} is null or ${table.vkCommunityId} > 0`),
 ])
 
 export const venueMedia = pgTable('venue_media', {
