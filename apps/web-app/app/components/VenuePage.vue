@@ -125,8 +125,7 @@
           </template>
         </template>
         <template #lead>
-          <section class="facts">
-            <h2>Коротко</h2>
+          <FactsCard :checked="checkedLabel">
             <OpeningLive
               :schedule="venue.schedule"
               :has-hours="Boolean(venue.schedule) || venue.hours.length > 0"
@@ -162,69 +161,40 @@
                 :entity="`/zavedeniya/${venue.slug}`"
               />
             </div>
-            <div
+            <GuideFactRow
               v-for="row in facts"
               :key="row.key"
-              class="fact"
+              :row="row"
             >
-              <Icon
-                :name="tablerIcon(row.key)"
-                size="22"
-              />
-              <div>
-                <p class="label">
-                  {{ row.label }}
-                </p>
-                <PhoneLinks
-                  v-if="row.key === 'phone'"
-                  :phones="phones"
-                />
-                <p
-                  v-for="line in row.lines"
-                  v-else
-                  :key="line"
-                >
-                  {{ line }}
-                </p>
-              </div>
-            </div>
+              <p
+                v-for="line in row.lines"
+                :key="line"
+              >
+                {{ line }}
+              </p>
+            </GuideFactRow>
+            <GuideFactRow
+              v-if="phones.length"
+              :row="{ key: 'phone', label: 'Телефон', phones }"
+            />
             <TicketsFact :admission="venue.admission" />
-            <div
+            <GuideFactRow
               v-if="venue.socials.length"
-              class="fact"
+              :row="{ key: 'social', label: 'Соцсети' }"
             >
-              <Icon
-                :name="tablerIcon('social')"
-                size="22"
-              />
-              <div>
-                <p class="label">
-                  Соцсети
-                </p>
-                <p class="socials">
-                  <UiLink
-                    v-for="social in venue.socials"
-                    :key="social.url"
-                    :href="social.url"
-                    data-track="outbound"
-                    data-track-name="social"
-                  >
-                    {{ socialLabel(social.network) }}
-                  </UiLink>
-                </p>
-              </div>
-            </div>
-            <p
-              v-if="checkedLabel"
-              class="checked"
-            >
-              <Icon
-                :name="tablerIcon('checked')"
-                size="16"
-              />
-              Проверено {{ checkedLabel }}
-            </p>
-          </section>
+              <p class="socials">
+                <UiLink
+                  v-for="social in venue.socials"
+                  :key="social.url"
+                  :href="social.url"
+                  data-track="outbound"
+                  data-track-name="social"
+                >
+                  {{ socialLabel(social.network) }}
+                </UiLink>
+              </p>
+            </GuideFactRow>
+          </FactsCard>
           <aside class="owner">
             <Sticker
               slug="with-smartphone"
@@ -416,7 +386,6 @@ import type { StickerSlug } from '~~/shared/stickers'
 import type { PublicVenueModules } from '~~/shared/venue-modules'
 import { htmlContainsAddress } from '~~/shared/address'
 import { venueClaimPath } from '~~/shared/cabinet'
-import { tablerIcon } from '~~/shared/icons'
 import { illustrationFor } from '~~/shared/illustrations'
 import { lcpPreload } from '~~/shared/media'
 import { operator } from '~~/shared/operator'
@@ -524,7 +493,6 @@ const facts = [
   { key: 'price', label: 'Цены', lines: [[venue.price, venue.avgCheck].filter(Boolean).join(', ')].filter(Boolean) },
   { key: 'hours', label: 'Часы', lines: venue.hours },
   { key: 'address', label: 'Адрес', lines: venue.address ? [venue.address] : [] },
-  { key: 'phone', label: 'Телефон', lines: venue.phone ? [venue.phone] : [] },
 ].filter((row) => row.lines.length)
 
 function heroStickerFor(): StickerSlug {
@@ -635,52 +603,10 @@ function openPhoto(id: string) {
 }
 .venue-body { margin-top: 2.4rem; }
 .stale-note { color: var(--color-warn); }
-.facts {
-  position: relative;
-  overflow: hidden;
-  padding: 1.2rem 1.15rem 0.4rem;
-  border: 1px solid var(--color-line);
-  border-radius: 14px;
-  background: var(--color-surface);
-}
-.facts::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 6px;
-  background: repeating-linear-gradient(90deg, var(--color-brick) 0 18px, transparent 18px 26px, var(--color-sea) 26px 44px, transparent 44px 52px);
-}
-.facts h2 { margin: 0.35rem 0 0.3rem; font-size: 1.35rem; }
 .acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.9rem 0 0.4rem; }
 .acts > * { flex: 1 1 calc(50% - 0.5rem); justify-content: center; text-align: center; }
 .acts .act-main { flex-basis: 100%; }
-.fact {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 0.7rem;
-  padding: 0.8rem 0;
-  border-top: 1px dashed var(--color-line);
-}
-.fact svg { width: 22px; height: 22px; margin-top: 0.15rem; color: var(--color-brick); }
-.fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
-.fact .label {
-  margin-bottom: 0.2rem;
-  color: var(--muted);
-  font: 600 0.84rem/1.2 var(--font-body);
-}
 .socials { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; }
-.checked {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  margin: 0;
-  padding: 0.7rem 0 0.8rem;
-  border-top: 1px dashed var(--color-line);
-  color: var(--color-pine, var(--muted));
-  font: 600 0.8rem/1.2 var(--font-body);
-}
 .owner {
   display: flex;
   gap: 0.8rem;

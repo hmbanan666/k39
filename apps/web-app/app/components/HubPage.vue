@@ -10,87 +10,56 @@
       :sections-after="sections"
     >
       <template #lead>
-        <section class="facts">
-          <h2>В разделе</h2>
-          <div class="fact">
-            <Icon :name="tablerIcon(slug)" size="22" />
-            <div>
-              <p class="label">
-                Места
-              </p>
-              <p>
-                <a :href="`#${PAGE_SECTIONS.places.id}`">{{ page.places.length }} с часами и ценами</a>
-              </p>
-            </div>
-          </div>
-          <div
+        <FactsCard title="В разделе">
+          <GuideFactRow :row="{ key: slug, label: 'Места' }">
+            <p>
+              <a :href="`#${PAGE_SECTIONS.places.id}`">{{ page.places.length }} с часами и ценами</a>
+            </p>
+          </GuideFactRow>
+          <GuideFactRow
             v-if="hrefs.length"
-            class="fact"
+            :row="{ key: 'address', label: 'Карта' }"
           >
-            <Icon :name="tablerIcon('address')" size="22" />
-            <div>
-              <p class="label">
-                Карта
-              </p>
-              <p>
-                <a :href="`#${PAGE_SECTIONS.map.id}`">Все места раздела на карте</a>
-              </p>
-            </div>
-          </div>
-          <div
+            <p>
+              <a :href="`#${PAGE_SECTIONS.map.id}`">Все места раздела на карте</a>
+            </p>
+          </GuideFactRow>
+          <GuideFactRow
             v-if="page.routes.length"
-            class="fact"
+            :row="{ key: 'routes', label: 'Маршруты' }"
           >
-            <Icon :name="tablerIcon('routes')" size="22" />
-            <div>
-              <p class="label">
-                Маршруты
-              </p>
-              <p>
-                <a :href="`#${PAGE_SECTIONS.routes.id}`">{{ page.routes.length }} с этими местами</a>
-              </p>
-            </div>
-          </div>
-          <div
+            <p>
+              <a :href="`#${PAGE_SECTIONS.routes.id}`">{{ page.routes.length }} с этими местами</a>
+            </p>
+          </GuideFactRow>
+          <GuideFactRow
             v-if="slug === 'eda'"
-            class="fact"
+            :row="{ key: 'hours', label: 'Сейчас' }"
           >
-            <Icon :name="tablerIcon('hours')" size="22" />
-            <div>
-              <p class="label">
-                Сейчас
-              </p>
-              <p>
-                <a :href="EAT_NOW_PATH">Где поесть сейчас: что открыто по городам</a>
-              </p>
-              <p v-if="eatTowns.length">
-                Заведения:
-                <template
-                  v-for="(town, index) in eatTowns"
-                  :key="town.slug"
-                >
-                  <NuxtLink :to="`/zavedeniya/${town.slug}`">
-                    {{ town.title }}
-                  </NuxtLink>{{ index < eatTowns.length - 1 ? ', ' : '' }}
-                </template>
-              </p>
-            </div>
-          </div>
-          <div
+            <p>
+              <a :href="EAT_NOW_PATH">Где поесть сейчас: что открыто по городам</a>
+            </p>
+            <p v-if="eatTowns.length">
+              Заведения:
+              <template
+                v-for="(town, index) in eatTowns"
+                :key="town.slug"
+              >
+                <NuxtLink :to="`/zavedeniya/${town.slug}`">
+                  {{ town.title }}
+                </NuxtLink>{{ index < eatTowns.length - 1 ? ', ' : '' }}
+              </template>
+            </p>
+          </GuideFactRow>
+          <GuideFactRow
             v-if="slug === 'eda'"
-            class="fact"
+            :row="{ key: 'menu', label: 'Меню' }"
           >
-            <Icon :name="tablerIcon('menu')" size="22" />
-            <div>
-              <p class="label">
-                Меню
-              </p>
-              <p>
-                <a :href="CHEAPER_PATH">Где дешевле: цены из меню по городам</a>
-              </p>
-            </div>
-          </div>
-        </section>
+            <p>
+              <a :href="CHEAPER_PATH">Где дешевле: цены из меню по городам</a>
+            </p>
+          </GuideFactRow>
+        </FactsCard>
       </template>
     </ReaderLayout>
     <section
@@ -140,7 +109,6 @@
 import type { PublicMedia } from '~~/shared/media'
 import type { SeoDocument } from '~~/shared/seo'
 import { EAT_NOW_PATH } from '~~/shared/eat-now'
-import { tablerIcon } from '~~/shared/icons'
 import { PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 import { CHEAPER_PATH } from '~~/shared/price-compare'
 
@@ -168,40 +136,4 @@ usePublicHead(page.doc)
 <style scoped>
 .block { margin-top: var(--space-7); }
 .block h2 { margin: 0 0 var(--space-4); }
-.facts {
-  position: relative;
-  overflow: hidden;
-  padding: 1.2rem 1.15rem 0.4rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-.facts::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 6px;
-  background: repeating-linear-gradient(90deg, var(--color-brick) 0 18px, transparent 18px 26px, var(--color-sea) 26px 44px, transparent 44px 52px);
-}
-.facts h2 { margin: 0.35rem 0 0.3rem; font-size: 1.35rem; }
-.fact {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 0.7rem;
-  padding: 0.8rem 0;
-  border-top: 1px dashed var(--color-line);
-}
-.fact:first-of-type { border-top: 0; }
-.fact svg { margin-top: 0.15rem; color: var(--color-brick); }
-.fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
-.fact .label {
-  margin-bottom: 0.3rem;
-  color: var(--muted);
-  font: 600 0.72rem/1 var(--font-body);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.fact a { font-weight: 600; }
 </style>

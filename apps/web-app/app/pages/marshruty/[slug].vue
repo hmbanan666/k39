@@ -20,10 +20,9 @@
         v-if="page.admission.stored"
         #lead
       >
-        <section class="facts">
-          <h2>Коротко</h2>
+        <FactsCard>
           <TicketsFact :admission="page.admission" />
-        </section>
+        </FactsCard>
       </template>
       <!-- In the article column, so the sticky contents rail reaches it. -->
       <template #after>
@@ -77,14 +76,3 @@ const sectionsAfter = presentSections([
   [PAGE_SECTIONS.eatNearby, (page.eatNearby?.length ?? 0) > 0],
 ])
 </script>
-
-<style scoped>
-.facts {
-  padding: 1rem 1.15rem 0.2rem;
-  border: 1px solid var(--color-line);
-  border-radius: 14px;
-  background: var(--color-surface);
-}
-.facts h2 { margin: 0 0 0.2rem; font-size: 1.35rem; }
-.facts :deep(.tickets) { border-top: 0; }
-</style>

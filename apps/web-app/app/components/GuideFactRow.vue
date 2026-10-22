@@ -8,25 +8,27 @@
       <p class="label">
         {{ row.label }}
       </p>
-      <PhoneLinks
-        v-if="row.phones"
-        :phones="row.phones"
-      />
-      <p
-        v-else-if="row.href"
-        class="site"
-      >
-        <UiLink
-          :href="row.href"
-          data-track="outbound"
-          data-track-name="website"
+      <slot>
+        <PhoneLinks
+          v-if="row.phones"
+          :phones="row.phones"
+        />
+        <p
+          v-else-if="row.href"
+          class="site"
         >
+          <UiLink
+            :href="row.href"
+            data-track="outbound"
+            data-track-name="website"
+          >
+            {{ row.value }}
+          </UiLink>
+        </p>
+        <p v-else>
           {{ row.value }}
-        </UiLink>
-      </p>
-      <p v-else>
-        {{ row.value }}
-      </p>
+        </p>
+      </slot>
     </div>
   </div>
 </template>
@@ -35,7 +37,7 @@
 import type { GuideFact } from '~~/shared/place-guide'
 import { tablerIcon } from '~~/shared/icons'
 
-defineProps<{ row: Pick<GuideFact, 'label' | 'value' | 'phones' | 'href'> & { key: GuideFact['key'] | 'address' } }>()
+defineProps<{ row: Partial<Pick<GuideFact, 'value' | 'phones' | 'href'>> & { key: string, label: string } }>()
 </script>
 
 <style scoped>
@@ -55,7 +57,8 @@ defineProps<{ row: Pick<GuideFact, 'label' | 'value' | 'phones' | 'href'> & { ke
   stroke: var(--color-brick);
   stroke-width: 1.7;
 }
-.fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
+.fact p,
+.fact :slotted(p) { margin: 0; font-size: 0.97rem; line-height: 1.45; }
 .fact .label {
   margin-bottom: 0.3rem;
   color: var(--muted);
