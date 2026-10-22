@@ -5,6 +5,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
+    "./official-url": "./src/official-url.ts",
     "./social-hosts": "./src/social-hosts.ts",
     "./vk-community": "./src/vk-community.ts"
   },

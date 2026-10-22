@@ -1,5 +1,5 @@
 /**
- * Social-network hosts. `classifyMenuUrl`, `classifySourceUrl`, and
+ * Social-network hosts. `classifyOfficialUrl`, `classifySourceUrl`, and
  * `isSocialWebsite` all call `isSocialHost`, so a host cannot be a menu
  * in one place and a social network in another.
  * `www` is ignored. A subdomain counts (`m.vk.ru`).

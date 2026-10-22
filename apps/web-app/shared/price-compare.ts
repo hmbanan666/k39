@@ -1,5 +1,6 @@
+import type { OfficialUrlClass } from '@k39/types/official-url'
 import type { FoodStickerSlug } from './food-stickers'
-import { isSocialHost } from '@k39/types/social-hosts'
+import { classifyOfficialUrl } from '@k39/types/official-url'
 import { vkMenuMatchesSocial } from '@k39/types/vk-community'
 import { inTown } from './eat-now'
 import { isFoodStickerSlug } from './food-stickers'
@@ -329,105 +330,15 @@ export function isPackagedJuice(slug: string, variant: string | null | undefined
 }
 
 /**
- * What a price URL is.
- * `menu` is a page on the venue's own site, including a PDF served there.
- * `document` is that menu on an official file host.
- * Maps, delivery aggregators, social networks, and other Google or Yandex
- * services are not a menu. VK is `social` here; `resolveMenuPrice` applies
- * the separate ownership rule.
+ * What a price URL is: `classifyOfficialUrl`, with an own-site page named `menu`.
+ * `document` is that menu on an official file host. VK is `social` here;
+ * `resolveMenuPrice` applies the separate ownership rule.
  */
-export type MenuUrlClass = 'menu' | 'document' | 'map' | 'aggregator' | 'social' | 'service' | 'invalid'
+export type MenuUrlClass = Exclude<OfficialUrlClass, 'official'> | 'menu'
 
-const GOOGLE_SITE = /(?:^|\.)google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)$/
-const YANDEX_SITE = /(?:^|\.)yandex\.(?:ru|com|by|kz|uz)$/
-
-function parsedHttpUrl(url: string | null | undefined) {
-  const text = url?.trim() ?? ''
-  if (!text) {
-    return null
-  }
-  try {
-    const parsed = new URL(text)
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return null
-    }
-    const host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
-    if (!host) {
-      return null
-    }
-    return { host, pathname: parsed.pathname }
-  } catch {
-    return null
-  }
-}
-
-function isYandexHost(host: string) {
-  return YANDEX_SITE.test(host) || host === 'ya.ru' || host.endsWith('.ya.ru')
-}
-
-/** Drive, Docs, and Yandex Disk. Checked before the Google and Yandex service ban. */
-function isDocumentHost(host: string) {
-  if (host === 'drive.google.com' || host.endsWith('.drive.google.com')) {
-    return true
-  }
-  if (host === 'docs.google.com' || host.endsWith('.docs.google.com')) {
-    return true
-  }
-  if (host === 'yadi.sk' || host.endsWith('.yadi.sk')) {
-    return true
-  }
-  return /(?:^|\.)disk\.yandex\.[a-z0-9-]+(?:\.[a-z0-9-]+)?$/.test(host)
-}
-
-function isMapUrl(host: string, pathname: string) {
-  if (host.startsWith('maps.') || host === 'goo.gl' || host.endsWith('.goo.gl')) {
-    return true
-  }
-  if (/(?:^|\.)2gis\.(?:ru|com|kz|uz)$/.test(host)) {
-    return true
-  }
-  if (/(?:^|\.)openstreetmap\.org$/.test(host) || host === 'osm.org' || host.endsWith('.osm.org')) {
-    return true
-  }
-  if (GOOGLE_SITE.test(host) && (pathname === '/maps' || pathname.startsWith('/maps/'))) {
-    return true
-  }
-  return isYandexHost(host) && pathname.includes('/maps')
-}
-
-/** Yandex Eda, Delivery Club, and tomesto. */
-function isDeliveryAggregator(host: string, pathname: string) {
-  if (/(?:^|\.)eda\.yandex\.(?:ru|com|by|kz|uz)$/.test(host)) {
-    return true
-  }
-  if (/(?:^|\.)delivery-club\.ru$/.test(host) || /(?:^|\.)tomesto\.ru$/.test(host)) {
-    return true
-  }
-  return isYandexHost(host) && (pathname === '/eda' || pathname.startsWith('/eda/'))
-}
-
-/** Classifies a price URL. Document hosts are accepted. Map and aggregator hosts and paths are rejected. */
 export function classifyMenuUrl(url: string | null | undefined): MenuUrlClass {
-  const parsed = parsedHttpUrl(url)
-  if (!parsed) {
-    return 'invalid'
-  }
-  if (isDocumentHost(parsed.host)) {
-    return 'document'
-  }
-  if (isMapUrl(parsed.host, parsed.pathname)) {
-    return 'map'
-  }
-  if (isDeliveryAggregator(parsed.host, parsed.pathname)) {
-    return 'aggregator'
-  }
-  if (isSocialHost(parsed.host)) {
-    return 'social'
-  }
-  if (isYandexHost(parsed.host) || GOOGLE_SITE.test(parsed.host)) {
-    return 'service'
-  }
-  return 'menu'
+  const kind = classifyOfficialUrl(url)
+  return kind === 'official' ? 'menu' : kind
 }
 
 /** A page on the venue's own site, or a document on Drive, Docs, or Yandex Disk. */

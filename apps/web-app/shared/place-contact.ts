@@ -1,4 +1,4 @@
-import { classifySourceUrl, PHONE_TEXT_MAX } from './facts'
+import { classifyOfficialUrl, ownWebsiteMessage, ownWebsiteProblem, PHONE_TEXT_MAX } from './facts'
 import { phoneE164List } from './phone'
 import { isPlaceSchemaType, PLACE_SCHEMA_TYPES } from './seo'
 
@@ -13,15 +13,6 @@ export type Checked<T> = { ok: true, value: T } | { ok: false, message: string }
 function cleaned(value: string | null | undefined) {
   const text = value?.replace(/\s+/g, ' ').trim()
   return text || null
-}
-
-function httpUrl(value: string) {
-  try {
-    const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
 }
 
 /** A place phone needs at least one complete Russian number. «уточняйте» is an empty field, not a phone. */
@@ -39,38 +30,44 @@ export function checkPlacePhone(value: string | null | undefined): Checked<strin
   return { ok: true, value: text }
 }
 
-/** The place's own site. A social page or a map card is not a website. */
+/** The place's own site: the same rule as the venue «Сайт» (`ownWebsiteProblem`). */
 export function checkPlaceWebsite(value: string | null | undefined): Checked<string | null> {
   const text = cleaned(value)
   if (!text) {
     return { ok: true, value: null }
   }
-  if (text.length > PLACE_WEBSITE_MAX || !httpUrl(text)) {
-    return { ok: false, message: 'Сайт должен быть ссылкой http:// или https://' }
+  if (text.length > PLACE_WEBSITE_MAX) {
+    return { ok: false, message: `Сайт длиннее ${PLACE_WEBSITE_MAX} символов` }
   }
-  if (classifySourceUrl(text) !== 'official') {
-    return { ok: false, message: 'В поле «Сайт» укажите только официальный сайт места. Соцсеть или карта сюда не подходят.' }
+  const problem = ownWebsiteProblem(text)
+  if (problem) {
+    return { ok: false, message: ownWebsiteMessage(problem) }
   }
   return { ok: true, value: text }
 }
 
 /**
- * Where the phone was read. A place phone comes from the official site or the
- * place's own social page only. Maps are venue-only (`mapSourceAllowed`).
+ * Where the phone was read: a page on the place's own site. A place has no
+ * `socials` to prove a social page is its own, so a social page counts only
+ * while `website` is empty, the same rule as a venue VK menu. Maps, listings,
+ * and Google or Yandex services never count.
  */
-export function checkPlacePhoneSource(value: string | null | undefined): Checked<string> {
+export function checkPlacePhoneSource(value: string | null | undefined, website: string | null): Checked<string> {
   const text = cleaned(value)
   if (!text) {
     return { ok: false, message: 'Укажите официальный источник телефона: phoneSourceUrl или сайт места' }
   }
-  if (!httpUrl(text)) {
+  const kind = classifyOfficialUrl(text)
+  if (kind === 'official' || (kind === 'social' && !website)) {
+    return { ok: true, value: text }
+  }
+  if (kind === 'invalid') {
     return { ok: false, message: 'Источник телефона должен быть ссылкой http:// или https://' }
   }
-  const kind = classifySourceUrl(text)
-  if (kind !== 'official' && kind !== 'official_social') {
-    return { ok: false, message: 'Телефон места берите только с официального сайта или официальной страницы места, не с карты' }
+  if (kind === 'social') {
+    return { ok: false, message: 'У места есть сайт: телефон берите со страницы этого сайта, не из соцсети' }
   }
-  return { ok: true, value: text }
+  return { ok: false, message: 'Телефон места берите только с официального сайта или официальной страницы места, не с карты, агрегатора или сервиса Яндекса и Google' }
 }
 
 export function checkPlaceSchemaType(value: string | null | undefined): Checked<string | null> {

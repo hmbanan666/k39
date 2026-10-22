@@ -1,5 +1,6 @@
 import type { SourceLink } from '../types/entities'
 import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
+import { ownWebsiteMessage, ownWebsiteProblem } from '@k39/types/official-url'
 import { parseVkCommunityId, vkCommunityIdProblem } from '@k39/types/vk-community'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
@@ -17,7 +18,6 @@ import {
   haversineKm,
   isBlockedVenueSlug,
   isFoodKind,
-  isSocialWebsite,
   NEARBY_MAX_DAYS,
   NEARBY_RADIUS_KM,
   normalizeHours,
@@ -104,10 +104,12 @@ function cleanSocials(rows: VenueSocial[] | undefined) {
     .slice(0, 8)
 }
 
+/** The same «Сайт» rule as a place (`ownWebsiteProblem`). */
 function cleanWebsite(value: string | null | undefined) {
   const text = cleanText(value, 300)
-  if (text && isSocialWebsite(text)) {
-    throw new VenueInputError('В поле «Сайт» укажите только собственный сайт заведения. Ссылку на соцсеть добавьте в «Соцсети».')
+  const problem = text ? ownWebsiteProblem(text) : null
+  if (problem) {
+    throw new VenueInputError(ownWebsiteMessage(problem))
   }
   return text
 }

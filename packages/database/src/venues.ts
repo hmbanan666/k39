@@ -1,4 +1,5 @@
 import type { SourceLink } from './types/entities'
+import { ownWebsiteProblem } from '@k39/types/official-url'
 import { isSocialHost } from '@k39/types/social-hosts'
 import { PHONE_TEXT_MAX } from './phone'
 
@@ -844,10 +845,18 @@ function socialNetworkOfWebsite(value: string) {
   return 'social'
 }
 
-/** A social URL in the OSM website tag is a social, not the venue site. */
+/**
+ * A social URL in the OSM website tag is a social, not the venue site. A tag
+ * without a scheme gains `https://`. A map, a listing, or another value that
+ * fails the «Сайт» rule is dropped, so the draft write does not reject it.
+ */
 function ownSiteAndSocials(website: string | null, socials: VenueSocial[]) {
-  if (!website || !isSocialWebsite(website)) {
+  if (!website) {
     return { website, socials }
+  }
+  if (!isSocialWebsite(website)) {
+    const url = /^https?:\/\//i.test(website) ? website : `https://${website}`
+    return { website: ownWebsiteProblem(url) ? null : url.slice(0, 300), socials }
   }
   const url = website
   if (socials.some((row) => row.url === url)) {

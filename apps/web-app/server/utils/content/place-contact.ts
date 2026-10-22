@@ -53,7 +53,7 @@ export async function resolvePlaceContact(
       ? fallback.phoneSourceUrl
       : fallback.placeId ? await placePhoneSource(fallback.placeId) : null
   }
-  const phoneSourceUrl = must(checkPlacePhoneSource(source?.trim() || website))
+  const phoneSourceUrl = must(checkPlacePhoneSource(source?.trim() || website, website))
   return { phone, website, schemaType, phoneSourceUrl }
 }
 
