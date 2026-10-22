@@ -69,15 +69,13 @@ catalogs:
     '@types/node': ^25.0.0
     '@types/pg': 8.16.0
 
-ignoredBuiltDependencies:
-  - '@parcel/watcher'
-  - cpu-features
-  - esbuild
-  - msw
-  - protobufjs
-  - ssh2
-  - vue-demi
-
-onlyBuiltDependencies:
-  - better-sqlite3
-  - sharp
+allowBuilds:
+  '@parcel/watcher': false
+  better-sqlite3: true
+  cpu-features: false
+  esbuild: false
+  msw: false
+  protobufjs: false
+  sharp: true
+  ssh2: false
+  vue-demi: false

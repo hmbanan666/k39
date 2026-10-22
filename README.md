@@ -46,10 +46,10 @@ scripts             Repository and git helper scripts
 
 ## Getting started
 
-Requirements: Node.js (the exact version is in `.nvmrc`), pnpm via Corepack, and a PostgreSQL database.
+Requirements: Node.js (the exact version is in `.nvmrc`), the exact pnpm version from `package.json` via Corepack, and a PostgreSQL database. Avoid using an unrelated global pnpm version.
 
 ```
-pnpm install
+corepack pnpm install --frozen-lockfile
 cp apps/web-app/.env.example apps/web-app/.env
 pnpm --filter @k39/web-app dev
 ```

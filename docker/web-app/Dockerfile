@@ -9,11 +9,8 @@ COPY apps/web-app ./apps/web-app
 # prepare runs chain-hooks. The image context has no .git, so the script exits.
 COPY scripts/git/chain-hooks.mjs ./scripts/git/chain-hooks.mjs
 
-# `npm install -g pnpm` installs current pnpm (12.x). That binary then
-# re-execs the packageManager pin (10.25.0). The old build line was
-# `pnpm build --filter @k39/web-app`, which runs the root script
-# `pnpm -r run build` and appends `--filter` onto `nuxt build`.
-# Corepack activates 10.25.0 directly. The filter belongs before the script.
+# Corepack follows the exact packageManager pin from package.json.
+# The filter belongs before the script, so it is not passed to nuxt build.
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable pnpm
 RUN pnpm install --frozen-lockfile

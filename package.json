@@ -2,7 +2,7 @@
   "name": "@k39space/k39-monorepo",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@10.25.0",
+  "packageManager": "pnpm@12.15.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,7 +10,7 @@
   },
   "engines": {
     "node": ">=24.15.0",
-    "pnpm": ">=10.25.0"
+    "pnpm": ">=12.15.0 <13"
   },
   "scripts": {
     "build": "pnpm -r run build",
