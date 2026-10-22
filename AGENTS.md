@@ -118,7 +118,7 @@ The task prompt that launches an agent is not a file in this repo. The fetch abo
 ## Run
 
 ```bash
-pnpm install
+corepack pnpm install --frozen-lockfile
 cp apps/web-app/.env.example apps/web-app/.env
 pnpm --filter @k39/web-app dev
 pnpm media:rebuild
@@ -155,7 +155,7 @@ Target: Dokploy.
 
 - Dockerfile: `docker/web-app/Dockerfile`. `nuxt build` copies `apps/web-app/public` into `.output/public`, and that directory is what the image serves. Brand URLs cache for a week. `site.webmanifest` caches for a day.
 - Build context: repository root
-- The image enables pnpm with Corepack at the version in `packageManager` (`pnpm@12.15.0`). Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`. The builder copies `scripts/git/chain-hooks.mjs` before `pnpm install`, because `prepare` runs it and the image context has no `.git`.
+- The image enables pnpm with Corepack at the version in `packageManager`. Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`. The builder copies `scripts/git/chain-hooks.mjs` before `pnpm install`, because `prepare` runs it and the image context has no `.git`.
 - The container runs as the image's `node` user (uid 1000). `node:24.21.0-alpine` already owns that uid, so the Dockerfile does not create another user. Mount a volume at `MEDIA_DIR` (`/app/media`) or uploads disappear on redeploy.
 - CI job `docker` in `.github/workflows/ci.yml` runs that image build on pull requests.
 - Port: 3000
