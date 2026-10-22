@@ -413,17 +413,17 @@ async function cancelEvent(id: string) {
 </script>
 
 <style scoped>
-.practical { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e6d5b0; }
+.practical { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--color-editor-line); }
 .practical h2, .practical h3 { margin: 0.4rem 0 0; }
 .live-note { margin: 0; padding: 0.6rem 0.8rem; border-left: 3px solid var(--color-brick); background: var(--color-surface); }
 .muted { color: var(--muted); }
-.row { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0.7rem 0.8rem; border: 1px solid #e6d5b0; border-radius: 8px; }
+.row { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0.7rem 0.8rem; border: 1px solid var(--color-editor-line); border-radius: 8px; }
 .row legend { padding: 0 0.3rem; font-weight: 600; }
-.stale { margin-left: 0.5rem; color: #9b3d2a; font-weight: 400; font-size: 0.88rem; }
+.stale { margin-left: 0.5rem; color: var(--color-editor-warning); font-weight: 400; font-size: 0.88rem; }
 .grid { display: grid; gap: 0.5rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .events { margin: 0; padding: 0; list-style: none; }
-.events li { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; align-items: center; padding: 0.4rem 0; border-top: 1px solid #e6d5b0; }
+.events li { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; align-items: center; padding: 0.4rem 0; border-top: 1px solid var(--color-editor-line); }
 .events li.off { color: var(--muted); }
 @media (min-width: 640px) {
   .grid { grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }

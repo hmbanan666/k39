@@ -1,8 +1,8 @@
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { saveQuestContent } from '../content/save'
-import { applyStagedNotices, onlyNoticesStaged, stagedNotices, toNoticeValue } from '../notices/write'
 import { practicalTarget } from '../practical/target'
+import { applyPendingVenue } from '../venues/pending'
 import { auditMcp } from './audit'
 import { saveCollectionDraft } from './collections'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
@@ -80,7 +80,7 @@ export async function setPublication(input: { entity: PublicationEntity } & Publ
 /**
  * Editor apply of a venue's pending draft (ADR 0047, ADR 0049). Only
  * `published` with no other fields. The venue status is not changed: a
- * closed venue stays closed. Today the payload can hold only `notices`.
+ * closed venue stays closed.
  */
 async function applyVenueDraft(input: PublicationInput) {
   const target = await practicalTarget('venue', input.id, input.slug)
@@ -88,20 +88,7 @@ async function applyVenueDraft(input: PublicationInput) {
     throw createError({ statusCode: 400, statusMessage: 'Для заведения применяется только published' })
   }
   resolvePublication(input.publicationStatus, target.status)
-  const pending = await db.editor.contentDraft('venue', target.id)
-  if (!pending || !stagedNotices(pending.payload)) {
-    throw createError({ statusCode: 409, statusMessage: 'Черновика нет' })
-  }
-  if (!onlyNoticesStaged(pending.payload)) {
-    throw createError({ statusCode: 409, statusMessage: 'В черновике заведения есть поля, которые этот сервер ещё не применяет. Живая карточка не изменилась.' })
-  }
-  const saved = await applyStagedNotices(target, pending)
+  const result = await applyPendingVenue(target.id)
   await auditMcp('content_set_publication', 'venue', target.id)
-  return {
-    id: target.id,
-    slug: target.slug,
-    status: target.status,
-    pendingReview: false as const,
-    notices: (saved ?? []).map(toNoticeValue),
-  }
+  return result
 }

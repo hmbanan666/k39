@@ -1,3 +1,4 @@
+import type { ContentTx } from './content'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { places, scheduleIntervals, schedules, venues } from '../tables'
@@ -48,8 +49,8 @@ export interface AvailabilityEntity {
 
 // Schedules and their materialised intervals (ADR 0028).
 export class Schedules {
-  static async get(entityType: string, entityId: string) {
-    const [row] = await useDatabase().select().from(schedules).where(and(eq(schedules.entityType, entityType), eq(schedules.entityId, entityId))).limit(1)
+  static async get(entityType: string, entityId: string, tx?: ContentTx) {
+    const [row] = await (tx ?? useDatabase()).select().from(schedules).where(and(eq(schedules.entityType, entityType), eq(schedules.entityId, entityId))).limit(1)
     return row ?? null
   }
 
@@ -66,19 +67,20 @@ export class Schedules {
   }
 
   /** Writes the rules and replaces the entity's intervals in one transaction. */
-  static async save(row: ScheduleRow, intervals: IntervalRow[]) {
-    return useDatabase().transaction(async (tx) => {
+  static async save(row: ScheduleRow, intervals: IntervalRow[], outer?: ContentTx) {
+    const write = async (tx: ContentTx) => {
       const [saved] = await tx.insert(schedules).values({ ...row, updatedAt: new Date().toISOString() }).onConflictDoUpdate({ target: [schedules.entityType, schedules.entityId], set: { rules: row.rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt, updatedAt: new Date().toISOString() } }).returning()
       await tx.delete(scheduleIntervals).where(and(eq(scheduleIntervals.entityType, row.entityType), eq(scheduleIntervals.entityId, row.entityId)))
       if (intervals.length) {
         await tx.insert(scheduleIntervals).values(intervals.map((item) => ({ entityType: row.entityType, entityId: row.entityId, ...item })))
       }
       return saved
-    })
+    }
+    return outer ? write(outer) : useDatabase().transaction(write)
   }
 
-  static async remove(entityType: string, entityId: string) {
-    const db = useDatabase()
+  static async remove(entityType: string, entityId: string, tx?: ContentTx) {
+    const db = tx ?? useDatabase()
     await db.delete(scheduleIntervals).where(and(eq(scheduleIntervals.entityType, entityType), eq(scheduleIntervals.entityId, entityId)))
     await db.delete(schedules).where(and(eq(schedules.entityType, entityType), eq(schedules.entityId, entityId)))
   }

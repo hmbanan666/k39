@@ -116,12 +116,13 @@ describe('slots', () => {
   })
 })
 
-describe('details row never repeats the status', () => {
-  it('keeps only the extra note', () => {
-    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'closed', note: 'Открытие планируется в 2028 году', closure: { reason: 'restoration', viewableOutside: true } }))).toEqual(['Открытие планируется в 2028 году'])
-    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'closed' }))).toEqual([])
-    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'appointment', note: 'запись по телефону' }))).toEqual([])
-    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'always' }))).toEqual([])
+describe('server-rendered schedule details', () => {
+  it('keeps the mode and note before live status hydrates', () => {
+    const closed = scheduleRulesSchema.parse({ mode: 'closed', note: 'Открытие планируется в 2028 году', closure: { reason: 'restoration', viewableOutside: true } })
+    expect(scheduleDetails(closed)).toEqual(describeSchedule(closed))
+    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'closed' }))).toEqual(['Закрыто'])
+    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'appointment', note: 'запись по телефону' }))).toEqual(['По предварительной договорённости', 'запись по телефону'])
+    expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'always' }))).toEqual(['Круглосуточно'])
     expect(scheduleDetails(scheduleRulesSchema.parse({ mode: 'hours', seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '18:00' }] }] })).join(' ')).toContain('10:00')
   })
 })

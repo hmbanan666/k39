@@ -1,14 +1,16 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Buffer } from 'node:buffer'
-import { createServer, request as httpRequest } from 'node:http'
+import { createServer, request as httpRequest, ServerResponse as NodeServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
-import { createEvent } from 'h3'
-import { describe, expect, it } from 'vitest'
+import { ReadableStream } from 'node:stream/web'
+import { createEvent, readBody, readRawBody } from 'h3'
+import { describe, expect, it, vi } from 'vitest'
 import eventsHandler from '../server/api/events/index.post'
 import guestPhoto from '../server/api/guests/photo.post'
 import searchEvents from '../server/api/search/events.post'
 import { UPLOAD_BODY_MAX, UPLOAD_TOO_LARGE_MESSAGE } from '../server/media/process'
-import { readCappedBody, readCappedJson, readUploadForm } from '../server/utils/request-body'
+import mcpAuth from '../server/middleware/10.mcp-auth'
+import { JSON_BODY_MAX, JSON_TOO_LARGE_MESSAGE, readCappedBody, readCappedJson, readUploadForm } from '../server/utils/request-body'
 
 const CAP = 8
 
@@ -41,6 +43,68 @@ async function settled<T>(pending: Promise<T>) {
 }
 
 describe('capped request body', () => {
+  it('caps a cached web stream and cancels it before the rest is buffered', async () => {
+    let cancelled = false
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(Buffer.alloc(CAP + 1))
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    const { event } = openRequest()
+    event.web = { request: { body } } as unknown as typeof event.web
+    await expect(readCappedBody(event, CAP)).rejects.toMatchObject({ statusCode: 413 })
+    expect(cancelled).toBe(true)
+  })
+
+  it('uses the same cached-source precedence as h3 and leaves parsed JSON available', async () => {
+    const { event, req } = openRequest({ 'content-type': 'application/json' })
+    event._requestBody = '{"ok":1}'
+    Object.assign(req, { body: Buffer.alloc(CAP + 1), [Symbol.for('h3RawBody')]: Buffer.alloc(CAP + 1) })
+    await expect(readCappedBody(event, CAP)).resolves.toEqual(Buffer.from('{"ok":1}'))
+    await expect(readBody(event)).resolves.toEqual({ ok: 1 })
+  })
+
+  it('caps authenticated MCP POST requests with the shared JSON message', async () => {
+    vi.stubEnv('CONTENT_API_TOKEN', 'test-editor')
+    try {
+      const { req } = openRequest({ 'authorization': 'Bearer test-editor', 'content-length': String(JSON_BODY_MAX + 1) })
+      req.url = '/mcp'
+      const nodeReq = req as unknown as IncomingMessage
+      const event = createEvent(nodeReq, new NodeServerResponse(nodeReq))
+      await expect(mcpAuth(event)).rejects.toMatchObject({ statusCode: 413, statusMessage: JSON_TOO_LARGE_MESSAGE })
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it.each(['event', 'web', 'body', 'symbol', 'rawBody'] as const)('caps the %s body used by h3 without waiting on the node stream', async (source) => {
+    const { req, event, dataListeners } = openRequest({ 'transfer-encoding': 'chunked' })
+    const bytes = Buffer.alloc(CAP + 1)
+    if (source === 'event') {
+      event._requestBody = bytes as unknown as NonNullable<typeof event._requestBody>
+    } else if (source === 'web') {
+      event.web = { request: { body: bytes } } as unknown as typeof event.web
+    } else if (source === 'symbol') {
+      Object.assign(req, { [Symbol.for('h3RawBody')]: bytes })
+    } else {
+      Object.assign(req, { [source]: bytes })
+    }
+    await expect(settled(readCappedBody(event, CAP))).resolves.toBe(413)
+    expect(dataListeners()).toBe(0)
+  })
+
+  it('leaves the capped stream readable by h3 without reading it twice', async () => {
+    const { req, event } = openRequest({ 'transfer-encoding': 'chunked' })
+    const pending = readCappedBody(event, CAP)
+    req.push(Buffer.from('payload'))
+    req.push(null)
+    await pending
+    await expect(readRawBody(event)).resolves.toBe('payload')
+  })
+
   it('refuses a declared length over the cap before reading', async () => {
     const { event, dataListeners } = openRequest({ 'content-length': String(CAP + 1) })
     await expect(readCappedBody(event, CAP)).rejects.toMatchObject({ statusCode: 413, statusMessage: 'Payload Too Large' })
@@ -124,10 +188,13 @@ describe('capped request body', () => {
   it('accepts a declared upload length exactly at the cap', async () => {
     const { req, event, dataListeners } = openRequest({ 'content-length': String(UPLOAD_BODY_MAX) })
     const pending = readCappedBody(event, UPLOAD_BODY_MAX)
-    await Promise.resolve()
-    expect(dataListeners()).toBe(1)
+    const bytes = Buffer.alloc(UPLOAD_BODY_MAX, 0x61)
+    req.push(bytes)
     req.push(null)
-    await expect(pending).resolves.toEqual(Buffer.alloc(0))
+    const result = await pending
+    expect(dataListeners()).toBe(1)
+    expect(result?.length).toBe(UPLOAD_BODY_MAX)
+    expect(result?.equals(bytes)).toBe(true)
   })
 
   it('parses a multipart body that fits the cap', async () => {

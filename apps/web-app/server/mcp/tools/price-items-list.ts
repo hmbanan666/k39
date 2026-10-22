@@ -1,7 +1,8 @@
 import { db } from '@k39/database'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'price_items_list',
   description: 'List the shared catalog of benchmark menu items for «Ориентиры цен» (cappuccino, margherita, philadelphia...). Venue prices point at these slugs, so venues compare across the region.',
   annotations: { readOnlyHint: true },

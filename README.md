@@ -65,6 +65,8 @@ pnpm db:seed:fixtures   # upsert test fixtures after migration (pages are noinde
 pnpm media:rebuild      # regenerate photo variants from masters on disk
 ```
 
+For screenshot or agent runs, `NUXT_DEVTOOLS=0 pnpm --filter @k39/web-app dev --no-tui` hides the devtools badge and streams logs. Without `MEDIA_DIR`, development stores uploads under `.data/media` relative to the app's working directory; production keeps the image default `/app/media`. The committed Cloud Agent boot check is `bash scripts/env/check-boot.sh`. A personal Cursor dashboard environment can override the committed image and must be checked in that dashboard when the boot check reports missing prerequisites.
+
 For local `nuxt dev` without OAuth, start the server with `DEV_EDITOR_SESSION=1` and run `pnpm dev:editor-session` to get a loopback sign-in URL. A production build ignores this.
 
 ## Checks

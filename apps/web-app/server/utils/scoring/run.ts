@@ -6,6 +6,7 @@ import { buildWeeklyReport, filterScores, lengthNorm, pageKindLabel, topIssue } 
 import { savePassportContent } from '../content/save'
 import { syncVerificationQueue } from '../facts/queue'
 import { auditMcp } from '../mcp/audit'
+import { pendingVenueWrite } from '../venues/pending'
 import { catalogPageRefs, scoresFromCatalog, toStored } from './assemble'
 import { catalogWithPendingPlace, findCatalogPage, scorePreview } from './preview'
 
@@ -144,6 +145,28 @@ export async function previewContentScore(path: string) {
           categoryTitle,
           regionTitle,
         })
+      }
+    }
+  }
+  if (page.pageType === 'venue') {
+    const draft = await db.editor.contentDraft('venue', page.entityId)
+    const current = await db.venues.byId(page.entityId)
+    if (draft && current) {
+      const fields = await pendingVenueWrite((draft.payload.fields ?? {}) as Parameters<typeof pendingVenueWrite>[0])
+      const next = await db.venues.prepareUpdate(current, fields, false)
+      const region = (await db.editor.listRegions()).find((row) => row.id === next.regionId)
+      source = 'pending'
+      working = {
+        ...catalog,
+        venues: catalog.venues.map((row) => {
+          if (row.id !== current.id) {
+            return row
+          }
+          const schedule = Object.hasOwn(draft.payload, 'schedule')
+            ? draft.payload.schedule as typeof row.schedule
+            : row.schedule
+          return { ...row, name: next.name, kind: next.kind, description: next.description, latitude: next.latitude, longitude: next.longitude, factsCheckedAt: next.lastVerifiedAt, regionSlug: region?.slug ?? null, regionTitle: region?.title ?? null, schedule }
+        }),
       }
     }
   }

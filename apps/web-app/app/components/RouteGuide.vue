@@ -173,7 +173,7 @@ const overlay = computed(() => routeOverlay({
   isolation: isolate;
   border: 1px solid var(--color-line);
   border-radius: 18px;
-  background: #efe6d4;
+  background: var(--color-paper-2);
   box-shadow: var(--shadow-card);
 }
 .fallback {

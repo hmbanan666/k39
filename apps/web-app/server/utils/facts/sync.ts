@@ -2,12 +2,12 @@ import type { ContentTx, VenuePriceInput } from '@k39/database'
 import type { FactActor, SourceKind } from '../../../shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '../../../shared/schedule'
 import { db } from '@k39/database'
-import { classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
+import { classifyMenuSourceUrl, classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { rejectBannedSites } from '../mcp/writing-guard'
 import { commitFact, retireFactSlot } from './commit'
 
-export async function hoursConflict(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor) {
+export async function hoursConflict(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor, tx?: ContentTx) {
   if (actor !== 'mcp') {
     return null
   }
@@ -15,11 +15,11 @@ export async function hoursConflict(entityType: 'place' | 'venue', entityId: str
   if (!rules) {
     return null
   }
-  const existing = await db.facts.liveSlot(entityType, entityId, 'hours')
+  const existing = await db.facts.liveSlot(entityType, entityId, 'hours', tx)
   if (!existing) {
     return null
   }
-  const latest = await db.facts.latestActor(existing.id)
+  const latest = await db.facts.latestActor(existing.id, tx)
   const next = hoursClaim(rules, record)
   if (!next.store) {
     return null
@@ -46,11 +46,11 @@ export async function hoursConflict(entityType: 'place' | 'venue', entityId: str
     refs: [{ consumerType: entityType, consumerId: entityId, path: 'short.hours' }],
     pageType: entityType,
     pageStatus: 'published',
-  })
+  }, tx)
   return queued.conflict ? queued : null
 }
 
-export async function writeHoursFact(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor, pageStatus?: string | null) {
+export async function writeHoursFact(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor, pageStatus?: string | null, tx?: ContentTx) {
   const rules = readRules(record.rules)
   if (!rules) {
     return
@@ -83,7 +83,7 @@ export async function writeHoursFact(entityType: 'place' | 'venue', entityId: st
     pageType: entityType,
     pageStatus: pageStatus ?? 'published',
     markUnseeded: !next.checkedAt,
-  })
+  }, tx)
 }
 
 function hoursClaim(rules: ScheduleRules, record: ScheduleRecord): {
@@ -111,10 +111,10 @@ function hoursClaim(rules: ScheduleRules, record: ScheduleRecord): {
   }
 }
 
-export async function setVenuePrices(venueId: string, prices: VenuePriceInput[], actor: FactActor, pageStatus?: string | null) {
+export async function setVenuePrices(venueId: string, prices: VenuePriceInput[], actor: FactActor, pageStatus?: string | null, tx?: ContentTx) {
   rejectBannedSites(prices.map((row) => ({ sourceUrl: row.sourceUrl, sourceTitle: row.sourceTitle })))
-  const catalog = new Map((await db.prices.items()).map((item) => [item.slug, item]))
-  const current = await db.prices.forVenue(venueId)
+  const catalog = new Map((await db.prices.items(tx)).map((item) => [item.slug, item]))
+  const current = await db.prices.forVenue(venueId, tx)
   const incoming = new Map(prices.map((row) => [priceKey(row.item, row.variant), row]))
   const final: VenuePriceInput[] = []
   const conflicts: string[] = []
@@ -128,8 +128,8 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
     }
     const key = priceKey(row.item, row.variant)
     const next = incoming.get(key)
-    const existing = await db.facts.liveSlot('venue', venueId, `price:${item.id}:${row.variant}`)
-    const latest = existing ? await db.facts.latestActor(existing.id) : null
+    const existing = await db.facts.liveSlot('venue', venueId, `price:${item.id}:${row.variant}`, tx)
+    const latest = existing ? await db.facts.latestActor(existing.id, tx) : null
     const same = Boolean(next && next.priceRub === row.priceRub && next.sourceKind === row.sourceKind && (next.sourceUrl ?? null) === row.sourceUrl)
     if (actor === 'mcp' && ownerBlocksToken(latest, same)) {
       final.push({
@@ -152,14 +152,14 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
           value: { itemId: item.id, itemSlug: item.slug, variant: row.variant, priceRub: Math.round(next.priceRub) },
           sourceUrl: next.sourceKind === 'owner' ? null : next.sourceUrl ?? null,
           sourceTitle: next.sourceTitle,
-          sourceKind: next.sourceKind === 'owner' ? 'owner' : classifySourceUrl(next.sourceUrl),
+          sourceKind: next.sourceKind === 'owner' ? 'owner' : classifyMenuSourceUrl(next.sourceUrl),
           checkedAt: dateStamp(next.checkedAt),
           confidence: next.sourceKind === 'owner' ? 'owner' : 'stated',
           actor,
           refs: [{ consumerType: 'venue', consumerId: venueId, path: 'modules.prices' }],
           pageType: 'venue',
           pageStatus: pageStatus ?? 'published',
-        })
+        }, tx)
         if (queued.conflict) {
           conflicts.push(queued.queueId)
         }
@@ -172,7 +172,7 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
           path: 'modules.prices',
           reason: 'owner_conflict',
           proposal: { retire: true },
-        })
+        }, tx)
         conflicts.push(queued.id)
       }
       continue
@@ -188,13 +188,13 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
     }
   }
 
-  const saved = await db.prices.setForVenue(venueId, final)
+  const saved = await db.prices.setForVenue(venueId, final, tx)
   const savedKeys = new Set(saved.map((row) => priceKey(row.item, row.variant)))
   for (const row of current) {
     if (!savedKeys.has(priceKey(row.item, row.variant))) {
       const item = catalog.get(row.item)
       if (item) {
-        await retireFactSlot('venue', venueId, `price:${item.id}:${row.variant}`)
+        await retireFactSlot('venue', venueId, `price:${item.id}:${row.variant}`, tx)
       }
     }
   }
@@ -210,7 +210,7 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
       ? current.find((itemRow) => priceKey(itemRow.item, itemRow.variant) === priceKey(row.item, row.variant))
       : null
     const writeActor: FactActor = keptOwner && keptOwner.priceRub === row.priceRub ? 'owner' : actor
-    const sourceKind = row.sourceKind === 'owner' ? 'owner' as const : classifySourceUrl(row.sourceUrl)
+    const sourceKind = row.sourceKind === 'owner' ? 'owner' as const : classifyMenuSourceUrl(row.sourceUrl)
     await commitFact({
       kind: 'price',
       subjectType: 'venue',
@@ -226,12 +226,13 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
       refs: [{ consumerType: 'venue', consumerId: venueId, path: 'modules.prices' }],
       pageType: 'venue',
       pageStatus: pageStatus ?? 'published',
-    })
+    }, tx)
   }
   return { prices: saved, conflicts }
 }
 
 export async function syncVenueContact(input: {
+  tx?: ContentTx
   venueId: string
   actor: FactActor
   pageStatus?: string | null
@@ -250,7 +251,7 @@ export async function syncVenueContact(input: {
     } else if (input.phone?.trim()) {
       await writeContact(input, 'phone', { text: input.phone.trim() })
     } else {
-      await retireFactSlot('venue', input.venueId, 'phone')
+      await retireFactSlot('venue', input.venueId, 'phone', input.tx)
     }
   }
   if (await contactChanged(input, 'address')) {
@@ -261,7 +262,7 @@ export async function syncVenueContact(input: {
     } else if (input.address?.trim()) {
       await writeContact(input, 'address', { text: input.address.trim() })
     } else {
-      await retireFactSlot('venue', input.venueId, 'address')
+      await retireFactSlot('venue', input.venueId, 'address', input.tx)
     }
   }
   if (input.status !== undefined && input.status !== input.previous.status) {
@@ -273,7 +274,7 @@ export async function syncVenueContact(input: {
     } else if (next) {
       await writeContact(input, 'status', next)
     } else {
-      await retireFactSlot('venue', input.venueId, 'status')
+      await retireFactSlot('venue', input.venueId, 'status', input.tx)
     }
   }
   return { conflicts, skipped }
@@ -410,6 +411,7 @@ export async function syncPlacePhone(input: {
 }
 
 async function contactChanged(input: {
+  tx?: ContentTx
   venueId: string
   phone?: string | null
   address?: string | null
@@ -425,17 +427,17 @@ async function contactChanged(input: {
   if (changed) {
     return true
   }
-  const existing = await db.facts.liveSlot('venue', input.venueId, slot)
+  const existing = await db.facts.liveSlot('venue', input.venueId, slot, input.tx)
   return shouldWriteContact(false, Boolean(existing), next)
 }
 
-async function blockField(input: { venueId: string, actor: FactActor, pageStatus?: string | null }, slot: 'phone' | 'address' | 'status', value: unknown) {
+async function blockField(input: { venueId: string, actor: FactActor, pageStatus?: string | null, tx?: ContentTx }, slot: 'phone' | 'address' | 'status', value: unknown) {
   return blockOwned({
     subjectType: 'venue',
     subjectId: input.venueId,
     actor: input.actor,
     pageStatus: input.pageStatus,
-  }, slot, value)
+  }, slot, value, input.tx)
 }
 
 async function blockOwned(input: {
@@ -514,7 +516,7 @@ async function writeOwnedFact(input: {
   }, tx)
 }
 
-async function writeContact(input: { venueId: string, actor: FactActor, pageStatus?: string | null }, slot: 'phone' | 'address' | 'status', value: unknown) {
+async function writeContact(input: { venueId: string, actor: FactActor, pageStatus?: string | null, tx?: ContentTx }, slot: 'phone' | 'address' | 'status', value: unknown) {
   const owner = input.actor === 'owner'
   await commitFact({
     kind: slot,
@@ -533,7 +535,7 @@ async function writeContact(input: { venueId: string, actor: FactActor, pageStat
     pageType: 'venue',
     pageStatus: input.pageStatus ?? 'published',
     markUnseeded: !owner,
-  })
+  }, input.tx)
 }
 
 function priceKey(item: string, variant?: string | null) {

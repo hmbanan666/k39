@@ -1,3 +1,4 @@
+import type { ContentTx } from './content'
 import { PRICE_FRESH_DAYS, priceFreshCutoff } from '@k39/types/freshness'
 import { and, asc, desc, eq, gte } from 'drizzle-orm'
 import { useDatabase } from '../database'
@@ -32,8 +33,8 @@ export function normalizePriceItemImage(value: string | null | undefined) {
 }
 
 export class Prices {
-  static async items() {
-    return useDatabase().select().from(priceItems).orderBy(asc(priceItems.sortOrder), asc(priceItems.slug))
+  static async items(tx?: ContentTx) {
+    return (tx ?? useDatabase()).select().from(priceItems).orderBy(asc(priceItems.sortOrder), asc(priceItems.slug))
   }
 
   static async upsertItem(input: { slug: string, title: string, category: string, defaultVariant?: string | null, sortOrder?: number, image?: string | null }) {
@@ -60,8 +61,8 @@ export class Prices {
   }
 
   /** Every stored price of a venue, fresh or not (for editors). */
-  static async forVenue(venueId: string) {
-    return useDatabase().select({
+  static async forVenue(venueId: string, tx?: ContentTx) {
+    return (tx ?? useDatabase()).select({
       id: venuePrices.id,
       item: priceItems.slug,
       title: priceItems.title,
@@ -128,10 +129,9 @@ export class Prices {
   }
 
   /** Replaces a venue's prices. Unknown catalog items fail the whole write. */
-  static async setForVenue(venueId: string, input: VenuePriceInput[]) {
-    const db = useDatabase()
-    const catalog = new Map((await Prices.items()).map((row) => [row.slug, row]))
-    const rows = input.map((row) => {
+  static async prepareInput(input: VenuePriceInput[], tx?: ContentTx) {
+    const catalog = new Map((await Prices.items(tx)).map((row) => [row.slug, row]))
+    return input.map((row) => {
       const item = catalog.get(row.item.trim().toLowerCase())
       if (!item) {
         throw new Error(`Нет такой позиции в каталоге: ${row.item}`)
@@ -144,7 +144,7 @@ export class Prices {
         throw new Error(`${priceInNameMessage()}: ${variant}`)
       }
       return {
-        venueId,
+        item: item.slug,
         itemId: item.id,
         variant,
         priceRub: Math.round(row.priceRub),
@@ -154,12 +154,22 @@ export class Prices {
         sourceUrl: row.sourceUrl?.trim() || null,
       }
     })
-    await db.transaction(async (tx) => {
+  }
+
+  /** Replaces prices and joins the caller transaction when supplied. */
+  static async setForVenue(venueId: string, input: VenuePriceInput[], outer?: ContentTx) {
+    const rows = (await Prices.prepareInput(input, outer)).map(({ item: _item, ...row }) => ({ venueId, ...row }))
+    const write = async (tx: ContentTx) => {
       await tx.delete(venuePrices).where(eq(venuePrices.venueId, venueId))
       if (rows.length) {
         await tx.insert(venuePrices).values(rows)
       }
-    })
-    return Prices.forVenue(venueId)
+    }
+    if (outer) {
+      await write(outer)
+    } else {
+      await useDatabase().transaction(write)
+    }
+    return Prices.forVenue(venueId, outer)
   }
 }

@@ -10,7 +10,7 @@ export async function refuseVenuePhoto(venueId: string) {
   if (!venue) {
     throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
   }
-  refuseDraftLivePage('attach a photo to a published venue', venue.status, ['published', 'closed'])
+  refuseDraftLivePage('attach a photo to a published venue', venue.status, ['published', 'closed', 'archived'])
   return venue
 }
 

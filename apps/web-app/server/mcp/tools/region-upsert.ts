@@ -1,13 +1,14 @@
 import { z } from 'zod'
 import { requireEditorContent } from '../../utils/access'
 import { upsertRegion } from '../../utils/mcp/regions'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 const point = z.object({
   latitude: z.number().gte(-90).lte(90),
   longitude: z.number().gte(-180).lte(180),
 }).describe('Map center. latitude is -90..90, longitude is -180..180.')
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'region_upsert',
   description: 'Create or update a region by slug. name is stored as the title. coordinates and center are the same optional { latitude, longitude }. Null clears the center. Omit both to keep it. Writes an mcp_audits row. Does not manage users or settings.',
   inputSchema: {

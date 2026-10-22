@@ -100,7 +100,7 @@ withDefaults(defineProps<{
   border-radius: 18px;
   background-color: var(--color-sea);
   background-image: var(--noise);
-  color: #eef2f2;
+  color: var(--color-route-ink);
 }
 .route::after {
   content: "";
@@ -109,7 +109,7 @@ withDefaults(defineProps<{
   right: -4rem;
   width: 14rem;
   height: 14rem;
-  border: 2px dashed rgb(220 229 232 / 25%);
+  border: 2px dashed var(--color-route-line);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -128,7 +128,7 @@ h2 {
 }
 h2 a { color: inherit; text-decoration: none; }
 h2 a:hover { color: var(--color-amber-soft); }
-.sub { max-width: 56ch; margin: 0; color: #c9d6db; }
+.sub { max-width: 56ch; margin: 0; color: var(--color-route-muted); }
 .steps { position: relative; z-index: 1; margin: 1.4rem 0 0; padding: 0; list-style: none; }
 .label { display: block; min-width: 0; }
 .steps a {
@@ -144,7 +144,7 @@ h2 a:hover { color: var(--color-amber-soft); }
 .note {
   display: block;
   margin-top: 0.15rem;
-  color: #c9d6db;
+  color: var(--color-route-muted);
   font-size: 0.82rem;
   line-height: 1.35;
   overflow-wrap: break-word;
@@ -163,7 +163,7 @@ h2 a:hover { color: var(--color-amber-soft); }
   border-color: var(--color-amber);
   background: var(--color-amber);
   color: var(--color-ink);
-  box-shadow: 0 0 0 6px rgb(214 138 34 / 25%);
+  box-shadow: 0 0 0 6px var(--color-route-accent);
 }
 .actions {
   display: flex;
@@ -172,7 +172,7 @@ h2 a:hover { color: var(--color-amber-soft); }
   align-items: center;
   margin: 1.4rem 0 0;
 }
-.actions span { color: #c9d6db; font-size: 0.9rem; }
+.actions span { color: var(--color-route-muted); font-size: 0.9rem; }
 .track .steps {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
@@ -192,7 +192,7 @@ h2 a:hover { color: var(--color-amber-soft); }
   top: 21px;
   right: 0;
   left: 0;
-  border-top: 2px dashed rgb(246 226 190 / 55%);
+  border-top: 2px dashed var(--color-route-partner-line);
 }
 .track .n {
   position: relative;
@@ -246,7 +246,7 @@ h2 a:hover { color: var(--color-amber-soft); }
     bottom: 0.4rem;
     left: 21px;
     border-top: 0;
-    border-left: 2px dashed rgb(246 226 190 / 55%);
+    border-left: 2px dashed var(--color-route-partner-line);
   }
   .track li::before { content: none; }
   .track li {

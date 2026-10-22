@@ -21,14 +21,16 @@ export function liveWriteRow<T extends { id: string }>(row: T, writingWarnings: 
 async function runWithCheckedDraft<T>(
   stamp: { id: string, updatedAt: string } | null,
   write: (tx: EditorTx) => Promise<T>,
+  outer?: EditorTx,
 ) {
-  return db.editor.transaction(async (tx) => {
+  const run = async (tx: EditorTx) => {
     const result = await write(tx)
     const draftDropped = stamp
       ? await db.editor.deleteContentDraftIfUnchanged(stamp.id, stamp.updatedAt, tx)
       : false
     return { result, draftDropped }
-  })
+  }
+  return outer ? run(outer) : db.editor.transaction(run)
 }
 
 export type PendingDraftEntity = DraftEntity | 'venue'
@@ -50,13 +52,14 @@ export async function writeWithCheckedDraft<T>(
   id: string,
   mode: PendingDraftMode,
   write: (tx: EditorTx) => Promise<T>,
+  tx?: EditorTx,
 ) {
-  const pending = await db.editor.contentDraft(entity, id)
+  const pending = await db.editor.contentDraft(entity, id, tx)
   if (pending && mode !== 'editor' && mode.pendingDraft !== 'discard') {
     throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
   }
   const stamp = pending ? { id: pending.id, updatedAt: pending.updatedAt } : null
-  return runWithCheckedDraft(stamp, write)
+  return runWithCheckedDraft(stamp, write, tx)
 }
 
 /**

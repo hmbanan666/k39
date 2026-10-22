@@ -2,8 +2,9 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'price_item_upsert',
   description: 'Add or rename a benchmark item in the shared price catalog. Keep the catalog small and familiar: items people compare between venues.',
   inputSchema: {

@@ -2,8 +2,9 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { resolvePeriod } from '../../../shared/analytics'
 import { auditedAnalytics } from '../../utils/analytics/report'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'analytics_top_pages',
   description: 'Top pages by pageviews. Optional channel filter such as organic:yandex or direct.',
   annotations: { readOnlyHint: true },

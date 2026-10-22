@@ -2,8 +2,9 @@ import { z } from 'zod'
 import { requireEditorContent } from '../../utils/access'
 import { moderateGuest } from '../../utils/guests/moderate'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'guest_approve',
   description: 'Accept a pending guest submission with the same writer as /admin/guests (ADR 0040). Editor token only. recognizableFace is required. true on a photo rejects it and deletes the file; a face is never published, even if the guest says the person agreed. false accepts a photo only when you have seen the frame and it has no recognizable face. Non-photo rows ignore the flag. A correction only queues guest_report. Writes an mcp_audits row.',
   inputSchema: {

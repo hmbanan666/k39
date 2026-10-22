@@ -1,7 +1,25 @@
 <template>
   <main class="admin">
     <h1>{{ venueId ? 'Заведение' : 'Новое заведение' }}</h1>
-    <form @submit.prevent="save">
+    <AdminPlaceDraftNotice
+      v-if="pending"
+      :pending="pending"
+      :busy="draftBusy"
+      lead="Агент сохранил правки этой страницы. На сайте по-прежнему живая карточка. Применить запишет черновик и не меняет статус. Отбросить оставит живую карточку."
+      @apply="decideDraft('apply')"
+      @discard="decideDraft('discard')"
+    />
+    <AdminDraftChoice
+      v-if="pending && draftChoice"
+      choice="save"
+      choice-id="venue-draft-choice"
+      text="У страницы есть черновик. Можно применить его или сохранить форму и отбросить черновик."
+      :busy="draftBusy"
+      @save="save(true)"
+      @apply="decideDraft('apply')"
+      @back="draftChoice = false"
+    />
+    <form @submit.prevent="save()">
       <label>Название <input v-model="form.name" required></label>
       <label>Адрес страницы <input v-model="form.slug" placeholder="из названия, если пусто"></label>
       <label>Тип
@@ -214,6 +232,7 @@
 </template>
 
 <script setup lang="ts">
+import type { PlaceDraftNotice } from '~~/shared/place-draft-diff'
 import type { HoursFormState } from '~~/shared/venue-hours-form'
 import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
 import { emptyHoursForm, hoursPayload } from '~~/shared/venue-hours-form'
@@ -224,6 +243,9 @@ const requestFetch = useRequestFetch()
 const kinds = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other']
 const regions = ref<Array<{ id: string, slug: string, title: string }>>([])
 const error = ref('')
+const pending = ref<PlaceDraftNotice | null>(null)
+const draftBusy = ref(false)
+const draftChoice = ref(false)
 const historyError = ref('')
 const revisions = ref<Array<{ id: string, createdAt: string, actorEmail: string | null, summary: { name: string } }>>([])
 const audits = ref<Array<{ id: string, createdAt: string, action: string, actorEmail: string | null }>>([])
@@ -284,8 +306,10 @@ if (props.venueId) {
       sources: Array<{ title: string, url: string }>
     }
     hours: HoursFormState
+    pending: PlaceDraftNotice | null
   }>(`/api/admin/venues/${props.venueId}`)
   const venue = loaded.venue
+  pending.value = loaded.pending
   form.name = venue.name
   form.slug = venue.slug
   form.kind = venue.kind
@@ -354,15 +378,21 @@ function payload() {
   }
 }
 
-async function save() {
+async function save(discardDraft = false) {
   error.value = ''
+  if (pending.value && !discardDraft) {
+    draftChoice.value = true
+    return
+  }
   if (vkField.value.error) {
     error.value = 'Проверьте поле «ID сообщества ВКонтакте»'
     return
   }
   try {
     if (props.venueId) {
-      await requestFetch(`/api/admin/venues/${props.venueId}`, { method: 'PATCH', body: payload() })
+      await requestFetch(`/api/admin/venues/${props.venueId}`, { method: 'PATCH', body: { ...payload(), ...(discardDraft ? { pendingDraft: 'discard' } : {}) } })
+      pending.value = null
+      draftChoice.value = false
       savedHours.value = JSON.stringify(hoursField())
       return
     }
@@ -372,6 +402,27 @@ async function save() {
     error.value = (reason as { data?: { message?: string }, statusMessage?: string }).data?.message
       || (reason as { statusMessage?: string }).statusMessage
       || 'Не удалось сохранить'
+  }
+}
+
+async function decideDraft(action: 'apply' | 'discard') {
+  if (!props.venueId || draftBusy.value) {
+    return
+  }
+  draftBusy.value = true
+  error.value = ''
+  try {
+    const result = await requestFetch<{ ownerConflicts?: string[] }>(`/api/admin/venues/${props.venueId}/draft`, { method: 'POST', body: { action, updatedAt: pending.value?.updatedAt } })
+    if (result.ownerConflicts?.length) {
+      error.value = 'Часть правок применена. Более свежие правки владельца сохранены. Обновите страницу, чтобы увидеть оставшийся черновик.'
+      return
+    }
+    window.location.reload()
+  } catch (reason) {
+    const data = (reason as { data?: { statusMessage?: string, message?: string } }).data
+    error.value = data?.statusMessage || data?.message || 'Не удалось обработать черновик'
+  } finally {
+    draftBusy.value = false
   }
 }
 

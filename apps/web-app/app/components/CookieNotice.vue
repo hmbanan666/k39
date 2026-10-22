@@ -100,7 +100,7 @@ function dismiss() {
   background: var(--color-surface);
   color: var(--color-ink);
   /* The bar floats 12 px above the screen edge, so the shadow must fit in that gap or it gets cut off. */
-  box-shadow: 0 2px 10px rgb(43 36 32 / 12%);
+  box-shadow: var(--shadow-cookie);
   font-family: var(--font-body);
   font-size: var(--step--1);
   line-height: 1.35;

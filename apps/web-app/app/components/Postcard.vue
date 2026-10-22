@@ -125,7 +125,7 @@ const frameStyle = computed(() => ({
 .tilted {
   border: 0;
   padding: 12px 12px 8px;
-  box-shadow: 0 2px 0 rgb(43 36 32 / 5%), 0 24px 40px -22px rgb(70 40 15 / 45%);
+  box-shadow: var(--shadow-postcard);
 }
 .art {
   display: block;

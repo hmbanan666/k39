@@ -5,7 +5,7 @@ import { CLAIM_CODE_TTL_MS, db, hashClaimCode, HOURS_NOTE_TOO_LONG, newClaimCode
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
 import { verifiedDate } from '../../../shared/schedule'
-import { contentGate, updateVenueContent } from '../content/save'
+import { contentGate, syncSavedPage, updateVenueContent } from '../content/save'
 import { readShownFacts, shownText } from '../facts/read'
 import { setVenuePrices, syncVenueContact } from '../facts/sync'
 import { normalizeDishModules } from '../venues/dishes'
@@ -283,50 +283,57 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
     write.modules = await normalizeDishModules(venueId, write.modules as VenueModule[], 'owner')
   }
   try {
-    const current = await db.venues.byId(venueId)
-    if (!current) {
-      fail(404, 'Заведение не найдено')
-    }
+    const result = await db.venues.withLocked(venueId, async (tx, current) => {
     // Only hours that differ from the schedule count as an owner check.
-    const schedule = write.hours === undefined ? null : await planVenueSchedule(current, { hours: write.hours })
-    const checkedAt = schedule ? new Date() : null
-    if (schedule && checkedAt && !schedule.rules.needsCheck) {
-      schedule.verifiedAt = verifiedDate(checkedAt)
-    }
-    if (!schedule) {
-      delete write.hours
-    }
-    const updated = await updateVenueContent(venueId, {
-      ...write,
-      lastVerifiedAt: checkedAt ? checkedAt.toISOString() : undefined,
-    }, userId, contentGate('venue', {
-      description: write.description,
-      modules: write.modules,
-      address: write.address,
-      phone: write.phone,
-      name: write.name,
-      prices: ownerPrices,
-    }, current.status === 'published'))
-    const saved = updated.row
-    if (!saved) {
-      fail(404, 'Заведение не найдено')
-    }
-    await saveVenueSchedule(saved, schedule, 'owner')
-    await syncVenueContact({
-      venueId,
-      actor: 'owner',
-      pageStatus: saved.status,
-      phone: write.phone,
-      address: write.address,
-      previous: { phone: current.phone, address: current.address, status: current.status },
+      const schedule = write.hours === undefined ? null : await planVenueSchedule(current, { hours: write.hours }, tx)
+      const checkedAt = schedule ? new Date() : null
+      if (schedule && checkedAt && !schedule.rules.needsCheck) {
+        schedule.verifiedAt = verifiedDate(checkedAt)
+      }
+      if (!schedule) {
+        delete write.hours
+      }
+      const updated = await updateVenueContent(venueId, {
+        ...write,
+        lastVerifiedAt: checkedAt ? checkedAt.toISOString() : undefined,
+      }, userId, contentGate('venue', {
+        description: write.description,
+        modules: write.modules,
+        address: write.address,
+        phone: write.phone,
+        name: write.name,
+        prices: ownerPrices,
+      }, current.status === 'published'), tx)
+      const saved = updated.row
+      if (!saved) {
+        fail(404, 'Заведение не найдено')
+      }
+      await saveVenueSchedule(saved, schedule, 'owner', tx)
+      await syncVenueContact({
+        venueId,
+        tx,
+        actor: 'owner',
+        pageStatus: saved.status,
+        phone: write.phone,
+        address: write.address,
+        previous: { phone: current.phone, address: current.address, status: current.status },
+      })
+      if (ownerPrices) {
+        await setVenuePrices(venueId, ownerPrices, 'owner', saved.status, tx)
+      }
+      const fields = [
+        ...Object.keys(write).filter((key) => key !== 'hours' && JSON.stringify(current[key as keyof typeof current]) !== JSON.stringify(saved[key as keyof typeof saved])),
+        ...(schedule ? ['hours', 'lastVerifiedAt'] : []),
+        ...(ownerPrices ? ['prices'] : []),
+      ]
+      await db.venueClaims.audit(venueId, userId, 'owner_update', { fields }, tx)
+      return { id: saved.id, slug: saved.slug, regionId: saved.regionId }
     })
+    await syncSavedPage('venue', venueId)
     if (ownerPrices) {
-      await setVenuePrices(venueId, ownerPrices, 'owner', saved.status)
-      await recomputeTownPriceBands(saved.regionId)
+      await recomputeTownPriceBands(result.regionId)
     }
-    const fields = [...Object.keys(write), ...(ownerPrices ? ['prices'] : [])]
-    await db.venueClaims.audit(venueId, userId, 'owner_update', { fields })
-    return { id: saved.id, slug: saved.slug }
+    return { id: result.id, slug: result.slug }
   } catch (error) {
     if (error instanceof VenueInputError) {
       fail(400, error.message)

@@ -407,7 +407,7 @@ onBeforeUnmount(() => {
 .price-badge {
   margin: 0;
   padding: 0.32rem 0.75rem;
-  border: 1px solid #dfc48a;
+  border: 1px solid var(--color-price-line);
   border-radius: 999px;
   background: var(--color-amber-soft);
   color: var(--color-partner);
@@ -575,9 +575,9 @@ onBeforeUnmount(() => {
   border-radius: 99px;
   background: var(--color-line);
 }
-.track i:nth-child(1) { background: #c9d8cd; }
-.track i:nth-child(2) { background: #f0d7ab; }
-.track i:nth-child(3) { background: #e8c9bf; }
+.track i:nth-child(1) { background: var(--color-price-low); }
+.track i:nth-child(2) { background: var(--color-price-mid); }
+.track i:nth-child(3) { background: var(--color-price-high); }
 .track i.on:nth-child(1) { background: var(--color-pine); }
 .track i.on:nth-child(2) { background: var(--color-amber); }
 .track i.on:nth-child(3) { background: var(--color-brick); }
@@ -589,7 +589,7 @@ onBeforeUnmount(() => {
   height: 0.95rem;
   border: 2px solid var(--surface);
   border-radius: 50%;
-  box-shadow: 0 0 0 1px rgb(43 36 32 / 28%);
+  box-shadow: 0 0 0 1px var(--color-ink-outline);
   transform: translate(-50%, -50%);
 }
 .mark.cheap { background: var(--color-pine); }

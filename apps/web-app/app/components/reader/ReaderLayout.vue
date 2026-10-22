@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
     border: 1px solid var(--color-line);
     border-radius: 14px;
     background: var(--color-surface);
-    box-shadow: 0 1px 2px rgb(43 36 32 / 6%);
+    box-shadow: var(--shadow-reader);
   }
 }
 </style>

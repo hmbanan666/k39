@@ -1,6 +1,7 @@
 import type { MapFeatureCollection, MapLayer } from '@k39/map'
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import { layerCollection } from '@k39/map'
+import { MAP_COLORS, MAP_PAPER } from './map-colors'
 
 const EMPTY: MapFeatureCollection = { type: 'FeatureCollection', features: [] }
 
@@ -78,7 +79,7 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
         source: layer.id,
         filter: ['has', 'point_count'],
         paint: {
-          'circle-color': '#2b2420',
+          'circle-color': MAP_COLORS.ink,
           'circle-opacity': 0.16,
           'circle-radius': ['step', ['get', 'point_count'], 20, 10, 24, 30, 28],
           'circle-translate': [0, 1],
@@ -90,8 +91,8 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
         source: layer.id,
         filter: ['has', 'point_count'],
         paint: {
-          'circle-color': '#fffbf3',
-          'circle-stroke-color': '#a3402a',
+          'circle-color': MAP_PAPER,
+          'circle-stroke-color': MAP_COLORS.brick,
           'circle-stroke-width': 2,
           'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 30, 26],
         },
@@ -106,7 +107,7 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
           'text-font': ['Noto Sans Bold'],
           'text-size': 13,
         },
-        paint: { 'text-color': '#2b2420' },
+        paint: { 'text-color': MAP_COLORS.ink },
       })
     }
     map.addLayer({
@@ -123,10 +124,10 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
           22,
           0,
         ],
-        'circle-color': '#a3402a',
+        'circle-color': MAP_COLORS.brick,
         'circle-opacity': 0.2,
         'circle-stroke-width': 2,
-        'circle-stroke-color': '#fffbf3',
+        'circle-stroke-color': MAP_PAPER,
       },
     })
     map.addLayer({
@@ -156,7 +157,7 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
       source: layer.id,
       filter: ['==', ['get', 'dashed'], 0],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#a3402a', 'line-width': 3, 'line-opacity': 0.9 },
+      paint: { 'line-color': MAP_COLORS.brick, 'line-width': 3, 'line-opacity': 0.9 },
     })
     map.addLayer({
       id: `${layer.id}-dashed`,
@@ -165,7 +166,7 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
       filter: ['==', ['get', 'dashed'], 1],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#a3402a',
+        'line-color': MAP_COLORS.brick,
         'line-width': 2.5,
         'line-opacity': 0.75,
         'line-dasharray': [1.2, 1.15],
@@ -187,7 +188,7 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
         15,
         0,
       ],
-      'circle-color': '#a3402a',
+      'circle-color': MAP_COLORS.brick,
       'circle-opacity': 0.2,
     },
   })
@@ -205,7 +206,7 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
       'text-allow-overlap': true,
       'icon-size': ['case', ['==', ['get', 'picked'], 1], 1.28, 1],
     },
-    paint: { 'text-color': '#fffbf3' },
+    paint: { 'text-color': MAP_PAPER },
   })
 }
 

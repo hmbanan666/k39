@@ -46,6 +46,8 @@ const props = defineProps<{
   compact?: boolean
   /** Open state reads «Открыто до 23:00» without the «· ещё 12 ч» countdown. */
   hideRemaining?: boolean
+  /** The full page already renders these modes in its static «Часы» row. */
+  hideStaticStatus?: boolean
 }>()
 // Rendered only after hydration too, so cached HTML never carries it.
 const unverified = ref(false)
@@ -58,6 +60,12 @@ function update() {
   const value = liveStatus(props.schedule, props.notices, now)
   if (value.notice) {
     status.value = { open: false, muted: false, text: liveStatusText(value, now) }
+    unverified.value = false
+    unknown.value = false
+    return
+  }
+  if (props.hideStaticStatus && value.status !== 'unknown' && ['appointment', 'always', 'closed'].includes(props.schedule?.rules.mode ?? '')) {
+    status.value = null
     unverified.value = false
     unknown.value = false
     return

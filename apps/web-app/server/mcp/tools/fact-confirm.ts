@@ -1,8 +1,9 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'fact_confirm',
   description: 'Confirm the value hash you read. A mismatch is rejected. The same hash moves checked_at, closes that fact\'s queue rows, and writes no revision. Writes an mcp_audits row.',
   inputSchema: {

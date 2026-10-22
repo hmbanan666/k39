@@ -168,7 +168,7 @@ const NOTICES_LEAD = 'Агент предложил объявления на д
 .actions :deep(.btn) {
   flex: 1 1 12rem;
   height: auto;
-  min-height: 2.6rem;
+  min-height: 2.75rem;
   white-space: normal;
   text-align: center;
 }

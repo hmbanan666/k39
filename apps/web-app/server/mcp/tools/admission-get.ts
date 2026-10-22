@@ -1,9 +1,10 @@
 import { z } from 'zod'
 import { ADMISSION_UNKNOWN } from '../../../shared/admission'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { readAdmission } from '../../utils/practical/admission'
 import { practicalTarget } from '../../utils/practical/target'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'admission_get',
   description: 'Load the ticket list (ADR 0046) of a place, venue, or route: every stored row, and the slots the page shows. A row whose checkedAt is older than 365 days is stored but hidden. When rows exist and none is fresh, the page says «Стоимость билета уточняйте» instead of places.price.',
   annotations: { readOnlyHint: true },

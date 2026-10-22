@@ -1,6 +1,7 @@
 import { db, VenueInputError } from '@k39/database'
 import { z } from 'zod'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { fetchOverpass } from '../../utils/venues/overpass'
 import { saveImportedHours } from '../../utils/venues/write'
 
@@ -18,7 +19,7 @@ const area = z.union([
   }),
 ])
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'venue_import_osm',
   description: 'Import OpenStreetMap cafes, restaurants, bars, fast food, pubs, ice cream, and bakeries as drafts. Pass a point and radiusMeters, or a bbox (south, west, north, east). Dedupes by osmId and never publishes. OSM opening hours become an unverified schedule; hoursSkipped lists drafts whose hours could not be stored. Writes an mcp_audits row.',
   inputSchema: {

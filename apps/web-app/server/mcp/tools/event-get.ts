@@ -1,9 +1,10 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { eventFormTiming, eventUpcoming } from '../../../shared/events'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { practicalTarget } from '../../utils/practical/target'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'event_get',
   description: 'Load one event by id, or every event of a place or venue (ADR 0046), including cancelled and expired rows kept for history. Each row carries the local Kaliningrad timing in the event_upsert input shape and whether the page shows it.',
   annotations: { readOnlyHint: true },

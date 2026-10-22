@@ -79,6 +79,7 @@
               variant="facts"
             />
             <OpeningLive
+              hide-static-status
               :schedule="page.place.schedule"
               :notices="noticeWindows"
               :has-hours="Boolean(page.place.hours)"
@@ -428,7 +429,7 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 }
 .lede {
   max-width: 38ch;
-  color: #433832;
+  color: var(--color-ink-soft);
   font-size: 1.12rem;
   line-height: 1.55;
 }

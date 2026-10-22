@@ -1,5 +1,6 @@
 import { db } from '@k39/database'
 import { requireEditor } from '../../../utils/access'
+import { venueDraftNotice } from '../../../utils/admin/venue-draft'
 import { readShownFacts, shownText } from '../../../utils/facts/read'
 import { loadHoursForm } from '../../../utils/schedule'
 
@@ -22,5 +23,6 @@ export default defineEventHandler(async (event) => {
     venue: { ...row, phone: shownText(shown?.phone, venue.phone) },
     hours: await loadHoursForm('venue', venue.id),
     gallery,
+    pending: await venueDraftNotice(venue.id),
   }
 })

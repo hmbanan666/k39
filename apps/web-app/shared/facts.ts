@@ -2,7 +2,7 @@ import type { PageModule } from './page-modules'
 import type { ScheduleRules } from './schedule'
 import type { VenueModule } from './venue-modules'
 import { createHash } from 'node:crypto'
-import { isSocialHost } from '@k39/types/social-hosts'
+import { classifyOfficialUrl } from '@k39/types/official-url'
 import { z } from 'zod'
 import { ADMISSION_AUDIENCES, ADMISSION_CONDITION_MAX, ADMISSION_LABEL_MAX } from './admission'
 import { EVENT_TITLE_MAX } from './events'
@@ -255,17 +255,23 @@ export function classifySourceUrl(url: string | null | undefined): Exclude<Sourc
   if (isGoogleMaps(host, parsed.pathname)) {
     return 'map_google'
   }
-  if (host.includes('openstreetmap') || host === 'osm.org' || host.endsWith('.osm.org')) {
+  if (host === 'openstreetmap.org' || host.endsWith('.openstreetmap.org') || host === 'osm.org' || host.endsWith('.osm.org')) {
     return 'osm'
   }
   const yandex = /(?:^|\.)yandex\.(?:ru|com|by|kz|uz)$/.test(host) || host === 'ya.ru' || host.endsWith('.ya.ru')
   if (yandex && (host.startsWith('maps.') || parsed.pathname.includes('/maps'))) {
     return 'map_yandex'
   }
-  if (isSocialHost(host)) {
+  const kind = classifyOfficialUrl(url)
+  if (kind === 'social') {
     return 'official_social'
   }
-  return 'official'
+  return kind === 'official' ? 'official' : 'none'
+}
+
+/** Menu prices also allow official document hosts; other fact kinds do not. */
+export function classifyMenuSourceUrl(url: string | null | undefined): Exclude<SourceKind, 'owner'> {
+  return classifyOfficialUrl(url) === 'document' ? 'official' : classifySourceUrl(url)
 }
 
 export function watchableSource(kind: SourceKind, url: string | null | undefined) {

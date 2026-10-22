@@ -1,5 +1,6 @@
 import type { SourceLink } from '../types/entities'
 import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
+import type { ContentTx } from './content'
 import { ownWebsiteMessage, ownWebsiteProblem } from '@k39/types/official-url'
 import { parseVkCommunityId, vkCommunityIdProblem } from '@k39/types/vk-community'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
@@ -8,7 +9,7 @@ import { firstPublishedStamp } from '../first-published'
 import { PHONE_TEXT_MAX } from '../phone'
 import { priceInName, priceInNameMessage } from '../price-label'
 import { prepareSourceLinks, SourceInputError } from '../sources'
-import { admissionPrices, calendarEvents, media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
+import { admissionPrices, calendarEvents, factRevisions, facts, media, offers, regions, revisions, slugRedirects, venueAudits, venueListingIntros, venueMedia, venues } from '../tables'
 import {
   assertKind,
   assertVenueSlug,
@@ -301,8 +302,8 @@ async function reservedSlugs() {
   return new Set(rows.map((row) => row.slug))
 }
 
-async function markGone(fromPath: string) {
-  const db = useDatabase()
+async function markGone(fromPath: string, tx?: ContentTx) {
+  const db = tx ?? useDatabase()
   const [existing] = await db.select().from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
   if (!existing) {
     await db.insert(slugRedirects).values({ fromPath, toPath: null, statusCode: 410 })
@@ -311,14 +312,14 @@ async function markGone(fromPath: string) {
   await db.update(slugRedirects).set({ toPath: null, statusCode: 410 }).where(eq(slugRedirects.id, existing.id))
 }
 
-async function clearGone(fromPath: string) {
-  await useDatabase().delete(slugRedirects).where(and(eq(slugRedirects.fromPath, fromPath), eq(slugRedirects.statusCode, 410)))
+async function clearGone(fromPath: string, tx?: ContentTx) {
+  await (tx ?? useDatabase()).delete(slugRedirects).where(and(eq(slugRedirects.fromPath, fromPath), eq(slugRedirects.statusCode, 410)))
 }
 
-async function rememberSlug(fromSlug: string, toSlug: string) {
+async function rememberSlug(fromSlug: string, toSlug: string, tx?: ContentTx) {
   const fromPath = `/zavedeniya/${fromSlug}`
   const toPath = `/zavedeniya/${toSlug}`
-  const db = useDatabase()
+  const db = tx ?? useDatabase()
   const [existing] = await db.select().from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
   if (!existing) {
     await db.insert(slugRedirects).values({ fromPath, toPath, statusCode: 301 })
@@ -339,8 +340,62 @@ function numArray(values: number[]) {
 }
 
 export class Venues {
-  static async byId(id: string) {
-    const [row] = await useDatabase().select().from(venues).where(eq(venues.id, id)).limit(1)
+  /** Latest owner write per pending key, including retired price facts. */
+  static async ownerDraftChanges(id: string, tx: ContentTx) {
+    const changes = new Map<string, string>()
+    const remember = (key: string, at: string) => {
+      if (Date.parse(at) > Date.parse(changes.get(key) ?? '1970-01-01')) {
+        changes.set(key, at)
+      }
+    }
+    const audits = await tx.select().from(venueAudits).where(and(eq(venueAudits.venueId, id), eq(venueAudits.action, 'owner_update')))
+    for (const row of audits) {
+      const fields = Array.isArray(row.summary.fields) ? row.summary.fields : []
+      for (const field of fields) {
+        if (typeof field === 'string') {
+          remember(field === 'hours' ? 'schedule' : field, row.createdAt)
+          if (field === 'regionId') {
+            remember('regionSlug', row.createdAt)
+          }
+          if (field === 'latitude' || field === 'longitude') {
+            remember('latitude', row.createdAt)
+            remember('longitude', row.createdAt)
+          }
+        }
+      }
+    }
+    const revisions = await tx.select({ slot: facts.slot, at: factRevisions.recordedAt })
+      .from(factRevisions)
+      .innerJoin(facts, eq(facts.id, factRevisions.factId))
+      .where(and(eq(facts.subjectType, 'venue'), eq(facts.subjectId, id), eq(factRevisions.actor, 'owner')))
+    for (const row of revisions) {
+      if (row.slot.startsWith('price:')) {
+        remember('prices', row.at)
+      } else if (row.slot === 'hours') {
+        remember('schedule', row.at)
+      } else if (row.slot === 'coordinates') {
+        remember('latitude', row.at)
+        remember('longitude', row.at)
+      } else {
+        remember(row.slot, row.at)
+      }
+    }
+    return changes
+  }
+
+  /** Serializes draft apply/stage with editor and owner saves of this venue. */
+  static async withLocked<T>(id: string, write: (tx: ContentTx, row: typeof venues.$inferSelect) => Promise<T>) {
+    return useDatabase().transaction(async (tx) => {
+      const [row] = await tx.select().from(venues).where(eq(venues.id, id)).limit(1).for('update')
+      if (!row) {
+        throw new VenueInputError('Заведение не найдено')
+      }
+      return write(tx, row)
+    })
+  }
+
+  static async byId(id: string, tx?: ContentTx) {
+    const [row] = await (tx ?? useDatabase()).select().from(venues).where(eq(venues.id, id)).limit(1)
     return row ?? null
   }
 
@@ -354,8 +409,8 @@ export class Venues {
     return row ?? null
   }
 
-  static async regionBySlug(slug: string) {
-    const [row] = await useDatabase().select().from(regions).where(eq(regions.slug, slug)).limit(1)
+  static async regionBySlug(slug: string, tx?: ContentTx) {
+    const [row] = await (tx ?? useDatabase()).select().from(regions).where(eq(regions.slug, slug)).limit(1)
     return row ?? null
   }
 
@@ -447,14 +502,11 @@ export class Venues {
     }
   }
 
-  static async update(id: string, input: VenueWrite, userId?: string | null) {
-    const current = await this.byId(id)
-    if (!current) {
-      return null
-    }
+  /** The same normalized columns for live writes and pending payload validation. */
+  static async prepareUpdate(current: typeof venues.$inferSelect, input: VenueWrite, checkPublication = true) {
     const nextStatus = input.status ?? current.status
     const nextDescription = input.description ?? current.description
-    if (nextStatus === 'published') {
+    if (checkPublication && nextStatus === 'published') {
       const problem = descriptionPublishError(nextDescription)
       if (problem) {
         throw new VenueInputError(problem)
@@ -511,22 +563,34 @@ export class Venues {
       seoDescription: input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
       noindex: input.noindex ?? current.noindex,
     }
+    return next
+  }
+
+  static async update(id: string, input: VenueWrite, userId?: string | null, tx?: ContentTx) {
+    const db = tx ?? useDatabase()
+    const current = await this.byId(id, tx)
+    if (!current) {
+      return null
+    }
+    const next = await this.prepareUpdate(current, input)
+    const nextStatus = next.status
+    const nextSlug = next.slug
     // Price band, updatedAt, and updatedBy are derived. An equal row writes nothing.
     // firstPublishedAt stays in the comparison: a first publish is a change, a later edit keeps the stored instant.
     if (sameVenueWrite(current, next)) {
       return { ...current, unchanged: true as const }
     }
-    await useDatabase().insert(revisions).values({
+    await db.insert(revisions).values({
       entityType: 'venue',
       entityId: current.id,
       snapshot: current,
       updatedBy: userId ?? null,
     })
     if (nextSlug !== current.slug) {
-      await rememberSlug(current.slug, nextSlug)
+      await rememberSlug(current.slug, nextSlug, tx)
     }
     try {
-      const [updated] = await useDatabase().update(venues).set({
+      const [updated] = await db.update(venues).set({
         ...next,
         updatedBy: userId ?? null,
         updatedAt: new Date().toISOString(),
@@ -534,11 +598,11 @@ export class Venues {
       const saved = updated ?? current
       const path = `/zavedeniya/${saved.slug}`
       if (nextStatus === 'archived') {
-        await markGone(path)
+        await markGone(path, tx)
       } else if (current.status === 'archived') {
-        await clearGone(path)
+        await clearGone(path, tx)
         if (current.slug !== saved.slug) {
-          await clearGone(`/zavedeniya/${current.slug}`)
+          await clearGone(`/zavedeniya/${current.slug}`, tx)
         }
       }
       return { ...saved, unchanged: false as const }

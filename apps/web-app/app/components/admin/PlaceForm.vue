@@ -69,7 +69,7 @@
       </UiField>
       <UiField
         label="Телефон"
-        hint="Только с официального сайта места. Карты, агрегаторы и справочники не подходят."
+        hint="С официального сайта места или его соцстраницы, если сайта нет. Карты, агрегаторы и справочники не подходят."
       >
         <UiInput
           v-model="form.phone"
@@ -478,7 +478,7 @@ async function onDiscard() {
 form { display: flex; flex-direction: column; gap: 0.7rem; }
 label { display: flex; flex-direction: column; gap: 0.25rem; }
 input, textarea, select { font: inherit; padding: 0.4rem 0.5rem; }
-.warn { color: #9b3d2a; }
-.serp { border: 1px solid #e6d5b0; padding: 0.8rem; }
-.preview { border-top: 1px solid #e6d5b0; padding-top: 0.6rem; }
+.warn { color: var(--color-editor-warning); }
+.serp { border: 1px solid var(--color-editor-line); padding: 0.8rem; }
+.preview { border-top: 1px solid var(--color-editor-line); padding-top: 0.6rem; }
 </style>

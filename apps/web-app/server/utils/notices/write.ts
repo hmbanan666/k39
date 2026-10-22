@@ -186,14 +186,24 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
   }
   const rows = prepareNotices(target, input.notices, today, known, true)
   if (scope === 'draft' && isLivePractical(target)) {
-    const pending = await db.editor.contentDraft(target.type, target.id)
     const stagedAt = new Date().toISOString()
-    const { row: saved, writingWarnings } = await savePendingDraftContent({
-      entityType: target.type,
-      entityId: target.id,
-      publicationStatus: pending?.publicationStatus ?? 'review',
-      payload: { ...(pending?.payload ?? {}), notices: rows, noticesStagedAt: stagedAt },
-    }, noticeGate(target, rows, false))
+    const store = async (tx?: ContentTx) => {
+      const pending = await db.editor.contentDraft(target.type, target.id, tx)
+      return savePendingDraftContent({
+        entityType: target.type,
+        entityId: target.id,
+        publicationStatus: pending?.publicationStatus ?? 'review',
+        payload: { ...(pending?.payload ?? {}), notices: rows, noticesStagedAt: stagedAt },
+      }, noticeGate(target, rows, false), tx)
+    }
+    const { row: saved, writingWarnings } = target.type === 'venue'
+      ? await db.venues.withLocked(target.id, (tx, venue) => {
+          if (venue.status !== 'published' && venue.status !== 'closed') {
+            throw createError({ statusCode: 409, statusMessage: 'Статус заведения изменился. Живая карточка не изменилась.' })
+          }
+          return store(tx)
+        })
+      : await store()
     if (via === 'mcp') {
       await auditMcp('notices_set', target.type, target.id)
     }
@@ -210,8 +220,9 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
   }
   const writingWarnings = noticeWarnings(target, rows, isPublicSubject(target))
   const write = (tx: ContentTx) => db.notices.replace(target.type, target.id, rows.map(toNoticeWrite), tx)
+  const apply = (tx?: ContentTx) => writeWithCheckedDraft(target.type, target.id, via === 'admin' ? { pendingDraft: input.pendingDraft } : 'editor', write, tx)
   const { result: saved, draftDropped } = scope === 'editor'
-    ? await writeWithCheckedDraft(target.type, target.id, via === 'admin' ? { pendingDraft: input.pendingDraft } : 'editor', write)
+    ? target.type === 'venue' ? await db.venues.withLocked(target.id, (tx) => apply(tx)) : await apply()
     : { result: await db.editor.transaction(write), draftDropped: false }
   if (via === 'mcp') {
     await auditMcp('notices_set', target.type, target.id)

@@ -148,7 +148,7 @@ function touchEnd(event: TouchEvent) {
   position: fixed;
   inset: 0;
   z-index: 80;
-  background: rgb(28 24 22 / 92%);
+  background: var(--color-viewer-overlay);
 }
 .photo-viewer {
   position: fixed;
@@ -194,7 +194,7 @@ function touchEnd(event: TouchEvent) {
   max-width: 100%;
   max-height: calc(100vh - 9.5rem);
   object-fit: contain;
-  background: #1c1816;
+  background: var(--color-viewer);
 }
 .photo-viewer .foot {
   display: flex;

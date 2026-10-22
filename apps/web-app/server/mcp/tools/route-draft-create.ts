@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { createRouteDraft } from '../../utils/mcp/routes'
 import { bodySections, orderedStops, routePath } from '../../utils/mcp/schemas'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'route_draft_create',
   description: 'Create a route. publicationStatus may be draft, review, or published. Optional points are ordered stops; each placeSlug must already exist and note is optional. A slug rename writes a 301 from /marshruty/old.',
   inputSchema: {

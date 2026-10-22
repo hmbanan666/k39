@@ -3,9 +3,10 @@ import { z } from 'zod'
 import { rulesFromText, rulesFromVenueHours, scheduleRulesSchema, verifiedDate } from '../../../shared/schedule'
 import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { saveSchedule } from '../../utils/schedule'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'schedules_migrate',
   description: 'One-off: turn place hours text and imported venue hours into schedules. Recognised place text keeps the place facts-check date; text it cannot read is stored with needsCheck and the text as note. Venue hours keep the venue facts-check date; OSM-only venues stay unverified. Existing schedules are never overwritten. dryRun (default true) only reports.',
   inputSchema: {

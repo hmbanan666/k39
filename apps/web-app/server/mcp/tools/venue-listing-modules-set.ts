@@ -3,8 +3,9 @@ import { z } from 'zod'
 import { listingModulesSchema } from '../../../shared/listing-modules'
 import { requireEditorContent } from '../../utils/access'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'venue_listing_modules_set',
   description: 'Replace the content modules of a venue listing (/zavedeniya, a town, a kind, or both). regionSlug and kind are optional; null means all regions or all kinds. An empty array clears the modules. Does not change the intro text. Each situation placeSlug must be a published venue. Writes an mcp_audits row. See docs/venue-modules.md.',
   inputSchema: {

@@ -41,6 +41,7 @@ export default defineConfig({
         },
         test: {
           name: 'web-app',
+          server: { deps: { inline: ['@nuxtjs/mcp-toolkit'] } },
           root: './apps/web-app',
           environment: 'happy-dom',
           include: ['test/**/*.test.ts'],

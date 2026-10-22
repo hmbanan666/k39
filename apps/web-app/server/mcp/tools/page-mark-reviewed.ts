@@ -4,9 +4,10 @@ import { reviewUpdate } from '../../../shared/facts'
 import { loadPageSnapshot } from '../../utils/facts/pages'
 import { syncPageSections } from '../../utils/facts/queue'
 import { auditMcp } from '../../utils/mcp/audit'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { resolveScoredPage } from '../../utils/scoring/run'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'page_mark_reviewed',
   description: 'Store section hashes for one page. all true accepts every current section only when each hash still matches the text. A path that changed since the read is rejected and left open. Does not confirm facts and does not move last_verified_at. Writes an mcp_audits row.',
   inputSchema: {

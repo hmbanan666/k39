@@ -9,12 +9,12 @@ export default defineEventHandler(async (event) => {
   const user = await requireAccount(event)
   const venueId = getRouterParam(event, 'id') || ''
   await requireVenueMember(user.id, venueId)
-  limitUpload(user.id)
   const venue = await db.venues.byId(venueId)
   if (!venue) {
     throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
   }
   const parts = await readUploadForm(event)
+  limitUpload(user.id)
   const file = parts?.find((part) => part.name === 'file' && part.data)
   const text = (name: string) => parts?.find((part) => part.name === name)?.data?.toString() || ''
   if (text('rights') !== '1') {

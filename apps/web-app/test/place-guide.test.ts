@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { guideFacts, russianDay } from '../shared/place-guide'
+import { scheduleRulesSchema } from '../shared/schedule'
 import { isoDay, pageFaq, placeDocument, schemaProblems, splitDirections } from '../shared/seo'
 
 const base = {
@@ -16,6 +17,17 @@ const base = {
 }
 
 describe('place guide template', () => {
+  it.each([
+    ['appointment', 'По предварительной договорённости'],
+    ['always', 'Круглосуточно'],
+    ['closed', 'Закрыто'],
+  ] as const)('keeps the %s schedule in the server-rendered facts', (mode, text) => {
+    const rules = scheduleRulesSchema.parse({ mode, note: 'Уточните условия посещения' })
+    const facts = guideFacts({ schedule: { rules, verifiedAt: '2026-10-22', sourceUrl: 'https://museum.example/hours' } })
+    expect(facts.find((row) => row.key === 'hours')?.value).toContain(text)
+    expect(facts.find((row) => row.key === 'hours')?.value).toContain(rules.note)
+  })
+
   it('formats the checked day in Russian', () => {
     expect(russianDay('2026-10-13')).toBe('13 октября 2026')
     expect(russianDay('2026-03-01T10:00:00.000Z')).toBe('1 марта 2026')

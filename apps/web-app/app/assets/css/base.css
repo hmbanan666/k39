@@ -100,7 +100,7 @@ img {
   padding: 1rem 1.2rem;
   border-left: 3px solid var(--color-amber);
   border-radius: 0 8px 8px 0;
-  background: rgb(246 226 190 / 45%);
+  background: var(--color-amber-wash);
   color: var(--color-brick-dark);
   font-family: var(--font-display);
   font-size: 1.25rem;
@@ -142,7 +142,7 @@ img {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 2.6rem;
+  min-height: 2.75rem;
   padding: 0.45rem 0.95rem;
   border: 1px solid var(--color-ink);
   border-radius: 12px;
@@ -170,16 +170,16 @@ img {
   border-color: var(--color-sea);
 }
 
-.btn-sea:hover { background: #2a4454; color: var(--color-surface); }
+.btn-sea:hover { background: var(--color-sea-dark); color: var(--color-surface); }
 
 .btn-amber {
-  border-color: #a9681a;
+  border-color: var(--color-amber-edge);
   background: var(--color-amber);
   color: var(--color-ink);
-  box-shadow: inset 0 -2px 0 #a9681a;
+  box-shadow: inset 0 -2px 0 var(--color-amber-edge);
 }
 
-.btn-amber:hover { background: #c47c1c; color: var(--color-ink); }
+.btn-amber:hover { background: var(--color-amber-hover); color: var(--color-ink); }
 
 .btn-line {
   background: transparent;
@@ -203,9 +203,9 @@ img {
   text-decoration: none;
 }
 
-.badge-brick { background: #f3e2db; color: var(--color-brick); border-color: #e2c2b8; }
-.badge-amber { background: #f8ead0; color: var(--color-amber); border-color: #ead3a4; }
-.badge-pine { background: #e3eee7; color: var(--color-pine); border-color: #c5d9cc; }
+.badge-brick { background: var(--color-brick-tint); color: var(--color-brick); border-color: var(--color-brick-line); }
+.badge-amber { background: var(--color-amber-tint); color: var(--color-amber); border-color: var(--color-amber-line-soft); }
+.badge-pine { background: var(--color-pine-tint); color: var(--color-pine); border-color: var(--color-pine-line); }
 
 .field { display: flex; flex-direction: column; gap: 0.3rem; }
 .field-label { font-size: var(--step--1); font-weight: 700; }
@@ -277,7 +277,7 @@ img {
   position: fixed;
   inset: 0;
   z-index: var(--z-dialog);
-  background: rgb(36 28 22 / 35%);
+  background: var(--color-overlay);
 }
 
 .dialog-content {
@@ -299,7 +299,7 @@ img {
   padding: 0.4rem 0.55rem;
   border-radius: var(--radius-sm);
   background: var(--color-ink);
-  color: #fffaf2;
+  color: var(--color-on-accent);
   font-size: var(--step--1);
 }
 

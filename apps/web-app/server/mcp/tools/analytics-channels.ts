@@ -2,8 +2,9 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { resolvePeriod } from '../../../shared/analytics'
 import { auditedAnalytics } from '../../utils/analytics/report'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'analytics_channels',
   description: 'Pageviews and visitors by channel for a period.',
   annotations: { readOnlyHint: true },

@@ -1,7 +1,8 @@
 import { db } from '@k39/database'
 import { routeSlugOf } from '../../utils/mcp/quests'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'quests_list',
   description: 'List quests, including drafts. routeSlug is the linked route, or null.',
   annotations: { readOnlyHint: true },

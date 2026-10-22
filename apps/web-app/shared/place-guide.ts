@@ -77,7 +77,7 @@ export function guideFacts(place: {
   // A checked structured schedule wins over the free-text hours.
   const record = place.schedule ?? null
   const usable = record && isVerified(record) ? record.rules : null
-  const hoursText = usable ? scheduleDetails(usable).join('. ') : place.hours?.trim() || ''
+  const hoursText = record?.rules ? scheduleDetails(record.rules).join('. ') : place.hours?.trim() || ''
   const rows: GuideFact[] = [
     { key: 'duration', label: 'Сколько времени', value: place.visitDuration?.trim() || '' },
     { key: 'season', label: 'Когда ехать', value: place.bestTime?.trim() || '' },

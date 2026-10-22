@@ -1,8 +1,9 @@
 import { db } from '@k39/database'
 import { auditMcp } from '../../utils/mcp/audit'
-import { mcpStrictInput, venueListResult, venuesListInput } from '../../utils/mcp/venues'
+import { defineStrictMcpTool, mcpStrictInput } from '../../utils/mcp/tool'
+import { venueListResult, venuesListInput } from '../../utils/mcp/venues'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'venues_list',
   description: 'List venues as { items, total, page, pageSize }. page is 1-based: the offset is (page - 1) * pageSize. pageSize defaults to 20 and stops at 50. There is no offset or limit argument; those keys are rejected. query matches the name or the slug (lowercase, ё and е are the same letter). Filters: regionSlug, kind, status (draft, published, closed, archived), stale (lastVerifiedAt missing or older than 180 days), and near { latitude, longitude, radiusKm }. Each item includes createdAt and updatedAt. Order is name, then id, so paging returns each venue once. total is the filtered count.',
   annotations: { readOnlyHint: true },

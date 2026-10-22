@@ -652,7 +652,7 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   pointer-events: auto;
   border-right: 1px solid var(--color-line);
   background: var(--color-surface);
-  box-shadow: 8px 0 24px rgb(43 36 32 / 6%);
+  box-shadow: var(--shadow-map-panel);
 }
 .dock.collapsed { width: 0; }
 .dock.collapsed .panel {
@@ -889,7 +889,7 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
     border-right: 0;
     border-top: 1px solid var(--color-line);
     border-radius: 18px 18px 0 0;
-    box-shadow: 0 -10px 28px rgb(43 36 32 / 12%);
+    box-shadow: var(--shadow-map-panel-mobile);
     transition: height var(--duration) var(--ease);
   }
   .panel.half { height: min(52dvh, 28rem); }

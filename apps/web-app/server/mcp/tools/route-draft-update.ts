@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { updateRouteDraft } from '../../utils/mcp/routes'
 import { orderedStops, routePath } from '../../utils/mcp/schemas'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'route_draft_update',
   description: 'Update a route in place, including one that is already published. Omitting publicationStatus leaves a published route published. A draft-token write to a published or archived route is stored as a pending review and the live row stays. That response is the stored draft: pendingReview, pendingPublicationStatus, bodyLength, renderedFields, and ordered points. publicationStatus in the response stays the live status. Optional points replace the ordered stops; omit them to keep the current stops. An empty array clears the stops. Each placeSlug must exist. A slug change writes a 301 from /marshruty/old. An editor write that changes the live row drops the pending draft it saw, in that same save, and returns draftDropped. A newer draft stays.',
   inputSchema: {

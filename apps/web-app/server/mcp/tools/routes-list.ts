@@ -1,6 +1,7 @@
 import { db } from '@k39/database'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'routes_list',
   description: 'List routes, including drafts.',
   annotations: { readOnlyHint: true },

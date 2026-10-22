@@ -1,8 +1,9 @@
 import { z } from 'zod'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { auditedScore, listContentScores } from '../../utils/scoring/run'
 import { pageKindSchema, scoreBlockSchema } from '../../utils/scoring/schemas'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'content_scores_list',
   description: 'List page scores. Filter by pageType, by a block (quality, linking, indexing, results), and by below (that block, or the total when block is omitted). Sort by total, a block, title, or path.',
   annotations: { readOnlyHint: true },

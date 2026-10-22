@@ -1,10 +1,11 @@
 import { db } from '@k39/database'
 import { z } from 'zod'
 import { orderPagePersonas } from '../../../shared/personas'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 import { resolveScoredPage } from '../../utils/scoring/run'
 import { pageKindSchema } from '../../utils/scoring/schemas'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'page_personas_get',
   description: 'Read the target personas of a page by path, or by pageType and slug: code, weight 1..3 and the primary flag.',
   annotations: { readOnlyHint: true },

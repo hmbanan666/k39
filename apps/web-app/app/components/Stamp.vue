@@ -40,7 +40,7 @@ withDefaults(defineProps<{
   width: 7rem;
   padding: 7px;
   background: var(--color-surface);
-  filter: drop-shadow(0 6px 10px rgb(60 40 20 / 18%));
+  filter: drop-shadow(var(--shadow-stamp));
   -webkit-mask:
     radial-gradient(circle at center, transparent 0 calc(var(--perf) / 2 - 0.5px), #000 calc(var(--perf) / 2))
     calc(var(--step) / -2) calc(var(--step) / -2) / var(--step) var(--step),

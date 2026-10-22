@@ -2,8 +2,9 @@ import { db, VENUE_PHOTO_ORIGINS } from '@k39/database'
 import { z } from 'zod'
 import { auditMcp } from '../../utils/mcp/audit'
 import { refuseVenuePhoto } from '../../utils/mcp/photos'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'media_attach_to_venue',
   description: 'Attach a stored photo to a venue. origin is own (our photo) or commons. origin venue is the cabinet owner upload only. The photo must already carry an author. Never attach a copy from another site. A draft token cannot attach a photo to a published or closed venue. That answer is 409 and the live page stays.',
   inputSchema: {

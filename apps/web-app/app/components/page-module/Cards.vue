@@ -67,7 +67,7 @@ h3 {
   justify-self: start;
   padding: 0.1rem 0.55rem;
   border-radius: 999px;
-  background: rgb(163 64 42 / 10%);
+  background: var(--color-brick-selection);
   color: var(--color-brick);
   font-size: 0.78rem;
   font-weight: 700;

@@ -2,8 +2,9 @@ import { db } from '@k39/database'
 import { z } from 'zod'
 import { resolvePeriod, trendPercent } from '../../../shared/analytics'
 import { auditedAnalytics } from '../../utils/analytics/report'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'analytics_overview',
   description: 'Visitors, sessions, pageviews, bounce rate, average engaged time, and the change versus the previous period. Bots are excluded.',
   annotations: { readOnlyHint: true },

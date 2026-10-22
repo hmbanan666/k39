@@ -3,8 +3,9 @@ import { z } from 'zod'
 import { pageModulesSchema } from '../../../shared/page-modules'
 import { saveCollectionDraft } from '../../utils/mcp/collections'
 import { orderedStops, sources } from '../../utils/mcp/schemas'
+import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
-export default defineMcpTool({
+export default defineStrictMcpTool({
   name: 'collection_save',
   description: 'Create or update a collection in place. Omitting publicationStatus leaves a published collection published. A draft-token write to a published or archived collection is stored as a pending review and the live row stays. That response is the stored draft: pendingReview, pendingPublicationStatus, bodyLength, renderedFields, and ordered items. publicationStatus in the response stays the live status. Optional items replace the ordered places; omit them to keep the current list. An empty array clears it. Each placeSlug must exist. A slug rename writes a 301 from /podborki/old. kind \'month\' with month 1..12 makes a month guide; sources render in a separate Sources block, so keep external links out of body. modules replaces the ordered page modules (ADR 0023, see content_guide); omit to keep them, an empty array returns the page to the plain article layout. When modules render, they are the article: body is stored as their projection, the response lists renderedFields, and a different body is a 400. The stop-list reads that projection. An editor write that changes the live row drops the pending draft it saw, in that same save, and returns draftDropped. A newer draft stays.',
   inputSchema: {
