@@ -7,7 +7,7 @@ import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
 import { REDIRECT_HOP_LIMIT } from '../redirects'
 import { prepareSourceLinks, SourceInputError } from '../sources'
-import { categories, collectionItems, collectionMedia, collections, contentDrafts, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
+import { admissionPrices, categories, collectionItems, collectionMedia, collections, contentDrafts, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
 const published = 'published' as const
@@ -1060,6 +1060,7 @@ export class Editor {
       if (offer) {
         throw new Error('Cannot delete: an offer still links this route')
       }
+      await db.delete(admissionPrices).where(and(eq(admissionPrices.subjectType, 'route'), eq(admissionPrices.subjectId, row.id)))
       await db.delete(routes).where(eq(routes.id, row.id))
       return { action: 'deleted' as const, id: row.id, slug: row.slug, publicationStatus: null }
     }

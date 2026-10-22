@@ -8,7 +8,7 @@ import { firstPublishedStamp } from '../first-published'
 import { PHONE_TEXT_MAX } from '../phone'
 import { priceInName, priceInNameMessage } from '../price-label'
 import { prepareSourceLinks, SourceInputError } from '../sources'
-import { media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
+import { admissionPrices, calendarEvents, media, offers, regions, revisions, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
 import {
   assertKind,
   assertVenueSlug,
@@ -556,7 +556,11 @@ export class Venues {
     if (current.status !== 'draft' && current.status !== 'archived') {
       throw new VenueInputError('Удалить можно только черновик или архив')
     }
-    await useDatabase().delete(venues).where(eq(venues.id, current.id))
+    await useDatabase().transaction(async (tx) => {
+      await tx.delete(admissionPrices).where(and(eq(admissionPrices.subjectType, 'venue'), eq(admissionPrices.subjectId, current.id)))
+      await tx.delete(calendarEvents).where(and(eq(calendarEvents.subjectType, 'venue'), eq(calendarEvents.subjectId, current.id)))
+      await tx.delete(venues).where(eq(venues.id, current.id))
+    })
     return { id: current.id, slug: current.slug, action: 'deleted' as const }
   }
 

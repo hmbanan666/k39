@@ -309,6 +309,13 @@
       "when": 1792210000000,
       "tag": "0043_place_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792220000000,
+      "tag": "0044_admission_events",
+      "breakpoints": true
     }
   ]
 }

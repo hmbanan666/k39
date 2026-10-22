@@ -6,13 +6,15 @@ import { isSocialHost } from '@k39/types/social-hosts'
 import { z } from 'zod'
 import { addDays, localNow, scheduleRulesSchema } from './schedule'
 
-// Typed fact values for phase 1 (ADR 0033). Hours reuse the schedule rules.
-// Transport, seasonality, events, and history stay out until their phase.
+// Typed fact values (ADR 0033). Hours reuse the schedule rules. Admission and
+// event are the ADR 0046 ledgers beside their rows. Transport, seasonality,
+// and history stay out until their phase.
 
 export const FACT_IMPORT_ID = 'typed-facts-v1'
 
 export const PHASE1_KINDS = ['hours', 'price', 'phone', 'address', 'coordinates', 'status'] as const
-export type FactKind = (typeof PHASE1_KINDS)[number]
+export const FACT_KINDS = [...PHASE1_KINDS, 'admission', 'event'] as const
+export type FactKind = (typeof FACT_KINDS)[number]
 
 export const FACT_SUBJECTS = ['place', 'venue', 'route', 'route_stop', 'region'] as const
 export type FactSubject = (typeof FACT_SUBJECTS)[number]
@@ -39,6 +41,8 @@ export const FACT_TTL_DAYS: Record<FactKind, number> = {
   address: 365,
   coordinates: 365,
   status: 30,
+  admission: 90,
+  event: 7,
 }
 
 export const WATCH_BATCH = 500
@@ -70,11 +74,27 @@ export const statusValueSchema = z.discriminatedUnion('scope', [
   z.object({ scope: z.literal('venue'), status: z.enum(['open', 'closed']) }),
 ])
 
+export const admissionValueSchema = z.object({
+  audience: z.enum(['general', 'reduced', 'family', 'foreign', 'free']),
+  priceRub: z.number().int().nonnegative(),
+  condition: z.string().max(200).nullable(),
+  label: z.string().max(80).nullable(),
+})
+export const eventValueSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  start: z.string().datetime({ offset: true }),
+  end: z.string().datetime({ offset: true }).nullable(),
+  ticketUrl: z.string().url().nullable(),
+  allDay: z.boolean(),
+})
+
 export type PhoneValue = z.infer<typeof phoneValueSchema>
 export type AddressValue = z.infer<typeof addressValueSchema>
 export type CoordinatesValue = z.infer<typeof coordinatesValueSchema>
 export type PriceValue = z.infer<typeof priceValueSchema>
 export type StatusValue = z.infer<typeof statusValueSchema>
+export type AdmissionValue = z.infer<typeof admissionValueSchema>
+export type EventValue = z.infer<typeof eventValueSchema>
 
 export function valueSchema(kind: string) {
   switch (kind) {
@@ -84,6 +104,8 @@ export function valueSchema(kind: string) {
     case 'address': return addressValueSchema
     case 'coordinates': return coordinatesValueSchema
     case 'status': return statusValueSchema
+    case 'admission': return admissionValueSchema
+    case 'event': return eventValueSchema
     default: return null
   }
 }
@@ -99,7 +121,7 @@ export function parseFactValue(kind: string, value: unknown) {
 
 /** Kind default. A map phone uses the same 180 days as an official phone. */
 export function defaultTtl(kind: string) {
-  if ((PHASE1_KINDS as readonly string[]).includes(kind)) {
+  if ((FACT_KINDS as readonly string[]).includes(kind)) {
     return FACT_TTL_DAYS[kind as FactKind]
   }
   return 30
@@ -279,7 +301,7 @@ export function pastTtl(checkedAt: string | null, ttlDays: number, now = new Dat
 export function factRisk(kind: string, reason: string) {
   const base = kind === 'status' || kind === 'hours' || kind === 'transport'
     ? 5
-    : kind === 'price' || kind === 'seasonality' || kind === 'event'
+    : kind === 'price' || kind === 'admission' || kind === 'seasonality' || kind === 'event'
       ? 3
       : kind === 'phone' || kind === 'address' || kind === 'coordinates'
         ? 2
