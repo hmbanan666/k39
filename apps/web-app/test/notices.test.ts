@@ -181,6 +181,8 @@ describe('notice render', () => {
         schedule,
         notices: shown,
         modules: null,
+        admission: { stored: false, rows: [], lines: [] },
+        upcoming: [],
       },
       photos: [],
       cover: null,

@@ -1,4 +1,4 @@
-import type { NoticeRow, NoticeWrite } from '@k39/database'
+import type { ContentTx, NoticeRow, NoticeWrite } from '@k39/database'
 import type { NoticeSubjectType, NoticeValue } from '../../../shared/notices'
 import type { ContentScope } from '../access'
 import { db } from '@k39/database'
@@ -7,6 +7,7 @@ import { vkMenuMatchesSocial } from '@k39/types/vk-community'
 import { createError } from 'h3'
 import { normalizeNotice, NoticeInputError, noticeListSchema, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeSummary, noticeToday } from '../../../shared/notices'
 import { contentScope } from '../access'
+import { writeWithCheckedDraft } from '../content/pending-guard'
 import { contentWarnings, savePendingDraftContent } from '../content/save'
 import { auditMcp } from '../mcp/audit'
 import { rejectBannedSites } from '../mcp/writing-guard'
@@ -226,8 +227,8 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
     throw createError({ statusCode: 409, statusMessage: 'Draft token cannot edit notices of an archived venue. The live page was not changed.' })
   }
   const rows = prepareNotices(target, input.notices, today, known, true)
-  const pending = await db.editor.contentDraft(target.type, target.id)
   if (scope === 'draft' && isLiveNoticeSubject(target)) {
+    const pending = await db.editor.contentDraft(target.type, target.id)
     const stagedAt = new Date().toISOString()
     const { row: saved, writingWarnings } = await savePendingDraftContent({
       entityType: target.type,
@@ -249,17 +250,11 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
       writingWarnings,
     }
   }
-  if (via === 'admin' && pending && input.pendingDraft !== 'discard') {
-    throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
-  }
   const writingWarnings = noticeWarnings(target, rows, isPublicSubject(target))
-  const { saved, draftDropped } = await db.editor.transaction(async (tx) => {
-    const written = await db.notices.replace(target.type, target.id, rows.map(toNoticeWrite), tx)
-    const dropped = scope === 'editor' && pending
-      ? await db.editor.deleteContentDraftIfUnchanged(pending.id, pending.updatedAt, tx)
-      : false
-    return { saved: written, draftDropped: dropped }
-  })
+  const write = (tx: ContentTx) => db.notices.replace(target.type, target.id, rows.map(toNoticeWrite), tx)
+  const { result: saved, draftDropped } = scope === 'editor'
+    ? await writeWithCheckedDraft(target.type, target.id, via === 'admin' ? { pendingDraft: input.pendingDraft } : 'editor', write)
+    : { result: await db.editor.transaction(write), draftDropped: false }
   if (via === 'mcp') {
     await auditMcp('notices_set', target.type, target.id)
   }

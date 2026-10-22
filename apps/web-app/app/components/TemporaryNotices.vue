@@ -33,41 +33,27 @@
     </ul>
   </aside>
   <template v-else-if="variant === 'facts'">
-    <div
+    <GuideFactRow
       v-for="line in lines"
       :key="line.key"
-      class="notice-fact"
-      :class="`kind-${line.kind}`"
+      :row="{ key: `notice-${line.kind}`, label: line.label || 'На эти даты' }"
     >
-      <Icon
-        :name="tablerIcon(`notice-${line.kind}`)"
-        size="22"
-      />
-      <div>
-        <p
-          v-if="line.label"
-          class="label"
-        >
-          {{ line.label }}
-        </p>
-        <p
-          v-if="line.address"
-          class="where"
-        >
-          {{ line.address }}
-        </p>
-        <p class="dates">
-          {{ line.dates }}
-        </p>
-        <p>{{ line.text }}</p>
-      </div>
-    </div>
+      <p
+        v-if="line.address"
+        class="fact-where"
+      >
+        {{ line.address }}
+      </p>
+      <p class="fact-dates">
+        {{ line.dates }}
+      </p>
+      <p>{{ line.text }}</p>
+    </GuideFactRow>
   </template>
 </template>
 
 <script setup lang="ts">
 import type { PublicNotice } from '~~/shared/notices'
-import { tablerIcon } from '~~/shared/icons'
 import { noticeLines } from '~~/shared/notices'
 
 // Dated notices (ADR 0049). The server sends only current and upcoming rows,
@@ -121,26 +107,6 @@ const lines = computed(() => (props.notices ?? []).map((notice, index) => ({
   font-style: italic;
 }
 
-.notice-fact {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 0.7rem;
-  padding: 0.8rem 0;
-  border-top: 1px dashed var(--color-line);
-}
-h2 + .notice-fact { border-top: 0; }
-.notice-fact svg {
-  width: 22px;
-  height: 22px;
-  margin-top: 0.15rem;
-  color: var(--color-brick);
-}
-.notice-fact p { margin: 0; font-size: 0.97rem; line-height: 1.45; }
-.notice-fact .label {
-  margin-bottom: 0.2rem;
-  color: var(--color-muted);
-  font: 600 0.84rem/1.2 var(--font-body);
-}
-.notice-fact .where { font-weight: 600; }
-.notice-fact .dates { color: var(--color-brick-dark); font-weight: 600; }
+.fact-where { font-weight: 600; }
+.fact-dates { color: var(--color-brick-dark); font-weight: 600; }
 </style>

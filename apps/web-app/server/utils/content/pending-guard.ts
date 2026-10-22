@@ -31,6 +31,34 @@ async function runWithCheckedDraft<T>(
   })
 }
 
+export type PendingDraftEntity = DraftEntity | 'venue'
+
+/**
+ * How a live write treats the pending draft. `editor` drops the draft the
+ * call saw. `{ pendingDraft }` is an admin save: a pending draft blocks it
+ * with 409 until the body sets `pendingDraft` to `discard`.
+ */
+export type PendingDraftMode = 'editor' | { pendingDraft: unknown }
+
+/**
+ * Runs `write` and drops the checked pending draft in the same transaction,
+ * so a newer draft written in between stays. Does not sync the page, so a
+ * write beside the page columns (ADR 0049 notices) can use it too.
+ */
+export async function writeWithCheckedDraft<T>(
+  entity: PendingDraftEntity,
+  id: string,
+  mode: PendingDraftMode,
+  write: (tx: EditorTx) => Promise<T>,
+) {
+  const pending = await db.editor.contentDraft(entity, id)
+  if (pending && mode !== 'editor' && mode.pendingDraft !== 'discard') {
+    throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
+  }
+  const stamp = pending ? { id: pending.id, updatedAt: pending.updatedAt } : null
+  return runWithCheckedDraft(stamp, write)
+}
+
 /**
  * A pending draft blocks an admin save until the body sets `pendingDraft`
  * to `discard`. The discard deletes only the draft that was checked, in the
@@ -43,14 +71,7 @@ export async function withPendingGuard<T extends { id: string }>(
   pendingDraft: unknown,
   write: (tx: EditorTx) => Promise<T>,
 ) {
-  const pending = await db.editor.contentDraft(entity, id)
-  if (pending && pendingDraft !== 'discard') {
-    throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
-  }
-  const stamp = pending && pendingDraft === 'discard'
-    ? { id: pending.id, updatedAt: pending.updatedAt }
-    : null
-  const { result } = await runWithCheckedDraft(stamp, write)
+  const { result } = await writeWithCheckedDraft(entity, id, { pendingDraft }, write)
   await syncSavedPage(entity, result.id)
   return result
 }
@@ -65,9 +86,7 @@ export async function withEditorLiveWrite<T extends { id: string }>(
   id: string,
   write: (tx: EditorTx) => Promise<T>,
 ) {
-  const pending = await db.editor.contentDraft(entity, id)
-  const stamp = pending ? { id: pending.id, updatedAt: pending.updatedAt } : null
-  const { result, draftDropped } = await runWithCheckedDraft(stamp, write)
+  const { result, draftDropped } = await writeWithCheckedDraft(entity, id, 'editor', write)
   await syncSavedPage(entity, result.id)
   return { ...result, draftDropped }
 }
