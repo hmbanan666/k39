@@ -2,7 +2,8 @@
  * VK community identity for the official-menu rule (ADR 0048).
  * A social link names a community by screen name (`vk.com/cafe`) or by
  * numeric id (`club10`, `public10`, `event10`). Albums, photos, posts, and
- * market items carry the owner id (`album-10_4`, `wall-10_3`, `?z=photo-10_1`).
+ * market items carry the owner id (`album-10_4`, `wall-10_3`, `?z=photo-10_1`,
+ * `?w=product-10_5`).
  * Nothing here calls VK: a screen name and its id are linked only by
  * `venues.vk_community_id`, which an editor declares.
  */
@@ -110,7 +111,7 @@ function absorbVkToken(keys: VkKeys, token: string) {
     keys.communities.add(album[1])
     return
   }
-  const attachment = /^(?:photo|doc|topic|video)-(\d+)_\d+/i.exec(text)
+  const attachment = /^(?:photo|doc|topic|video|product)-(\d+)_\d+/i.exec(text)
   if (attachment?.[1]) {
     keys.communities.add(attachment[1])
     return

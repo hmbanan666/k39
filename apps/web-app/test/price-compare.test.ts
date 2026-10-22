@@ -1155,6 +1155,10 @@ describe('vk menu rule', () => {
       expect(vkMenuMatchesSocial(url, socials)).toBe(false)
       expect(vkMenuMatchesSocial(url, socials, 236300695)).toBe(true)
     }
+    expect(vkMenuMatchesSocial('https://vk.com/market?w=product-236300695_5', socials, 236300695)).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/market?w=product-236300695_5', socials)).toBe(false)
+    expect(vkMenuMatchesSocial('https://vk.com/product-236300695_5', [{ url: 'https://vk.com/club236300695' }])).toBe(true)
+    expect(vkMenuMatchesSocial('https://vk.com/lugowen_gastro?w=product-71522139_5', socials, 236300695)).toBe(false)
     expect(vkMenuMatchesSocial(album, socials, 71522139)).toBe(false)
     expect(vkMenuMatchesSocial('https://vk.com/lugowen_gastro?z=photo-71522139_1', socials, 236300695)).toBe(false)
     expect(vkMenuMatchesSocial(album, [], 236300695)).toBe(false)
