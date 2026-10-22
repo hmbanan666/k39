@@ -3,7 +3,7 @@
 // auto-imports exist. This package's tsc excludes the file.
 import type { ScheduleRules } from '../../../../../apps/web-app/shared/schedule'
 import { eq, inArray } from 'drizzle-orm'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
 import { saveOwnerVenue } from '../../../../../apps/web-app/server/utils/cabinet/flow'
 import { resetCabinetSlots } from '../../../../../apps/web-app/server/utils/cabinet/rate'
@@ -15,6 +15,7 @@ import { useDatabase } from '../../database'
 import { HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG } from '../../hours-note'
 import { facts, mcpAudits, revisions, schedules, users, venueAudits, venueMembers, venues, verificationQueue } from '../../tables'
 import { normalizeHours, parseOsmHours, VenueInputError } from '../../venues'
+import { Schedules } from '../schedules'
 
 const SOURCE = 'https://cafe.example/hours'
 
@@ -292,20 +293,43 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
     expect(parseOsmHours('по договорённости '.repeat(30)).note).toHaveLength(HOURS_NOTE_MAX)
   })
 
-  it('stores OSM hours draft by draft and skips a bad one without stopping', async () => {
-    const [bad, good] = await useDatabase().insert(venues).values([
-      { slug: 'hours-osm-bad', name: 'Плохие часы', kind: 'cafe', description: '', status: 'draft' },
+  it('stores OSM hours draft by draft and skips invalid input without stopping', async () => {
+    const [long, open, good] = await useDatabase().insert(venues).values([
+      { slug: 'hours-osm-long', name: 'Длинная заметка', kind: 'cafe', description: '', status: 'draft' },
+      { slug: 'hours-osm-open', name: 'Нет времени', kind: 'cafe', description: '', status: 'draft' },
       { slug: 'hours-osm-good', name: 'Хорошие часы', kind: 'cafe', description: '', status: 'draft' },
     ]).returning()
-    venueIds.push(bad!.id, good!.id)
+    venueIds.push(long!.id, open!.id, good!.id)
     const skipped = await saveImportedHours([
-      { id: bad!.id, draft: { osmId: 'node/1', hours: { note: 'я'.repeat(HOURS_NOTE_MAX + 1), days: [] }, sources: [] } },
+      { id: long!.id, draft: { osmId: 'node/1', hours: { note: 'я'.repeat(HOURS_NOTE_MAX + 1), days: [] }, sources: [] } },
+      { id: open!.id, draft: { osmId: 'node/3', hours: { days: [{ weekday: 'mon', closed: false }] }, sources: [] } },
       { id: good!.id, draft: { osmId: 'node/2', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [{ url: 'https://www.openstreetmap.org/node/2' }] } },
     ])
-    expect(skipped).toEqual(['node/1'])
-    expect(await loadSchedule('venue', bad!.id)).toBeNull()
+    expect(skipped).toEqual(['node/1', 'node/3'])
+    expect(await loadSchedule('venue', long!.id)).toBeNull()
+    expect(await loadSchedule('venue', open!.id)).toBeNull()
     const stored = await loadSchedule('venue', good!.id)
     expect(stored).toMatchObject({ sourceUrl: 'https://www.openstreetmap.org/node/2', verifiedAt: null })
     expect(stored!.rules.seasons[0]!.week).toEqual([{ days: [1, 2, 3, 4, 5], opens: '09:00', closes: '18:00', breaks: [] }])
+  })
+
+  it('fails the OSM import on a database error instead of skipping the draft', async () => {
+    const [first, second] = await useDatabase().insert(venues).values([
+      { slug: 'hours-osm-db-a', name: 'Сбой базы', kind: 'cafe', description: '', status: 'draft' },
+      { slug: 'hours-osm-db-b', name: 'После сбоя', kind: 'cafe', description: '', status: 'draft' },
+    ]).returning()
+    venueIds.push(first!.id, second!.id)
+    const outage = new Error('connection terminated')
+    const save = vi.spyOn(Schedules, 'save').mockRejectedValueOnce(outage)
+    try {
+      await expect(saveImportedHours([
+        { id: first!.id, draft: { osmId: 'node/4', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [] } },
+        { id: second!.id, draft: { osmId: 'node/5', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [] } },
+      ])).rejects.toBe(outage)
+      expect(save).toHaveBeenCalledTimes(1)
+    } finally {
+      save.mockRestore()
+    }
+    expect(await loadSchedule('venue', second!.id)).toBeNull()
   })
 })

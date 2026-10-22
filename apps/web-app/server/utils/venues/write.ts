@@ -303,9 +303,9 @@ export async function planVenueSchedule(
 }
 
 /**
- * OSM opening hours of newly imported drafts as unverified schedules. One
- * draft whose hours do not fit never stops the rest: its osmId is returned and
- * the draft keeps unknown hours.
+ * OSM opening hours of newly imported drafts as unverified schedules. A draft
+ * whose hours are invalid input never stops the rest: its osmId is returned
+ * and the draft keeps unknown hours. Any other error fails the import.
  */
 export async function saveImportedHours(created: Array<{ id: string, draft: { osmId: string, hours: unknown, sources: Array<{ url: string }> } }>) {
   const hoursSkipped: string[] = []
@@ -314,7 +314,9 @@ export async function saveImportedHours(created: Array<{ id: string, draft: { os
       const schedule = await planVenueSchedule({ id, lastVerifiedAt: null }, { hours: draft.hours })
       await saveVenueSchedule({ id, status: 'draft' }, schedule && { ...schedule, sourceUrl: draft.sources[0]?.url ?? null, verifiedAt: null }, 'mcp')
     } catch (error) {
-      console.warn(`venue_import_osm: hours of ${draft.osmId} not saved`, error)
+      if (!(error instanceof VenueInputError)) {
+        throw error
+      }
       hoursSkipped.push(draft.osmId)
     }
   }
