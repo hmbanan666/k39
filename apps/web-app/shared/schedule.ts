@@ -1,3 +1,4 @@
+import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
 import { z } from 'zod'
 import { parsePlaceHours } from './opening-hours'
 
@@ -79,7 +80,7 @@ export const scheduleRulesSchema = z.object({
     note: z.string().trim().max(80).optional(),
   })).max(60).default([]),
   occurrences: z.array(z.object({ start: localDateTime, end: localDateTime })).max(200).default([]),
-  note: z.string().trim().max(200).optional(),
+  note: z.string().trim().max(HOURS_NOTE_MAX).optional(),
   /** Mode slots only: visits start at fixed times within the open hours (guided tours). */
   slots: z.object({
     times: z.array(clock).min(1).max(24),
@@ -783,17 +784,21 @@ export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, clos
   return parsed.success ? parsed.data : null
 }
 
-/** A weekly table as rules, with an empty week when no day is open, so a table save can clear the week. */
-export function weeklyTableRules(hours: Parameters<typeof rulesFromVenueHours>[0]): ScheduleRules {
+/**
+ * A weekly table as rules, with an empty week when no day is open, so a
+ * table save can clear the week. Null when the table is not valid rules.
+ */
+export function weeklyTableRules(hours: Parameters<typeof rulesFromVenueHours>[0]): ScheduleRules | null {
   const rules = rulesFromVenueHours(hours)
   if (rules) {
     return rules
   }
   const unknownDays = (hours?.days ?? []).filter((day) => day.unknown && VENUE_DAY[day.weekday] !== undefined).map((day) => VENUE_DAY[day.weekday]!)
-  return scheduleRulesSchema.parse({
+  const parsed = scheduleRulesSchema.safeParse({
     seasons: [{ week: [], ...(unknownDays.length ? { unknownDays } : {}) }],
     note: hours?.note || undefined,
   })
+  return parsed.success ? parsed.data : null
 }
 
 /**
@@ -824,19 +829,31 @@ export function weeklyTableFits(rules: ScheduleRules | null) {
  * A weekly table save on top of the stored rules. The table replaces the
  * week and the unknown days of its one season, and the note when `note` is
  * true. Everything else in `current` stays. Call only when
- * `weeklyTableFits(current)`.
+ * `weeklyTableFits(current)`. Null when the result is not valid rules.
  */
-export function mergeWeeklyRules(current: ScheduleRules | null, table: ScheduleRules, options: { note: boolean }): ScheduleRules {
+export function mergeWeeklyRules(current: ScheduleRules | null, table: ScheduleRules, options: { note: boolean }): ScheduleRules | null {
   if (!current) {
     return table
   }
   const season = table.seasons[0]
-  const note = options.note ? table.note : current.note
-  return scheduleRulesSchema.parse({
+  const parsed = scheduleRulesSchema.safeParse({
     ...current,
     seasons: [{ week: season?.week ?? [], ...(season?.unknownDays?.length ? { unknownDays: season.unknownDays } : {}) }],
-    note,
+    note: options.note ? table.note : current.note,
   })
+  return parsed.success ? parsed.data : null
+}
+
+/**
+ * Only the note changes; the week and every other rule stay. Without stored
+ * rules the note gets a week whose hours are all unknown (ADR 0044), never an
+ * empty week, which would read as closed every day. Null when not valid.
+ */
+export function rulesWithNote(current: ScheduleRules | null, note: string | null): ScheduleRules | null {
+  const parsed = scheduleRulesSchema.safeParse(current
+    ? { ...current, note: note || undefined }
+    : { seasons: [{ week: [], unknownDays: [1, 2, 3, 4, 5, 6, 0] }], note: note || undefined })
+  return parsed.success ? parsed.data : null
 }
 
 /** What a weekly table shows of these rules: each weekday's state and times, and the note. */

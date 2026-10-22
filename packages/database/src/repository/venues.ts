@@ -793,8 +793,10 @@ export class Venues {
     return new Set(rows.map((row) => row.venueId).filter((id): id is string => Boolean(id)))
   }
 
+  /** `createdDrafts` pairs each new row with the draft it came from. */
   static async importDrafts(drafts: OsmDraft[], regionId: string | null) {
     const created: string[] = []
+    const createdDrafts: Array<{ id: string, draft: OsmDraft }> = []
     const existing: string[] = []
     const skipped: string[] = []
     for (const draft of drafts) {
@@ -828,6 +830,7 @@ export class Venues {
           locality: { town: draft.town, district: draft.district },
         })
         created.push(row.id)
+        createdDrafts.push({ id: row.id, draft })
       } catch (error) {
         if (error instanceof VenueInputError) {
           const again = await this.byOsmId(draft.osmId)
@@ -841,7 +844,7 @@ export class Venues {
         throw error
       }
     }
-    return { created, existing, skipped }
+    return { created, existing, skipped, createdDrafts }
   }
 
   static async gallery(venueId: string) {

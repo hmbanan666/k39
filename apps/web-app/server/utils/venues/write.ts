@@ -4,7 +4,7 @@ import type { ScheduleRecord } from '../../../shared/schedule'
 import type { VenueModule } from '../../../shared/venue-modules'
 import { db, normalizeHours, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
-import { mergeWeeklyRules, verifiedDate, weeklyTableFits, weeklyTableKey, weeklyTableRules } from '../../../shared/schedule'
+import { mergeWeeklyRules, rulesWithNote, verifiedDate, weeklyTableFits, weeklyTableKey, weeklyTableRules } from '../../../shared/schedule'
 import { contentScope, requireEditorContent } from '../access'
 import { contentGate, contentWarnings, createVenueContent, updateVenueContent } from '../content/save'
 import { hoursConflict, syncCoordinates, syncVenueContact } from '../facts/sync'
@@ -233,15 +233,19 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
 
 export const SCHEDULE_ONLY_HOURS = 'Часы этого заведения заданы расписанием (сезоны, перерывы или особый режим). Таблица их не покажет целиком, поэтому меняйте их через schedule_set.'
 
+export const HOURS_NOT_SAVED = 'Часы не сохранены: проверьте время по дням и заметку'
+
 /**
  * The schedule a venue write stores, or null when the write leaves it alone.
  * The `schedules` row is the only source of venue hours (ADR 0028). `hours`
- * from a form or `venue_update` is a weekly table: it replaces the week and
- * unknown days of its one season, and the note when it carries `note`.
+ * from a form or `venue_update` is a weekly table: `days` replace the week and
+ * unknown days of its one season, and `note` the note. A missing `days` keeps
+ * the stored week, so a note-only write changes only the note, on any rules.
  * Other seasons, closures, exceptions, holidays, slots and the source URL
- * stay. Rules a table cannot show are refused with 409. Hours equal to the
- * stored ones are no write. A changed editor check date marks the schedule
- * verified; otherwise the stored check date stays.
+ * stay. `days` against rules a table cannot show are refused with 409. Hours
+ * equal to the stored ones are no write. A changed editor check date marks the
+ * schedule verified; otherwise the stored check date stays. Invalid hours are
+ * a `VenueInputError` (400).
  */
 export async function planVenueSchedule(
   venue: { id: string, lastVerifiedAt: Date | string | null },
@@ -250,17 +254,38 @@ export async function planVenueSchedule(
   const current = await loadSchedule('venue', venue.id)
   let rules = current?.rules ?? null
   let hoursChanged = false
-  if (input.hours !== undefined) {
-    const table = weeklyTableRules(normalizeHours(input.hours))
-    const states = table.seasons[0]!.week.length > 0 || Boolean(table.seasons[0]!.unknownDays?.length) || Boolean(table.note)
-    if (rules || states) {
+  const sent = input.hours && typeof input.hours === 'object' ? input.hours as { days?: unknown } : null
+  const sendsDays = Array.isArray(sent?.days)
+  const sendsNote = Boolean(sent && 'note' in sent)
+  if (sent && (sendsDays || sendsNote)) {
+    const hours = normalizeHours(sent)
+    if (sendsDays) {
       if (!weeklyTableFits(rules)) {
         throw createError({ statusCode: 409, statusMessage: SCHEDULE_ONLY_HOURS })
       }
-      const sendsNote = Boolean(input.hours && typeof input.hours === 'object' && 'note' in input.hours)
-      const merged = mergeWeeklyRules(rules, table, { note: sendsNote })
-      if (!rules || weeklyTableKey(merged) !== weeklyTableKey(rules)) {
-        rules = merged
+      const table = weeklyTableRules(hours)
+      if (!table) {
+        throw new VenueInputError(HOURS_NOT_SAVED)
+      }
+      const season = table.seasons[0]
+      const states = Boolean(season?.week.length || season?.unknownDays?.length || table.note)
+      if (rules || states) {
+        const merged = mergeWeeklyRules(rules, table, { note: sendsNote })
+        if (!merged) {
+          throw new VenueInputError(HOURS_NOT_SAVED)
+        }
+        if (!rules || weeklyTableKey(merged) !== weeklyTableKey(rules)) {
+          rules = merged
+          hoursChanged = true
+        }
+      }
+    } else if (rules || hours.note) {
+      const next = rulesWithNote(rules, hours.note)
+      if (!next) {
+        throw new VenueInputError(HOURS_NOT_SAVED)
+      }
+      if (!rules || (next.note ?? '') !== (rules.note ?? '')) {
+        rules = next
         hoursChanged = true
       }
     }
@@ -275,6 +300,25 @@ export async function planVenueSchedule(
     sourceUrl: current?.sourceUrl ?? null,
     verifiedAt: rules.needsCheck ? null : checkedOn,
   }
+}
+
+/**
+ * OSM opening hours of newly imported drafts as unverified schedules. One
+ * draft whose hours do not fit never stops the rest: its osmId is returned and
+ * the draft keeps unknown hours.
+ */
+export async function saveImportedHours(created: Array<{ id: string, draft: { osmId: string, hours: unknown, sources: Array<{ url: string }> } }>) {
+  const hoursSkipped: string[] = []
+  for (const { id, draft } of created) {
+    try {
+      const schedule = await planVenueSchedule({ id, lastVerifiedAt: null }, { hours: draft.hours })
+      await saveVenueSchedule({ id, status: 'draft' }, schedule && { ...schedule, sourceUrl: draft.sources[0]?.url ?? null, verifiedAt: null }, 'mcp')
+    } catch (error) {
+      console.warn(`venue_import_osm: hours of ${draft.osmId} not saved`, error)
+      hoursSkipped.push(draft.osmId)
+    }
+  }
+  return hoursSkipped
 }
 
 /** Store a planned venue schedule. Returns the queue id when an owner fact blocked it. */

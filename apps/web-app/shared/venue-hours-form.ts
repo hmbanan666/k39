@@ -66,6 +66,11 @@ export function blankHoursDays(): HoursFormDay[] {
   return HOURS_WEEKDAYS.map((weekday) => ({ weekday, state: 'closed', opens: '', closes: '' }))
 }
 
+/** A venue with no schedule yet: every day closed, editable. */
+export function emptyHoursForm(): HoursFormState {
+  return { days: blankHoursDays(), note: '', editable: true, table: true, lines: [] }
+}
+
 /**
  * Form rows from schedule rules. A read-only schedule fills the table from the
  * season that applies on `today` (Kaliningrad date).

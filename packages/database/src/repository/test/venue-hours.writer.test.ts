@@ -8,10 +8,13 @@ import { enterContentScope } from '../../../../../apps/web-app/server/utils/acce
 import { saveOwnerVenue } from '../../../../../apps/web-app/server/utils/cabinet/flow'
 import { resetCabinetSlots } from '../../../../../apps/web-app/server/utils/cabinet/rate'
 import { loadHoursForm, loadSchedule, saveSchedule } from '../../../../../apps/web-app/server/utils/schedule'
-import { createVenue, updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
+import { createVenue, saveImportedHours, updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
+import { rulesFromVenueHours, weeklyTableRules } from '../../../../../apps/web-app/shared/schedule'
 import { hoursPayload } from '../../../../../apps/web-app/shared/venue-hours-form'
 import { useDatabase } from '../../database'
+import { HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG } from '../../hours-note'
 import { facts, mcpAudits, revisions, schedules, users, venueAudits, venueMembers, venues, verificationQueue } from '../../tables'
+import { normalizeHours, parseOsmHours, VenueInputError } from '../../venues'
 
 const SOURCE = 'https://cafe.example/hours'
 
@@ -230,5 +233,79 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
     const stored = await loadSchedule('venue', created!.id)
     expect(stored!.rules.seasons).toEqual([{ week: [{ days: [2], opens: '09:00', closes: '18:00', breaks: [] }] }])
     expect(stored!.verifiedAt).toBeNull()
+  })
+
+  it('keeps the stored week when hours carry only a note, or nothing', async () => {
+    const venue = await venueWith('hours-note-only', singleSeason)
+    const before = await storedRow(venue.id)
+
+    await updateVenue({ id: venue.id, hours: {} })
+    expect((await storedRow(venue.id)).updatedAt).toBe(before.updatedAt)
+
+    await updateVenue({ id: venue.id, hours: { note: 'Кухня до 18:00' } })
+    const stored = await loadSchedule('venue', venue.id)
+    expect(stored!.rules.seasons).toEqual(singleSeason.seasons)
+    expect(stored!.rules.note).toBe('Кухня до 18:00')
+    expect(keptRules({ ...stored!.rules, note: singleSeason.note })).toEqual(keptRules(singleSeason))
+
+    const userId = await owner(venue.id)
+    await saveOwnerVenue(userId, venue.id, { hours: { note: null } })
+    const cleared = await loadSchedule('venue', venue.id)
+    expect(cleared!.rules.seasons).toEqual(singleSeason.seasons)
+    expect(cleared!.rules.note).toBeUndefined()
+  })
+
+  it('changes only the note of rules a table cannot show', async () => {
+    const venue = await venueWith('hours-note-seasons', twoSeasons)
+    await updateVenue({ id: venue.id, hours: { note: 'Летом терраса' } })
+    const stored = await loadSchedule('venue', venue.id)
+    expect({ ...stored!.rules, note: twoSeasons.note }).toEqual(twoSeasons)
+    expect(stored!.rules.note).toBe('Летом терраса')
+  })
+
+  it('stores a note without a schedule as hours unknown on every day, never closed', async () => {
+    const created = await createVenue({ name: 'Кафе с заметкой', kind: 'cafe', status: 'draft', hours: { note: 'Работает по сезону' } })
+    venueIds.push(created!.id)
+    const stored = await loadSchedule('venue', created!.id)
+    expect(stored!.rules.seasons).toEqual([{ week: [], unknownDays: [1, 2, 3, 4, 5, 6, 0] }])
+    expect(stored!.rules.note).toBe('Работает по сезону')
+  })
+
+  it('refuses a note over the shared limit with a 400 and keeps the schedule', async () => {
+    const venue = await venueWith('hours-long-note', singleSeason)
+    const before = await storedRow(venue.id)
+    const long = 'я'.repeat(HOURS_NOTE_MAX + 1)
+    expect(() => normalizeHours({ note: long })).toThrow(VenueInputError)
+    await expect(updateVenue({ id: venue.id, hours: { note: long, days: [] } })).rejects.toMatchObject({ statusCode: 400, statusMessage: HOURS_NOTE_TOO_LONG })
+    await expect(updateVenue({ id: venue.id, hours: { note: long } })).rejects.toMatchObject({ statusCode: 400 })
+    const userId = await owner(venue.id)
+    await expect(saveOwnerVenue(userId, venue.id, { hours: { note: long } })).rejects.toMatchObject({ statusCode: 400, statusMessage: HOURS_NOTE_TOO_LONG })
+    expect((await storedRow(venue.id)).updatedAt).toBe(before.updatedAt)
+    const atLimit = normalizeHours({ note: 'я'.repeat(HOURS_NOTE_MAX), days: [] })
+    expect(weeklyTableRules(atLimit)?.note).toHaveLength(HOURS_NOTE_MAX)
+  })
+
+  it('caps an unparsed OSM opening_hours note at the schedule limit', () => {
+    const hours = parseOsmHours(`Mo-Fr 10:00-19:00; ${'по договорённости '.repeat(30)}`)
+    expect(hours.note).toHaveLength(HOURS_NOTE_MAX)
+    expect(rulesFromVenueHours(hours)?.note).toHaveLength(HOURS_NOTE_MAX)
+    expect(parseOsmHours('по договорённости '.repeat(30)).note).toHaveLength(HOURS_NOTE_MAX)
+  })
+
+  it('stores OSM hours draft by draft and skips a bad one without stopping', async () => {
+    const [bad, good] = await useDatabase().insert(venues).values([
+      { slug: 'hours-osm-bad', name: 'Плохие часы', kind: 'cafe', description: '', status: 'draft' },
+      { slug: 'hours-osm-good', name: 'Хорошие часы', kind: 'cafe', description: '', status: 'draft' },
+    ]).returning()
+    venueIds.push(bad!.id, good!.id)
+    const skipped = await saveImportedHours([
+      { id: bad!.id, draft: { osmId: 'node/1', hours: { note: 'я'.repeat(HOURS_NOTE_MAX + 1), days: [] }, sources: [] } },
+      { id: good!.id, draft: { osmId: 'node/2', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [{ url: 'https://www.openstreetmap.org/node/2' }] } },
+    ])
+    expect(skipped).toEqual(['node/1'])
+    expect(await loadSchedule('venue', bad!.id)).toBeNull()
+    const stored = await loadSchedule('venue', good!.id)
+    expect(stored).toMatchObject({ sourceUrl: 'https://www.openstreetmap.org/node/2', verifiedAt: null })
+    expect(stored!.rules.seasons[0]!.week).toEqual([{ days: [1, 2, 3, 4, 5], opens: '09:00', closes: '18:00', breaks: [] }])
   })
 })

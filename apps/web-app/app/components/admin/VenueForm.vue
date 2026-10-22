@@ -107,6 +107,7 @@
         </p>
         <label>Заметка <input
           v-model="form.hoursNote"
+          :maxlength="HOURS_NOTE_MAX"
           :disabled="!hours.editable"
         ></label>
       </fieldset>
@@ -204,7 +205,8 @@
 
 <script setup lang="ts">
 import type { HoursFormState } from '~~/shared/venue-hours-form'
-import { hoursFormState, hoursPayload } from '~~/shared/venue-hours-form'
+import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
+import { emptyHoursForm, hoursPayload } from '~~/shared/venue-hours-form'
 import { vkCommunityField } from '~~/shared/venue-vk-form'
 
 const props = defineProps<{ venueId?: string }>()
@@ -237,9 +239,9 @@ const form = reactive({
   hoursNote: '',
   description: '',
   sources: '',
-  days: hoursFormState(null, '').days,
+  days: emptyHoursForm().days,
 })
-const hours = ref<HoursFormState>(hoursFormState(null, ''))
+const hours = ref<HoursFormState>(emptyHoursForm())
 // The hours as loaded. A save sends `hours` only when the table or the note differs.
 const savedHours = ref('')
 

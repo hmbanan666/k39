@@ -62,7 +62,10 @@
         v-if="hours.editable"
         label="Заметка к часам"
       >
-        <UiInput v-model="form.hoursNote" />
+        <UiInput
+          v-model="form.hoursNote"
+          :maxlength="HOURS_NOTE_MAX"
+        />
       </UiField>
     </fieldset>
     <fieldset>
@@ -589,6 +592,7 @@
 
 <script setup lang="ts">
 import type { HoursFormState } from '~~/shared/venue-hours-form'
+import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
 import { metaProductFromHref } from '~~/shared/meta-links'
 import { socialLabel } from '~~/shared/venue-actions'
 import { hoursPayload } from '~~/shared/venue-hours-form'

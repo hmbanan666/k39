@@ -1,7 +1,7 @@
 import type { ClaimChannel } from '@k39/database'
 import type { VenueModule } from '../../../shared/venue-modules'
 import process from 'node:process'
-import { CLAIM_CODE_TTL_MS, db, hashClaimCode, newClaimCode, VenueInputError } from '@k39/database'
+import { CLAIM_CODE_TTL_MS, db, hashClaimCode, HOURS_NOTE_TOO_LONG, newClaimCode, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
 import { claimChannelPlan, ownerVenueSchema, pickOwnerFields } from '../../../shared/cabinet'
 import { verifiedDate } from '../../../shared/schedule'
@@ -25,7 +25,7 @@ function fail(statusCode: number, statusMessage: string): never {
 }
 
 function formProblem(issues: Array<{ message: string }>, fallback: string) {
-  const issue = issues.find((item) => item.message.startsWith('Цену пишите') || item.message.startsWith('Нельзя использовать'))
+  const issue = issues.find((item) => item.message.startsWith('Цену пишите') || item.message.startsWith('Нельзя использовать') || item.message === HOURS_NOTE_TOO_LONG)
   return issue?.message ?? fallback
 }
 
@@ -278,12 +278,6 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
       fail(400, formProblem(prices.error.issues, 'Проверьте ориентиры цен'))
     }
     ownerPrices = asOwnerPrices(prices.data)
-  }
-  if (write.hours) {
-    write.hours = {
-      note: write.hours.note ?? null,
-      days: write.hours.days ?? [],
-    }
   }
   if (write.modules) {
     write.modules = await normalizeDishModules(venueId, write.modules as VenueModule[], 'owner')

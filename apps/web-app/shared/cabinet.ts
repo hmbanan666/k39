@@ -1,3 +1,4 @@
+import { HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG } from '@k39/database/hours-note'
 import { z } from 'zod'
 import { venueModulesSchema } from './venue-modules'
 
@@ -71,7 +72,7 @@ export const ownerVenueSchema = z.object({
   modules: venueModulesSchema.optional(),
   hours: z.object({
     days: z.array(day).max(7).optional(),
-    note: z.string().trim().max(200).nullable().optional(),
+    note: z.string().trim().max(HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG).nullable().optional(),
   }).optional(),
 }).strict()
 
