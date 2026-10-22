@@ -406,8 +406,6 @@ export async function applyFixtures(now = new Date()) {
     verifiedAt: day,
   }, [])
 
-  // Categories come from the boot import. Without one the place keeps its rows but has no page.
-  const museums = await Content.categoryBySlug('muzei')
   const tickets = await Editor.savePlace({
     slug: FIXTURE_SLUGS.placeTickets,
     title: 'Фикстура: музей с билетами',
