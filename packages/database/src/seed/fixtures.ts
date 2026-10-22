@@ -25,6 +25,7 @@ export const FIXTURE_SLUGS = {
   cafeNoCoords: 'fixture-cafe-nocoords',
   cafeOpenEnded: 'fixture-cafe-open',
   cafeUnknownDays: 'fixture-cafe-weekdays',
+  cafeSeasons: 'fixture-cafe-seasons',
   collection: 'fixture-modules',
 } as const
 
@@ -88,6 +89,22 @@ function unknownDaysRules() {
     closures: [],
     holidays: 'as-usual',
     exceptions: [],
+    occurrences: [],
+    needsCheck: false,
+  }
+}
+
+/** Summer and the rest of the year, a monthly closure, and a one-off date. One weekly table cannot show it. */
+function seasonalRules(now: Date) {
+  return {
+    mode: 'hours',
+    seasons: [
+      { from: '06-01', to: '08-31', week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '23:00', breaks: [] }] },
+      { week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }, { days: [6], opens: '11:00', closes: '17:00', breaks: [] }] },
+    ],
+    closures: [{ weekday: 1, nth: -1, label: 'Санитарный день' }],
+    holidays: 'as-usual',
+    exceptions: [{ date: `${now.getUTCFullYear()}-12-31`, closed: true, note: 'Фикстура: закрыто' }],
     occurrences: [],
     needsCheck: false,
   }
@@ -313,6 +330,13 @@ export async function applyFixtures(now = new Date()) {
     latitude: 54.7245,
     longitude: 20.506,
   })
+  const seasons = await ensureVenue({
+    slug: FIXTURE_SLUGS.cafeSeasons,
+    name: 'Фикстура: кафе с сезонами',
+    regionId: town.id,
+    latitude: 54.725,
+    longitude: 20.507,
+  })
   await ensureCover({ venueId: photo.id }, 'Фикстура кафе')
 
   const day = now.toISOString().slice(0, 10)
@@ -354,6 +378,13 @@ export async function applyFixtures(now = new Date()) {
     sourceUrl: HOURS_URL,
     verifiedAt: day,
   }, [])
+  await Schedules.save({
+    entityType: 'venue',
+    entityId: seasons.id,
+    rules: seasonalRules(now),
+    sourceUrl: HOURS_URL,
+    verifiedAt: day,
+  }, [])
 
   await Editor.saveCollection({
     slug: FIXTURE_SLUGS.collection,
@@ -369,6 +400,6 @@ export async function applyFixtures(now = new Date()) {
   return {
     slugs: FIXTURE_SLUGS,
     catalog: PRICE_CATALOG.length,
-    venues: [photo.slug, quiet.slug, peer.slug, nowhere.slug, openEnded.slug, unknownDays.slug],
+    venues: [photo.slug, quiet.slug, peer.slug, nowhere.slug, openEnded.slug, unknownDays.slug, seasons.slug],
   }
 }
