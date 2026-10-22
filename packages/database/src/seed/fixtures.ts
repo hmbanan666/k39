@@ -1,7 +1,7 @@
 import type { StoredPageModule } from '../types'
 import { eq } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { Editor } from '../repository/content'
+import { Content, Editor } from '../repository/content'
 import { Prices } from '../repository/prices'
 import { Schedules } from '../repository/schedules'
 import { Venues } from '../repository/venues'
@@ -18,6 +18,7 @@ export const FIXTURE_SLUGS = {
   townPlain: 'fixture-plain',
   placeHub: 'fixture-town',
   placeStop: 'fixture-stop',
+  placeContact: 'fixture-contact',
   cafePhoto: 'fixture-cafe-photo',
   cafePlain: 'fixture-cafe-plain',
   cafePeer: 'fixture-cafe-peer',
@@ -30,6 +31,8 @@ export const FIXTURE_SLUGS = {
 const MENU_URL = 'https://fixture.k39.test/menu'
 const HOURS_URL = 'https://fixture.k39.test/hours'
 const INSTAGRAM = 'https://instagram.com/k39_fixture'
+const SITE_URL = 'https://fixture.k39.test/'
+const CONTACTS_URL = 'https://fixture.k39.test/contacts'
 
 function fixtureProse(label: string) {
   const sentence = `${label}. Проверка вёрстки, не статья о месте. `
@@ -241,6 +244,28 @@ export async function applyFixtures(now = new Date()) {
     sources: [],
   })
   await ensureCover({ placeId: hub.id }, 'Фикстура города')
+  // Public only once boot content has created the muzei hub; a place without a hub is a 404.
+  const museums = await Content.categoryBySlug('muzei')
+  await Editor.savePlace({
+    slug: FIXTURE_SLUGS.placeContact,
+    title: 'Фикстура: место с контактами',
+    summary: 'Блок «Коротко» с телефоном и сайтом.',
+    body: 'Фикстура места. Не статья.',
+    status: 'open',
+    publicationStatus: 'published',
+    noindex: true,
+    categoryId: museums?.id ?? null,
+    regionId: town.id,
+    latitude: 54.7215,
+    longitude: 20.5015,
+    visitDuration: '1 час',
+    price: '100 ₽',
+    howToGet: 'Фикстура, улица Проверки, 2',
+    phone: '+7 4012 00-00-00, +7 900 000-00-00',
+    website: SITE_URL,
+    schemaType: 'Church',
+    sources: [{ title: 'Контакты фикстуры', url: CONTACTS_URL }],
+  })
 
   const photo = await ensureVenue({
     slug: FIXTURE_SLUGS.cafePhoto,

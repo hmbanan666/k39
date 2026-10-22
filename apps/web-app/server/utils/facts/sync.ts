@@ -353,6 +353,56 @@ export async function syncPlaceStatus(input: {
   return { skipped: false as const }
 }
 
+/**
+ * Mirror the official place phone as a `phone` fact (#238). The caller has
+ * already checked the text and the source (`resolvePlaceContact`). Unlike a
+ * venue, a place phone always carries the official URL it was read from, so
+ * the source watcher can follow it. An unchanged claim writes nothing.
+ */
+export async function syncPlacePhone(input: {
+  placeId: string
+  actor: FactActor
+  pageStatus?: string | null
+  phone: string | null
+  sourceUrl: string | null
+  checkedAt: string | null
+}) {
+  const existing = await db.facts.liveSlot('place', input.placeId, 'phone')
+  const target = { subjectType: 'place' as const, subjectId: input.placeId, actor: input.actor, pageStatus: input.pageStatus }
+  if (!input.phone) {
+    if (!existing) {
+      return { skipped: false as const }
+    }
+    const blocked = await blockOwned(target, 'phone', null)
+    if (blocked) {
+      return { skipped: true as const, conflict: blocked }
+    }
+    await retireFactSlot('place', input.placeId, 'phone')
+    return { skipped: false as const }
+  }
+  const value = { text: input.phone }
+  if (existing && existing.valueHash === valueHash(value) && (existing.sourceUrl ?? null) === input.sourceUrl) {
+    return { skipped: false as const }
+  }
+  const queued = await commitFact({
+    kind: 'phone',
+    subjectType: 'place',
+    subjectId: input.placeId,
+    slot: 'phone',
+    value,
+    sourceUrl: input.sourceUrl,
+    sourceTitle: null,
+    sourceKind: classifySourceUrl(input.sourceUrl),
+    checkedAt: input.checkedAt,
+    confidence: 'stated',
+    actor: input.actor,
+    refs: [{ consumerType: 'place', consumerId: input.placeId, path: 'short.phone' }],
+    pageType: 'place',
+    pageStatus: input.pageStatus ?? 'published',
+  })
+  return queued.conflict ? { skipped: true as const, conflict: queued.queueId } : { skipped: false as const }
+}
+
 async function contactChanged(input: {
   venueId: string
   phone?: string | null

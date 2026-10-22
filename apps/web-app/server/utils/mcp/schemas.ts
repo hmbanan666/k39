@@ -1,5 +1,8 @@
 import { prepareSourceLinks, SOURCE_LINK_LIMIT, SourceInputError, sourceLimitMessage } from '@k39/database'
 import { z } from 'zod'
+import { PHONE_TEXT_MAX } from '../../../shared/facts'
+import { PLACE_WEBSITE_MAX } from '../../../shared/place-contact'
+import { PLACE_SCHEMA_TYPES } from '../../../shared/seo'
 
 export const publication = z.enum(['draft', 'review', 'published']).optional()
 export const visit = z.enum(['open', 'ruins', 'closed', 'unknown']).optional()
@@ -61,6 +64,10 @@ export const placeFields = {
   sections: bodySections,
   hours: z.string().nullable().optional(),
   price: z.string().nullable().optional(),
+  phone: z.string().max(PHONE_TEXT_MAX).nullable().optional().describe('Official phone of the place, such as "+7 4012 30-30-40". Only from the official site or the place\'s own social page, never from a map card. Rendered as «Телефон» with a tel: link and as JSON-LD telephone. Stored as a phone fact. Never put the number in the article text. Null clears it. Omit to keep.'),
+  phoneSourceUrl: z.string().nullable().optional().describe('Official page that states the phone (a contacts page is best). Omit to keep the stored source; with no stored source the website is used. A map, OSM, or aggregator URL is rejected.'),
+  website: z.string().max(PLACE_WEBSITE_MAX).nullable().optional().describe('The place\'s own official site, http(s). Not a social page and not a map card. Rendered as «Сайт» and as the JSON-LD url of the place. Null clears it. Omit to keep.'),
+  schemaType: z.enum(PLACE_SCHEMA_TYPES).nullable().optional().describe('schema.org subtype that overrides the hub default (muzei is Museum, forty and zamki are LandmarksOrHistoricalBuildings, plyazhi is Beach). Set Church or PlaceOfWorship for a church, Park for a park, PerformingArtsTheater for a theatre, MusicVenue for a concert hall. Null returns to the hub default. Omit to keep.'),
   howToGet: z.string().nullable().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),

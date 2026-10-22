@@ -1,18 +1,20 @@
 import type { AuthorKind, PublicationStatus, VisitStatus } from '@k39/database'
 import type { PlaceDraftNotice } from '../../../shared/place-draft-diff'
+import type { PlaceContactInput } from '../content/place-contact'
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { formatDraftUpdated, placeDraftChanges } from '../../../shared/place-draft-diff'
 import { slugError } from '../../../shared/seo'
 import { withContentScope } from '../access'
+import { phoneCheckedAt, resolvePlaceContact } from '../content/place-contact'
 import { contentGate, savePlaceContent } from '../content/save'
-import { syncCoordinates, syncPlaceStatus } from '../facts/sync'
+import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../facts/sync'
 import { setPublication } from '../mcp/publish'
 
 const VISIT = new Set<VisitStatus>(['open', 'ruins', 'closed', 'unknown'])
 const PUBLICATION = new Set<PublicationStatus>(['draft', 'review', 'published', 'archived'])
 
-export interface AdminPlaceWrite {
+export interface AdminPlaceWrite extends PlaceContactInput {
   slug?: string
   title?: string
   summary?: string
@@ -144,6 +146,12 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
   const category = body.categorySlug ? await db.content.categoryBySlug(String(body.categorySlug)) : null
   const publicationStatus = asPublication(body.publicationStatus, current.publicationStatus)
   const visitStatus = asVisit(body.status)
+  const contact = await resolvePlaceContact(body, {
+    placeId: id,
+    phone: current.phone,
+    website: current.website,
+    schemaType: current.schemaType,
+  })
   const point = await syncCoordinates({
     subjectType: 'place',
     subjectId: id,
@@ -160,6 +168,14 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
     status: visitStatus,
     previous: current.status,
   })
+  const phone = await syncPlacePhone({
+    placeId: id,
+    actor: 'editor',
+    pageStatus: publicationStatus,
+    phone: contact.phone,
+    sourceUrl: contact.phoneSourceUrl,
+    checkedAt: phoneCheckedAt(null),
+  })
   const { row, writingWarnings } = await savePlaceContent({
     id,
     slug,
@@ -169,6 +185,9 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
     status: (visit.skipped || body.status == null ? current.status : body.status) as VisitStatus,
     hours: body.hours ?? current.hours,
     price: body.price ?? current.price,
+    phone: phone.skipped ? current.phone : contact.phone,
+    website: contact.website,
+    schemaType: contact.schemaType,
     howToGet: body.howToGet ?? current.howToGet,
     latitude: point.skipped || body.latitude == null ? current.latitude : body.latitude,
     longitude: point.skipped || body.longitude == null ? current.longitude : body.longitude,
@@ -191,9 +210,12 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
     seoTitle: body.seoTitle ?? current.seoTitle,
     seoDescription: body.seoDescription ?? current.seoDescription,
     sources: Array.isArray(body.sources) ? body.sources : current.sources,
+    phone: contact.phone,
+    phoneSourceUrl: contact.phoneSourceUrl,
+    website: contact.website,
   }, publicationStatus === 'published'))
   if (pending) {
     await db.editor.deleteContentDraft('place', id)
   }
-  return { ...row, writingWarnings }
+  return { ...row, phoneSourceUrl: contact.phoneSourceUrl, writingWarnings }
 }

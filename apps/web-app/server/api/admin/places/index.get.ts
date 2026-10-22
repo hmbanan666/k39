@@ -8,5 +8,11 @@ export default defineEventHandler(async (event) => {
     db.editor.contentDraftEntityIds('place'),
   ])
   const pending = new Set(pendingIds)
-  return rows.map((row) => ({ ...row, pendingDraft: pending.has(row.id) }))
+  const phoneFacts = await db.facts.forConsumers('place', rows.filter((row) => row.phone).map((row) => row.id), ['phone'])
+  const phoneSource = new Map(phoneFacts.map((fact) => [fact.consumerId, fact.sourceUrl]))
+  return rows.map((row) => ({
+    ...row,
+    phoneSourceUrl: phoneSource.get(row.id) ?? null,
+    pendingDraft: pending.has(row.id),
+  }))
 })

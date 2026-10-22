@@ -1,8 +1,9 @@
 import { db } from '@k39/database'
 import { slugError } from '../../../../shared/seo'
 import { requireEditor } from '../../../utils/access'
+import { phoneCheckedAt, resolvePlaceContact } from '../../../utils/content/place-contact'
 import { contentGate, savePlaceContent } from '../../../utils/content/save'
-import { syncCoordinates, syncPlaceStatus } from '../../../utils/facts/sync'
+import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../../../utils/facts/sync'
 
 export default defineEventHandler(async (event) => {
   const user = await requireEditor(event)
@@ -14,6 +15,7 @@ export default defineEventHandler(async (event) => {
   }
   const category = await db.content.categoryBySlug(String(body.categorySlug || 'forty'))
   const publicationStatus = body.publicationStatus || 'draft'
+  const contact = await resolvePlaceContact(body, { placeId: null, phone: null, website: null, schemaType: null })
   const { row, writingWarnings } = await savePlaceContent({
     slug,
     title: String(body.title || ''),
@@ -22,6 +24,9 @@ export default defineEventHandler(async (event) => {
     status: body.status || 'unknown',
     hours: body.hours || null,
     price: body.price || null,
+    phone: contact.phone,
+    website: contact.website,
+    schemaType: contact.schemaType,
     howToGet: body.howToGet || null,
     latitude: body.latitude ?? null,
     longitude: body.longitude ?? null,
@@ -44,6 +49,9 @@ export default defineEventHandler(async (event) => {
     seoTitle: body.seoTitle,
     seoDescription: body.seoDescription,
     sources: body.sources,
+    phone: contact.phone,
+    phoneSourceUrl: contact.phoneSourceUrl,
+    website: contact.website,
   }, publicationStatus === 'published'))
   const status = body.status || 'unknown'
   await syncCoordinates({
@@ -61,6 +69,14 @@ export default defineEventHandler(async (event) => {
     pageStatus: publicationStatus,
     status,
     previous: '',
+  })
+  await syncPlacePhone({
+    placeId: row.id,
+    actor: 'editor',
+    pageStatus: publicationStatus,
+    phone: contact.phone,
+    sourceUrl: contact.phoneSourceUrl,
+    checkedAt: phoneCheckedAt(null),
   })
   return { ...row, writingWarnings }
 })

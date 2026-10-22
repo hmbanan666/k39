@@ -46,6 +46,7 @@ export interface PendingPlaceFields {
   sources: unknown
   faq: unknown
   lastVerifiedAt: string | null
+  schemaType?: string | null
 }
 
 export interface PendingPlaceLabels {
@@ -103,6 +104,7 @@ export function catalogWithPendingPlace(
         regionTitle: labels.regionTitle,
         categorySlug: labels.categorySlug,
         categoryTitle: labels.categoryTitle,
+        schemaType: next.schemaType === undefined ? place.schemaType : next.schemaType,
         noindex: next.noindex,
         seoTitle: next.seoTitle,
         seoDescription: next.seoDescription,

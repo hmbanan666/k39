@@ -295,6 +295,13 @@
       "when": 1792190000000,
       "tag": "0041_first_published_at",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792200000000,
+      "tag": "0042_place_contact",
+      "breakpoints": true
     }
   ]
 }

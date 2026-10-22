@@ -11,6 +11,9 @@ export interface PlaceDraftSide {
   status: string
   hours: string | null
   price: string | null
+  phone?: string | null
+  website?: string | null
+  schemaType?: string | null
   howToGet: string | null
   latitude: number | null
   longitude: number | null
@@ -203,6 +206,9 @@ const FIELDS: Array<{
   { field: 'body', label: 'Текст', read: (side) => textRead(side.body) },
   { field: 'hours', label: 'Часы', read: (side) => textRead(side.hours) },
   { field: 'price', label: 'Цена', read: (side) => textRead(side.price) },
+  { field: 'phone', label: 'Телефон', read: (side) => textRead(side.phone) },
+  { field: 'website', label: 'Официальный сайт', read: (side) => textRead(side.website) },
+  { field: 'schemaType', label: 'Тип schema.org', read: (side) => ({ key: side.schemaType ?? '', text: side.schemaType || 'по разделу' }) },
   { field: 'howToGet', label: 'Как добраться', read: (side) => textRead(side.howToGet) },
   { field: 'latitude', label: 'Широта', read: (side) => ({ key: point(side.latitude), text: point(side.latitude) }) },
   { field: 'longitude', label: 'Долгота', read: (side) => ({ key: point(side.longitude), text: point(side.longitude) }) },

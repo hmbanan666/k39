@@ -30,6 +30,8 @@ export interface ScorePlace {
   faqCount: number
   categorySlug: string | null
   categoryTitle: string | null
+  /** Stored schema.org subtype. Null uses the hub mapping. */
+  schemaType?: string | null
   regionId: string | null
   regionTitle: string | null
   updatedAt: string

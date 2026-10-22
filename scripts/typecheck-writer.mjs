@@ -16,6 +16,7 @@ config.include = [
   '../../../packages/database/src/repository/test/pending-publish.test.ts',
   '../../../packages/database/src/repository/test/media-ingest.test.ts',
   '../../../packages/database/src/repository/test/pending-collection-route.test.ts',
+  '../../../packages/database/src/repository/test/place-contact.test.ts',
 ]
 const target = join(dirname(source), 'tsconfig.writer-test.json')
 writeFileSync(target, JSON.stringify(config))
