@@ -53,9 +53,7 @@ defineProps<{ row: Partial<Pick<GuideFact, 'value' | 'phones' | 'href'>> & { key
   width: 22px;
   height: 22px;
   margin-top: 0.15rem;
-  fill: none;
-  stroke: var(--color-brick);
-  stroke-width: 1.7;
+  color: var(--color-brick);
 }
 .fact p,
 .fact :slotted(p) { margin: 0; font-size: 0.97rem; line-height: 1.45; }
