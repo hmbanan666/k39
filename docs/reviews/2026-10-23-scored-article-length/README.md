@@ -21,7 +21,9 @@ This corrects ADR 0016's public-article measure without changing its limits or A
 
 ## Validation and rollout
 
-Focused suites passed (74 tests). Quick-check and full pre-PR CI results will be recorded before handoff. Local tooling is Node 24.19.0 / pinned pnpm 12.15.0; full CI provides the project Node pin and Postgres 18.
+Focused suites passed (74 tests). Local repository validation, changed-file lint, web-app/writer typechecks and document-link/diff checks passed. The wider local `check:quick` failed: one related writer suite could not start without Postgres/Docker, and MCP registration exceeded its normal five-second limit. Its summary was 137 passed, 1 timed out and 15 skipped. Those same suites passed in full CI with the normal settings; no timeout or database guard was relaxed. Local tooling is Node 24.19.0 / pinned pnpm 12.15.0; CI provides the project Node pin and Postgres 18.
+
+[Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/39973970231) passed on `8dcf9a9b1636020976594ce8e10aa4c439eb93b2`: frozen install, literal `pnpm run check:full` (repository validation, lint with fixes, all typechecks and 860 tests across 119 files), a clean diff after that gate, production workspace build, standalone SSR and Docker image build. The final follow-up only records this evidence and restores the original workflow after its temporary branch trigger/full-command invocation. Final CI policy matches the base, and scorer/helper/test/guide contents are unchanged. Normal PR CI verifies the final head again.
 
 After merge, verify the deployed SHA and read-only score preview on representative linked articles. Existing stored scores and weekly reports keep their previous numbers until the next successful daily refresh or an authorized forced refresh; the daily claim can skip a same-day restart. No production refresh or article write is performed here. Review changed counts as a corrected metric, not proof that each article has earned its length or passed editorial acceptance.
 
