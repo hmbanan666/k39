@@ -4,6 +4,8 @@
 
 Accepted (2026-10-22). Amends [ADR 0028](0028-schedule.md) so one place, venue, or route can hold several schedules. Names the admission rows and the event rows that [ADR 0033](0033-typed-shared-facts.md) left as later fact kinds. [ADR 0042](0042-open-ended-hours.md) and [ADR 0044](0044-schedule-unknown-days.md) still apply to every schedule row.
 
+Admission extension: [ADR 0050](0050-admission-extras.md) selects separate paid-extra lists and larger entry capacity. That decision is not implemented by its documentation PR; the original admission behavior below remains the baseline until the implementation lands.
+
 ## Context
 
 Hours, ticket prices, and upcoming performances are practical facts. On 2026-10-22 three of them were still prose, or a single field, so they go stale and the page cannot mark them up.

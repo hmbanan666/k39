@@ -1,10 +1,10 @@
 # Roadmap
 
-Updated 2026-10-23. Baseline: `349a2c6` (PR 309 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
+Updated 2026-10-23. Baseline: `cac4720` (PR 310 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
 
 ## Current position
 
-**Current batch: 5 of 7 items merged. Item 6 is implemented in this change; item 7 is next.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
+**Current batch: 6 of 7 items merged. Item 7 has a reviewable ADR in this change.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
 
 | Completed work | Evidence | Remaining limit |
 | --- | --- | --- |
@@ -27,10 +27,18 @@ The owner reviewed this seven-item order on 23 Oct. Issue 288 goes first because
 | 3 · [#291](https://github.com/hmbanan666/k39/issues/291) · false closed status (F23) | Merged in [PR 301](https://github.com/hmbanan666/k39/pull/301); [review](reviews/2026-10-23-closed-status-word/README.md); stored-score/deployment acceptance pending | The footwear sentence must not flag an always-open fort as closed; real closure phrases must still be detected. Verify score/status output with regression cases |
 | 4 · [#289](https://github.com/hmbanan666/k39/issues/289) · scored article length (F23) | Merged in [PR 305](https://github.com/hmbanan666/k39/pull/305); [review](reviews/2026-10-23-scored-article-length/README.md); stored-score/deployment acceptance pending | Internal-link markup must not discourage useful links. Use one agreed measure for floors, ceilings, stored bodyChars and score preview; preserve real earned-length rules |
 | 5 · A01 · measure the agent loop | Merged in [PR 309](https://github.com/hmbanan666/k39/pull/309); portable preflight and optional quick timings measured; [review](reviews/2026-10-23-agent-loop/README.md) | Record host, tools, cache state, checkout-to-ready, warm start, one quick check and full gate. Demonstrate generic local setup without host-global tool rewrites. Identify a measured bottleneck before claiming faster work |
-| 6 · A02 · verification commands | Implemented; full CI and shared-contract/formatting proofs passed; merge pending; [review](reviews/2026-10-23-verification-coverage/README.md) | Assess read-only final verification with explicit formatting and typechecks for transitive consumers. Demonstrate a real shared-contract break is caught; preserve the final verification coverage |
-| 7 · [#290](https://github.com/hmbanan666/k39/issues/290) · admission extras (F13) | Scope/design decision | Verify official tier/add-on use cases and row-limit constraints, choose the model and record the ADR decision. Estimate implementation separately; this item does not authorize an unbounded ticketing product |
+| 6 · A02 · verification commands | Merged in [PR 310](https://github.com/hmbanan666/k39/pull/310); full CI and shared-contract/formatting proofs passed; [review](reviews/2026-10-23-verification-coverage/README.md) | Assess read-only final verification with explicit formatting and typechecks for transitive consumers. Demonstrate a real shared-contract break is caught; preserve the final verification coverage |
+| 7 · [#290](https://github.com/hmbanan666/k39/issues/290) · admission extras (F13) | [ADR 0050](adr/0050-admission-extras.md) prepared; merge pending; [evidence and estimate](reviews/2026-10-23-admission-extras/README.md) | Verify official tier/add-on use cases and row-limit constraints, choose the model and record the ADR decision. Estimate implementation separately; this item does not authorize an unbounded ticketing product |
 
 Every implementation keeps the [AGENTS verification gate](../AGENTS.md#verify-and-hand-off); UI work keeps the unchanged k39-ui screenshot requirements. After merge, verify the deployed commit and affected read-only scenario. Green CI does not establish deployment success. Investigate a workaround's original reason/callers before replacing it; fallback, staged writes and test-database guards can protect real behavior.
+
+## Concrete follow-up after the ADR merge
+
+Item 7 is a design decision. Merging it makes the current batch 7/7; it does not resolve issue 290 or expand that denominator. ADR 0050 selects up to 48 entry rows and 12 independent paid extras, safe partial-list writes and strict separation from entry markup/scoring.
+
+The next bounded delivery is **one medium-to-large implementation PR**, after the ADR is on main, with three internal tasks: storage/shared writes/facts; UI/public/admin/scoring integration; compatibility and failure acceptance. The [ADR](adr/0050-admission-extras.md#consequences-and-delivery-boundary) gives the concrete boundaries. A separate post-deployment editorial pass needs fresh official-source checks and authorized editor writes. Cross-subject ticket sharing and deposit accounting are deferred; the current 12-row API remains until implementation. Keep issue 290 open until its agreed implementation and acceptance are complete.
+
+After that delivery, resume V01's five tourist journeys below. Their defects, the six D01 decisions and the O01 recovery work still require sizing; there is no total remaining PR count yet.
 
 ## Incoming reports outside the current batch
 
