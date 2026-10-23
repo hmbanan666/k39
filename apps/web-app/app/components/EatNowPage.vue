@@ -27,11 +27,27 @@
           type="button"
           class="btn btn-line"
           :disabled="locating"
+          :aria-busy="locating"
           @click="locate"
         >
-          {{ origin ? 'Обновить моё место' : 'Ближе ко мне' }}
+          {{ locationError ? 'Повторить' : origin ? 'Обновить моё место' : 'Ближе ко мне' }}
         </button>
       </div>
+      <p
+        v-if="locating"
+        class="note location-note"
+        role="status"
+      >
+        Определяем местоположение…
+      </p>
+      <p
+        v-if="locationError"
+        class="location-error"
+        role="alert"
+      >
+        {{ locationError }}
+        <span v-if="origin">Используем прежнее местоположение.</span>
+      </p>
       <!-- Server HTML: the whole list by distance. After hydration the browser
            splits it by live status (ADR 0029). -->
       <section
@@ -102,6 +118,9 @@ const origin = ref<{ latitude: number, longitude: number } | null>(null)
 const statuses = ref<Record<string, EatNowGroup> | null>(null)
 const locating = ref(false)
 const canLocate = ref(false)
+const locationError = ref('')
+const locationUnavailable = 'В этом браузере нельзя определить местоположение.'
+let locationRequest = 0
 
 const items = computed(() => {
   if (props.page.type !== 'town') {
@@ -129,7 +148,10 @@ const originNote = computed(() => {
   if (props.page.type !== 'town') {
     return ''
   }
-  return origin.value ? 'Расстояние от вас, по прямой.' : `Расстояние от центра, по прямой. ${props.page.town.title}.`
+  if (origin.value) {
+    return 'Расстояние от вас, по прямой.'
+  }
+  return props.page.centre ? `Расстояние от центра, по прямой. ${props.page.town.title}.` : 'Расстояния пока не определены.'
 })
 
 function refreshStatuses() {
@@ -148,22 +170,62 @@ function refreshStatuses() {
 }
 
 function locate() {
+  if (locating.value) {
+    return
+  }
+  if (typeof navigator.geolocation?.getCurrentPosition !== 'function') {
+    canLocate.value = false
+    locationError.value = locationUnavailable
+    return
+  }
+  const request = ++locationRequest
   locating.value = true
-  navigator.geolocation.getCurrentPosition((position) => {
-    origin.value = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+  locationError.value = ''
+  const fail = (error?: Pick<GeolocationPositionError, 'code'>) => {
+    if (request !== locationRequest) {
+      return
+    }
     locating.value = false
-  }, () => {
-    locating.value = false
-  }, { maximumAge: 300_000, timeout: 10_000 })
+    locationError.value = error?.code === 1
+      ? 'Доступ к местоположению запрещён. Разрешите его в настройках браузера и повторите попытку.'
+      : error?.code === 3
+        ? 'Не удалось определить местоположение за 10 секунд. Попробуйте ещё раз.'
+        : 'Не удалось определить местоположение. Попробуйте ещё раз.'
+  }
+  try {
+    navigator.geolocation.getCurrentPosition((position) => {
+      if (request !== locationRequest) {
+        return
+      }
+      origin.value = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+      locating.value = false
+    }, fail, { maximumAge: 300_000, timeout: 10_000 })
+  } catch {
+    fail()
+  }
 }
+
+watch(() => props.page.type === 'town' ? props.page.town.slug : null, () => {
+  locationRequest++
+  origin.value = null
+  locating.value = false
+  locationError.value = canLocate.value ? '' : locationUnavailable
+  refreshStatuses()
+})
 
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
-  canLocate.value = 'geolocation' in navigator
+  canLocate.value = typeof navigator.geolocation?.getCurrentPosition === 'function'
+  if (!canLocate.value) {
+    locationError.value = locationUnavailable
+  }
   refreshStatuses()
   timer = setInterval(refreshStatuses, 60_000)
 })
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => {
+  locationRequest++
+  clearInterval(timer)
+})
 
 usePublicHead(props.page.doc)
 </script>
@@ -182,6 +244,8 @@ usePublicHead(props.page.doc)
 .towns a[aria-current='page'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
 .tools { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; }
 .note { margin: 0; color: var(--muted); font-size: var(--step--1); }
+.location-note, .location-error { margin: 0 0 1.2rem; }
+.location-error { color: var(--color-warn); font-size: var(--step--1); }
 .group { margin-bottom: 2.4rem; }
 .group h2 { margin: 0 0 1rem; }
 .count { color: var(--muted); font-size: 0.7em; }
