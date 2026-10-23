@@ -1,6 +1,6 @@
 import { createError } from 'h3'
 
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/
 
 function calendarDay(year: number, month: number, day: number) {
   const probe = new Date(Date.UTC(year, month - 1, day))
@@ -8,6 +8,7 @@ function calendarDay(year: number, month: number, day: number) {
 }
 
 // undefined keeps the stored timestamp. null clears it. A date-only value is UTC midnight.
+// Postgres can return +HH offsets and microseconds; normalize to the API's millisecond ISO value.
 export function parseFactsCheckedAt(value: unknown): string | null | undefined {
   if (value === undefined) {
     return undefined
@@ -37,7 +38,7 @@ export function parseFactsCheckedAt(value: unknown): string | null | undefined {
   }
   const date = match[4] == null
     ? new Date(Date.UTC(year, month - 1, day))
-    : new Date(trimmed)
+    : new Date(trimmed.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'))
   if (Number.isNaN(date.getTime())) {
     throw createError({ statusCode: 400, statusMessage: 'factsCheckedAt: нужна дата ISO' })
   }

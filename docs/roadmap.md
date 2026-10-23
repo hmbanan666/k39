@@ -1,34 +1,46 @@
 # Roadmap
 
-Updated 2026-10-23 from the [implementation inventory](product-state.md), baseline `5cd763c` (PR 287 merged). This is the stabilization queue for the existing product and the agent development loop. Feature IDs F01–F25 refer to that inventory. Recommendations about promotion or hiding remain proposals; this plan changes no production visibility.
+Updated 2026-10-23. Baseline: `287f82d` (PR 292 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
 
 ## Current position
 
-| Work | State | Evidence / remaining limit |
-| --- | --- | --- |
-| Supported dependency installation | Done in PR 284 | Pinned pnpm 12.15.0, trust policy retained, frozen-install CI; generic hosts must still resolve the correct Node/pnpm |
-| Small agent entry point and implementation routing | Done in PR 285 | AGENTS reduced to 1,036 words, nine task rows, detailed references; task speed has not been measured |
-| Feature portfolio and stabilization queue | This change | 25 capabilities, code/test starting points, known gaps and scenario gates; whole-product acceptance remains open |
-| Product stabilization and acceptance | Next | S01 merged in PR 287; S02 implemented in the current change. Deployment acceptance pending; S03 next. No new feature expansion is required to fix the confirmed defects |
+**Current batch: 0 of 7 items merged. Item 1 is in progress in this change.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
 
-The proposed tourist core is finding a destination, understanding a visit, following a route and finding useful nearby food. Operational work must support publishing and maintaining that core. This is a working scope, not an accepted redesign or a promise to ship every existing capability.
+| Completed work | Evidence | Remaining limit |
+| --- | --- | --- |
+| Supported dependency installation | [PR 284](https://github.com/hmbanan666/k39/pull/284) | Generic hosts must resolve the pinned Node/pnpm; setup time is not yet measured |
+| Small agent entry point and code/check routing | [PR 285](https://github.com/hmbanan666/k39/pull/285) | Reduced context size is measured; task speed is not |
+| Portfolio and initial stabilization queue | [PR 286](https://github.com/hmbanan666/k39/pull/286) | 25 capabilities inventoried; full scenarios remain unaccepted |
+| S01: venue availability failures | [PR 287](https://github.com/hmbanan666/k39/pull/287), [review](reviews/2026-10-23-venue-availability/README.md) | Merged and tested; deployed SHA/scenario acceptance pending |
+| S02: map sitemap/title/footer | [PR 292](https://github.com/hmbanan666/k39/pull/292), [review](reviews/2026-10-23-map-discovery/README.md) | Merged; final XML/head/footer checks passed; deployment acceptance pending |
+
+The working tourist core is finding a destination, understanding a visit, following a route and finding useful nearby food. Operational work must support publishing and maintaining that core. This is a working scope, not an accepted redesign or a promise to expand every existing feature.
 
 ## Next tasks
 
-Task IDs identify the work across PRs; they are not GitHub issue numbers. The order is deliberate. S01–S03 are independent fixes, kept in separate PRs. A01 follows these small fixes so their agent runs can supply measurements. Scenario acceptance and operational verification may reveal additional narrowly scoped defects.
+The owner reviewed this seven-item order on 23 Oct. Issue 288 goes first because it blocks repeated agent editing. New issue reports still require reproduction before their proposed fix is treated as established. No unfinished feature is hidden by this plan itself.
 
-| Order / task | Trigger and implementation start | Completion contract |
+| Order / item | State | Completion contract |
 | --- | --- | --- |
-| 1 · S01 · venue availability errors (F07–F09), merged in PR 287; deployment pending | Reject `/api/public/availability` from the venue listing; [`toggleOpen()`](../apps/web-app/app/pages/zavedeniya/[[...path]].vue) previously substituted an empty response; [fix and evidence](reviews/2026-10-23-venue-availability/README.md) | Preserve the list on network/HTTP failure and timeout; show an accessible explanation and retry; distinguish a successful zero response. Prevent stale results after switching off or navigating. Test the mounted listing and verify 390px/1440px before/after states. The [map regression](../apps/web-app/test/map-availability.test.ts) is a reference, not coverage of this page |
-| 2 · S02 · map discovery and title (F03), implemented; deployment pending | [`loadMap()`](../apps/web-app/server/utils/map/public.ts), [`sitemap-urls.get.ts`](../apps/web-app/server/routes/sitemap-urls.get.ts), [`SECTION_LINKS`](../apps/web-app/shared/links.ts); [fix and evidence](reviews/2026-10-23-map-discovery/README.md) | One footer map link; clean `/map` in the generated sitemap once; title `Карта Калининградской области | K39`. Preserve the canonical/noindex contract for query URLs. Assert actual generated output, not a duplicate constant; no shared-title change that silently affects unrelated pages |
-| 3 · S03 · eat-now location feedback (F10) | Deny or time out [`EatNowPage.vue`](../apps/web-app/app/components/EatNowPage.vue) geolocation | Explain the failure in Russian, keep the current usable origin/results and allow retry. Cover success, denial, timeout, unavailable position/API and missing coordinates; distinguish centre versus visitor distance. Check mobile/desktop and SSR without location access |
-| 4 · A01 · measure the agent loop | Fresh checkout and a warm task following [development](development.md); review `scripts/env/` and `.cursor/start.sh` | Record host, tool versions, cache state, checkout-to-ready, warm start, one real quick check and full gate. Demonstrate generic setup without host-global rewrites. Identify the slowest repeatable step before implementing optimization |
-| 5 · V01 · tourist-core acceptance (F01–F05, F07–F15) | Exercise the five journeys below after the relevant fixes | Record environment/SHA, representative URLs or fixtures, desktop/mobile results, error/empty/unknown states and links to focused defect PRs. Separate content defects from code defects; no “ready” label from file counts or unit tests alone |
-| 6 · O01 · editorial and recovery loop (F16–F19, F23) | Isolated fixtures through admin/API/MCP, plus deployment evidence | Draft → review → publish → source change/expiry → queue → correction → public output; concurrent edits, owner conflict and token matrix. Verify media persistence, migrations, job freshness and a restore. Real production credentials/configuration require their own evidence |
-| 7 · D01 · unfinished scope (F06, F10–F12, F20–F25) | Review scenario results and the decisions below | Record accepted purpose, audience, visibility and acceptance criteria for each retained pilot. Implement any hiding or rework in focused PRs; do not delete data merely to reduce navigation |
-| 8 · A02 · checks and workarounds | Use A01 timings and an actual shared-type contract change; inspect [quick planner](../scripts/check-quick.mjs) and `package.json` | Decide whether consumer typechecks and read-only full verification improve the measured loop. Keep final coverage; test a consumer break before changing selection. Investigate each workaround's callers and original reason before replacing it |
+| 1 · [#288](https://github.com/hmbanan666/k39/issues/288) · pending place date (F16–F17) | In progress; [review](reviews/2026-10-23-pending-place-date/README.md) | Repeat draft saves on a checked live place; omit to preserve, null to clear, explicit replacement to change. Round-trip the real place_get timestamp. Live content stays unchanged until editor application. Regressions and full CI pass |
+| 2 · S03 · eat-now location (F10) | Next | Explain denied/timed-out/unavailable location in Russian, retain the usable origin/results and allow retry. Cover success, unavailable API, missing coordinates, centre/visitor distance, mobile/desktop and SSR |
+| 3 · [#291](https://github.com/hmbanan666/k39/issues/291) · false closed status (F08/F23) | Reported; reproduce | The footwear sentence must not flag an always-open fort as closed; real closure phrases must still be detected. Verify score/status output with regression cases |
+| 4 · [#289](https://github.com/hmbanan666/k39/issues/289) · scored article length (F23) | Reported; reproduce and confirm counting contract | Internal-link markup must not discourage useful links. Use one agreed measure for floors, ceilings, stored bodyChars and score preview; preserve real earned-length rules |
+| 5 · A01 · measure the agent loop | Planned | Record host, tools, cache state, checkout-to-ready, warm start, one quick check and full gate. Demonstrate generic local setup without host-global tool rewrites. Identify a measured bottleneck before claiming faster work |
+| 6 · A02 · verification commands | Planned after A01 | Assess read-only final verification with explicit formatting and typechecks for transitive consumers. Demonstrate a real shared-contract break is caught; preserve the final verification coverage |
+| 7 · [#290](https://github.com/hmbanan666/k39/issues/290) · admission extras (F13) | Scope/design decision | Verify official tier/add-on use cases and row-limit constraints, choose the model and record the ADR decision. Estimate implementation separately; this item does not authorize an unbounded ticketing product |
 
-Every implementation task keeps the [AGENTS verification gate](../AGENTS.md#verify-and-hand-off). A UI task also keeps the unchanged `k39-ui` screenshot requirements. After merge, verify the deployed commit and the affected read-only scenario; a green PR does not establish deployment success.
+Every implementation keeps the [AGENTS verification gate](../AGENTS.md#verify-and-hand-off); UI work keeps the unchanged k39-ui screenshot requirements. After merge, verify the deployed commit and affected read-only scenario. Green CI does not establish deployment success. Investigate a workaround's original reason/callers before replacing it; fallback, staged writes and test-database guards can protect real behavior.
+
+## Work after the current batch
+
+| Stage | Known size | Exit |
+| --- | --- | --- |
+| V01 · tourist-core acceptance | Five journeys below | Representative desktop/mobile and failure/empty/unknown evidence; discovered defects get separately sized tasks |
+| D01 · unfinished feature scope | Six decisions below | Accepted purpose, audience, visibility, retention and rollback for retained/hidden pilots; implementation estimated after each decision |
+| O01 · editorial and recovery | Not yet split into implementation tasks | Draft → review → publish → source change/expiry → queue → correction → public output; roles/concurrency/owner conflict, media persistence, migrations, fresh jobs and demonstrated restore |
+
+The total remaining PR count is unknown until these scenarios and decisions are assessed. Do not present these stages as three small implementation tasks or convert them into a whole-product completion percentage. After each current-batch handoff report merged count, remaining items, validation limits and why the next item is selected.
 
 ## Tourist-core journeys
 

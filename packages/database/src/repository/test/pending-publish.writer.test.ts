@@ -3,6 +3,7 @@
 // excludes it, and scripts/typecheck-writer.mjs includes every match.
 import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
+import placeGet from '../../../../../apps/web-app/server/mcp/tools/place-get'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
 import { adminPlaceDraftView, applyAdminPlaceDraft, discardAdminPlaceDraft, saveAdminPlace } from '../../../../../apps/web-app/server/utils/admin/place-draft'
 import { placeWriteFromBody, updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/places'
@@ -57,6 +58,65 @@ function withDraftLengths(value: object) {
 }
 
 describe('pending place publish', () => {
+  it('re-saves a checked place and round-trips the actual place_get date without touching live content', async () => {
+    const live = await publishedPlace('pending-date-round-trip')
+    await useDatabase().update(places).set({ lastVerifiedAt: '2026-10-12T00:00:00.123456Z' }).where(eq(places.id, live.id))
+    enterContentScope('draft')
+    const fetched = await placeGet.handler({ id: live.id }, {} as Parameters<typeof placeGet.handler>[1])
+    if (!fetched || typeof fetched !== 'object' || !('factsCheckedAt' in fetched) || typeof fetched.factsCheckedAt !== 'string') {
+      throw new Error('place_get omitted its factsCheckedAt timestamp')
+    }
+    const liveDate = fetched.factsCheckedAt
+    await updatePlaceDraft({ id: live.id, title: 'Первый черновик даты', body: draftBody }, 'place_update')
+    await updatePlaceDraft({ id: live.id, faq: [{ question: 'Где вход?', answer: 'У площади.' }] }, 'place_draft_update')
+    expect((await Editor.contentDraft('place', live.id))?.payload.lastVerifiedAt).toBe(liveDate)
+    await updatePlaceDraft({ id: live.id, bestTime: 'Утром', factsCheckedAt: liveDate }, 'place_update')
+    await updatePlaceDraft({ id: live.id, visitDuration: 'два часа' }, 'place_update')
+
+    const pending = await Editor.contentDraft('place', live.id)
+    expect(pending?.payload).toMatchObject({
+      title: 'Первый черновик даты', body: draftBody, bestTime: 'Утром', visitDuration: 'два часа',
+      faq: [{ question: 'Где вход?', answer: 'У площади.' }],
+      lastVerifiedAt: '2026-10-12T00:00:00.123Z',
+    })
+    const still = await Editor.placeById(live.id)
+    expect(still?.body).toBe(live.body)
+    expect(still?.title).toBe(live.title)
+    expect(still?.lastVerifiedAt).toBe(liveDate)
+    expect(still?.publicationStatus).toBe('published')
+    enterContentScope('editor')
+    await setPublication({ entity: 'place', slug: live.slug, publicationStatus: 'published' })
+    const applied = await Editor.placeById(live.id)
+    expect(applied?.title).toBe('Первый черновик даты')
+    expect(new Date(applied!.lastVerifiedAt!).toISOString()).toBe('2026-10-12T00:00:00.123Z')
+  })
+
+  it('keeps an explicit date clear through another pending save and editor publication', async () => {
+    const live = await publishedPlace('pending-date-clear')
+    await useDatabase().update(places).set({ lastVerifiedAt: '2026-10-12T00:00:00.000Z' }).where(eq(places.id, live.id))
+    enterContentScope('draft')
+    await updatePlaceDraft({ id: live.id, factsCheckedAt: null }, 'place_update')
+    await updatePlaceDraft({ id: live.id, body: draftBody }, 'place_update')
+    expect((await Editor.contentDraft('place', live.id))?.payload.lastVerifiedAt).toBeNull()
+    expect((await Editor.placeById(live.id))?.lastVerifiedAt).not.toBeNull()
+    enterContentScope('editor')
+    await setPublication({ entity: 'place', slug: live.slug, publicationStatus: 'published' })
+    expect((await Editor.placeById(live.id))?.lastVerifiedAt).toBeNull()
+  })
+
+  it('keeps a replacement date when the following pending write omits it', async () => {
+    const live = await publishedPlace('pending-date-replace')
+    await useDatabase().update(places).set({ lastVerifiedAt: '2026-10-12T00:00:00.000Z' }).where(eq(places.id, live.id))
+    enterContentScope('draft')
+    await updatePlaceDraft({ id: live.id, factsCheckedAt: '2026-10-20 15:04:05+02', body: draftBody }, 'place_update')
+    await updatePlaceDraft({ id: live.id, bestTime: 'Днём' }, 'place_update')
+    expect((await Editor.contentDraft('place', live.id))?.payload.lastVerifiedAt).toBe('2026-10-20T13:04:05.000Z')
+    expect(new Date((await Editor.placeById(live.id))!.lastVerifiedAt!).toISOString()).toBe('2026-10-12T00:00:00.000Z')
+    enterContentScope('editor')
+    await setPublication({ entity: 'place', slug: live.slug, publicationStatus: 'published' })
+    expect(new Date((await Editor.placeById(live.id))!.lastVerifiedAt!).toISOString()).toBe('2026-10-20T13:04:05.000Z')
+  })
+
   it('stores a draft-token write, then an editor publish applies it', async () => {
     const live = await publishedPlace('pending-mcp')
     enterContentScope('draft')

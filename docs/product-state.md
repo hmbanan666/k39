@@ -1,6 +1,6 @@
 # Product state
 
-Updated: 2026-10-23. Code baseline: `5cd763c0337b7def9374e8305a615e373f72230e` (`main`, PR 287 merged); S02 progress reflects the current fix. Initial inspection: 2026-10-22; confirmed gaps below were rechecked on this baseline. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
+Updated: 2026-10-23. Code baseline: `287f82dd1439f982483fd4120b26868cd253eae4` (`main`, PR 292 merged); issue 288 progress reflects the current fix. Initial inspection: 2026-10-22; confirmed gaps below were rechecked on this baseline. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
 
 ## Goals and evidence
 
@@ -44,13 +44,14 @@ Paths beginning `app/`, `shared/`, or `server/` are under `apps/web-app/`. Count
 
 ## Confirmed gaps
 
-These findings were established during the inventory; their implementation progress is recorded below. They were not fault-injected on production. S01 is merged in PR 287. S02 is fixed in the current change; both have isolated regression/browser evidence and deployment acceptance remains pending. The task IDs and completion criteria are in the [roadmap](roadmap.md#next-tasks).
+These findings were established during the inventory; their implementation progress is recorded below. They were not fault-injected on production. S01 is merged in PR 287. S02 is merged in PR 292; both have isolated regression/browser evidence and deployment acceptance remains pending. The task IDs and completion criteria are in the [roadmap](roadmap.md#next-tasks).
 
 | Finding | Evidence and trigger | Next task |
 | --- | --- | --- |
+| Pending place re-save rejects a stored date | Issue [288](https://github.com/hmbanan666/k39/issues/288): omission reparsed a stored PostgreSQL timestamp that the validator rejected. This change preserves omitted values (including null) and accepts read/write timestamp forms; [regressions](reviews/2026-10-23-pending-place-date/README.md). | Current batch item 1; merge/deployment pending |
 | Failed availability request becomes “no open venues” | [`toggleOpen()`](../apps/web-app/app/pages/zavedeniya/[[...path]].vue) previously caught a rejected fetch as `{ items: [] }`, then enabled the filter. The same empty array represented a successful response. This change distinguishes the outcomes. | S01 merged in PR 287; deployment pending |
-| Map missing from sitemap and repeated region in title | [`sitemap-urls.get.ts`](../apps/web-app/server/routes/sitemap-urls.get.ts) previously had no map entry, and `/map/**` also excluded the clean URL. The source and glob are now corrected. [`loadMap()`](../apps/web-app/server/utils/map/public.ts) now sets a map-specific `seoTitle` to avoid the collection helper appending the region again. [ADR 0037](adr/0037-visitor-map.md) specifies `Карта Калининградской области | K39`. | S02 implemented; deployment pending |
-| Duplicate map footer entry | [`SECTION_LINKS`](../apps/web-app/shared/links.ts) previously contained `/map` twice; the duplicate is removed. [`SiteFooter.vue`](../apps/web-app/app/components/SiteFooter.vue) renders one map link. | S02 implemented; deployment pending |
+| Map missing from sitemap and repeated region in title | [`sitemap-urls.get.ts`](../apps/web-app/server/routes/sitemap-urls.get.ts) previously had no map entry, and `/map/**` also excluded the clean URL. The source and glob are now corrected. [`loadMap()`](../apps/web-app/server/utils/map/public.ts) now sets a map-specific `seoTitle` to avoid the collection helper appending the region again. [ADR 0037](adr/0037-visitor-map.md) specifies `Карта Калининградской области | K39`. | S02 merged in PR 292; deployment pending |
+| Duplicate map footer entry | [`SECTION_LINKS`](../apps/web-app/shared/links.ts) previously contained `/map` twice; the duplicate is removed. [`SiteFooter.vue`](../apps/web-app/app/components/SiteFooter.vue) renders one map link. | S02 merged in PR 292; deployment pending |
 | Eat-now geolocation error is silent | [`EatNowPage.vue`](../apps/web-app/app/components/EatNowPage.vue), `locate()`, only clears `locating` on rejection. The centre-based results remain, but the visitor gets no denial/timeout explanation. | S03 |
 
 Two documentation defects are already corrected by [PR 285](https://github.com/hmbanan666/k39/pull/285): saved quest progress was promised without implementation; operational paragraphs misreported notice-expiry timing and the shared auth session. Do not reopen these as unfinished code work. The quest product decision remains open (D01); the correction did not add progress mechanics.

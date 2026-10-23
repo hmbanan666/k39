@@ -417,11 +417,10 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       const merged = mergedField(value, base, key, fallback)
       return merged ?? null
     }
-    const checked = parseFactsCheckedAt(
-      input.factsCheckedAt === undefined
-        ? (base.factsCheckedAt as string | null | undefined) ?? (base.lastVerifiedAt as string | null | undefined)
-        : input.factsCheckedAt,
-    )
+    const checked = parseFactsCheckedAt(input.factsCheckedAt)
+    // Preserve an omitted value exactly, including an explicit pending clear and legacy field name.
+    const previousCheckedAt = mergedField<string | null>(undefined, base, 'factsCheckedAt',
+      mergedField<string | null>(undefined, base, 'lastVerifiedAt', current.lastVerifiedAt))
     const pendingStatus = pendingPublication(input.publicationStatus)
     const contact = await resolvePlaceContact(input, {
       placeId: current.id,
@@ -459,7 +458,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       faq: input.faq === undefined
         ? (base.faq as PlaceDraftInput['faq']) ?? current.faq
         : cleanFaq(input.faq),
-      lastVerifiedAt: checked === undefined ? (base.lastVerifiedAt as string | null | undefined) ?? current.lastVerifiedAt : checked,
+      lastVerifiedAt: checked === undefined ? previousCheckedAt : checked,
       authorKind: current.authorKind,
       ...stagedNoticeKeys(base),
     }
