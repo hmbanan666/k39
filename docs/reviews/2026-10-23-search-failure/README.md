@@ -44,7 +44,9 @@ Observed directions hrefs had destination coordinates `54.75262,20.44311` (Fort 
 
 ## Verification and remaining acceptance
 
-Focused page/helper tests pass: 11 tests across two files. Full verification and screenshot results are recorded after the final gates complete. Local tools are Node 24.19.0 and pinned pnpm 12.15.0; pinned Node 24.21.0 and Postgres 18 are supplied by CI. Local database/full gates are not claimed without those services.
+Focused page/helper tests pass: 11 tests across two files. Local `check:quick` passed repository validation, selected read-only lint, web-app/writer typechecks and eight selected page tests. The browser flow passed with 10 screenshots; changed-document lint, 98 relative document links and diff checks passed. Local tools are Node 24.19.0 and pinned pnpm 12.15.0; local database/full gates are not claimed without Postgres/Docker.
+
+[Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/40020678330) passed on `11c7ec5577a7b9973f8e8ccda28799e77b56e9e8`: frozen install, literal `pnpm run check:full` (repository validation, read-only lint, all typechecks and 901 tests across 124 files), a clean diff after verification, production build, standalone SSR and Docker image build. CI used pinned Node 24.21.0, pnpm 12.15.0 and Postgres 18. The final follow-up only records these results and restores the original workflow; application, tests, capture script and screenshots are unchanged. Normal PR CI verifies the final head again.
 
 After merge: verify the deployed commit, ordinary/empty search and retry behavior on the deployed Nuxt page; do not inject a production outage. Finish phone, no-JavaScript, unknown/stale and source/directions acceptance before accepting the first journey. Four further V01 journeys, six D01 scope decisions and unsized O01 recovery work remain.
 
