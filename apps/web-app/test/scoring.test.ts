@@ -415,6 +415,38 @@ describe('page score', () => {
     expect(ignored.checks.quality.some((check) => check.includes('above 6000'))).toBe(true)
   })
 
+  it.each([
+    ['place', 3000, 6000], ['route', 8000, 12000], ['collection', 5000, 8000],
+    ['quest', 2000, 4000], ['hub', 2000, 8000],
+  ] as const)('uses visible article text at both length boundaries for %s', (kind, min, max) => {
+    const atCeiling = scorePage(source({
+      kind,
+      body: `${'ы'.repeat(max - 5)} [факт](/${'long-target-'.repeat(40)})`,
+    }))
+    expect(atCeiling.signals.bodyChars).toBe(max)
+    expect(atCeiling.checks.quality.filter((check) => check.startsWith('body '))).toEqual([])
+
+    const short = scorePage(source({ kind, body: `[я](/${'target'.repeat(min)})` }))
+    expect(short.signals.bodyChars).toBe(1)
+    expect(short.checks.quality).toContain(`body 1 chars, need ${min}-${max}`)
+  })
+
+  it('does not run long-page filler checks because of link targets alone', () => {
+    const body = `${'ы'.repeat(5800)} Это уютная атмосфера. [факт](/${'target'.repeat(100)})`
+    const score = scorePage(source({ body }))
+    expect(score.signals.bodyChars).toBe(5827)
+    expect(score.checks.quality.some((check) => check.includes('above') || check.startsWith('stop-list:'))).toBe(false)
+  })
+
+  it('measures the prepared public article after lead removal and directions folding', () => {
+    const score = scorePage(source({
+      summary: 'Лид.',
+      body: 'Лид.\n\n## История\n\n[Форт](/fort-a)',
+      howToGet: 'Идите **пешком**.',
+    }))
+    expect(score.signals.bodyChars).toBe('История Форт Как добраться Идите пешком.'.length)
+  })
+
   it('flags filler on a long page and a stale override after 60 days', () => {
     const now = new Date('2026-10-16T00:00:00.000Z')
     const copied = 'Во дворе слышно шоссе круглый год, билет покупают у кассы у ворот, а стены сложены из красного кирпича в конце девятнадцатого века и стоят на своём месте до сих пор без новой облицовки.'

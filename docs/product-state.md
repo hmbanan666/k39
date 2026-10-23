@@ -1,6 +1,6 @@
 # Product state
 
-Updated: 2026-10-23. Code baseline: `66a3241a56dbb7a6195afbebd9d21e30eea88f48` (`main`, PR 300 merged); issue 291 progress reflects the current fix. Initial inspection: 2026-10-22; changed subsystems have dated evidence below, while unchanged inventory entries retain their initial inspection limits. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
+Updated: 2026-10-23. Code baseline: `ddc17b6b0a2a16b97c08467cc7bc45cf120439bf` (`main`, PR 301 merged); issue 289 progress reflects the current fix. Initial inspection: 2026-10-22; changed subsystems have dated evidence below, while unchanged inventory entries retain their initial inspection limits. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
 
 ## Goals and evidence
 
@@ -56,7 +56,9 @@ These findings were established during the inventory; their implementation progr
 
 Two documentation defects are already corrected by [PR 285](https://github.com/hmbanan666/k39/pull/285): saved quest progress was promised without implementation; operational paragraphs misreported notice-expiry timing and the shared auth session. Do not reopen these as unfinished code work. The quest product decision remains open (D01); the correction did not add progress mechanics.
 
-Issue [291](https://github.com/hmbanan666/k39/issues/291) was reproduced against PR 300: the bare closure prefix treated footwear advice as a closure and deducted 15 quality points. The current fix requires a complete short-form status word; [regressions](reviews/2026-10-23-closed-status-word/README.md) cover article/FAQ input, real closures and score output. This is a scoring correction, not a public schedule/status write. Related appointment-subject report #294 remains separately reproduced and unresolved.
+Issue [291](https://github.com/hmbanan666/k39/issues/291) was reproduced against PR 300: the bare closure prefix treated footwear advice as a closure and deducted 15 quality points. PR 301 requires a complete short-form status word; [regressions](reviews/2026-10-23-closed-status-word/README.md) cover article/FAQ input, real closures and score output. This is a scoring correction, not a public schedule/status write. Related appointment-subject report #294 remains separately reproduced and unresolved.
+
+Issue [289](https://github.com/hmbanan666/k39/issues/289) was reproduced against PR 301: raw Markdown targets could push article length over the ceiling or satisfy the floor. The current fix measures authored text through the existing public Markdown renderer for article floors/ceilings, the long-page filler gate, stored `bodyChars` and previews; [regressions and metric contract](reviews/2026-10-23-scored-article-length/README.md). Default norms and earned-length evidence are unchanged. Stored scores still require a successful refresh; the save response’s `bodyLength` continues to describe stored Markdown.
 
 ## Existing tests and their limits
 
