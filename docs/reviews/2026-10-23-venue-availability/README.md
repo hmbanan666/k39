@@ -14,7 +14,7 @@ Requests have a 10-second timeout and no automatic retry. A request counter igno
 
 ## Browser review
 
-The actual listing component and its shell/cards/buttons render with production CSS and built fonts. Only Nuxt routing/head and API data are isolated; the fixture is visibly labelled. The screenshots cover the changed listing area, without the site header/footer. The all-region fixture has no embed; town-map input preservation is asserted in the mounted test. This is local component acceptance, not a production database, OAuth or full-site browser acceptance.
+The actual listing component and its shell/cards/buttons render with production CSS and built fonts. Nuxt routing/head, icons and unused map/venue-detail integrations use the existing test adapters; API data is isolated and the fixture is visibly labelled. The screenshots cover the changed listing area, without the site header/footer. The all-region fixture has no embed; town-map input preservation is asserted in the mounted test. This is local component acceptance, not a production database, OAuth or full-site browser acceptance.
 
 | State | 390px | 1440px |
 | --- | --- | --- |
@@ -37,6 +37,6 @@ node docs/reviews/2026-10-23-venue-availability/capture.mjs
 
 ## Validation and rollout
 
-Local `check:quick` passed, including web-app and writer-test typechecks plus 12 mounted regression tests. Targeted Markdown lint, documentation links and diff whitespace checks passed. Browser capture passed at both widths. Full branch CI is pending; tested SHA and CI evidence will be recorded before opening the PR. Local checks use the host Node 24.19.0 with pinned pnpm 12.15.0; full CI uses the repository Node pin and Postgres 18.
+Local `check:quick` passed, including web-app and writer-test typechecks plus 12 mounted regression tests. Targeted Markdown lint, documentation links and diff whitespace checks passed. Browser capture passed at both widths. [Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/39938317856) passed on `33951a7b97c61bf846926c732a4cf23cfa32b6a6`: frozen install, repository validation, ESLint, all typechecks, 784 tests in 116 files, production build, standalone SSR smoke and Docker image build. A temporary branch push trigger enabled the run before PR creation; the final follow-up only records the evidence/adapter limits here and removes that trigger. CI policy is unchanged in the final diff, and normal PR CI checks the final head again. Local checks use the host Node 24.19.0 with pinned pnpm 12.15.0; full CI uses the repository Node pin and Postgres 18.
 
 After merge, verify the deployed commit, list availability, successful filtering, and turning it off on a real venue listing. Production deployment has not been verified here. S02 (map discovery/title/navigation) is the next stabilization task.
