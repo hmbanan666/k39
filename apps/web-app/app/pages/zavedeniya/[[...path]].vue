@@ -93,13 +93,33 @@
           type="button"
           class="open-now"
           :aria-pressed="openNow"
-          :disabled="filtering"
+          :aria-busy="filtering"
           @click="toggleOpen"
         >
           Открыто сейчас
         </button>
       </div>
     </nav>
+    <p
+      v-if="filtering"
+      class="open-note"
+      role="status"
+    >
+      Проверяем, что открыто сейчас…
+    </p>
+    <div
+      v-if="openError"
+      class="availability-error"
+      role="alert"
+    >
+      <p>Не удалось проверить, что открыто сейчас. Фильтр выключен, показан весь список.</p>
+      <UiButton
+        variant="line"
+        @click="toggleOpen"
+      >
+        Повторить
+      </UiButton>
+    </div>
     <ProseHtml
       v-if="page.html"
       class="prose"
@@ -110,7 +130,7 @@
       :blocks="leadModules"
     />
     <p
-      v-if="openNow"
+      v-if="openNow && !filtering"
       class="open-note"
     >
       Учитываются только проверенные часы работы.
@@ -228,18 +248,20 @@ const leadModules = listingModules.filter((block) => block.type === 'choose' || 
 const tailModules = listingModules.filter((block) => block.type !== 'choose' && block.type !== 'situation')
 // «Открыто сейчас» runs in the browser only, after hydration (ADR 0028).
 const openNow = ref(false)
-const filtering = ref(false)
-const openSlugs = ref(new Set<string>())
+const openSlugs = ref<Set<string> | null>(null)
+const filtering = computed(() => openNow.value && openSlugs.value === null)
+const openError = ref(false)
+let availabilityRequest = 0
 const slugOf = (href: string) => href.split('/').filter(Boolean).pop() || ''
-const openState = (href: string) => openSlugs.value.has(slugOf(href))
+const openState = (href: string) => openSlugs.value?.has(slugOf(href)) ?? false
 const shownItems = computed(() => {
   if (page.type !== 'listing') {
     return []
   }
-  return openNow.value ? page.items.filter((item) => openState(item.href)) : page.items
+  return openNow.value && openSlugs.value !== null ? page.items.filter((item) => openState(item.href)) : page.items
 })
 // A town fits the compact embed. The whole oblast does not: pins would cover the coast.
-// «Открыто сейчас» is applied only after the hours request, so the map does not unmount on an empty set.
+// Apply the filter only after a successful hours response; pending/failed requests keep cards and map.
 const mapHrefs = computed(() => {
   if (page.type !== 'listing' || !page.regionSlug) {
     return []
@@ -267,20 +289,40 @@ function venueCount(count: number) {
 }
 
 async function toggleOpen() {
-  if (openNow.value) {
-    openNow.value = false
+  const request = ++availabilityRequest
+  openNow.value = !openNow.value
+  openSlugs.value = null
+  openError.value = false
+  if (!openNow.value) {
     return
   }
-  filtering.value = true
   try {
     // Same rule as the map: only verified schedules report «open».
-    const result = await $fetch<{ items: Array<{ slug: string }> }>('/api/public/availability', { query: { type: 'venue', status: 'open,closing_soon' } }).catch(() => ({ items: [] }))
-    openSlugs.value = new Set(result.items.map((item) => item.slug))
-    openNow.value = true
-  } finally {
-    filtering.value = false
+    const result = await $fetch<{ items: Array<{ slug: string }> }>('/api/public/availability', {
+      query: { type: 'venue', status: 'open,closing_soon' },
+      retry: 0,
+      timeout: 10_000,
+    })
+    if (request === availabilityRequest) {
+      openSlugs.value = new Set(result.items.map((item) => item.slug))
+    }
+  } catch {
+    if (request === availabilityRequest) {
+      openNow.value = false
+      openError.value = true
+    }
   }
 }
+
+watch(() => route.path, () => {
+  availabilityRequest++
+  openNow.value = false
+  openSlugs.value = null
+  openError.value = false
+})
+onBeforeUnmount(() => {
+  availabilityRequest++
+})
 
 usePublicHead(page.doc)
 </script>
@@ -371,7 +413,16 @@ usePublicHead(page.doc)
   cursor: pointer;
 }
 .open-now[aria-pressed='true'] { background: var(--color-sea); color: var(--color-paper, #fff); }
-.open-now:disabled { opacity: 0.6; cursor: progress; }
+.open-now[aria-busy='true'] { cursor: progress; }
+.availability-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin: 0 0 1rem;
+  color: var(--color-warn);
+}
+.availability-error p { flex: 1 1 18rem; margin: 0; }
 .open-note { margin: 0 0 1rem; color: var(--color-muted); font-size: 0.95rem; }
 .town-map { margin: 0.4rem 0 1.6rem; }
 .town-map h2 { margin: 0 0 0.7rem; }
