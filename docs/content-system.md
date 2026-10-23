@@ -139,4 +139,4 @@ Entry fact values/hashes are unchanged. Extra facts use kind `admission`, slot `
 
 The public block displays «Билеты» then «Дополнительно», with each fresh row's source and check date. Entry rows alone set entry JSON-LD offers/free-access, fallback and scoring. Extras alone never suppress a legacy place price; absent entry information remains «Стоимость билета уточняйте». The same helper is used for places, venues and routes. Multi-exhibition/combined tickets are labelled entry rows; cross-subject sharing is deferred.
 
-Extra writes default off for safe server rollout. See [rollout and rollback](development.md#admission-extras-rollout). This switch does not hide stored public data and does not change entry writes.
+Extra list/value writes default off for safe server rollout; hash-only freshness confirmation remains allowed under the existing fact-confirm permissions. See [rollout and rollback](development.md#admission-extras-rollout). This switch does not hide stored public data and does not change entry writes.
