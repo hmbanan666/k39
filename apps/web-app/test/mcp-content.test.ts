@@ -132,6 +132,28 @@ describe('region center', () => {
 })
 
 describe('factsCheckedAt', () => {
+  it.each([
+    ['2026-10-12 00:00:00+00', '2026-10-12T00:00:00.000Z'],
+    ['2026-10-12T00:00:00+00', '2026-10-12T00:00:00.000Z'],
+    ['2026-10-12 15:04:05.123456+02', '2026-10-12T13:04:05.123Z'],
+    ['2026-10-12 15:04:05-05', '2026-10-12T20:04:05.000Z'],
+    ['2026-10-12T15:04:05+0230', '2026-10-12T12:34:05.000Z'],
+    ['2026-10-12T15:04:05+02:30', '2026-10-12T12:34:05.000Z'],
+    ['2026-10-12 15:04:05.123456+00:00', '2026-10-12T15:04:05.123Z'],
+  ])('normalizes the read/write timestamp %s', (input, expected) => {
+    expect(parseFactsCheckedAt(input)).toBe(expected)
+  })
+
+  it.each([
+    '2026-02-31 00:00:00+00', '2026-10-12 24:00:00+00',
+    '2026-10-12 00:60:00+00', '2026-10-12 00:00:60+00',
+    '2026-10-12 00:00:00+24', '2026-10-12 00:00:00+02:60',
+    '2026-10-12 00:00:00+0', '2026-10-12 00:00:00+000',
+    '2026-10-12junk',
+  ])('still rejects an invalid timestamp %s', (input) => {
+    expect(() => parseFactsCheckedAt(input)).toThrowError()
+  })
+
   it('accepts an ISO date by itself and stores date-only values at UTC midnight', () => {
     const schema = z.object({ id: z.string().optional(), ...placeFields })
     expect(schema.parse({ id: 'place-1', factsCheckedAt: '2026-10-12' })).toMatchObject({
