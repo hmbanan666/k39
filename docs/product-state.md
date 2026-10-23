@@ -90,7 +90,7 @@ Existing assets worth preserving: one shared `.agents/skills` directory; explici
 | Toolchain mismatch and install policy | PR 284 pins pnpm 12.15.0, preserves trust policy and passes frozen-install CI | Migration done; verify the shell resolves project tools. The generic audit host still has Node 24.19.0 rather than the 24.21.0 pin; full checks use CI |
 | Quick check is touched-package based | A types-only change selects only `@k39/types`; consumers may still fail compilation | A02: exercise an actual shared-contract failure before changing selection |
 | Full check mutates files | `check:full` calls `lint:fix`; CI uses read-only lint | A02: assess a read-only final check with formatting explicit; preserve coverage |
-| Speed measurement | A01 records a managed-host rejection and a fresh-checkout CI baseline; these are distinct environments | [Baseline and limits](reviews/2026-10-23-agent-loop/README.md); identify the measured stage before A02 changes commands. No whole-task speedup is claimed |
+| Speed measurement | A01 measured about 33s checkout-to-ready, 59s feature quick and 193s full check + build on stock CI; web-app/writer typechecks were 71.5% of quick stages | [Baseline and limits](reviews/2026-10-23-agent-loop/README.md); profile that stage in A02 while preserving final checks and transitive-consumer coverage. No whole-task speedup is claimed |
 
 These are focused review targets, not proof that every compatibility branch is unnecessary. Fact fallback, draft staging, unknown hours, archive semantics and local/test database guards protect real behavior. For a workaround: record the trigger, original reason, current callers, replacement and regression proof. Remove it with the affected feature, not in a broad untested cleanup.
 
