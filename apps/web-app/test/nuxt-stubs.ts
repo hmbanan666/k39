@@ -109,3 +109,8 @@ export const MapEmbed = defineComponent({
     return () => h('div', { class: 'map-embed' })
   },
 })
+
+/** Component tests/captures install an isolated ofetch-compatible boundary. */
+export function useRequestFetch() {
+  return (globalThis as unknown as { $fetch: typeof import('ofetch').$fetch }).$fetch
+}

@@ -126,3 +126,17 @@ For any UI change, read `.agents/skills/k39-ui/SKILL.md` first. It points at `.a
 - `/sign-in`, `/about`, `/privacy`, `/terms`. `/cookies` redirects to `/privacy#cookies`. `/legal/privacy-policy` redirects to `/privacy`.
 
 Sitemap source: `server/routes/sitemap-urls.get.ts` (published, indexable rows only). Robots: `public/robots.txt`, served as-is so the Yandex `Host` line stays.
+
+## Admission entry and extra lists
+
+ADR 0050 extends the existing practical writer: `admission_set` accepts `rows` (up to 48 entry tariffs), `extras` (up to 12 paid services), or both. Omit a list to preserve it; `[]` clears only that list. Slots may repeat between lists but must be unique within one. The same admin endpoint uses this contract. Both supplied lists and their facts commit in one transaction, including fact retirement and source-watcher updates. Subject writes are serialized. A fact/source failure rolls the write back; retry is safe. A content token cannot overwrite or remove an owner-controlled fact.
+
+Entry fields retain the five audiences and existing zero/free rules. Extras require a label and positive whole-ruble amount, have no audience, and accept `unit: person | group | device | null` (null when the official source does not say). State eligibility, group size and any required entry ticket in `condition`; do not infer inclusion. Do not encode a refundable deposit or a range as a service price. Admission sources, TTL and display freshness are in [facts](facts.md); the editor/draft-token rules remain unchanged.
+
+`admission_get` returns entry-only `rows`, `shown`/`shownSlots`, `stored` and entry `fallback`, plus `extras`, `shownExtras`/`shownExtraSlots`, `extrasStored`, `extrasFallback` and `extrasWriteEnabled`. `admissions_list` keeps entry counters `rows`, `stale`, `oldestCheckedAt`, adds `extras`, `staleExtras`, `oldestExtraCheckedAt`, and includes extra-only subjects. `staleOnly` matches either list. An extra-only subject has null oldest entry date. Admin reads add `admissionExtras`, `shownExtraSlots`, `extrasWriteEnabled`; saving one form preserves unsaved inputs in the other.
+
+Entry fact values/hashes are unchanged. Extra facts use kind `admission`, slot `admission-extra:{slot}` and value `{kind: 'extra', priceRub, label, condition, unit}`. `fact_update` rejects cross-variant values and goes through the same transactional writer; `fact_confirm` keeps its hash contract and updates the matching admission row check date atomically (Kaliningrad calendar date), without changing the value or adding a revision. Extra references use `short.admissionExtras`.
+
+The public block displays «Билеты» then «Дополнительно», with each fresh row's source and check date. Entry rows alone set entry JSON-LD offers/free-access, fallback and scoring. Extras alone never suppress a legacy place price; absent entry information remains «Стоимость билета уточняйте». The same helper is used for places, venues and routes. Multi-exhibition/combined tickets are labelled entry rows; cross-subject sharing is deferred.
+
+Extra writes default off for safe server rollout. See [rollout and rollback](development.md#admission-extras-rollout). This switch does not hide stored public data and does not change entry writes.

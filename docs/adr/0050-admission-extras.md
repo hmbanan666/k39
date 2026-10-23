@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted on merge of this record (2026-10-23). Implementation pending. Amends the admission-list, fact-value and rendering decisions in [ADR 0046](0046-structured-practical-info.md); its other decisions remain. At baseline `cac4720` the running implementation still has one 12-row entry list and no extras.
+Accepted (2026-10-23), merged in PR 312. The [implementation review](../reviews/2026-10-23-admission-extras-implementation/README.md) records the follow-up change and its rollout/acceptance limits; implementation merge and deployment are separate from this decision. Amends the admission-list, fact-value and rendering decisions in [ADR 0046](0046-structured-practical-info.md); its other decisions remain. At baseline `cac4720` the running implementation still has one 12-row entry list and no extras.
 
 ## Context
 

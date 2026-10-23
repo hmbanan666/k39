@@ -1,6 +1,6 @@
 import type { BodySection } from './body-sections'
 import type { ClaimChannel, ClaimStatus, VenueMemberRole } from './claims'
-import type { AdmissionAudience, AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
+import type { AdmissionAudience, AdmissionExtraUnit, AdmissionKind, AuthorKind, CollectionKind, MediaLicense, MediaStatus, MediaVariant, OfferCodeStatus, OfferKind, OfferStatus, PageKind, PlaceFaqItem, PrimaryAction, PublicationStatus, SourceLink, StoredPageModule, UserRole, VisitStatus } from './types/entities'
 import type { LengthOverride, ScoreChecks } from './types/scoring'
 import type { VenueDish, VenueHours, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from './venues'
 import { cuid2 } from 'drizzle-cuid2/postgres'
@@ -707,7 +707,9 @@ export const admissionPrices = pgTable('admission_prices', {
   subjectType: varchar('subject_type').notNull(),
   subjectId: varchar('subject_id').notNull(),
   slot: varchar('slot').notNull(),
-  audience: varchar('audience').notNull().$type<AdmissionAudience>(),
+  kind: varchar('kind').notNull().default('entry').$type<AdmissionKind>(),
+  audience: varchar('audience').$type<AdmissionAudience>(),
+  unit: varchar('unit').$type<AdmissionExtraUnit>(),
   priceRub: integer('price_rub').notNull(),
   condition: text('condition'),
   label: varchar('label'),
@@ -717,10 +719,9 @@ export const admissionPrices = pgTable('admission_prices', {
   sortOrder: integer('sort_order').notNull().default(0),
   updatedAt: updatedAt(),
 }, (table) => [
-  uniqueIndex('admission_prices_subject_slot').on(table.subjectType, table.subjectId, table.slot),
+  uniqueIndex('admission_prices_subject_slot').on(table.subjectType, table.subjectId, table.kind, table.slot),
   check('admission_prices_subject_check', sql`${table.subjectType} in ('place', 'venue', 'route')`),
-  check('admission_prices_audience_check', sql`${table.audience} in ('general', 'reduced', 'family', 'foreign', 'free')`),
-  check('admission_prices_price_check', sql`(${table.audience} = 'free' and ${table.priceRub} = 0) or (${table.audience} <> 'free' and ${table.priceRub} > 0)`),
+  check('admission_prices_shape_check', sql`(${table.kind} = 'entry' and ${table.audience} is not null and ${table.audience} in ('general', 'reduced', 'family', 'foreign', 'free') and ${table.unit} is null and ((${table.audience} = 'free' and ${table.priceRub} = 0) or (${table.audience} <> 'free' and ${table.priceRub} > 0))) or (${table.kind} = 'extra' and ${table.audience} is null and ${table.priceRub} > 0 and ${table.label} is not null and length(trim(${table.label})) > 0 and (${table.unit} is null or ${table.unit} in ('person', 'group', 'device')))`),
 ])
 
 // Dated performances of a place or venue (ADR 0046). `events` is the ADR 0004 action log.

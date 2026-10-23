@@ -1,4 +1,5 @@
-import type { AdmissionAudience } from '../types/entities'
+import type { AdmissionAudience, AdmissionExtraUnit, AdmissionKind } from '../types/entities'
+import type { ContentTx } from './content'
 import { and, asc, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { admissionPrices, calendarEvents, places, routes, venues } from '../tables'
@@ -8,7 +9,9 @@ export type EventSubjectType = 'place' | 'venue'
 
 export interface AdmissionRowWrite {
   slot: string
-  audience: AdmissionAudience
+  kind?: AdmissionKind
+  audience: AdmissionAudience | null
+  unit?: AdmissionExtraUnit | null
   priceRub: number
   condition: string | null
   label: string | null
@@ -42,8 +45,13 @@ function liveAt(now: string) {
 
 // Admission prices (ADR 0046). The writer in the web app owns validation and facts.
 export class Admission {
-  static async forSubject(subjectType: string, subjectId: string) {
-    return useDatabase().select().from(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId))).orderBy(asc(admissionPrices.sortOrder), asc(admissionPrices.slot))
+  static async forSubject(subjectType: string, subjectId: string, tx?: ContentTx) {
+    return (tx ?? useDatabase()).select().from(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId))).orderBy(asc(admissionPrices.sortOrder), asc(admissionPrices.slot))
+  }
+
+  /** Serialize row/fact replacement on a subject, including an initially empty list. */
+  static async lock(subjectType: string, subjectId: string, tx: ContentTx) {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`admission:${subjectType}:${subjectId}`}, 0))`)
   }
 
   static async list(subjectType?: string) {
@@ -52,15 +60,27 @@ export class Admission {
     return filtered.orderBy(asc(admissionPrices.subjectType), asc(admissionPrices.subjectId), asc(admissionPrices.sortOrder))
   }
 
-  /** Replaces the whole list of one subject in a transaction. */
-  static async replace(subjectType: AdmissionSubjectType, subjectId: string, rows: AdmissionRowWrite[]) {
-    await useDatabase().transaction(async (tx) => {
-      await tx.delete(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId)))
-      if (rows.length) {
-        await tx.insert(admissionPrices).values(rows.map((row) => ({ ...row, subjectType, subjectId })))
+  /** Only supplied kinds are replaced. The caller owns the row/fact transaction. */
+  static async replaceLists(subjectType: AdmissionSubjectType, subjectId: string, lists: Partial<Record<AdmissionKind, AdmissionRowWrite[]>>, tx: ContentTx) {
+    for (const kind of ['entry', 'extra'] as const) {
+      const rows = lists[kind]
+      if (rows === undefined) {
+        continue
       }
+      await tx.delete(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId), eq(admissionPrices.kind, kind)))
+      if (rows.length) {
+        await tx.insert(admissionPrices).values(rows.map((row) => ({ ...row, kind, subjectType, subjectId })))
+      }
+    }
+    return Admission.forSubject(subjectType, subjectId, tx)
+  }
+
+  /** Legacy internal entry-only replacement also preserves extras. */
+  static async replace(subjectType: AdmissionSubjectType, subjectId: string, rows: AdmissionRowWrite[]) {
+    return useDatabase().transaction(async (tx) => {
+      await Admission.lock(subjectType, subjectId, tx)
+      return Admission.replaceLists(subjectType, subjectId, { entry: rows }, tx)
     })
-    return Admission.forSubject(subjectType, subjectId)
   }
 
   static async removeForSubject(subjectType: string, subjectId: string) {

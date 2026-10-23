@@ -89,7 +89,7 @@
               :key="row.key"
               :row="row"
             />
-            <TicketsFact :admission="page.admission" />
+            <TicketsFact :admission="page.admission" :legacy-price="page.place.price" />
             <GuideFactRow
               v-if="address"
               :row="{ key: 'address', label: 'Адрес', value: address }"
@@ -364,6 +364,7 @@ const noticeWindows = statusWindows(page.notices)
 const hasFacts = Boolean(
   rows.length
   || page.admission.stored
+  || page.admission.extrasStored
   || page.notices.length
   || address
   || (page.place.latitude != null && page.place.longitude != null),

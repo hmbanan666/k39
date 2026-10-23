@@ -106,3 +106,13 @@ There is no separate migration job. On boot the Nitro plugin (`server/plugins/01
 `/api/health` runs `select 1` and is the image health check.
 
 Do not add Kubernetes manifests or GitHub Actions deploy workflows.
+
+## Admission extras rollout
+
+Migration `0046_admission_extras.sql` preserves every existing price as `kind = entry`; it does not rewrite amounts, sources, check dates or fact hashes. Normal startup applies it. There is no content seed or label-based reclassification.
+
+`FEATURE_ADMISSION_EXTRAS_WRITE` defaults to false in `apps/web-app/.env.example`. Deploy the partition-aware application to every running instance with this switch unset/false. After verifying the deployed commit on every instance and migration success, set it to `true` for those instances. Only then write extras with an authorized editor. `admission_get.extrasWriteEnabled` reports the instance's setting; disabled explicit extra writes return 503 before either list changes. Entry writes and all reads still work. Draft tokens continue to receive 409 on live parents even when the switch is enabled.
+
+Keep the new reader/writer when disabling extras writes: set the switch false, which preserves existing extras and their public freshness behavior. Do not roll back to the pre-ADR-0050 whole-list writer while extras exist: that writer can delete them or misread them as entry. Prefer a forward repair. Any older-image rollback needs an independent write stop/guard before it starts; this switch does not exist in old images. Do not drop extra columns or facts as a rollback step.
+
+After rollout, separately re-read official tariffs, reconcile effective dates/contradictions, and use the editor writer for representative place/venue/route acceptance. Verify HTML, source/check dates, units, prerequisites, JSON-LD, fresh/stale/unknown states and stored scores. Code CI and synthetic fixtures do not establish live price correctness. Keep issue 290 open until that agreed acceptance is complete.

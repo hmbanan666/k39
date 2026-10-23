@@ -135,6 +135,7 @@ export class Scoring {
       from (
         select subject_type, subject_id, 1 as rows, (checked_at >= ${freshCutoff})::int as fresh, 0 as upcoming
         from admission_prices
+        where kind = 'entry'
         union all
         select subject_type, subject_id, 0, 0, 1
         from calendar_events
