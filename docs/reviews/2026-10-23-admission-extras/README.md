@@ -46,4 +46,6 @@ Current-batch progress is **6/7 merged**. This ADR is the deliverable for item 7
 
 ## Validation of this documentation change
 
-`check:quick` passed locally: repository checks and lint on six changed Markdown files; no package typecheck or test was selected for this documentation-only diff. Relative documentation targets were checked separately. Full verification, web build, standalone SSR and Docker will be recorded against an exact CI commit before handoff. There is no UI or runtime change in this PR.
+`check:quick` passed locally: repository checks and lint on six changed Markdown files; no package typecheck or test was selected for this documentation-only diff. Relative documentation targets were checked separately. [CI run 39992880195](https://github.com/hmbanan666/k39/actions/runs/39992880195) passed on `a8661b12cee3299be52c8a10743fc11ff17d07dd`: literal `pnpm run check:full`, 872 tests in 121 files, all package typechecks, web build, standalone SSR and Docker. `git diff --exit-code` passed after the full check. Tools were pinned Node 24.21.0 and pnpm 12.15.0, with Postgres 18 for tests. These are existing-implementation checks, not proof that the new design is implemented.
+
+The branch push trigger and literal-command CI step were temporary validation scaffolding. The final workflow is identical to baseline. The final head adds only this evidence and ADR prose clarifying stable extra ordering and rolling-deployment safety, and removes that scaffolding; normal PR CI runs again on the final head. There is no UI or runtime change in this PR.
