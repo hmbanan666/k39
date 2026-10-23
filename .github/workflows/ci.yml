@@ -8,6 +8,7 @@ on:
       - "!.github/workflows/ci.yml"
     branches:
       - main
+      - fix/venue-availability
   # No path filter on pull requests: every PR head gets build and docker,
   # so the checks a merge waits for always exist.
   pull_request:

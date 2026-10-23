@@ -1,6 +1,6 @@
 # Product state
 
-Updated: 2026-10-23. Code baseline: `9f8a8ab09cb12218073c800773ed92606ae80b90` (`main`, including PRs 283–285). Initial inspection: 2026-10-22; confirmed gaps below were rechecked on this baseline. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
+Updated: 2026-10-23. Code baseline: `77d69af8ef85ac258d2be3eb7fdc3bd0f0e4b880` (`main`, PR 286 merged); S01 progress reflects the current fix. Initial inspection: 2026-10-22; confirmed gaps below were rechecked on this baseline. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
 
 ## Goals and evidence
 
@@ -24,7 +24,7 @@ Paths beginning `app/`, `shared/`, or `server/` are under `apps/web-app/`. Count
 | F06 · Quests | Quest page shows prose, route, map and stop cards; HTTP 22 Oct: one quest; no completion controls or saved progress found | Rework or reduce promotion | Choose an editorial walk versus an interactive challenge and define success |
 | F07 · Venue catalog and pages | `server/utils/venues/public.ts`, `VenuePage`, catch-all listing; HTTP 22 Oct: 151 listing items | Supporting core: stabilize a representative set | Place -> nearby food -> venue -> reliable contact/directions |
 | F08 · Schedules and availability | Rules, intervals, exceptions and unknown states in `shared/schedule`, `server/utils/schedule.ts`, availability API | Core data dependency: retain | Same venue status across page, cards, map and lists at time boundaries |
-| F09 · Venue listing open-now filter | Listing `toggleOpen()` still catches failed availability as an empty list, separately from PR 283 | Fix | Failure preserves results and shows retry; successful empty result remains distinct |
+| F09 · Venue listing open-now filter | Listing `toggleOpen()` now preserves cards/map on failure, announces it and retries; [mounted/browser evidence](reviews/2026-10-23-venue-availability/README.md) | Fix implemented; deployment pending | Failure preserves results and shows retry; successful empty result remains distinct |
 | F10 · Eat-now hub and proximity | `EatNowPage`, `loadEatNow`; browser groups statuses after hydration; HTTP 22 Oct: 13 towns | Pilot; improve feedback | Unknown/closed schedules, denied/timed-out location, no coordinates and no-JS |
 | F11 · Menu price anchors and bands | `comparable-prices.ts`, `menu-prices.ts`, `shared/price-compare.ts`; official comparison sample separated from owner prices | Keep where evidence exists | Trace item, portion, price, source and freshness across surfaces |
 | F12 · Where-cheaper and item price pages | `server/utils/venues/price-page.ts`; HTTP 22 Oct: three city entries; fresh-sample thresholds | Pilot with explicit coverage | Thin/missing samples, stale prices, portions, closed venues and crawl thresholds |
@@ -44,11 +44,11 @@ Paths beginning `app/`, `shared/`, or `server/` are under `apps/web-app/`. Count
 
 ## Confirmed gaps
 
-These are reproducible static findings on the current baseline. They were not fault-injected on production. The task IDs and completion criteria are in the [roadmap](roadmap.md#next-tasks).
+These are reproducible static findings on the current baseline. They were not fault-injected on production. S01 is fixed in the current change with isolated mounted/browser evidence; deployment acceptance remains pending. The task IDs and completion criteria are in the [roadmap](roadmap.md#next-tasks).
 
 | Finding | Evidence and trigger | Next task |
 | --- | --- | --- |
-| Failed availability request becomes “no open venues” | [`toggleOpen()`](../apps/web-app/app/pages/zavedeniya/[[...path]].vue) catches a rejected fetch as `{ items: [] }`, then enables the filter. The same empty array also represents a successful response. PR 283 fixed the visitor map, not this listing. | S01 |
+| Failed availability request becomes “no open venues” | [`toggleOpen()`](../apps/web-app/app/pages/zavedeniya/[[...path]].vue) previously caught a rejected fetch as `{ items: [] }`, then enabled the filter. The same empty array represented a successful response. This change distinguishes the outcomes. | S01 implemented; deployment pending |
 | Map missing from sitemap and repeated region in title | [`sitemap-urls.get.ts`](../apps/web-app/server/routes/sitemap-urls.get.ts) has no map entry. [`loadMap()`](../apps/web-app/server/utils/map/public.ts) calls `collectionDocument` without a `seoTitle`; that helper appends the region to the already region-specific H1. [ADR 0037](adr/0037-visitor-map.md) specifies `Карта Калининградской области | K39`. | S02 |
 | Duplicate map footer entry | [`SECTION_LINKS`](../apps/web-app/shared/links.ts) contains `/map` twice; [`SiteFooter.vue`](../apps/web-app/app/components/SiteFooter.vue) iterates it with href as key. | S02 |
 | Eat-now geolocation error is silent | [`EatNowPage.vue`](../apps/web-app/app/components/EatNowPage.vue), `locate()`, only clears `locating` on rejection. The centre-based results remain, but the visitor gets no denial/timeout explanation. | S03 |
@@ -64,7 +64,7 @@ All paths in this table are repository-relative. A listed test is a starting poi
 | F01–F02 · places and routes | [place rendering](../apps/web-app/test/place-page.test.ts), [route navigation](../apps/web-app/test/route-nav.test.ts), [ordered stops](../packages/database/src/repository/test/stops.test.ts) | Real visit information, stop availability and phone directions |
 | F03 · map | [filter/query helpers](../apps/web-app/test/map.test.ts), [availability failures and races](../apps/web-app/test/map-availability.test.ts), [scene core](../packages/map/test/layers.test.ts) | Browser interaction, missing basemap/WebGL, mobile panel and combined filters |
 | F04–F06 · guides, picker, quests | [modules](../apps/web-app/test/page-modules.test.ts), [month ordering](../apps/web-app/test/month-guide.test.ts), [persona values](../apps/web-app/test/visitor-persona.test.ts), [quest cards](../apps/web-app/test/quest-page.test.ts) | Shared URLs/reset/storage-off; coherent editorial quest. Quest tests do not implement saved progress |
-| F07–F10 · venues and eat-now | [venue public helpers](../apps/web-app/test/venues.test.ts), [schedule cases](../apps/web-app/test/schedule.test.ts), [status consistency](../apps/web-app/test/status-consistency.test.ts), [eat-now grouping/distance](../apps/web-app/test/eat-now.test.ts) | Listing request failure/retry, geolocation rejection and a full nearby-food journey |
+| F07–F10 · venues and eat-now | [venue public helpers](../apps/web-app/test/venues.test.ts), [schedule cases](../apps/web-app/test/schedule.test.ts), [status consistency](../apps/web-app/test/status-consistency.test.ts), [eat-now grouping/distance](../apps/web-app/test/eat-now.test.ts), [listing error/retry/races/SSR](../apps/web-app/test/venue-availability.test.ts) | Live listing deployment acceptance, geolocation rejection and a full nearby-food journey |
 | F11–F12 · menu and comparison prices | [price comparison](../apps/web-app/test/price-compare.test.ts), [price repository](../packages/database/src/repository/test/prices.test.ts) | Source/portion/freshness across surfaces and sufficient real city/item coverage |
 | F13–F14 · tickets, events, notices | [practical rendering](../apps/web-app/test/practical.test.ts), [notice windows/rendering](../apps/web-app/test/notices.test.ts), [notice writers](../packages/database/src/repository/test/notices.writer.test.ts) | Cancelled/expired/current states across pages, maps, cards and structured data |
 | F15 · search | [query helpers](../apps/web-app/test/search.test.ts), [repository matching/visibility](../packages/database/src/repository/test/search.test.ts) | Real Russian queries, zero-result recovery and a useful destination |
