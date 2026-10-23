@@ -8,7 +8,6 @@ on:
       - "!.github/workflows/ci.yml"
     branches:
       - main
-      - fix/closed-status-word
   # No path filter on pull requests: every PR head gets build and docker,
   # so the checks a merge waits for always exist.
   pull_request:
@@ -53,13 +52,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Full verification
-        env:
-          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/k39_test
+      - name: Repository checks
         run: |
           git fetch origin main
-          pnpm run check:full
-          git diff --exit-code
+          pnpm run check:repo
+
+      - name: ESLint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        env:
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/k39_test
+        run: pnpm run test
 
       - name: Build
         run: pnpm run build
