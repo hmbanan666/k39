@@ -987,6 +987,25 @@ describe('goal grace and status scope', () => {
     expect(issueLabel('status warning: closure may refer to another subject')).toBe('Фраза про закрытие может относиться к другому месту')
   })
 
+  it('does not charge a closure penalty for footwear advice in a fort FAQ', () => {
+    const page = source({
+      title: 'Форт №2а «Барнеков»',
+      body: 'Фасад доступен для осмотра.',
+      faq: [{ question: 'Что взять с собой?', answer: 'Закрытую обувь, которая не боится сырости, фонарь и заряженный телефон.' }],
+    })
+    const unchecked = scorePage(page)
+    const open = scorePage({ ...page, scheduleMode: 'always' })
+    expect(open.checks.quality).toEqual(unchecked.checks.quality)
+    expect(open.quality).toBe(unchecked.quality)
+    expect(open.total).toBe(unchecked.total)
+
+    const closedFaq = { ...page, faq: [{ question: 'Можно войти?', answer: 'Закрыт.' }] }
+    const contradiction = scorePage({ ...closedFaq, scheduleMode: 'always' })
+    const consistent = scorePage({ ...closedFaq, scheduleMode: 'closed' })
+    expect(contradiction.checks.quality).toContain('status contradiction: text says closed, schedule mode is always')
+    expect(contradiction.quality).toBe(consistent.quality - 15)
+  })
+
   it('does not charge 15 points for a tenant closure, and still charges a real one', () => {
     const body = 'Ворота временно закрыты на реставрацию.'
     const closed = scorePage(source({ scheduleMode: 'closed', body }))

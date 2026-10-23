@@ -1,10 +1,10 @@
 # Roadmap
 
-Updated 2026-10-23. Baseline: `29742df` (PR 296 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
+Updated 2026-10-23. Baseline: `66a3241` (PR 300 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
 
 ## Current position
 
-**Current batch: 1 of 7 items merged. Item 2 is implemented in this change; item 3 is next.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
+**Current batch: 2 of 7 items merged. Item 3 is implemented in this change; item 4 is next.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
 
 | Completed work | Evidence | Remaining limit |
 | --- | --- | --- |
@@ -23,8 +23,8 @@ The owner reviewed this seven-item order on 23 Oct. Issue 288 goes first because
 | Order / item | State | Completion contract |
 | --- | --- | --- |
 | 1 · [#288](https://github.com/hmbanan666/k39/issues/288) · pending place date (F16–F17) | Merged in [PR 296](https://github.com/hmbanan666/k39/pull/296); [review](reviews/2026-10-23-pending-place-date/README.md); deployment pending | Repeat draft saves on a checked live place; omit to preserve, null to clear, explicit replacement to change. Round-trip the real place_get timestamp. Live content stays unchanged until editor application. Regressions and full CI pass |
-| 2 · S03 · eat-now location (F10) | Implemented; merge pending; [review](reviews/2026-10-23-eat-now-location/README.md) | Explain denied/timed-out/unavailable location in Russian, retain the usable origin/results and allow retry. Cover success, unavailable API, missing coordinates, centre/visitor distance, mobile/desktop and SSR |
-| 3 · [#291](https://github.com/hmbanan666/k39/issues/291) · false closed status (F08/F23) | Reported; reproduce | The footwear sentence must not flag an always-open fort as closed; real closure phrases must still be detected. Verify score/status output with regression cases |
+| 2 · S03 · eat-now location (F10) | Merged in [PR 300](https://github.com/hmbanan666/k39/pull/300); [review](reviews/2026-10-23-eat-now-location/README.md); deployment pending | Explain denied/timed-out/unavailable location in Russian, retain the usable origin/results and allow retry. Cover success, unavailable API, missing coordinates, centre/visitor distance, mobile/desktop and SSR |
+| 3 · [#291](https://github.com/hmbanan666/k39/issues/291) · false closed status (F23) | Reproduced and implemented; merge pending; [review](reviews/2026-10-23-closed-status-word/README.md) | The footwear sentence must not flag an always-open fort as closed; real closure phrases must still be detected. Verify score/status output with regression cases |
 | 4 · [#289](https://github.com/hmbanan666/k39/issues/289) · scored article length (F23) | Reported; reproduce and confirm counting contract | Internal-link markup must not discourage useful links. Use one agreed measure for floors, ceilings, stored bodyChars and score preview; preserve real earned-length rules |
 | 5 · A01 · measure the agent loop | Planned | Record host, tools, cache state, checkout-to-ready, warm start, one quick check and full gate. Demonstrate generic local setup without host-global tool rewrites. Identify a measured bottleneck before claiming faster work |
 | 6 · A02 · verification commands | Planned after A01 | Assess read-only final verification with explicit formatting and typechecks for transitive consumers. Demonstrate a real shared-contract break is caught; preserve the final verification coverage |
@@ -34,13 +34,16 @@ Every implementation keeps the [AGENTS verification gate](../AGENTS.md#verify-an
 
 ## Incoming reports outside the current batch
 
-Snapshot retained after merging PR 296 on 23 Oct. These three reports have not been reproduced in this task and do not change the seven-item denominator or authorize a proposed fix. Triage them before the related subsystem work; record any priority change explicitly.
+Snapshot after merging PR 300 on 23 Oct. Six reports remain outside the batch; only #294 was reproduced locally during #291. They do not change the seven-item denominator or authorize their proposed fixes. Triage them before the related subsystem work; record any priority change explicitly.
 
 | Report | Intake state / routing |
 | --- | --- |
 | [#293](https://github.com/hmbanan666/k39/issues/293) · pronoun forms rejected as superlatives | Unverified writing-check report; assess editorial impact |
-| [#294](https://github.com/hmbanan666/k39/issues/294) · a sub-attraction makes a town appointment-only | Unverified status/scoring report; inspect alongside #291 before deciding whether one fix covers both |
+| [#294](https://github.com/hmbanan666/k39/issues/294) · a sub-attraction makes a town appointment-only | Reproduced on isolated text: an appointment phrase about a brewery contradicts the town’s always-open mode. Separate subject-scoping issue; #291 does not fix it. Needs its own scope and regression cases |
 | [#295](https://github.com/hmbanan666/k39/issues/295) · existing collections exceed the source cap and cannot publish an unrelated draft edit | Unverified publishing/compatibility report; reproduce on isolated data and assess blocking impact |
+| [#297](https://github.com/hmbanan666/k39/issues/297) · copied admission prices drift in collection prose | Unverified data-consistency report; assess with practical-fact/collection acceptance |
+| [#298](https://github.com/hmbanan666/k39/issues/298) · stored venue prices lack a visible prices module | Unverified reader/writer feedback report; assess with venue-price acceptance |
+| [#299](https://github.com/hmbanan666/k39/issues/299) · imported phone lacks official provenance | Unverified publishing/source report; reproduce and assess impact on published contacts before prioritizing |
 
 ## Work after the current batch
 

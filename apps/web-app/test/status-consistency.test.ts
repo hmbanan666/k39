@@ -22,6 +22,23 @@ describe('status consistency', () => {
   it('ignores a weekly day off', () => {
     expect(statusContradictions({ text: 'По понедельникам закрыто.', mode: 'hours' })).toEqual([])
   })
+  it.each([
+    'Закрытую обувь, которая не боится сырости, фонарь и заряженный телефон.',
+    'Закрытый двор виден с улицы.',
+    'Закрытая веранда находится слева.',
+    'Закрытые казематы видны со двора.',
+    'Закрытого помещения для отдыха нет.',
+    'Закрытым проходом соединены два зала.',
+    'Закрытость территории относится к прошлому.',
+  ])('does not treat an adjective or noun prefix as a closure: %s', (text) => {
+    expect(statusChecks({ text, mode: 'always' })).toEqual({ contradictions: [], warnings: [] })
+    expect(statusChecks({ text: '', faq: [{ answer: text }], mode: 'always' })).toEqual({ contradictions: [], warnings: [] })
+    expect(statusContradictions({ text, mode: 'closed' })).toEqual(['schedule closed, text does not say so'])
+  })
+  it.each(['Закрыт.', 'Закрыта: идут работы.', 'ЗАКРЫТО!', 'Закрыты до конца работ.'])('keeps the complete closure word: %s', (text) => {
+    expect(statusContradictions({ text, mode: 'always' })).toEqual(['text says closed, schedule mode is always'])
+    expect(statusContradictions({ text, mode: 'closed' })).toEqual([])
+  })
   it('needs booking words for appointment mode', () => {
     expect(statusContradictions({ text: 'Экскурсии по предварительной записи.', mode: 'appointment' })).toEqual([])
     expect(statusContradictions({ text: 'Красивая кирха.', mode: 'appointment' })).toHaveLength(1)
