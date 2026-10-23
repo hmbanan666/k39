@@ -35,6 +35,8 @@ node docs/reviews/2026-10-23-map-discovery/capture.mjs
 
 ## Validation and rollout
 
-Local targeted tests and browser checks passed. Full branch validation is pending; exact tested SHA and CI evidence will be recorded before opening the PR. Local tooling is Node 24.19.0 / pinned pnpm 12.15.0; full CI uses the project Node pin and Postgres 18.
+Local targeted tests (10 cases), browser capture, repository validation, lint, web-app/writer typechecks, documentation-link and diff checks passed. The wider local `check:quick` did not pass: two related DB suites require unavailable Postgres/Docker, and MCP registration exceeded its 5-second limit. An isolated diagnostic MCP run passed both tests with a command-line 30-second allowance (7.87 seconds of tests); the repository timeout is unchanged. The same test passed under the normal CI settings.
+
+[Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/39941253578) passed on `d90cfa59ebc2eee4c455d1e8f2a1374d81f4283b`: frozen install, repository validation, ESLint, all typechecks, 794 tests across 117 files, production build, standalone SSR including the new final-XML/head/footer checks, and Docker image build. The final follow-up records this evidence, removes the temporary branch push trigger and preserves the existing executable mode on the smoke script; its tested contents are unchanged. Final CI policy is unchanged, and normal PR CI verifies the final head again. Local tooling is Node 24.19.0 / pinned pnpm 12.15.0; full CI uses the project Node pin and Postgres 18.
 
 After merge, verify the deployed SHA, `/map` metadata, a filtered map URL, footer navigation and the live sitemap. This change does not claim search-engine recrawling or a verified production deployment. S03 (eat-now geolocation feedback) is next.
