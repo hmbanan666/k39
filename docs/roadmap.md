@@ -1,10 +1,10 @@
 # Roadmap
 
-Updated 2026-10-23. Baseline: `2a33229` (PR 312 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
+Updated 2026-10-23. Baseline: `ac3da95` (PR 313 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
 
 ## Current position
 
-**Current batch: 7 of 7 items merged. The separately sized admission implementation is prepared in this change; rollout/editorial acceptance remains.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
+**Current batch: 7 of 7 items merged. The separately sized admission implementation is merged in PR 313; rollout/editorial acceptance remains.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
 
 | Completed work | Evidence | Remaining limit |
 | --- | --- | --- |
@@ -36,13 +36,21 @@ Every implementation keeps the [AGENTS verification gate](../AGENTS.md#verify-an
 
 Item 7 was a design decision, now merged; the current batch is 7/7. That does not resolve issue 290 or expand that denominator. ADR 0050 selects up to 48 entry rows and 12 independent paid extras, safe partial-list writes and strict separation from entry markup/scoring.
 
-The separately sized **one implementation PR is prepared in this change** ([evidence](reviews/2026-10-23-admission-extras-implementation/README.md)), with three internal tasks: storage/shared writes/facts; UI/public/admin/scoring integration; compatibility and failure acceptance. The [ADR](adr/0050-admission-extras.md#consequences-and-delivery-boundary) gives the concrete boundaries. A separate post-deployment editorial pass needs fresh official-source checks and authorized editor writes. Cross-subject ticket sharing and deposit accounting are deferred; the prepared implementation raises entry capacity to 48 and adds 12 extras; it changes running behavior only after merge/deployment. Extra writes default off until every instance has the new writer. Keep issue 290 open until its agreed implementation and acceptance are complete.
+The separately sized **one implementation PR is merged as [PR 313](https://github.com/hmbanan666/k39/pull/313)** ([evidence](reviews/2026-10-23-admission-extras-implementation/README.md)), with three internal tasks: storage/shared writes/facts; UI/public/admin/scoring integration; compatibility and failure acceptance. The [ADR](adr/0050-admission-extras.md#consequences-and-delivery-boundary) gives the concrete boundaries. A separate post-deployment editorial pass needs fresh official-source checks and authorized editor writes. Cross-subject ticket sharing and deposit accounting are deferred; the merged implementation raises entry capacity to 48 and adds 12 extras. Its main-branch CI passed on `ac3da95`; that does not establish the deployed SHA, migration state or flag on every instance. Extra writes default off until every instance has the new writer. Keep issue 290 open until its agreed implementation and acceptance are complete.
 
-After that delivery, resume V01's five tourist journeys below. Their defects, the six D01 decisions and the O01 recovery work still require sizing; there is no total remaining PR count yet.
+V01 has resumed with the first of five tourist journeys below. The admission rollout remains a separate open acceptance item, not a blocker for read-only tourist-core work. Their defects, the six D01 decisions and the O01 recovery work still require sizing; there is no total remaining PR count yet.
+
+## Active V01 delivery
+
+The first journey is **in progress; 0 of 5 full journeys accepted**. On 23 Oct, read-only browser checks covered the public header search for «Форт», Fort 5's ticket/source/directions output, real zero-result recovery through `/forty`, and Fort 9's closed/private-access explanation. This is a dated sample of live output, not a fresh official-source review, mobile acceptance or deployed-commit proof.
+
+**One scoped implementation is prepared here: search request failure and recovery (F15/F23).** The existing page treated failed API requests as zero results and logged them as completed searches; retained responses could also be labelled with a new query. The [review](reviews/2026-10-23-search-failure/README.md) records isolated reproduction, error/loading/retry/empty states, analytics and SSR evidence. No production fault was injected. This is the first defect found during V01, outside the completed seven-item batch.
+
+After this change merges, verify its deployment and finish the first journey's phone, unknown/stale and no-JavaScript acceptance. Then assess ordered route stops/navigation, including report #307. The other four journeys have not received full acceptance. Keep admission #290 open for all-instance rollout/flag and an authorized editorial pass; no live ticket writes or rollout changes were performed here.
 
 ## Incoming reports outside the current batch
 
-Intake snapshot through report #308, taken during the A01 handoff after PR 305 on 23 Oct. Twelve reports are outside the batch; only #294 was reproduced locally during #291. They do not change the seven-item denominator or authorize their proposed fixes. Triage them before the related subsystem work; record any priority change explicitly.
+Intake snapshot through report #311 on 23 Oct. Thirteen reports are outside the batch; only #294 was reproduced locally during #291. They do not change the seven-item denominator or authorize their proposed fixes. Triage them before the related subsystem work; record any priority change explicitly.
 
 | Report | Intake state / routing |
 | --- | --- |
@@ -58,6 +66,7 @@ Intake snapshot through report #308, taken during the A01 handoff after PR 305 o
 | [#306](https://github.com/hmbanan666/k39/issues/306) · nature and town sights lack a fitting hub | Unverified taxonomy/model proposal; assess classification and public navigation before adding hubs or overrides |
 | [#307](https://github.com/hmbanan666/k39/issues/307) · route leg distance wording implies road distance | Unverified route-output report; trace distance source and short-leg omission during route acceptance |
 | [#308](https://github.com/hmbanan666/k39/issues/308) · places lack an official social-page contact field | Unverified contact/model proposal; review provenance, public output and shared writer boundaries before adding a field |
+| [#311](https://github.com/hmbanan666/k39/issues/311) · hand-written place counts drift in route/collection copy | Unverified save-warning/scoring proposal; report says historic examples were already corrected in content. Reproduce independently, including legitimate subset counts, during guide/route acceptance |
 
 ## Work after the current batch
 
