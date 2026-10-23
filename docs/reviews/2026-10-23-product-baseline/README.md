@@ -19,4 +19,6 @@ Three public fixes lead the queue: S01 availability failure on venue listings, S
 
 - `check:quick` passed: repository validation and Markdown ESLint; no typechecks or tests selected for these Markdown paths.
 - All 118 local Markdown links/anchors in the five changed documents resolve; `git diff --check` passed.
-- Full pre-PR CI is pending; the tested SHA and result will be recorded before opening the PR. No runtime behavior changes or new implementation-mirroring tests are required for this documentation change.
+- [Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/39930954086) passed on `899f83610b15544718e0cf662d2a06195a381a2c`: frozen install, repository validation, ESLint, all typechecks, 772 tests across 115 files, production build, standalone SSR smoke and Docker image build. The merged-base [main CI](https://github.com/hmbanan666/k39/actions/runs/39930255821) also passed.
+- A temporary branch push trigger enabled the full run before PR creation; it is removed from the final diff. The follow-up only records this evidence and removes that trigger. Normal PR CI verifies the final head again.
+- The final diff contains five Markdown documents; runtime, scripts, skills, dependencies and CI policy are unchanged. No implementation-mirroring tests were added for documentation.
