@@ -34,7 +34,7 @@ Every implementation keeps the [AGENTS verification gate](../AGENTS.md#verify-an
 
 ## Incoming reports outside the current batch
 
-Snapshot after merging PR 305 on 23 Oct. Eleven reports remain outside the batch; only #294 was reproduced locally during #291. They do not change the seven-item denominator or authorize their proposed fixes. Triage them before the related subsystem work; record any priority change explicitly.
+Intake snapshot through report #308, taken during the A01 handoff after PR 305 on 23 Oct. Twelve reports are outside the batch; only #294 was reproduced locally during #291. They do not change the seven-item denominator or authorize their proposed fixes. Triage them before the related subsystem work; record any priority change explicitly.
 
 | Report | Intake state / routing |
 | --- | --- |
@@ -49,6 +49,7 @@ Snapshot after merging PR 305 on 23 Oct. Eleven reports remain outside the batch
 | [#304](https://github.com/hmbanan666/k39/issues/304) · district venues labelled as the district town | Unverified locality/grouping report; assess location model and comparison coverage together |
 | [#306](https://github.com/hmbanan666/k39/issues/306) · nature and town sights lack a fitting hub | Unverified taxonomy/model proposal; assess classification and public navigation before adding hubs or overrides |
 | [#307](https://github.com/hmbanan666/k39/issues/307) · route leg distance wording implies road distance | Unverified route-output report; trace distance source and short-leg omission during route acceptance |
+| [#308](https://github.com/hmbanan666/k39/issues/308) · places lack an official social-page contact field | Unverified contact/model proposal; review provenance, public output and shared writer boundaries before adding a field |
 
 ## Work after the current batch
 
