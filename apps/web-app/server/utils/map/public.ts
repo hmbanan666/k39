@@ -161,6 +161,7 @@ export async function loadMap() {
   const doc = collectionDocument({
     path: '/map',
     h1: 'Карта Калининградской области',
+    seoTitle: 'Карта Калининградской области',
     summary: 'Достопримечательности, где поесть и маршруты на одной карте Калининградской области.',
     items: [
       ...points.slice(0, 40).map((point) => ({ name: point.title, url: point.href })),
