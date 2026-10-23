@@ -8,6 +8,7 @@ on:
       - "!.github/workflows/ci.yml"
     branches:
       - main
+      - chore/verification-coverage
   # No path filter on pull requests: every PR head gets build and docker,
   # so the checks a merge waits for always exist.
   pull_request:
@@ -52,21 +53,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Repository checks
-        run: |
-          git fetch origin main
-          pnpm run check:repo
-
-      - name: ESLint
-        run: pnpm run lint
-
-      - name: Typecheck
-        run: pnpm run typecheck
-
-      - name: Test
+      - name: Full verification
         env:
           DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/k39_test
-        run: pnpm run test
+        run: |
+          git fetch origin main
+          pnpm run check:full
+          git diff --exit-code
 
       - name: Build
         run: pnpm run build
@@ -90,3 +83,46 @@ jobs:
 
       - name: Build web app image
         run: docker build -f docker/web-app/Dockerfile .
+
+  contract-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: k39
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d k39"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Isolated baseline clone
+        run: |
+          git clone --no-local --no-checkout "$GITHUB_WORKSPACE" "$RUNNER_TEMP/k39-a02-contract"
+          git -C "$RUNNER_TEMP/k39-a02-contract" checkout --detach 349a2c6359b40887940a807353115c10feefe402
+          git -C "$RUNNER_TEMP/k39-a02-contract" update-ref refs/remotes/origin/main 349a2c6359b40887940a807353115c10feefe402
+          cd "$RUNNER_TEMP/k39-a02-contract"
+          pnpm install --frozen-lockfile
+      - name: Contract and formatting proof
+        env:
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/k39_test
+        run: |
+          cd "$RUNNER_TEMP/k39-a02-contract"
+          node "$GITHUB_WORKSPACE/docs/reviews/2026-10-23-verification-coverage/probe.mjs" "$GITHUB_WORKSPACE"

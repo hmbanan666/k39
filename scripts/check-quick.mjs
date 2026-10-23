@@ -1,8 +1,9 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, realpathSync } from 'node:fs'
-import { extname } from 'node:path'
+import { extname, resolve } from 'node:path'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
+import { dependentTypechecks, workspacePackages } from './workspace-typechecks.mjs'
 import { isWriterTest } from './writer-tests.mjs'
 
 const root = process.cwd()
@@ -10,18 +11,19 @@ const baseRef = 'origin/main'
 
 const LINT_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.tsx', '.vue', '.md', '.json'])
 const VITEST_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.tsx', '.vue'])
-const TYPECHECK_ORDER = ['@k39/types', '@k39/map', '@k39/database', '@k39/web-app']
+const scriptRoot = resolve(import.meta.dirname, '..')
 
 /**
  * What `check:quick` runs for paths changed against the merge-base.
  * `deleted` paths only choose packages to typecheck. Writer tests are excluded
  * from the database `tsc` project, so any `packages/database/` change also
  * runs the web-app server typecheck unless that package is already selected.
- * A root config change typechecks every package.
+ * Source changes include transitive consumers from workspace manifests.
+ * Root configuration or an unresolvable removed package checks every package.
  * @param {string[]} files paths that still exist
  * @param {string[]} [deleted] paths removed against the base
  */
-export function quickCheckPlan(files, deleted = []) {
+export function quickCheckPlan(files, deleted = [], packages = workspacePackages(scriptRoot)) {
   const filters = new Set()
   let writer = false
   let allPackages = false
@@ -29,30 +31,24 @@ export function quickCheckPlan(files, deleted = []) {
     if (isRootTypecheckConfig(file)) {
       allPackages = true
     }
+    const owner = packages.filter((item) => file.startsWith(`${item.dir}/`)).sort((a, b) => b.dir.length - a.dir.length)[0]
+    if (!owner && /^(?:packages|apps)\//.test(file)) {
+      allPackages = true
+    }
     if (file.startsWith('packages/database/')) {
       writer = true
-      if (!isWriterTest(file)) {
-        filters.add('@k39/database')
-      }
-    } else if (file.startsWith('apps/web-app/')) {
-      filters.add('@k39/web-app')
-    } else if (file.startsWith('packages/map/')) {
-      filters.add('@k39/map')
-    } else if (file.startsWith('packages/types/')) {
-      filters.add('@k39/types')
+    }
+    if (owner && !isWriterTest(file)) {
+      filters.add(owner.name)
     }
   }
-  if (allPackages) {
-    for (const name of TYPECHECK_ORDER) {
-      filters.add(name)
-    }
-  }
-  if (filters.has('@k39/web-app')) {
+  const typecheck = dependentTypechecks(packages, filters, allPackages)
+  if (typecheck.includes('@k39/web-app')) {
     writer = false
   }
   return {
     lint: files.filter((file) => LINT_EXTENSIONS.has(extname(file))),
-    typecheck: TYPECHECK_ORDER.filter((name) => filters.has(name)),
+    typecheck,
     writer,
     vitest: files.filter((file) => VITEST_EXTENSIONS.has(extname(file))),
   }
@@ -64,6 +60,7 @@ function isRootTypecheckConfig(file) {
   }
   return file === 'package.json'
     || file === 'pnpm-lock.yaml'
+    || file === 'pnpm-workspace.yaml'
     || file.startsWith('tsconfig')
     || file.startsWith('vitest.config.')
     || file.startsWith('eslint.config.')
@@ -132,7 +129,7 @@ if (isDirectRun()) {
   run('pnpm', ['run', 'check:repo'], 'repo')
 
   const { files, deleted } = changedFiles(baseSha)
-  const plan = quickCheckPlan(files, deleted)
+  const plan = quickCheckPlan(files, deleted, workspacePackages(root))
   if (!plan.lint.length && !plan.typecheck.length && !plan.writer && !plan.vitest.length) {
     console.log(`check:quick: no file changes against ${baseSha}`)
     process.exit(0)

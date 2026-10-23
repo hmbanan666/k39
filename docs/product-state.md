@@ -1,6 +1,6 @@
 # Product state
 
-Updated: 2026-10-23. Code baseline: `73bb36eda23d7b6abff1ad4242c42e30f6e38c0c` (`main`, PR 305 merged); A01 progress reflects the current measurement. Initial inspection: 2026-10-22; changed subsystems have dated evidence below, while unchanged inventory entries retain their initial inspection limits. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
+Updated: 2026-10-23. Code baseline: `349a2c6359b40887940a807353115c10feefe402` (`main`, PR 309 merged); A02 progress reflects this change. Initial inspection: 2026-10-22; changed subsystems have dated evidence below, while unchanged inventory entries retain their initial inspection limits. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
 
 ## Goals and evidence
 
@@ -88,9 +88,9 @@ Existing assets worth preserving: one shared `.agents/skills` directory; explici
 | Large mandatory entry context | PR 285 reduced AGENTS from 5,161 to 1,036 words and added a nine-row code/check map | Done; validate discoverability during real tasks. Detailed guides remain references, not certified product truth |
 | Platform-specific bootstrap | `.cursor/start.sh` and `scripts/env/node-path.sh` include Linux/exec-daemon assumptions; boot check expects `/etc/profile.d/k39.sh` | A01 adds a portable toolchain preflight; Cursor boot checks retain their image-specific role. Generic setup/start measurement is recorded in the [review](reviews/2026-10-23-agent-loop/README.md) |
 | Toolchain mismatch and install policy | PR 284 pins pnpm 12.15.0, preserves trust policy and passes frozen-install CI | Migration done; verify the shell resolves project tools. The generic audit host still has Node 24.19.0 rather than the 24.21.0 pin; full checks use CI |
-| Quick check is touched-package based | A types-only change selects only `@k39/types`; consumers may still fail compilation | A02: exercise an actual shared-contract failure before changing selection |
-| Full check mutates files | `check:full` calls `lint:fix`; CI uses read-only lint | A02: assess a read-only final check with formatting explicit; preserve coverage |
-| Speed measurement | A01 measured about 33s checkout-to-ready, 59s feature quick and 193s full check + build on stock CI; web-app/writer typechecks were 71.5% of quick stages | [Baseline and limits](reviews/2026-10-23-agent-loop/README.md); profile that stage in A02 while preserving final checks and transitive-consumer coverage. No whole-task speedup is claimed |
+| Quick consumer coverage | A widened freshness return type passes the provider compiler but fails the database consumer | A02 reads transitive consumers from workspace manifests; [proof and limits](reviews/2026-10-23-verification-coverage/README.md) |
+| Explicit formatting | A02 changes `check:full` to read-only lint; `lint:fix` remains explicit | Full typechecks/tests remain; generated ignored files and test DB writes remain; [proof](reviews/2026-10-23-verification-coverage/README.md) |
+| Speed measurement | A01 measured about 33s checkout-to-ready, 59s feature quick and 193s full check + build on stock CI; web-app/writer typechecks were 71.5% of quick stages | [Baseline and limits](reviews/2026-10-23-agent-loop/README.md); A02 preserves final checks and expands transitive-consumer coverage. Its typecheck scope can be larger; it makes no latency reduction claim. No whole-task speedup is claimed |
 
 These are focused review targets, not proof that every compatibility branch is unnecessary. Fact fallback, draft staging, unknown hours, archive semantics and local/test database guards protect real behavior. For a workaround: record the trigger, original reason, current callers, replacement and regression proof. Remove it with the affected feature, not in a broad untested cleanup.
 

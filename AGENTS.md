@@ -63,7 +63,7 @@ Read the skill before its matching task. `.agents/skills/<name>/SKILL.md` is the
 
 ## Verify and hand off
 
-During changes use `pnpm run check:quick`. Before opening a PR run `pnpm run check:full` and `pnpm --filter @k39/web-app build`. The full check already includes repository validation, lint with fixes, all typechecks and the full test suite; inspect its diff. Do not repeat its individual checks without a new failure or change that justifies it.
+During changes use `pnpm run check:quick`. Before opening a PR run `pnpm run check:full` and `pnpm --filter @k39/web-app build`. The full check already includes repository validation, read-only lint, all typechecks and the full test suite. Use `pnpm run lint:fix` explicitly when formatting is needed, then inspect the diff. Do not repeat its individual checks without a new failure or change that justifies it.
 
 Database tests use a local database ending in `_test`, or Postgres 18 through Testcontainers when no URL is configured. Preserve the remote/test-database guards. Quick-check package selection, fixture setup and individual diagnostic commands are explained in [checks](docs/development.md#checks).
 
