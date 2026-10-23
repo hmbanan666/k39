@@ -32,7 +32,9 @@ node docs/reviews/2026-10-23-eat-now-location/capture.mjs
 
 ## Validation and rollout
 
-Local `check:quick` passed: repository validation, selected lint, web-app/writer typechecks and all 12 selected tests. Browser capture, changed-document lint/link checks and diff checks passed. Full pre-PR CI results will be recorded before handoff. Local tooling is Node 24.19.0 / pinned pnpm 12.15.0; full CI uses the project Node pin and Postgres 18.
+Local `check:quick` passed: repository validation, selected lint, web-app/writer typechecks and all 12 selected tests. Browser capture, changed-document lint/link checks and diff checks passed. Local tooling is Node 24.19.0 / pinned pnpm 12.15.0; full CI uses the project Node pin and Postgres 18.
+
+[Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/39953655837) passed on `e2623d2feaddf85d7e695e2f309cf3e104ee9c90`: frozen install, repository validation, read-only ESLint, all typechecks, 825 tests across 118 files, production build, standalone SSR and Docker image build. These are the full verification/build gates run in CI with its database and pinned runtime; the local full command was not run without Postgres/Docker. The final follow-up only records this evidence and removes the temporary branch push trigger. Final CI policy matches the base, application/test/browser-capture contents are unchanged, and normal PR CI verifies the final head again.
 
 After merge, verify the deployed SHA and a town page on desktop/mobile: deny location, retry after permission change, obtain a position and fail a refresh. Confirm the origin label and retained cards/distances. Whole-tourist-journey acceptance remains open.
 
