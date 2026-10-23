@@ -6,6 +6,19 @@ Use [AGENTS.md](../AGENTS.md) for the mandatory task entry point and code map. R
 
 The Node pin is `.nvmrc`; the pnpm pin is `package.json#packageManager`. Verify the commands your shell actually resolves with `node --version` and `pnpm --version`. Use Corepack for the pinned package manager. Do not change repository pins to match an unrelated host default or relax dependency trust policy to make an install pass.
 
+A portable preflight is `node scripts/env/check-toolchain.mjs` (or `pnpm run check:toolchain` once pnpm resolves). It checks the exact pins using the commands this shell runs and exits non-zero on a mismatch. It checks Node before invoking a pnpm shim. It does not install tools, rewrite profiles, inspect credentials, migrate a database or certify application readiness. The pnpm version probe can use Corepack's normal pin resolution; prepare the manager first if downloads must be avoided.
+
+Select the Node in `.nvmrc` with your existing version manager. If you need Corepack shims without changing global tool links, use a directory for this shell:
+
+```bash
+k39_shims="$(mktemp -d)"
+corepack enable --install-directory "$k39_shims"
+export PATH="$k39_shims:$PATH"
+node scripts/env/check-toolchain.mjs
+```
+
+Then install and configure the local database as below. A successful toolchain preflight is separate from Postgres connectivity, migrations and a responding SSR page.
+
 ```bash
 corepack pnpm install --frozen-lockfile
 test -f apps/web-app/.env || cp apps/web-app/.env.example apps/web-app/.env
@@ -55,6 +68,8 @@ pnpm --filter @k39/web-app build
 ```
 
 `check:full` already runs lint with fixes, every package typecheck and the full test suite. Inspect the resulting diff. Individual lint, typecheck and test commands are useful for diagnosis; they are not extra steps to repeat after the full gate has passed.
+
+Use `K39_CHECK_TIMINGS=1 pnpm run check:quick` to emit one JSON timing record after each executed stage, including a failed stage. Times use a monotonic clock; selection, order, commands and exit codes are unchanged. Timings are opt-in. The [A01 baseline](reviews/2026-10-23-agent-loop/README.md) records host/cache scope and a real feature-change workload; compare equivalent work and environments before claiming a speedup.
 
 `pnpm run check:quick` is the iterate loop. It runs `check:repo`, eslint on files changed against the merge-base of `origin/main` and `HEAD` (committed and uncommitted), the typecheck of each touched package, and vitest on those changed files plus tests related to the changed sources. A `*.writer.test.ts` file is typechecked with the web-app server project, because the database `tsc` project excludes that suffix. A change under `packages/types` typechecks only `@k39/types`. The final gate remains the full command above.
 

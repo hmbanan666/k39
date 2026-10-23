@@ -1,10 +1,10 @@
 # Roadmap
 
-Updated 2026-10-23. Baseline: `ddc17b6` (PR 301 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
+Updated 2026-10-23. Baseline: `73bb36e` (PR 305 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
 
 ## Current position
 
-**Current batch: 3 of 7 items merged. Item 4 is implemented in this change; item 5 is next.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
+**Current batch: 4 of 7 items merged. Item 5 is in progress in this change; item 6 is next.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
 
 | Completed work | Evidence | Remaining limit |
 | --- | --- | --- |
@@ -25,8 +25,8 @@ The owner reviewed this seven-item order on 23 Oct. Issue 288 goes first because
 | 1 · [#288](https://github.com/hmbanan666/k39/issues/288) · pending place date (F16–F17) | Merged in [PR 296](https://github.com/hmbanan666/k39/pull/296); [review](reviews/2026-10-23-pending-place-date/README.md); deployment pending | Repeat draft saves on a checked live place; omit to preserve, null to clear, explicit replacement to change. Round-trip the real place_get timestamp. Live content stays unchanged until editor application. Regressions and full CI pass |
 | 2 · S03 · eat-now location (F10) | Merged in [PR 300](https://github.com/hmbanan666/k39/pull/300); [review](reviews/2026-10-23-eat-now-location/README.md); deployment pending | Explain denied/timed-out/unavailable location in Russian, retain the usable origin/results and allow retry. Cover success, unavailable API, missing coordinates, centre/visitor distance, mobile/desktop and SSR |
 | 3 · [#291](https://github.com/hmbanan666/k39/issues/291) · false closed status (F23) | Merged in [PR 301](https://github.com/hmbanan666/k39/pull/301); [review](reviews/2026-10-23-closed-status-word/README.md); stored-score/deployment acceptance pending | The footwear sentence must not flag an always-open fort as closed; real closure phrases must still be detected. Verify score/status output with regression cases |
-| 4 · [#289](https://github.com/hmbanan666/k39/issues/289) · scored article length (F23) | Reproduced and implemented; merge pending; [review](reviews/2026-10-23-scored-article-length/README.md) | Internal-link markup must not discourage useful links. Use one agreed measure for floors, ceilings, stored bodyChars and score preview; preserve real earned-length rules |
-| 5 · A01 · measure the agent loop | Planned | Record host, tools, cache state, checkout-to-ready, warm start, one quick check and full gate. Demonstrate generic local setup without host-global tool rewrites. Identify a measured bottleneck before claiming faster work |
+| 4 · [#289](https://github.com/hmbanan666/k39/issues/289) · scored article length (F23) | Merged in [PR 305](https://github.com/hmbanan666/k39/pull/305); [review](reviews/2026-10-23-scored-article-length/README.md); stored-score/deployment acceptance pending | Internal-link markup must not discourage useful links. Use one agreed measure for floors, ceilings, stored bodyChars and score preview; preserve real earned-length rules |
+| 5 · A01 · measure the agent loop | Measuring; portable preflight and optional quick timings implemented; [review](reviews/2026-10-23-agent-loop/README.md) | Record host, tools, cache state, checkout-to-ready, warm start, one quick check and full gate. Demonstrate generic local setup without host-global tool rewrites. Identify a measured bottleneck before claiming faster work |
 | 6 · A02 · verification commands | Planned after A01 | Assess read-only final verification with explicit formatting and typechecks for transitive consumers. Demonstrate a real shared-contract break is caught; preserve the final verification coverage |
 | 7 · [#290](https://github.com/hmbanan666/k39/issues/290) · admission extras (F13) | Scope/design decision | Verify official tier/add-on use cases and row-limit constraints, choose the model and record the ADR decision. Estimate implementation separately; this item does not authorize an unbounded ticketing product |
 
@@ -34,7 +34,7 @@ Every implementation keeps the [AGENTS verification gate](../AGENTS.md#verify-an
 
 ## Incoming reports outside the current batch
 
-Snapshot after merging PR 301 on 23 Oct. Nine reports remain outside the batch; only #294 was reproduced locally during #291. They do not change the seven-item denominator or authorize their proposed fixes. Triage them before the related subsystem work; record any priority change explicitly.
+Snapshot retained after merging PR 305 on 23 Oct. Nine reports remain outside the batch; only #294 was reproduced locally during #291. They do not change the seven-item denominator or authorize their proposed fixes. Triage them before the related subsystem work; record any priority change explicitly.
 
 | Report | Intake state / routing |
 | --- | --- |

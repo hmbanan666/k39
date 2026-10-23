@@ -1,0 +1,23 @@
+{
+  "platform": "Linux",
+  "architecture": "x86_64",
+  "logicalCpus": 9,
+  "toolchainCheckMs": 379,
+  "exitCode": 1,
+  "toolchain": {
+    "ok": false,
+    "node": {
+      "expected": "24.21.0",
+      "actual": "24.19.0",
+      "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+    },
+    "pnpm": {
+      "expected": "12.15.0",
+      "actual": null,
+      "reason": "not checked: select the pinned Node first"
+    }
+  },
+  "postgresClientPresent": false,
+  "dockerPresent": false,
+  "note": "Existing checkout and dependency caches; not a clean-install benchmark. Downloaded pinned Node binary exits with SIGSEGV on this managed host."
+}

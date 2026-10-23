@@ -21,6 +21,7 @@
     "clean:modules": "pnpm -r run clean:modules && rm -rf node_modules",
     "typecheck": "pnpm -r run typecheck",
     "check:repo": "node scripts/check-repo.mjs",
+    "check:toolchain": "node scripts/env/check-toolchain.mjs",
     "dev:editor-session": "node scripts/dev-editor-session.mjs",
     "test": "vitest run",
     "media:rebuild": "pnpm --filter @k39/web-app media:rebuild",

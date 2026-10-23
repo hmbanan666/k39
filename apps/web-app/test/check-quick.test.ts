@@ -1,5 +1,37 @@
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import process from 'node:process'
 import { describe, expect, it } from 'vitest'
 import { quickCheckPlan } from '../../../scripts/check-quick.mjs'
+
+describe('quick timing failure contract', () => {
+  it.each(['1', ''])('preserves a failing child exit code with timings %j', (timings) => {
+    const root = mkdtempSync(join(tmpdir(), 'k39-quick-timing-'))
+    const bin = join(root, 'bin')
+    mkdirSync(bin)
+    // The first repo-check child fails, before file selection is reached.
+    writeFileSync(join(bin, 'git'), '#!/bin/sh\necho 0123456789012345678901234567890123456789\n', { mode: 0o755 })
+    writeFileSync(join(bin, 'pnpm'), '#!/bin/sh\nexit 23\n', { mode: 0o755 })
+    const script = resolve(import.meta.dirname, '../../../scripts/check-quick.mjs')
+    try {
+      const result = spawnSync(process.execPath, [script], {
+        cwd: root, encoding: 'utf8',
+        env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, K39_CHECK_TIMINGS: timings },
+      })
+      expect(result.status).toBe(23)
+      const line = result.stdout.split('\n').find((line) => line.startsWith('check:quick: timing '))
+      if (timings) {
+        expect(JSON.parse(line!.slice('check:quick: timing '.length))).toMatchObject({ step: 'repo', exitCode: 23 })
+      } else {
+        expect(line).toBeUndefined()
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
 
 describe('check:quick plan', () => {
   it('typechecks only the packages that changed', () => {
