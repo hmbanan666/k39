@@ -1,0 +1,174 @@
+{
+  "run": 39978842660,
+  "testedCommit": "318e802d9a05125de82fa8b574b5e46d78247d46",
+  "baselineCommit": "73bb36eda23d7b6abff1ad4242c42e30f6e38c0c",
+  "quickComparisonBase": "ddc17b6b0a2a16b97c08467cc7bc45cf120439bf",
+  "jobId": 120500479995,
+  "host": {
+    "node": "v24.21.0",
+    "platform": "linux",
+    "arch": "x64",
+    "cpus": 4,
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "memoryBytes": 16766414848,
+    "pnpmStore": "empty at start",
+    "remoteCache": "uncontrolled",
+    "toolProvisioning": "outside checkout-to-ready timer",
+    "postgres": "18.6"
+  },
+  "phases": [
+    {
+      "name": "Checkout measurement helpers",
+      "seconds": 1,
+      "startedAt": "2026-10-23T15:30:41Z",
+      "completedAt": "2026-10-23T15:30:42Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "PNPM",
+      "seconds": 7,
+      "startedAt": "2026-10-23T15:30:42Z",
+      "completedAt": "2026-10-23T15:30:49Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Node",
+      "seconds": 0,
+      "startedAt": "2026-10-23T15:30:49Z",
+      "completedAt": "2026-10-23T15:30:49Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Host and cache state",
+      "seconds": 0,
+      "startedAt": "2026-10-23T15:30:49Z",
+      "completedAt": "2026-10-23T15:30:49Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Checkout baseline",
+      "seconds": 2,
+      "startedAt": "2026-10-23T15:30:49Z",
+      "completedAt": "2026-10-23T15:30:51Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Cold-store install",
+      "seconds": 12,
+      "startedAt": "2026-10-23T15:30:51Z",
+      "completedAt": "2026-10-23T15:31:03Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Portable toolchain",
+      "seconds": 0,
+      "startedAt": "2026-10-23T15:31:03Z",
+      "completedAt": "2026-10-23T15:31:03Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "First and warm dev readiness",
+      "seconds": 37,
+      "startedAt": "2026-10-23T15:31:03Z",
+      "completedAt": "2026-10-23T15:31:40Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Warm install",
+      "seconds": 0,
+      "startedAt": "2026-10-23T15:31:40Z",
+      "completedAt": "2026-10-23T15:31:40Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Representative quick loop",
+      "seconds": 59,
+      "startedAt": "2026-10-23T15:31:40Z",
+      "completedAt": "2026-10-23T15:32:39Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Baseline full check",
+      "seconds": 148,
+      "startedAt": "2026-10-23T15:32:39Z",
+      "completedAt": "2026-10-23T15:35:07Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Baseline web build",
+      "seconds": 45,
+      "startedAt": "2026-10-23T15:35:07Z",
+      "completedAt": "2026-10-23T15:35:52Z",
+      "conclusion": "success"
+    },
+    {
+      "name": "Baseline standalone SSR",
+      "seconds": 3,
+      "startedAt": "2026-10-23T15:35:52Z",
+      "completedAt": "2026-10-23T15:35:55Z",
+      "conclusion": "success"
+    }
+  ],
+  "startup": [
+    {
+      "phase": "first",
+      "startedAt": "2026-10-23T15:31:03.423Z",
+      "readyAt": "2026-10-23T15:31:22.312Z",
+      "ms": 18884,
+      "health": true,
+      "articleSsr": true
+    },
+    {
+      "phase": "warm",
+      "startedAt": "2026-10-23T15:31:23.693Z",
+      "readyAt": "2026-10-23T15:31:40.645Z",
+      "ms": 16952,
+      "health": true,
+      "articleSsr": true
+    }
+  ],
+  "quickStages": [
+    {
+      "step": "repo",
+      "ms": 142,
+      "exitCode": 0
+    },
+    {
+      "step": "lint",
+      "ms": 3576,
+      "exitCode": 0
+    },
+    {
+      "step": "typecheck @k39/web-app",
+      "ms": 41971,
+      "exitCode": 0
+    },
+    {
+      "step": "tests",
+      "ms": 13011,
+      "exitCode": 0
+    }
+  ],
+  "quickStageTotalMs": 58700,
+  "approxCheckoutToFirstReadyMs": 33312,
+  "timePrecision": "startup and quick: monotonic milliseconds; Actions phase timestamps: one-second resolution",
+  "scope": "one complete CI run; pinned tools and Postgres service provisioned before checkout-to-ready; remote caches uncontrolled; first two incomplete harness attempts excluded",
+  "toolchain": {
+    "ok": true,
+    "node": {
+      "expected": "24.21.0",
+      "actual": "24.21.0",
+      "executable": "/opt/hostedtoolcache/node/24.21.0/x64/bin/node"
+    },
+    "pnpm": {
+      "expected": "12.15.0",
+      "actual": "12.15.0",
+      "reason": null
+    }
+  },
+  "installCommandReported": {
+    "coldMs": 12000,
+    "warmMs": 82,
+    "source": "pnpm completion lines; distinct from one-second Actions step timestamps"
+  }
+}

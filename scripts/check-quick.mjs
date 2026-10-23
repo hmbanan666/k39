@@ -96,8 +96,12 @@ function changedFiles(baseSha) {
   }
 }
 
-function run(command, args) {
+function run(command, args, step) {
+  const started = performance.now()
   const result = spawnSync(command, args, { cwd: root, stdio: 'inherit' })
+  if (process.env.K39_CHECK_TIMINGS === '1') {
+    console.log(`check:quick: timing ${JSON.stringify({ step, ms: Math.round(performance.now() - started), exitCode: result.status ?? 1 })}`)
+  }
   if (result.status !== 0) {
     process.exit(result.status ?? 1)
   }
@@ -125,7 +129,7 @@ if (isDirectRun()) {
 
   const baseSha = diffBase()
   console.log(`check:quick: base ${baseSha}`)
-  run('pnpm', ['run', 'check:repo'])
+  run('pnpm', ['run', 'check:repo'], 'repo')
 
   const { files, deleted } = changedFiles(baseSha)
   const plan = quickCheckPlan(files, deleted)
@@ -137,16 +141,16 @@ if (isDirectRun()) {
   console.log(`check:quick: eslint ${plan.lint.length}, typecheck ${plan.typecheck.join(', ') || 'none'}${plan.writer ? ' + writer tests' : ''}, vitest ${plan.vitest.length}`)
 
   if (plan.lint.length) {
-    run('pnpm', ['exec', 'eslint', ...plan.lint])
+    run('pnpm', ['exec', 'eslint', ...plan.lint], 'lint')
   }
   for (const name of plan.typecheck) {
-    run('pnpm', ['--filter', name, 'typecheck'])
+    run('pnpm', ['--filter', name, 'typecheck'], `typecheck ${name}`)
   }
   if (plan.writer) {
-    run('node', ['scripts/typecheck-writer.mjs'])
+    run('node', ['scripts/typecheck-writer.mjs'], 'writer typecheck')
   }
   if (plan.vitest.length) {
-    run('pnpm', ['exec', 'vitest', 'related', '--run', '--passWithNoTests', ...plan.vitest])
+    run('pnpm', ['exec', 'vitest', 'related', '--run', '--passWithNoTests', ...plan.vitest], 'tests')
   }
   console.log('check:quick passed')
 }

@@ -1,6 +1,6 @@
 # Product state
 
-Updated: 2026-10-23. Code baseline: `ddc17b6b0a2a16b97c08467cc7bc45cf120439bf` (`main`, PR 301 merged); issue 289 progress reflects the current fix. Initial inspection: 2026-10-22; changed subsystems have dated evidence below, while unchanged inventory entries retain their initial inspection limits. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
+Updated: 2026-10-23. Code baseline: `73bb36eda23d7b6abff1ad4242c42e30f6e38c0c` (`main`, PR 305 merged); A01 progress reflects the current measurement. Initial inspection: 2026-10-22; changed subsystems have dated evidence below, while unchanged inventory entries retain their initial inspection limits. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
 
 ## Goals and evidence
 
@@ -58,7 +58,7 @@ Two documentation defects are already corrected by [PR 285](https://github.com/h
 
 Issue [291](https://github.com/hmbanan666/k39/issues/291) was reproduced against PR 300: the bare closure prefix treated footwear advice as a closure and deducted 15 quality points. PR 301 requires a complete short-form status word; [regressions](reviews/2026-10-23-closed-status-word/README.md) cover article/FAQ input, real closures and score output. This is a scoring correction, not a public schedule/status write. Related appointment-subject report #294 remains separately reproduced and unresolved.
 
-Issue [289](https://github.com/hmbanan666/k39/issues/289) was reproduced against PR 301: raw Markdown targets could push article length over the ceiling or satisfy the floor. The current fix measures authored text through the existing public Markdown renderer for article floors/ceilings, the long-page filler gate, stored `bodyChars` and previews; [regressions and metric contract](reviews/2026-10-23-scored-article-length/README.md). Default norms and earned-length evidence are unchanged. Stored scores still require a successful refresh; the save response’s `bodyLength` continues to describe stored Markdown.
+Issue [289](https://github.com/hmbanan666/k39/issues/289) was reproduced against PR 301: raw Markdown targets could push article length over the ceiling or satisfy the floor. PR 305 measures authored text through the existing public Markdown renderer for article floors/ceilings, the long-page filler gate, stored `bodyChars` and previews; [regressions and metric contract](reviews/2026-10-23-scored-article-length/README.md). Default norms and earned-length evidence are unchanged. Stored scores still require a successful refresh; the save response’s `bodyLength` continues to describe stored Markdown.
 
 ## Existing tests and their limits
 
@@ -86,11 +86,11 @@ Existing assets worth preserving: one shared `.agents/skills` directory; explici
 | Friction or risk | Evidence | Next step |
 | --- | --- | --- |
 | Large mandatory entry context | PR 285 reduced AGENTS from 5,161 to 1,036 words and added a nine-row code/check map | Done; validate discoverability during real tasks. Detailed guides remain references, not certified product truth |
-| Platform-specific bootstrap | `.cursor/start.sh` and `scripts/env/node-path.sh` include Linux/exec-daemon assumptions; boot check expects `/etc/profile.d/k39.sh` | A01: measure generic setup, then separate portable diagnostics from host adapters |
+| Platform-specific bootstrap | `.cursor/start.sh` and `scripts/env/node-path.sh` include Linux/exec-daemon assumptions; boot check expects `/etc/profile.d/k39.sh` | A01 adds a portable toolchain preflight; Cursor boot checks retain their image-specific role. Generic setup/start measurement is recorded in the [review](reviews/2026-10-23-agent-loop/README.md) |
 | Toolchain mismatch and install policy | PR 284 pins pnpm 12.15.0, preserves trust policy and passes frozen-install CI | Migration done; verify the shell resolves project tools. The generic audit host still has Node 24.19.0 rather than the 24.21.0 pin; full checks use CI |
 | Quick check is touched-package based | A types-only change selects only `@k39/types`; consumers may still fail compilation | A02: exercise an actual shared-contract failure before changing selection |
 | Full check mutates files | `check:full` calls `lint:fix`; CI uses read-only lint | A02: assess a read-only final check with formatting explicit; preserve coverage |
-| Speed is not measured | No fresh-setup/warm-start/full-gate timing baseline collected | A01: record tool versions, host, cache state and timings before claiming faster task completion |
+| Speed measurement | A01 measured about 33s checkout-to-ready, 59s feature quick and 193s full check + build on stock CI; web-app/writer typechecks were 71.5% of quick stages | [Baseline and limits](reviews/2026-10-23-agent-loop/README.md); profile that stage in A02 while preserving final checks and transitive-consumer coverage. No whole-task speedup is claimed |
 
 These are focused review targets, not proof that every compatibility branch is unnecessary. Fact fallback, draft staging, unknown hours, archive semantics and local/test database guards protect real behavior. For a workaround: record the trigger, original reason, current callers, replacement and regression proof. Remove it with the affected feature, not in a broad untested cleanup.
 
