@@ -1,27 +1,37 @@
 // Lives in the database suite so it uses that Postgres.
 // Typechecked from apps/web-app/tsconfig.writer-test.json, where Nuxt
 // auto-imports exist. This package's tsc excludes the file.
-import type { AdmissionRowInput } from '../../../../../apps/web-app/server/utils/practical/admission'
+import type { AdmissionExtraInput, AdmissionRowInput } from '../../../../../apps/web-app/server/utils/practical/admission'
 import type { VenueStatus } from '../../venues'
-import { eq } from 'drizzle-orm'
-import { afterEach, describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { eq, sql } from 'drizzle-orm'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
 import { updateFact } from '../../../../../apps/web-app/server/utils/mcp/fact-write'
-import { setAdmission } from '../../../../../apps/web-app/server/utils/practical/admission'
+import { readAdmission, setAdmission } from '../../../../../apps/web-app/server/utils/practical/admission'
 import { retirePastEvents, upsertEvent } from '../../../../../apps/web-app/server/utils/practical/events'
 import { loadAdmission, loadMemberEvents, loadSubjectEvents } from '../../../../../apps/web-app/server/utils/practical/public'
 import { practicalTarget } from '../../../../../apps/web-app/server/utils/practical/target'
 import { useDatabase } from '../../database'
+import { resolveMigrationsFolder } from '../../migrations'
 import { admissionPrices, calendarEvents, contentDrafts, facts, places, routes, venues, verificationQueue } from '../../tables'
 import { Editor } from '../content'
 import { Facts } from '../facts'
 import { CalendarEvents } from '../practical'
+import { Scoring } from '../scoring'
 
 const placeIds: string[] = []
 const venueIds: string[] = []
 const routeIds: string[] = []
 
+beforeEach(() => {
+  vi.stubEnv('FEATURE_ADMISSION_EXTRAS_WRITE', 'true')
+})
+
 afterEach(async () => {
+  vi.restoreAllMocks()
+  vi.unstubAllEnvs()
   enterContentScope('editor')
   const database = useDatabase()
   for (const id of [...placeIds, ...venueIds, ...routeIds]) {
@@ -87,7 +97,7 @@ async function status(promise: Promise<unknown>) {
 describe('admission writer', () => {
   it('validates audience rules, free at zero, the row cap, and the official source', async () => {
     const target = await place('practical-validate')
-    expect(await status(setAdmission(target, Array.from({ length: 13 }, (_, index) => row(`r${index}`)), 'mcp'))).toBe(400)
+    expect(await status(setAdmission(target, Array.from({ length: 49 }, (_, index) => row(`r${index}`)), 'mcp'))).toBe(400)
     expect(await status(setAdmission(target, [row('a'), row('a')], 'mcp'))).toBe(400)
     expect(await status(setAdmission(target, [row('Bad Slot')], 'mcp'))).toBe(400)
     expect(await status(setAdmission(target, [row('reduced', { audience: 'reduced' })], 'mcp'))).toBe(400)
@@ -243,5 +253,171 @@ describe('event writer', () => {
     expect((await CalendarEvents.byId(past.id))?.expiredAt).toBeTruthy()
     expect((await CalendarEvents.byId(future.event!.id))?.expiredAt).toBeNull()
     expect(await Facts.liveSlot('place', target.id, `event:${past.id}`)).toBeNull()
+  })
+})
+
+function extra(slot = 'audio', patch: Partial<AdmissionExtraInput> = {}): AdmissionExtraInput {
+  return { slot, label: 'Фикстура: аудиогид', priceRub: 200, unit: 'device', ...SOURCE, ...patch }
+}
+
+describe('admission extra writes and migration', () => {
+  it('migrates legacy rows without changing stored amounts, provenance or dates', async () => {
+    const folder = resolveMigrationsFolder()
+    const original = readFileSync(resolve(folder, '0044_admission_events.sql'), 'utf8').split('CREATE TABLE "calendar_events"')[0]!
+      .replace('CREATE TABLE', 'CREATE TEMP TABLE')
+      .replaceAll('admission_prices', 'legacy_admission_prices')
+    const migration = readFileSync(resolve(folder, '0046_admission_extras.sql'), 'utf8').replaceAll('admission_prices', 'legacy_admission_prices')
+    await useDatabase().transaction(async (tx) => {
+      for (const statement of original.split('--> statement-breakpoint').filter((value) => value.trim())) {
+        await tx.execute(sql.raw(statement))
+      }
+      await tx.execute(sql`insert into legacy_admission_prices (id,subject_type,subject_id,slot,audience,price_rub,source_url,source_title,checked_at) values ('legacy','place','fixture','adult','general',500,'https://museum.example/prices','Музей','2025-01-02')`)
+      const before = (await tx.execute(sql`select * from legacy_admission_prices`)).rows[0]
+      for (const statement of migration.split('--> statement-breakpoint').filter((value) => value.trim())) {
+        await tx.execute(sql.raw(statement))
+      }
+      const after = (await tx.execute(sql`select * from legacy_admission_prices`)).rows[0]
+      expect(after).toMatchObject({ ...before, kind: 'entry', unit: null })
+      await tx.execute(sql`drop table legacy_admission_prices`)
+    })
+  })
+
+  it('accepts 48 entries and 12 extras and preserves omitted lists including fact hashes', async () => {
+    const target = await place('extras-capacity')
+    const rows = Array.from({ length: 48 }, (_, index) => row(`r${index}`))
+    const extras = Array.from({ length: 12 }, (_, index) => extra(`x${index}`))
+    expect((await setAdmission(target, { rows, extras }, 'editor')).rows).toHaveLength(48)
+    const before = await Facts.liveSlot('place', target.id, 'admission-extra:x0')
+    await setAdmission(target, rows, 'editor')
+    expect((await readAdmission(target)).extras).toHaveLength(12)
+    expect(await Facts.liveSlot('place', target.id, 'admission-extra:x0')).toEqual(before)
+    expect(await status(setAdmission(target, { rows: [...rows, row('overflow')] }, 'editor'))).toBe(400)
+    expect(await status(setAdmission(target, { extras: [...extras, extra('overflow')] }, 'editor'))).toBe(400)
+    await setAdmission(target, { rows: [] }, 'editor')
+    expect((await readAdmission(target)).extras).toHaveLength(12)
+    expect(await Facts.liveSlot('place', target.id, 'admission:r0')).toBeNull()
+    await setAdmission(target, { extras: [] }, 'editor')
+    expect((await readAdmission(target)).extras).toEqual([])
+    expect(await Facts.liveSlot('place', target.id, 'admission-extra:x0')).toBeNull()
+  })
+
+  it('validates both lists before mutation and rejects duplicates and invalid service inputs', async () => {
+    const target = await place('extras-invalid')
+    await setAdmission(target, { rows: [row('entry')], extras: [extra()] }, 'editor')
+    const before = await readAdmission(target)
+    for (const input of [
+      { rows: [], extras: [extra(), extra()] },
+      { rows: [], extras: [extra('bad', { unit: 'hour' as 'device' })] },
+      { extras: [extra('bad', { priceRub: 0 })] },
+      { extras: [extra('bad', { label: ' ' })] },
+      { extras: [extra('bad', { sourceUrl: 'https://yandex.ru/maps/org/1' })] },
+      { extras: [extra('bad', { checkedAt: '2026-02-30' })] },
+      { extras: [extra('bad', { checkedAt: inDays(2) })] },
+    ]) {
+      expect(await status(setAdmission(target, input, 'editor'))).toBe(400)
+      expect(await readAdmission(target)).toEqual(before)
+    }
+  })
+
+  it('keeps slot namespaces separate through fact updates and retirement', async () => {
+    const target = await place('extras-fact-update', 'published')
+    await setAdmission(target, { rows: [row('same')], extras: [extra('same')] }, 'editor')
+    const entryFact = await Facts.liveSlot('place', target.id, 'admission:same')
+    const extraFact = await Facts.liveSlot('place', target.id, 'admission-extra:same')
+    expect(extraFact?.value).toMatchObject({ kind: 'extra', unit: 'device' })
+    enterContentScope('editor')
+    await updateFact({ id: extraFact!.id, value: { kind: 'extra', priceRub: 250, label: 'Фикстура: аудиогид', condition: 'Нужен входной билет', unit: 'person' }, sourceUrl: SOURCE.sourceUrl, sourceKind: 'official', confidence: 'stated' })
+    expect((await readAdmission(target)).extras[0]).toMatchObject({ priceRub: 250, unit: 'person' })
+    expect(await Facts.liveSlot('place', target.id, 'admission:same')).toEqual(entryFact)
+    expect(await status(updateFact({ id: extraFact!.id, value: entryFact!.value, sourceUrl: SOURCE.sourceUrl, sourceKind: 'official', confidence: 'stated' }))).toBe(400)
+    await setAdmission(target, { extras: [] }, 'editor')
+    expect(await Facts.liveSlot('place', target.id, 'admission-extra:same')).toBeNull()
+    expect(await Facts.liveSlot('place', target.id, 'admission:same')).toEqual(entryFact)
+    const refs = await Facts.refsFor(extraFact!.id)
+    expect(refs).toEqual([])
+  })
+
+  it('refuses live draft-token writes and rollout-disabled extra writes without changing data', async () => {
+    const targets = [await place('extras-live', 'published'), await venue('extras-live-venue', 'closed'), await route('extras-live-route', 'published')]
+    enterContentScope('draft')
+    for (const target of targets) {
+      expect(await status(setAdmission(target, { extras: [extra()] }, 'mcp'))).toBe(409)
+      expect((await readAdmission(target)).extras).toEqual([])
+    }
+    enterContentScope('editor')
+    const target = targets[0]!
+    vi.stubEnv('FEATURE_ADMISSION_EXTRAS_WRITE', 'false')
+    expect(await status(setAdmission(target, { rows: [row('entry')], extras: [extra()] }, 'editor'))).toBe(503)
+    expect((await readAdmission(target)).rows).toEqual([])
+    await setAdmission(target, [row('entry')], 'editor')
+    expect((await readAdmission(target)).rows).toHaveLength(1)
+  })
+
+  it('rolls row/fact writes back after a downstream failure and retries cleanly', async () => {
+    const target = await place('extras-rollback')
+    await setAdmission(target, [row('entry')], 'editor')
+    const before = await readAdmission(target)
+    vi.spyOn(Facts, 'ensureSource').mockRejectedValueOnce(new Error('isolated source watcher failure'))
+    await expect(setAdmission(target, { rows: [row('entry', { priceRub: 700 })], extras: [extra()] }, 'editor')).rejects.toThrow('source watcher failure')
+    expect(await readAdmission(target)).toEqual(before)
+    expect((await Facts.liveSlot('place', target.id, 'admission:entry'))?.value).toMatchObject({ priceRub: 400 })
+    expect(await Facts.liveSlot('place', target.id, 'admission-extra:audio')).toBeNull()
+    const retried = await setAdmission(target, { rows: [row('entry', { priceRub: 700 })], extras: [extra()] }, 'editor')
+    expect(retried.extras).toHaveLength(1)
+    expect((await Facts.liveSlot('place', target.id, 'admission:entry'))?.value).toMatchObject({ priceRub: 700 })
+  })
+
+  it('serializes concurrent replacements without losing the other list or desynchronizing facts', async () => {
+    const target = await place('extras-concurrent')
+    await Promise.all([
+      setAdmission(target, { rows: [row('entry')] }, 'editor'),
+      setAdmission(target, { extras: [extra()] }, 'editor'),
+    ])
+    const saved = await readAdmission(target)
+    expect(saved.rows).toHaveLength(1)
+    expect(saved.extras).toHaveLength(1)
+    await Promise.all([setAdmission(target, [row('entry', { priceRub: 501 })], 'editor'), setAdmission(target, [row('entry', { priceRub: 502 })], 'editor')])
+    const after = await readAdmission(target)
+    expect((await Facts.liveSlot('place', target.id, 'admission:entry'))?.value).toMatchObject({ priceRub: after.rows[0]!.priceRub })
+    expect(after.extras).toEqual(saved.extras)
+  })
+
+  it('preserves an owner-controlled row and queues conflicts; refuses its omission', async () => {
+    const target = await place('extras-owner')
+    await setAdmission(target, { extras: [extra()] }, 'editor')
+    const fact = await Facts.liveSlot('place', target.id, 'admission-extra:audio')
+    await Facts.upsert({ kind: 'admission', subjectType: 'place', subjectId: target.id, slot: fact!.slot,
+      value: fact!.value, valueHash: fact!.valueHash, sourceUrl: null, sourceTitle: null, sourceKind: 'owner',
+      checkedAt: fact!.checkedAt, ttlDays: 90, confidence: 'owner', actor: 'owner' }, [])
+    const saved = await setAdmission(target, { extras: [extra('audio', { priceRub: 300 })] }, 'mcp')
+    expect(saved.ownerConflicts).toHaveLength(1)
+    expect(saved.extras[0]!.priceRub).toBe(200)
+    expect((await Facts.liveSlot('place', target.id, fact!.slot))?.valueHash).toBe(fact!.valueHash)
+    expect(await status(setAdmission(target, { extras: [] }, 'mcp'))).toBe(409)
+    expect((await readAdmission(target)).extras).toHaveLength(1)
+  })
+
+  it('refreshes displayed admission dates on hash confirmation without changing values or revisions', async () => {
+    const target = await place('extras-confirm')
+    await setAdmission(target, { rows: [row('same', { checkedAt: inDays(-400) })], extras: [extra('same', { checkedAt: inDays(-400) })] }, 'editor')
+    const fact = await Facts.liveSlot('place', target.id, 'admission-extra:same')
+    const revisions = await Facts.revisions(fact!.id)
+    expect((await loadAdmission('place', target.id)).extras).toEqual([])
+    expect((await Facts.confirm(fact!.id, 'b'.repeat(64), new Date().toISOString())).ok).toBe(false)
+    expect((await loadAdmission('place', target.id)).extras).toEqual([])
+    expect((await Facts.confirm(fact!.id, fact!.valueHash, new Date().toISOString())).ok).toBe(true)
+    expect((await loadAdmission('place', target.id)).extras).toHaveLength(1)
+    expect((await loadAdmission('place', target.id)).rows).toEqual([])
+    expect(await Facts.revisions(fact!.id)).toEqual(revisions)
+    expect((await Facts.liveSlot('place', target.id, 'admission-extra:same'))?.valueHash).toBe(fact!.valueHash)
+  })
+
+  it('excludes extra rows from database admission scoring evidence', async () => {
+    const target = await place('extras-score')
+    await setAdmission(target, { extras: [extra()] }, 'editor')
+    const alone = ((await Scoring.loadCatalog()).practical ?? []).find((item) => item.subjectId === target.id)
+    expect(alone?.admissionRows ?? 0).toBe(0)
+    await setAdmission(target, [row('entry')], 'editor')
+    expect(((await Scoring.loadCatalog()).practical ?? []).find((item) => item.subjectId === target.id)).toMatchObject({ admissionRows: 1, freshAdmission: 1 })
   })
 })

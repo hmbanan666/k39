@@ -1,7 +1,8 @@
 import type { ContentTx } from './content'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { analyticsDaily, analyticsSearchQueries, contentImports, factRefs, factRevisions, facts, pageReviews, sourceDocuments, verificationQueue } from '../tables'
+import { admissionPrices, analyticsDaily, analyticsSearchQueries, contentImports, factRefs, factRevisions, facts, pageReviews, sourceDocuments, verificationQueue } from '../tables'
+import { Admission } from './practical'
 
 /** The pool, or the transaction a content save already opened. */
 export type FactExecutor = ReturnType<typeof useDatabase> | ContentTx
@@ -175,16 +176,31 @@ export class Facts {
   }
 
   static async confirm(id: string, valueHash: string, checkedAt: string) {
-    const current = await Facts.byId(id)
-    if (!current || current.retiredAt) {
-      return { ok: false as const, reason: 'missing' as const }
-    }
-    if (current.valueHash !== valueHash) {
-      return { ok: false as const, reason: 'mismatch' as const, fact: current }
-    }
-    const [row] = await useDatabase().update(facts).set({ checkedAt }).where(eq(facts.id, id)).returning()
-    await Facts.closeForFact(id)
-    return { ok: true as const, fact: row ?? current }
+    return useDatabase().transaction(async (tx) => {
+      let [current] = await tx.select().from(facts).where(eq(facts.id, id)).limit(1)
+      if (current?.kind === 'admission') {
+        await Admission.lock(current.subjectType, current.subjectId, tx)
+        ;[current] = await tx.select().from(facts).where(eq(facts.id, id)).limit(1)
+      }
+      if (!current || current.retiredAt) {
+        return { ok: false as const, reason: 'missing' as const }
+      }
+      if (current.valueHash !== valueHash) {
+        return { ok: false as const, reason: 'mismatch' as const, fact: current }
+      }
+      const [row] = await tx.update(facts).set({ checkedAt }).where(eq(facts.id, id)).returning()
+      if (current.kind === 'admission') {
+        const extra = current.slot.startsWith('admission-extra:')
+        if (extra || current.slot.startsWith('admission:')) {
+          await tx.update(admissionPrices).set({ checkedAt: new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kaliningrad' }).format(new Date(checkedAt)) }).where(and(
+            eq(admissionPrices.subjectType, current.subjectType), eq(admissionPrices.subjectId, current.subjectId),
+            eq(admissionPrices.kind, extra ? 'extra' : 'entry'), eq(admissionPrices.slot, current.slot.slice(current.slot.indexOf(':') + 1)),
+          ))
+        }
+      }
+      await Facts.closeForFact(id, tx)
+      return { ok: true as const, fact: row ?? current }
+    })
   }
 
   static async retire(id: string, tx?: FactExecutor) {

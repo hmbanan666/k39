@@ -75,7 +75,7 @@ describe('days with unknown hours on the page and the card (ADR 0044)', () => {
         schedule,
         notices: [],
         modules: null,
-        admission: { stored: false, rows: [], lines: [] },
+        admission: { stored: false, rows: [], lines: [], extrasStored: false, extras: [], extraLines: [] },
         upcoming: [],
       },
       photos: [],

@@ -17,7 +17,7 @@
       :sections-after="sectionsAfter"
     >
       <template
-        v-if="page.admission.stored"
+        v-if="page.admission.stored || page.admission.extrasStored"
         #lead
       >
         <FactsCard>

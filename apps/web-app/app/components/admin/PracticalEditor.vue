@@ -2,7 +2,7 @@
   <section class="practical">
     <h2>Билеты{{ subjectType === 'route' ? '' : ' и события' }}</h2>
     <p class="live-note">
-      Строки билетов и события сохраняются отдельно от формы и сразу видны на опубликованной странице.
+      Билеты, допуслуги и события сохраняются отдельно от формы и сразу видны на опубликованной странице.
       Сумма и дата берутся только с официального сайта.
     </p>
 
@@ -92,6 +92,75 @@
         @click="saveTickets"
       >
         Сохранить билеты
+      </UiButton>
+    </div>
+
+    <h3>Дополнительно</h3>
+    <p class="muted">
+      Платные услуги: аудиогид, экскурсия или отдельный сеанс. Входной билет сохраняется в «Билетах».
+    </p>
+    <p v-if="!extrasWriteEnabled" class="muted">
+      Сохранение допуслуг пока недоступно. Существующие строки доступны для просмотра.
+    </p>
+    <p v-if="!extras.length" class="muted">
+      Допуслуг нет.
+    </p>
+    <fieldset
+      v-for="(row, index) in extras"
+      :key="index"
+      class="row"
+      :disabled="!extrasWriteEnabled || busy"
+    >
+      <legend>
+        {{ row.label || `Допуслуга ${index + 1}` }}
+        <span v-if="row.slot && !shownExtraSlots.includes(row.slot)" class="stale">не показывается: проверка старше года или не сохранена</span>
+      </legend>
+      <div class="grid">
+        <UiField label="Слот (латиница)">
+          <UiInput
+            v-model="row.slot"
+            placeholder="audio-guide"
+            required
+          />
+        </UiField>
+        <UiField label="Название услуги">
+          <UiInput v-model="row.label" required />
+        </UiField>
+        <UiField label="Цена, ₽">
+          <UiInput v-model="row.priceRub" type="number" />
+        </UiField>
+        <UiField label="За что указана цена">
+          <UiSelect v-model="row.unit" :options="unitOptions" />
+        </UiField>
+      </div>
+      <UiField label="Условие">
+        <UiInput v-model="row.condition" placeholder="Для группы до 10 человек. Нужен входной билет." />
+      </UiField>
+      <div class="grid">
+        <UiField label="Источник: ссылка на официальный сайт">
+          <UiInput v-model="row.sourceUrl" type="url" />
+        </UiField>
+        <UiField label="Источник: название">
+          <UiInput v-model="row.sourceTitle" />
+        </UiField>
+        <UiField label="Проверено">
+          <UiInput v-model="row.checkedAt" type="date" />
+        </UiField>
+      </div>
+      <UiButton variant="quiet" @click="extras.splice(index, 1)">
+        Убрать допуслугу
+      </UiButton>
+    </fieldset>
+    <div class="actions">
+      <UiButton
+        variant="line"
+        :disabled="!extrasWriteEnabled || busy || extras.length >= ADMISSION_EXTRA_MAX_ROWS"
+        @click="addExtra"
+      >
+        Добавить допуслугу
+      </UiButton>
+      <UiButton :disabled="!extrasWriteEnabled || busy" @click="saveExtras">
+        Сохранить допуслуги
       </UiButton>
     </div>
 
@@ -223,6 +292,7 @@
     </template>
     <p
       v-if="message"
+      role="status"
       aria-live="polite"
     >
       {{ message }}
@@ -232,9 +302,9 @@
 
 <script setup lang="ts">
 import type { FetchError } from 'ofetch'
-import type { AdmissionAudience } from '~~/shared/admission'
+import type { AdmissionAudience, AdmissionExtraUnit } from '~~/shared/admission'
 import type { EventTiming } from '~~/shared/events'
-import { ADMISSION_AUDIENCES, ADMISSION_LABELS, ADMISSION_MAX_ROWS } from '~~/shared/admission'
+import { ADMISSION_AUDIENCES, ADMISSION_EXTRA_MAX_ROWS, ADMISSION_EXTRA_UNITS, ADMISSION_LABELS, ADMISSION_MAX_ROWS, ADMISSION_UNIT_LABELS } from '~~/shared/admission'
 import { eventWhen } from '~~/shared/events'
 import { localNow } from '~~/shared/schedule'
 
@@ -247,6 +317,9 @@ interface TicketRow {
   sourceUrl: string
   sourceTitle: string
   checkedAt: string
+}
+interface ExtraRow extends Omit<TicketRow, 'audience'> {
+  unit: AdmissionExtraUnit | 'unstated'
 }
 interface AdminEvent {
   id: string
@@ -264,7 +337,10 @@ interface AdminEvent {
 }
 interface PracticalData {
   admission: Array<Omit<TicketRow, 'condition' | 'label' | 'priceRub'> & { priceRub: number, condition: string | null, label: string | null }>
+  admissionExtras: Array<Omit<ExtraRow, 'condition' | 'priceRub' | 'unit'> & { priceRub: number, condition: string | null, unit: AdmissionExtraUnit | null }>
   shownSlots: string[]
+  shownExtraSlots: string[]
+  extrasWriteEnabled: boolean
   events: AdminEvent[]
 }
 
@@ -272,9 +348,13 @@ const props = defineProps<{ subjectType: 'place' | 'venue' | 'route', subjectId:
 const requestFetch = useRequestFetch()
 const base = `/api/admin/practical/${props.subjectType}/${props.subjectId}`
 const audienceOptions = ADMISSION_AUDIENCES.map((value) => ({ value, label: ADMISSION_LABELS[value] }))
+const unitOptions = [{ value: 'unstated', label: 'Не указано в источнике' }, ...ADMISSION_EXTRA_UNITS.map((value) => ({ value, label: ADMISSION_UNIT_LABELS[value] }))]
 const today = () => localNow(new Date()).date
 
 const tickets = ref<TicketRow[]>([])
+const extras = ref<ExtraRow[]>([])
+const shownExtraSlots = ref<string[]>([])
+const extrasWriteEnabled = ref(false)
 const shownSlots = ref<string[]>([])
 const events = ref<AdminEvent[]>([])
 const busy = ref(false)
@@ -296,19 +376,28 @@ function emptyDraft() {
 }
 const draft = reactive(emptyDraft())
 
-function fill(data: PracticalData) {
-  tickets.value = data.admission.map((row) => ({
-    ...row,
-    condition: row.condition || '',
-    label: row.label || '',
-  }))
-  shownSlots.value = data.shownSlots
-  events.value = data.events
+function fill(data: PracticalData, section?: 'rows' | 'extras' | 'events') {
+  if (!section || section === 'rows') {
+    tickets.value = data.admission.map((row) => ({
+      ...row,
+      condition: row.condition || '',
+      label: row.label || '',
+    }))
+    shownSlots.value = data.shownSlots
+  }
+  if (!section || section === 'extras') {
+    extras.value = (data.admissionExtras ?? []).map((row) => ({ ...row, condition: row.condition || '', unit: row.unit ?? 'unstated' }))
+    shownExtraSlots.value = data.shownExtraSlots ?? []
+  }
+  extrasWriteEnabled.value = data.extrasWriteEnabled ?? false
+  if (!section || section === 'events') {
+    events.value = data.events
+  }
 }
 fill(await requestFetch<PracticalData>(base))
 
-async function reload() {
-  fill(await $fetch<PracticalData>(base))
+async function reload(section: 'rows' | 'extras' | 'events') {
+  fill(await $fetch<PracticalData>(base), section)
 }
 
 function failure(error: unknown, fallback: string) {
@@ -336,10 +425,33 @@ async function saveTickets() {
       sortOrder: index,
     }))
     const saved = await $fetch<{ writingWarnings: string[] }>(`${base}/admission`, { method: 'PUT', body: { rows } })
-    await reload()
+    await reload('rows')
     message.value = saved.writingWarnings.length ? `Билеты сохранены. Замечания: ${saved.writingWarnings.join('; ')}` : 'Билеты сохранены'
   } catch (error) {
     message.value = failure(error, 'Билеты не сохранились')
+  } finally {
+    busy.value = false
+  }
+}
+
+function addExtra() {
+  extras.value.push({ slot: '', unit: 'unstated', priceRub: '', condition: '', label: '', sourceUrl: '', sourceTitle: '', checkedAt: today() })
+}
+
+async function saveExtras() {
+  busy.value = true
+  message.value = ''
+  try {
+    const rows = extras.value.map((row, index) => ({
+      slot: row.slot.trim(), label: row.label.trim(), priceRub: Number(row.priceRub), unit: row.unit === 'unstated' ? null : row.unit,
+      condition: row.condition.trim() || null, sourceUrl: row.sourceUrl.trim(), sourceTitle: row.sourceTitle.trim(),
+      checkedAt: row.checkedAt, sortOrder: index,
+    }))
+    const saved = await $fetch<{ writingWarnings: string[] }>(`${base}/admission`, { method: 'PUT', body: { extras: rows } })
+    await reload('extras')
+    message.value = saved.writingWarnings.length ? `Допуслуги сохранены. Замечания: ${saved.writingWarnings.join('; ')}` : 'Допуслуги сохранены'
+  } catch (error) {
+    message.value = failure(error, 'Допуслуги не сохранились')
   } finally {
     busy.value = false
   }
@@ -388,7 +500,7 @@ async function saveEvent() {
       },
     })
     resetDraft()
-    await reload()
+    await reload('events')
     message.value = 'Событие сохранено'
   } catch (error) {
     message.value = failure(error, 'Событие не сохранилось')
@@ -402,7 +514,7 @@ async function cancelEvent(id: string) {
   message.value = ''
   try {
     await $fetch(`${base}/events`, { method: 'POST', body: { id, remove: true } })
-    await reload()
+    await reload('events')
     message.value = 'Событие отменено'
   } catch (error) {
     message.value = failure(error, 'Событие не отменилось')

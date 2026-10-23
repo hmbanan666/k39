@@ -14,12 +14,18 @@ export const ADMISSION_LABELS: Record<AdmissionAudience, string> = {
   free: 'Бесплатно',
 }
 
-export const ADMISSION_MAX_ROWS = 12
+export const ADMISSION_MAX_ROWS = 48
+export const ADMISSION_EXTRA_MAX_ROWS = 12
+export const ADMISSION_EXTRA_UNITS = ['person', 'group', 'device'] as const
+export type AdmissionExtraUnit = (typeof ADMISSION_EXTRA_UNITS)[number]
+export const ADMISSION_UNIT_LABELS: Record<AdmissionExtraUnit, string> = { person: 'за человека', group: 'за группу', device: 'за устройство' }
 export const ADMISSION_CONDITION_MAX = 200
 export const ADMISSION_LABEL_MAX = 80
 export const PRACTICAL_SLOT = /^[a-z0-9-]{1,40}$/
 
 export interface AdmissionRow {
+  kind?: 'entry'
+  unit?: null
   slot: string
   audience: AdmissionAudience
   priceRub: number
@@ -29,6 +35,28 @@ export interface AdmissionRow {
   sourceTitle: string
   checkedAt: string
   sortOrder: number
+}
+
+export interface AdmissionExtraRow extends Omit<AdmissionRow, 'kind' | 'audience' | 'label' | 'unit'> {
+  kind: 'extra'
+  audience: null
+  label: string
+  unit: AdmissionExtraUnit | null
+}
+
+/** Storage reads include both variants; old entry fixtures may omit kind/unit. */
+export type AdmissionStoredRow = Omit<AdmissionRow, 'kind' | 'audience' | 'unit'> & {
+  kind?: 'entry' | 'extra'
+  audience: AdmissionAudience | null
+  unit?: AdmissionExtraUnit | null
+}
+
+export function partitionAdmission(rows: AdmissionStoredRow[]) {
+  return {
+    rows: sortAdmission(rows.filter((row): row is AdmissionRow => row.kind !== 'extra' && row.audience !== null)),
+    extras: rows.filter((row): row is AdmissionExtraRow => row.kind === 'extra' && row.audience === null && row.label !== null)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.slot.localeCompare(b.slot)),
+  }
 }
 
 /** Field rules for one row. The slot shape and repeats are checked over the whole list. */
@@ -64,10 +92,14 @@ export function sortAdmission<T extends Pick<AdmissionRow, 'audience' | 'sortOrd
 }
 
 export interface AdmissionLine {
+  unit?: string | null
   slot: string
   label: string
   amount: string
   condition: string | null
+  sourceUrl: string
+  sourceTitle: string
+  checkedAt: string
 }
 
 export interface AdmissionView {
@@ -76,6 +108,9 @@ export interface AdmissionView {
   /** Fresh rows in the public order. */
   rows: AdmissionRow[]
   lines: AdmissionLine[]
+  extrasStored: boolean
+  extras: AdmissionExtraRow[]
+  extraLines: Array<AdmissionLine & { unit: string | null }>
 }
 
 export function admissionAmount(row: Pick<AdmissionRow, 'priceRub'>) {
@@ -86,22 +121,37 @@ export function admissionLabel(row: Pick<AdmissionRow, 'audience' | 'label'>) {
   return row.label?.trim() || ADMISSION_LABELS[row.audience]
 }
 
-export function admissionView(rows: AdmissionRow[], now = new Date()): AdmissionView {
+export function admissionView(rows: AdmissionStoredRow[], now = new Date()): AdmissionView {
   const cutoff = priceFreshCutoff(now)
-  const fresh = sortAdmission(rows.filter((row) => row.checkedAt >= cutoff))
+  const stored = partitionAdmission(rows)
+  const fresh = stored.rows.filter((row) => row.checkedAt >= cutoff)
+  const extras = stored.extras.filter((row) => row.checkedAt >= cutoff)
+  const provenance = (row: AdmissionStoredRow) => ({ sourceUrl: row.sourceUrl, sourceTitle: row.sourceTitle, checkedAt: row.checkedAt })
   return {
-    stored: rows.length > 0,
+    stored: stored.rows.length > 0,
     rows: fresh,
     lines: fresh.map((row) => ({
       slot: row.slot,
       label: admissionLabel(row),
       amount: admissionAmount(row),
       condition: row.condition?.trim() || null,
+      ...provenance(row),
+    })),
+    extrasStored: stored.extras.length > 0,
+    extras,
+    extraLines: extras.map((row) => ({
+      slot: row.slot,
+      label: row.label,
+      amount: admissionAmount(row),
+      unit: row.unit ? ADMISSION_UNIT_LABELS[row.unit] : null,
+      condition: row.condition?.trim() || null,
+      ...provenance(row),
     })),
   }
 }
 
 export const ADMISSION_UNKNOWN = 'Стоимость билета уточняйте'
+export const ADMISSION_EXTRAS_UNKNOWN = 'Стоимость дополнительных услуг уточняйте'
 
 /** Fresh rows as schema.org offers. Nothing in a row states validity or availability. */
 export function admissionOffers(view: AdmissionView) {

@@ -9,7 +9,7 @@ const STUB = join(ROOT, 'test/nuxt-stubs.ts')
 const AUTO_DIRS = [join(ROOT, 'app/composables'), join(ROOT, 'app/utils')]
 
 const VUE_APIS = ['computed', 'inject', 'nextTick', 'onBeforeMount', 'onBeforeUnmount', 'onMounted', 'onUnmounted', 'onUpdated', 'provide', 'reactive', 'readonly', 'ref', 'shallowRef', 'toRef', 'toRefs', 'unref', 'useAttrs', 'useId', 'useSlots', 'useTemplateRef', 'watch', 'watchEffect']
-const NUXT_APIS = ['definePageMeta', 'navigateTo', 'useFetch', 'useHead', 'useRoute', 'useRouter', 'useRuntimeConfig', 'useSeoMeta', 'useState', 'useUserSession']
+const NUXT_APIS = ['definePageMeta', 'navigateTo', 'useFetch', 'useRequestFetch', 'useHead', 'useRoute', 'useRouter', 'useRuntimeConfig', 'useSeoMeta', 'useState', 'useUserSession']
 const STUB_COMPONENTS = ['ClientOnly', 'Icon', 'MapEmbed', 'NuxtLink']
 
 function walk(dir: string, extension: string, out: string[] = []) {

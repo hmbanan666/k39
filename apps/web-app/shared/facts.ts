@@ -4,7 +4,7 @@ import type { VenueModule } from './venue-modules'
 import { createHash } from 'node:crypto'
 import { classifyOfficialUrl } from '@k39/types/official-url'
 import { z } from 'zod'
-import { ADMISSION_AUDIENCES, ADMISSION_CONDITION_MAX, ADMISSION_LABEL_MAX } from './admission'
+import { ADMISSION_AUDIENCES, ADMISSION_CONDITION_MAX, ADMISSION_EXTRA_UNITS, ADMISSION_LABEL_MAX } from './admission'
 import { EVENT_TITLE_MAX } from './events'
 import { addDays, localNow, scheduleRulesSchema } from './schedule'
 
@@ -76,12 +76,21 @@ export const statusValueSchema = z.discriminatedUnion('scope', [
   z.object({ scope: z.literal('venue'), status: z.enum(['open', 'closed']) }),
 ])
 
-export const admissionValueSchema = z.object({
+const admissionEntryValueSchema = z.object({
   audience: z.enum(ADMISSION_AUDIENCES),
   priceRub: z.number().int().nonnegative(),
   condition: z.string().max(ADMISSION_CONDITION_MAX).nullable(),
   label: z.string().max(ADMISSION_LABEL_MAX).nullable(),
-})
+}).strict()
+export const admissionExtraValueSchema = z.object({
+  kind: z.literal('extra'),
+  priceRub: z.number().int().positive(),
+  condition: z.string().max(ADMISSION_CONDITION_MAX).nullable(),
+  label: z.string().trim().min(1).max(ADMISSION_LABEL_MAX),
+  unit: z.enum(ADMISSION_EXTRA_UNITS).nullable(),
+}).strict()
+// Keep legacy entry output byte-equivalent: no default discriminator in its hash.
+export const admissionValueSchema = z.union([admissionExtraValueSchema, admissionEntryValueSchema])
 export const eventValueSchema = z.object({
   title: z.string().trim().min(1).max(EVENT_TITLE_MAX),
   start: z.string().datetime({ offset: true }),

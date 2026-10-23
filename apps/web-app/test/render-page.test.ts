@@ -54,7 +54,7 @@ function venueFixture(): VenuePageData {
       schedule: null,
       notices: [],
       modules: null,
-      admission: { stored: false, rows: [], lines: [] },
+      admission: { stored: false, rows: [], lines: [], extrasStored: false, extras: [], extraLines: [] },
       upcoming: [],
     },
     photos: [],
