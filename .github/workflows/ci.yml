@@ -106,7 +106,6 @@ jobs:
       DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/k39_a01_test
       NUXT_TELEMETRY_DISABLED: "1"
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
-      npm_config_store_dir: ${{ runner.temp }}/k39-a01-empty-store
     steps:
       - name: Checkout measurement helpers
         uses: actions/checkout@v5
@@ -122,6 +121,8 @@ jobs:
           node-version-file: .nvmrc
       - name: Host and cache state
         run: |
+          export npm_config_store_dir="$RUNNER_TEMP/k39-a01-empty-store"
+          echo "npm_config_store_dir=$npm_config_store_dir" >> "$GITHUB_ENV"
           test ! -e /etc/profile.d/k39.sh
           test ! -e /exec-daemon
           test ! -e "$npm_config_store_dir"
