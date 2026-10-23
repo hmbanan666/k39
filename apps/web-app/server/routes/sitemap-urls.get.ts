@@ -56,6 +56,7 @@ export default defineEventHandler(async () => {
   const pricePages = await priceSitemapEntries()
   return [
     entry('/', contentLastmod),
+    entry('/map'),
     ...(eatNow && eatNow.towns.length ? [entry(EAT_NOW_PATH, venueLastmod), ...eatNow.towns.map((town) => entry(town.href, venueLastmod))] : []),
     ...LEGAL_LINKS.map((link) => entry(link.href)),
     entry(CONSENT_PATH),

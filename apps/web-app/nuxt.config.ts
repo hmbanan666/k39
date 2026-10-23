@@ -47,7 +47,8 @@ export default defineNuxtConfig({
   },
   sitemap: {
     sources: ['/sitemap-urls'],
-    exclude: ['/admin/**', '/api/**', '/sign-in', '/map/**', '/preview/**', '/sitemap-urls'],
+    // /map/** also matches /map itself; require a child segment to keep the clean map indexable.
+    exclude: ['/admin/**', '/api/**', '/sign-in', '/map/*/**', '/preview/**', '/sitemap-urls'],
   },
   robots: {
     credits: false,

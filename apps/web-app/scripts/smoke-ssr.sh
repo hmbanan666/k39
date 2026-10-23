@@ -100,6 +100,10 @@ check /map 200 'Карта Калининградской области'
 check /map/forty 404
 check /karta 404
 
+if ! node "$root/apps/web-app/scripts/check-map-discovery.mjs" "$base"; then
+  fail=1
+fi
+
 if [[ "$fail" != 0 ]]; then
   echo '--- server log ---'
   tail -n 120 "$dest/server.log"

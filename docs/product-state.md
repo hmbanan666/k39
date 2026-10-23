@@ -1,6 +1,6 @@
 # Product state
 
-Updated: 2026-10-23. Code baseline: `77d69af8ef85ac258d2be3eb7fdc3bd0f0e4b880` (`main`, PR 286 merged); S01 progress reflects the current fix. Initial inspection: 2026-10-22; confirmed gaps below were rechecked on this baseline. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
+Updated: 2026-10-23. Code baseline: `5cd763c0337b7def9374e8305a615e373f72230e` (`main`, PR 287 merged); S02 progress reflects the current fix. Initial inspection: 2026-10-22; confirmed gaps below were rechecked on this baseline. This is the first implementation inventory and a proposed stabilization scope. It is not whole-product acceptance or a complete architecture/security audit.
 
 ## Goals and evidence
 
@@ -44,13 +44,13 @@ Paths beginning `app/`, `shared/`, or `server/` are under `apps/web-app/`. Count
 
 ## Confirmed gaps
 
-These are reproducible static findings on the current baseline. They were not fault-injected on production. S01 is fixed in the current change with isolated mounted/browser evidence; deployment acceptance remains pending. The task IDs and completion criteria are in the [roadmap](roadmap.md#next-tasks).
+These findings were established during the inventory; their implementation progress is recorded below. They were not fault-injected on production. S01 is merged in PR 287. S02 is fixed in the current change; both have isolated regression/browser evidence and deployment acceptance remains pending. The task IDs and completion criteria are in the [roadmap](roadmap.md#next-tasks).
 
 | Finding | Evidence and trigger | Next task |
 | --- | --- | --- |
-| Failed availability request becomes “no open venues” | [`toggleOpen()`](../apps/web-app/app/pages/zavedeniya/[[...path]].vue) previously caught a rejected fetch as `{ items: [] }`, then enabled the filter. The same empty array represented a successful response. This change distinguishes the outcomes. | S01 implemented; deployment pending |
-| Map missing from sitemap and repeated region in title | [`sitemap-urls.get.ts`](../apps/web-app/server/routes/sitemap-urls.get.ts) has no map entry. [`loadMap()`](../apps/web-app/server/utils/map/public.ts) calls `collectionDocument` without a `seoTitle`; that helper appends the region to the already region-specific H1. [ADR 0037](adr/0037-visitor-map.md) specifies `Карта Калининградской области | K39`. | S02 |
-| Duplicate map footer entry | [`SECTION_LINKS`](../apps/web-app/shared/links.ts) contains `/map` twice; [`SiteFooter.vue`](../apps/web-app/app/components/SiteFooter.vue) iterates it with href as key. | S02 |
+| Failed availability request becomes “no open venues” | [`toggleOpen()`](../apps/web-app/app/pages/zavedeniya/[[...path]].vue) previously caught a rejected fetch as `{ items: [] }`, then enabled the filter. The same empty array represented a successful response. This change distinguishes the outcomes. | S01 merged in PR 287; deployment pending |
+| Map missing from sitemap and repeated region in title | [`sitemap-urls.get.ts`](../apps/web-app/server/routes/sitemap-urls.get.ts) previously had no map entry, and `/map/**` also excluded the clean URL. The source and glob are now corrected. [`loadMap()`](../apps/web-app/server/utils/map/public.ts) now sets a map-specific `seoTitle` to avoid the collection helper appending the region again. [ADR 0037](adr/0037-visitor-map.md) specifies `Карта Калининградской области | K39`. | S02 implemented; deployment pending |
+| Duplicate map footer entry | [`SECTION_LINKS`](../apps/web-app/shared/links.ts) previously contained `/map` twice; the duplicate is removed. [`SiteFooter.vue`](../apps/web-app/app/components/SiteFooter.vue) renders one map link. | S02 implemented; deployment pending |
 | Eat-now geolocation error is silent | [`EatNowPage.vue`](../apps/web-app/app/components/EatNowPage.vue), `locate()`, only clears `locating` on rejection. The centre-based results remain, but the visitor gets no denial/timeout explanation. | S03 |
 
 Two documentation defects are already corrected by [PR 285](https://github.com/hmbanan666/k39/pull/285): saved quest progress was promised without implementation; operational paragraphs misreported notice-expiry timing and the shared auth session. Do not reopen these as unfinished code work. The quest product decision remains open (D01); the correction did not add progress mechanics.
@@ -62,7 +62,7 @@ All paths in this table are repository-relative. A listed test is a starting poi
 | Features | Existing contract / starting tests | What still needs scenario acceptance |
 | --- | --- | --- |
 | F01–F02 · places and routes | [place rendering](../apps/web-app/test/place-page.test.ts), [route navigation](../apps/web-app/test/route-nav.test.ts), [ordered stops](../packages/database/src/repository/test/stops.test.ts) | Real visit information, stop availability and phone directions |
-| F03 · map | [filter/query helpers](../apps/web-app/test/map.test.ts), [availability failures and races](../apps/web-app/test/map-availability.test.ts), [scene core](../packages/map/test/layers.test.ts) | Browser interaction, missing basemap/WebGL, mobile panel and combined filters |
+| F03 · map | [filter/query helpers](../apps/web-app/test/map.test.ts), [availability failures and races](../apps/web-app/test/map-availability.test.ts), [scene core](../packages/map/test/layers.test.ts), [discovery/SEO](../apps/web-app/test/map-discovery.test.ts) and [built-server output](../apps/web-app/scripts/check-map-discovery.mjs) | Live deployment acceptance, browser interaction, missing basemap/WebGL, mobile panel and combined filters |
 | F04–F06 · guides, picker, quests | [modules](../apps/web-app/test/page-modules.test.ts), [month ordering](../apps/web-app/test/month-guide.test.ts), [persona values](../apps/web-app/test/visitor-persona.test.ts), [quest cards](../apps/web-app/test/quest-page.test.ts) | Shared URLs/reset/storage-off; coherent editorial quest. Quest tests do not implement saved progress |
 | F07–F10 · venues and eat-now | [venue public helpers](../apps/web-app/test/venues.test.ts), [schedule cases](../apps/web-app/test/schedule.test.ts), [status consistency](../apps/web-app/test/status-consistency.test.ts), [eat-now grouping/distance](../apps/web-app/test/eat-now.test.ts), [listing error/retry/races/SSR](../apps/web-app/test/venue-availability.test.ts) | Live listing deployment acceptance, geolocation rejection and a full nearby-food journey |
 | F11–F12 · menu and comparison prices | [price comparison](../apps/web-app/test/price-compare.test.ts), [price repository](../packages/database/src/repository/test/prices.test.ts) | Source/portion/freshness across surfaces and sufficient real city/item coverage |
