@@ -10,46 +10,69 @@
       :query="query"
     />
     <template v-if="query">
-      <p class="count">
-        {{ results.length ? `${resultsLabel(results.length)} по запросу «${query}»` : `По запросу «${query}» ничего не нашлось` }}
-      </p>
-      <ol
-        v-if="results.length"
-        class="results"
-      >
-        <li
-          v-for="(item, index) in results"
-          :key="item.path"
-        >
-          <a
-            :href="item.path"
-            class="result"
-            @click="clicked(index, item.path)"
-          >
-            <span class="meta">
-              {{ [item.label, item.region].filter(Boolean).join(' · ') }}
-            </span>
-            <span class="title">{{ item.title }}</span>
-            <span
-              v-if="item.snippet"
-              class="snippet"
-            >{{ item.snippet }}</span>
-          </a>
-        </li>
-      </ol>
       <div
-        v-else
-        class="empty"
+        v-if="failed"
+        class="search-error"
+        role="alert"
       >
-        <Sticker
-          class="mascot"
-          slug="shrugging"
-          :width="140"
-        />
-        <p>
-          Мы записали этот запрос и подумаем, какой страницы не хватает. Попробуйте другое слово или загляните в разделы.
-        </p>
+        <p>Не удалось выполнить поиск. Повторите попытку или измените запрос.</p>
+        <button
+          type="button"
+          class="btn"
+          @click="retry"
+        >
+          Повторить
+        </button>
       </div>
+      <p
+        v-else-if="!response"
+        role="status"
+        class="count"
+      >
+        Ищем по запросу «{{ query }}»…
+      </p>
+      <template v-else>
+        <p class="count">
+          {{ results.length ? `${resultsLabel(results.length)} по запросу «${query}»` : `По запросу «${query}» ничего не нашлось` }}
+        </p>
+        <ol
+          v-if="results.length"
+          class="results"
+        >
+          <li
+            v-for="(item, index) in results"
+            :key="item.path"
+          >
+            <a
+              :href="item.path"
+              class="result"
+              @click="clicked(index, item.path)"
+            >
+              <span class="meta">
+                {{ [item.label, item.region].filter(Boolean).join(' · ') }}
+              </span>
+              <span class="title">{{ item.title }}</span>
+              <span
+                v-if="item.snippet"
+                class="snippet"
+              >{{ item.snippet }}</span>
+            </a>
+          </li>
+        </ol>
+        <div
+          v-else
+          class="empty"
+        >
+          <Sticker
+            class="mascot"
+            slug="shrugging"
+            :width="140"
+          />
+          <p>
+            Попробуйте другое слово или загляните в разделы.
+          </p>
+        </div>
+      </template>
     </template>
     <div
       v-if="!results.length && links"
@@ -84,8 +107,15 @@ const crumbs = [
   { name: 'Поиск', href: '/poisk' },
 ]
 
-const { data } = await useFetch<SearchResponse>('/api/search', { query: { q: query } })
-const results = computed(() => data.value?.results ?? [])
+const { data, status, error, refresh } = await useFetch<SearchResponse>('/api/search', { query: { q: query } })
+const failed = computed(() => status.value === 'error' || Boolean(error.value))
+// AsyncData can retain the previous response during a refresh or URL change.
+const response = computed(() => status.value === 'success' && !failed.value && data.value?.query === query.value ? data.value : null)
+const results = computed(() => response.value?.results ?? [])
+
+function retry() {
+  return refresh()
+}
 
 const { data: links } = await useFetch<{ hubs: TextLink[], places: TextLink[], routes: TextLink[] }>('/api/public/error-links')
 
@@ -100,7 +130,8 @@ useHead({ link: [{ rel: 'canonical', href: `${SITE_ORIGIN}/poisk` }] })
 let searchId = ''
 
 function logSearch() {
-  if (!query.value) {
+  searchId = ''
+  if (!query.value || !response.value) {
     return
   }
   searchId = newSearchId()
@@ -113,8 +144,8 @@ function clicked(index: number, path: string) {
   }
 }
 
-onMounted(logSearch)
-watch(() => data.value, logSearch)
+// SSR/prefetches, failed requests and retained results are not completed searches.
+onMounted(() => watch(response, logSearch, { immediate: true }))
 </script>
 
 <style scoped>
@@ -124,6 +155,10 @@ watch(() => data.value, logSearch)
 }
 .count {
   color: var(--muted);
+}
+.search-error {
+  max-width: 40rem;
+  margin-bottom: var(--space-5);
 }
 .results {
   display: grid;
