@@ -1,5 +1,5 @@
 import type { Collection, StoredPageModule } from '@k39/database'
-import { db } from '@k39/database'
+import { db, prepareSourceLinks, SourceInputError } from '@k39/database'
 import { createError } from 'h3'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
@@ -92,6 +92,22 @@ function collectionMonth(kind: string, input: CollectionWriteInput, base: Record
   return mergedField(input.month, base, 'month', current)
 }
 
+/** Validate the effective list, including old rows that predate the source cap. */
+function pendingCollectionSources(input: CollectionWriteInput, base: Record<string, unknown>, current: Collection) {
+  const rows = mergedField(input.sources, base, 'sources', current.sources ?? [])
+  try {
+    return prepareSourceLinks(rows) ?? []
+  } catch (error) {
+    if (!(error instanceof SourceInputError)) {
+      throw error
+    }
+    const inherited = input.sources === undefined
+      ? `Унаследовано ${rows.length} строк источников из ${Object.hasOwn(base, 'sources') ? 'ожидающего черновика' : 'опубликованной версии'}. `
+      : ''
+    throw createError({ statusCode: 400, statusMessage: `${inherited}${error.message}${inherited ? '. Передайте исправленный список sources.' : ''}` })
+  }
+}
+
 export async function saveCollectionDraft(input: CollectionWriteInput, auditTool = 'collection_save', options?: { create?: boolean }) {
   const rows = await db.editor.listCollections()
   const current = input.id
@@ -173,7 +189,7 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
       noindex: mergedField(input.noindex, base, 'noindex', current.noindex),
       kind,
       month: collectionMonth(kind, input, base, current.month),
-      sources: mergedField(input.sources, base, 'sources', current.sources ?? []),
+      sources: pendingCollectionSources(input, base, current),
       modules,
     }
     if (items.set) {

@@ -529,7 +529,7 @@ describe('pending collection and route drafts', () => {
     expect(await Editor.contentDraft('route', route.id)).not.toBeNull()
 
     enterContentScope('draft')
-    await saveCollectionDraft({
+    await expect(saveCollectionDraft({
       id: collection.id,
       slug: 'pending-source-collection',
       title: 'Слишком много источников',
@@ -537,6 +537,15 @@ describe('pending collection and route drafts', () => {
         title: `Источник ${index + 1}`,
         url: `https://example.com/collection/${index + 1}`,
       })),
+    })).rejects.toMatchObject({ statusCode: 400, statusMessage: sourceLimitMessage() })
+    // Legacy/raw pending payloads still meet the independent publish-time guard.
+    await Editor.saveContentDraft({
+      entityType: 'collection',
+      entityId: collection.id,
+      publicationStatus: 'review',
+      payload: { sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+        title: `Источник ${index + 1}`, url: `https://example.com/legacy/${index + 1}`,
+      })) },
     })
     await Editor.saveContentDraft({
       entityType: 'route',
@@ -562,6 +571,39 @@ describe('pending collection and route drafts', () => {
     expect(await Editor.contentDraft('collection', collection.id)).not.toBeNull()
     expect((await Editor.routeById(route.id))?.title).toBe('Маршрут после проверки')
     expect(await Editor.contentDraft('route', route.id)).toBeNull()
+  })
+
+  it('rejects inherited legacy sources before staging, then accepts a repaired list for editor application', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const collection = await publishedCollection('pending-legacy-sources')
+    const legacy = Array.from({ length: 29 }, (_, index) => ({ title: `Источник ${index}`, url: `https://example.com/${index}` }))
+    await useDatabase().update(collections).set({ sources: legacy }).where(eq(collections.id, collection.id))
+    const auditBefore = await useDatabase().select().from(mcpAudits).where(eq(mcpAudits.entityId, collection.id))
+    enterContentScope('draft')
+    await expect(saveCollectionDraft({ id: collection.id, body: 'Правка текста.' })).rejects.toMatchObject({
+      statusCode: 400, statusMessage: expect.stringMatching(/29.*опубликованной версии.*Не больше 24/u),
+    })
+    expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
+    expect(await useDatabase().select().from(mcpAudits).where(eq(mcpAudits.entityId, collection.id))).toEqual(auditBefore)
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(legacy)
+    await Editor.saveContentDraft({
+      entityType: 'collection', entityId: collection.id, publicationStatus: 'review',
+      payload: { sources: legacy, body: 'Старая правка.' },
+    })
+    const previous = await Editor.contentDraft('collection', collection.id)
+    await expect(saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })).rejects.toMatchObject({
+      statusCode: 400, statusMessage: expect.stringMatching(/29.*ожидающего черновика/u),
+    })
+    expect(await Editor.contentDraft('collection', collection.id)).toEqual(previous)
+    const corrected = legacy.slice(0, SOURCE_LINK_LIMIT)
+    await saveCollectionDraft({ id: collection.id, sources: corrected, body: 'Правка с исправленными источниками.' })
+    expect((await Editor.contentDraft('collection', collection.id))?.payload.sources).toEqual(corrected)
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(legacy)
+    enterContentScope('editor')
+    await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(corrected)
+    expect((await Editor.collectionById(collection.id))?.body).toBe('Правка с исправленными источниками.')
+    expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
   })
 
   it('shows the admin diff, refuses a save, then apply and discard', async () => {
