@@ -1,10 +1,10 @@
 # Roadmap
 
-Updated 2026-10-23. Baseline: `287f82d` (PR 292 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
+Updated 2026-10-23. Baseline: `29742df` (PR 296 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
 
 ## Current position
 
-**Current batch: 0 of 7 items merged. Item 1 is in progress in this change.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
+**Current batch: 1 of 7 items merged. Item 2 is implemented in this change; item 3 is next.** These counts cover this bounded batch, not the whole product, and are not a prediction of seven PRs. A reviewable implementation is not counted as merged or deployed. Update the counter after each merge; record newly discovered work separately instead of silently expanding the denominator.
 
 | Completed work | Evidence | Remaining limit |
 | --- | --- | --- |
@@ -22,8 +22,8 @@ The owner reviewed this seven-item order on 23 Oct. Issue 288 goes first because
 
 | Order / item | State | Completion contract |
 | --- | --- | --- |
-| 1 · [#288](https://github.com/hmbanan666/k39/issues/288) · pending place date (F16–F17) | In progress; [review](reviews/2026-10-23-pending-place-date/README.md) | Repeat draft saves on a checked live place; omit to preserve, null to clear, explicit replacement to change. Round-trip the real place_get timestamp. Live content stays unchanged until editor application. Regressions and full CI pass |
-| 2 · S03 · eat-now location (F10) | Next | Explain denied/timed-out/unavailable location in Russian, retain the usable origin/results and allow retry. Cover success, unavailable API, missing coordinates, centre/visitor distance, mobile/desktop and SSR |
+| 1 · [#288](https://github.com/hmbanan666/k39/issues/288) · pending place date (F16–F17) | Merged in [PR 296](https://github.com/hmbanan666/k39/pull/296); [review](reviews/2026-10-23-pending-place-date/README.md); deployment pending | Repeat draft saves on a checked live place; omit to preserve, null to clear, explicit replacement to change. Round-trip the real place_get timestamp. Live content stays unchanged until editor application. Regressions and full CI pass |
+| 2 · S03 · eat-now location (F10) | Implemented; merge pending; [review](reviews/2026-10-23-eat-now-location/README.md) | Explain denied/timed-out/unavailable location in Russian, retain the usable origin/results and allow retry. Cover success, unavailable API, missing coordinates, centre/visitor distance, mobile/desktop and SSR |
 | 3 · [#291](https://github.com/hmbanan666/k39/issues/291) · false closed status (F08/F23) | Reported; reproduce | The footwear sentence must not flag an always-open fort as closed; real closure phrases must still be detected. Verify score/status output with regression cases |
 | 4 · [#289](https://github.com/hmbanan666/k39/issues/289) · scored article length (F23) | Reported; reproduce and confirm counting contract | Internal-link markup must not discourage useful links. Use one agreed measure for floors, ceilings, stored bodyChars and score preview; preserve real earned-length rules |
 | 5 · A01 · measure the agent loop | Planned | Record host, tools, cache state, checkout-to-ready, warm start, one quick check and full gate. Demonstrate generic local setup without host-global tool rewrites. Identify a measured bottleneck before claiming faster work |
@@ -34,7 +34,7 @@ Every implementation keeps the [AGENTS verification gate](../AGENTS.md#verify-an
 
 ## Incoming reports outside the current batch
 
-Snapshot after opening PR 296 on 23 Oct. These three reports have not been reproduced in this task and do not change the seven-item denominator or authorize a proposed fix. Triage them before the related subsystem work; record any priority change explicitly.
+Snapshot retained after merging PR 296 on 23 Oct. These three reports have not been reproduced in this task and do not change the seven-item denominator or authorize a proposed fix. Triage them before the related subsystem work; record any priority change explicitly.
 
 | Report | Intake state / routing |
 | --- | --- |
