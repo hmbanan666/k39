@@ -32,6 +32,16 @@ The owner reviewed this seven-item order on 23 Oct. Issue 288 goes first because
 
 Every implementation keeps the [AGENTS verification gate](../AGENTS.md#verify-and-hand-off); UI work keeps the unchanged k39-ui screenshot requirements. After merge, verify the deployed commit and affected read-only scenario. Green CI does not establish deployment success. Investigate a workaround's original reason/callers before replacing it; fallback, staged writes and test-database guards can protect real behavior.
 
+## Incoming reports outside the current batch
+
+Snapshot after opening PR 296 on 23 Oct. These three reports have not been reproduced in this task and do not change the seven-item denominator or authorize a proposed fix. Triage them before the related subsystem work; record any priority change explicitly.
+
+| Report | Intake state / routing |
+| --- | --- |
+| [#293](https://github.com/hmbanan666/k39/issues/293) · pronoun forms rejected as superlatives | Unverified writing-check report; assess editorial impact |
+| [#294](https://github.com/hmbanan666/k39/issues/294) · a sub-attraction makes a town appointment-only | Unverified status/scoring report; inspect alongside #291 before deciding whether one fix covers both |
+| [#295](https://github.com/hmbanan666/k39/issues/295) · existing collections exceed the source cap and cannot publish an unrelated draft edit | Unverified publishing/compatibility report; reproduce on isolated data and assess blocking impact |
+
 ## Work after the current batch
 
 | Stage | Known size | Exit |
