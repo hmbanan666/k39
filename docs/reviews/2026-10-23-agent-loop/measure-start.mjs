@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { closeSync, mkdtempSync, openSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 
 // Only an explicitly isolated local database is accepted. Existing boot
@@ -15,6 +16,9 @@ const port = 3457
 const base = `http://127.0.0.1:${port}`
 const directory = mkdtempSync(join(tmpdir(), 'k39-a01-start-'))
 const results = []
+const app = resolve('apps/web-app')
+const require = createRequire(join(app, 'package.json'))
+const entry = join(dirname(require.resolve('nuxt/package.json')), 'bin/nuxt.mjs')
 
 async function freePort() {
   const server = createServer()
@@ -31,7 +35,10 @@ async function start(phase) {
   const log = openSync(logPath, 'w', 0o600)
   const startedAt = new Date().toISOString()
   const started = performance.now()
-  const child = spawn('pnpm', ['--filter', '@k39/web-app', 'exec', 'nuxt', 'dev', '--host', '127.0.0.1', '--port', String(port)], {
+  // Direct Node avoids a package-manager wrapper owning a second process group.
+  // Nuxt's normal forked dev mode remains enabled.
+  const child = spawn(process.execPath, [entry, 'dev', '--host', '127.0.0.1', '--port', String(port)], {
+    cwd: app,
     detached: true,
     stdio: ['ignore', log, log],
     env: { ...process.env, NODE_ENV: 'development', DEV_EDITOR_SESSION: '0', NUXT_TELEMETRY_DISABLED: '1', NUXT_SESSION_PASSWORD: 'isolated-agent-benchmark-session-password' },
@@ -67,9 +74,23 @@ async function start(phase) {
     }
     stop('SIGTERM')
     const deadline = setTimeout(() => stop('SIGKILL'), 5000)
-    await closed
-    clearTimeout(deadline)
-    closeSync(log)
+    try {
+      await closed
+      let released = false
+      for (let attempt = 0; attempt < 60; attempt++) {
+        try {
+          await freePort()
+          released = true
+          break
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+      }
+      assert(released, 'Dev descendants did not release the benchmark port')
+    } finally {
+      clearTimeout(deadline)
+      closeSync(log)
+    }
   }
 }
 
