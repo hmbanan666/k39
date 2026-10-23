@@ -62,7 +62,7 @@ describe('pending place publish', () => {
     const live = await publishedPlace('pending-date-round-trip')
     await useDatabase().update(places).set({ lastVerifiedAt: '2026-10-12T00:00:00.123456Z' }).where(eq(places.id, live.id))
     enterContentScope('draft')
-    const fetched = await placeGet.handler({ id: live.id }, {} as Parameters<typeof placeGet.handler>[1])
+    const fetched = await placeGet.handler({ id: live.id, slug: undefined }, {} as Parameters<typeof placeGet.handler>[1])
     if (!fetched || typeof fetched !== 'object' || !('factsCheckedAt' in fetched) || typeof fetched.factsCheckedAt !== 'string') {
       throw new Error('place_get omitted its factsCheckedAt timestamp')
     }
