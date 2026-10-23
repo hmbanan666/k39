@@ -18,6 +18,8 @@ The UI and place articles are in Russian. Documentation, ADRs and code comments 
 - **Cookieless page analytics** with no IP storage.
 - **SEO-first rendering**: published pages are server-rendered from Postgres.
 
+The [feature inventory](docs/product-state.md) distinguishes implementation, known gaps and unverified scenarios. The [stabilization roadmap](docs/roadmap.md) is the current task queue; feature visibility recommendations are proposals until accepted.
+
 ## Stack
 
 | Area      | Technology                                                       |
