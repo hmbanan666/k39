@@ -1,6 +1,6 @@
 import type { CatalogArticle, ContentCatalog, ScorePlace } from '@k39/database'
 import { describe, expect, it } from 'vitest'
-import { scoresFromCatalog } from '../server/utils/scoring/assemble'
+import { scoresFromCatalog, toStored } from '../server/utils/scoring/assemble'
 import { catalogWithPendingPlace, scorePreview } from '../server/utils/scoring/preview'
 
 const NOW = new Date('2026-10-21T00:00:00.000Z')
@@ -73,6 +73,26 @@ function catalog(patch: Partial<ContentCatalog> = {}): ContentCatalog {
 }
 
 describe('content score preview', () => {
+  it.each(['live', 'pending'] as const)('uses the same visible length in %s preview, catalog scoring and stored signals', (source) => {
+    const live = place({ body: 'Живой текст.' })
+    const rows = catalog({ places: [live] })
+    const body = `${'ы'.repeat(5995)} [факт](/${'target'.repeat(100)})`
+    const working = source === 'live'
+      ? catalog({ places: [place({ body })] })
+      : catalogWithPendingPlace(rows, live.id, { ...live, body, lastVerifiedAt: null }, {
+          categorySlug: 'forty', categoryTitle: 'Форты', regionTitle: null,
+        })
+    const scored = scoresFromCatalog(working, [], [], false, NOW)[0]!
+    const stored = toStored(scored)
+    const preview = scorePreview({ catalog: working, pageType: 'place', entityId: live.id, source, publicationStatus: 'published', now: NOW })
+    expect(preview?.signals.bodyChars).toBe(6000)
+    expect(stored.signals.bodyChars).toBe(6000)
+    expect(preview?.checks.quality).toEqual(stored.checks.quality)
+    expect(preview?.quality).toBe(stored.quality)
+    expect(preview?.checks.quality.some((check) => check.includes('above 6000'))).toBe(false)
+    expect(rows.places[0]?.body).toBe('Живой текст.')
+  })
+
   it('scores a published row the same way as the stored scorer and marks it live', () => {
     const rows = catalog({ places: [place()] })
     const stored = scoresFromCatalog(rows, [], [], false, NOW)

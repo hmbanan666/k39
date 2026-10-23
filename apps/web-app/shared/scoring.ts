@@ -1,5 +1,6 @@
 import type { LengthOverride } from './length-override'
 import { articleBody } from './address'
+import { articleTextLength } from './article-length'
 import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, lengthOverrideApplies, lengthOverrideIsStale, longPageFiller } from './length-override'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
 import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, pageFaq, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
@@ -1046,10 +1047,11 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
     }
   }
   const text = articleText(page)
+  const bodyChars = articleTextLength(text)
   const norm = lengthNorm(page.kind, page.categorySlug)
   const applied = lengthOverrideApplies(page.passport?.lengthOverride, norm.max)
-  const length = lengthPoints(text.length, { min: norm.min, max: applied?.ceiling ?? norm.max })
-  const filler = norm.max != null && text.length > norm.max ? longPageFiller(text) : { points: 0, checks: [] as string[] }
+  const length = lengthPoints(bodyChars, { min: norm.min, max: applied?.ceiling ?? norm.max })
+  const filler = norm.max != null && bodyChars > norm.max ? longPageFiller(text) : { points: 0, checks: [] as string[] }
   const ignored = page.passport?.lengthOverride && !applied ? [LENGTH_OVERRIDE_IGNORED] : []
   const stale = applied && lengthOverrideIsStale(applied, now, page.results.searchImported, page.results.searchImpressions)
   const sections = sectionPoints(page, text)
@@ -1084,7 +1086,7 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
     results: blocks.results,
     checks,
     signals: {
-      bodyChars: text.length,
+      bodyChars,
       tier: page.kind === 'place' ? (MAJOR_PLACE_CATEGORIES.has(page.categorySlug || '') ? 'major' : 'minor') : null,
       faqCount: faqQuestionCount(page, text),
       photoCount: page.photoCount,
