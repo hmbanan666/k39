@@ -263,10 +263,10 @@ export async function applyPendingVenue(id: string, expected?: Pick<Draft, 'id' 
     if (onlyNoticesStaged(payload)) {
       const notices = await stagedForApply(await practicalTarget('venue', id), payload)
       if (notices) {
-        await db.notices.replace('venue', id, notices.map(toNoticeWrite), tx)
+        await db.notices.replace('venue', id, notices.rows.map(toNoticeWrite), tx)
       }
       await db.editor.deleteContentDraftIfUnchanged(draft.id, draft.updatedAt, tx)
-      return { id, slug: venue.slug, status: venue.status, pendingReview: false, ownerConflicts: [] as string[], writingWarnings: [] as string[], pricesChanged: false, regionId: venue.regionId, previousRegionId: venue.regionId }
+      return { id, slug: venue.slug, status: venue.status, pendingReview: false, ownerConflicts: [] as string[], writingWarnings: notices?.writingWarnings ?? [], pricesChanged: false, regionId: venue.regionId, previousRegionId: venue.regionId }
     }
     const owners = await db.venues.ownerDraftChanges(id, tx)
     const blocked = (key: string, at: string | undefined) => Date.parse(owners.get(key) ?? '1970-01-01') > Date.parse(at ?? draft.createdAt)
@@ -317,7 +317,7 @@ export async function applyPendingVenue(id: string, expected?: Pick<Draft, 'id' 
     const target = await practicalTarget('venue', id)
     const notices = await stagedForApply(target, payload)
     if (notices) {
-      await db.notices.replace('venue', id, notices.map(toNoticeWrite), tx)
+      await db.notices.replace('venue', id, notices.rows.map(toNoticeWrite), tx)
       delete remaining.notices
       delete remaining.noticesStagedAt
     }
@@ -326,7 +326,7 @@ export async function applyPendingVenue(id: string, expected?: Pick<Draft, 'id' 
     } else {
       await db.editor.deleteContentDraftIfUnchanged(draft.id, draft.updatedAt, tx)
     }
-    return { id, slug: row.slug, status: row.status, pendingReview: ownerConflicts.length > 0, ownerConflicts, writingWarnings, pricesChanged: hasPrices, regionId: row.regionId, previousRegionId: venue.regionId }
+    return { id, slug: row.slug, status: row.status, pendingReview: ownerConflicts.length > 0, ownerConflicts, writingWarnings: [...new Set([...writingWarnings, ...(notices?.writingWarnings ?? [])])], pricesChanged: hasPrices, regionId: row.regionId, previousRegionId: venue.regionId }
   })
   await syncSavedPage('venue', id)
   if (result.pricesChanged || result.regionId !== result.previousRegionId) {

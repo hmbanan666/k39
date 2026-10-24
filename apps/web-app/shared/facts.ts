@@ -8,6 +8,8 @@ import { ADMISSION_AUDIENCES, ADMISSION_CONDITION_MAX, ADMISSION_EXTRA_UNITS, AD
 import { EVENT_TITLE_MAX } from './events'
 import { addDays, localNow, scheduleRulesSchema } from './schedule'
 
+export { trustText } from './score-labels'
+
 // Typed fact values (ADR 0033). Hours reuse the schedule rules. Admission and
 // event are the ADR 0046 ledgers beside their rows. Transport, seasonality,
 // and history stay out until their phase.
@@ -644,32 +646,6 @@ export function trustOf(input: { staleFacts: number, unreviewed: number }): Trus
     labels.push('unreviewed')
   }
   return { verified: false, staleFacts: input.staleFacts, unreviewed: input.unreviewed, labels }
-}
-
-export function trustText(trust: TrustCounts) {
-  if (trust.verified) {
-    return 'проверено'
-  }
-  const parts: string[] = []
-  if (trust.staleFacts > 0) {
-    parts.push(`${trust.staleFacts} ${trust.staleFacts === 1 ? 'устарел' : 'устарели'}`)
-  }
-  if (trust.unreviewed > 0) {
-    parts.push(`${trust.unreviewed} ${sectionWord(trust.unreviewed)}`)
-  }
-  return parts.join(', ')
-}
-
-function sectionWord(count: number) {
-  const mod10 = count % 10
-  const mod100 = count % 100
-  if (mod10 === 1 && mod100 !== 11) {
-    return 'раздел'
-  }
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return 'раздела'
-  }
-  return 'разделов'
 }
 
 export function queueMayOpen(status: string | null, reason: QueueReason) {

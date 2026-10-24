@@ -56,6 +56,17 @@ describe('writing split', () => {
     expect(contentWarnings(gate)).toEqual([])
   })
 
+  it.each(['collection', 'venue'] as const)('keeps uncertainty visible on successful %s module publication', (entity) => {
+    const input = { modules: [{ type: 'text', text: 'Дом стоит у самой Куршской косы.' }] }
+    const warnings = contentWarnings(contentGate(entity, input, true))
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toMatch(/Неопределённость.*0 баллов/u)
+    expect(contentWarnings(contentGate(entity, input, false))).toEqual(warnings)
+    expect(() => contentWarnings(contentGate(entity, {
+      modules: [{ type: 'text', text: 'Самый высокий дом.' }],
+    }, true))).toThrow(/Нельзя опубликовать/)
+  })
+
   it('blocks a banned site in prose, names, and URLs', () => {
     for (const input of [
       { description: 'Ссылка на kgdmore.ru в тексте.' },

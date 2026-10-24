@@ -1,7 +1,5 @@
-// Page text and the schedule must never contradict each other: a page that
-// says «закрыт на реставрацию» cannot show hours, and «по записи» needs the
-// appointment mode. A closure whose subject is another named thing in the
-// same sentence (a tenant, a quoted name) is not about this page. ADR 0045.
+// Closure contradictions retain their established penalty. Appointment prose
+// supplies uncertain editorial advisories, never subject certification.
 
 // A bare opening status is a complete short form, not «Закрытую обувь».
 // Use a Unicode letter boundary: JavaScript's \b does not delimit Cyrillic.
@@ -17,6 +15,8 @@ const TENANT_THEN_QUOTE = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})
 const CLAUSE_RESET = /,\s*(?:а|но)(?!\p{L})|(?:^|[^\p{L}])сам[ао]?(?!\p{L})/giu
 
 export const STATUS_SUBJECT_WARNING = 'closure may refer to another subject'
+export const APPOINTMENT_CONTEXT_WARNING = 'appointment wording needs context review'
+export const APPOINTMENT_INSTRUCTIONS_WARNING = 'appointment instructions need editorial review'
 
 export interface StatusFaqItem {
   question?: string
@@ -46,7 +46,7 @@ function answerSentence(answer: string) {
   return /[.!?…]$/u.test(text) ? text : `${text}.`
 }
 
-function ownSentences(input: StatusCheckInput) {
+function statusSentences(input: StatusCheckInput) {
   const answers = (input.faq ?? []).map((item) => answerSentence(item.answer ?? '')).filter(Boolean)
   const text = [input.text, ...answers].filter((part) => part.trim()).join('\n')
   return text
@@ -156,7 +156,7 @@ function closureKind(sentence: string, title: string | null | undefined): Closur
 
 /** Short English check strings. Warnings do not take the closed-text penalty. */
 export function statusChecks(input: StatusCheckInput): StatusCheckResult {
-  const sentences = ownSentences(input)
+  const sentences = statusSentences(input)
   let definite = false
   let ambiguous = false
   for (const sentence of sentences) {
@@ -167,8 +167,7 @@ export function statusChecks(input: StatusCheckInput): StatusCheckResult {
       ambiguous = true
     }
   }
-  const own = sentences.join('\n')
-  const appointmentText = APPOINTMENT.test(own)
+  const appointmentText = sentences.some((sentence) => APPOINTMENT.test(sentence))
   const contradictions: string[] = []
   if (definite && input.mode !== 'closed') {
     contradictions.push(`text says closed, schedule mode is ${input.mode ?? 'missing'}`)
@@ -176,21 +175,21 @@ export function statusChecks(input: StatusCheckInput): StatusCheckResult {
   if (input.mode === 'closed' && !definite) {
     contradictions.push('schedule closed, text does not say so')
   }
-  if (input.mode === 'appointment' && !appointmentText) {
-    contradictions.push('schedule by appointment, text does not say how to book')
-  }
-  if (appointmentText && !definite && input.mode === 'always') {
-    contradictions.push('text says by appointment, schedule is always open')
-  }
   // A closed schedule already asks the editor to say so. The warning is for
   // an open schedule that might be describing someone else.
   const warnings = ambiguous && !definite && input.mode !== 'closed'
     ? [STATUS_SUBJECT_WARNING]
     : []
+  if (input.mode === 'always' && appointmentText) {
+    warnings.push(APPOINTMENT_CONTEXT_WARNING)
+  }
+  if (input.mode === 'appointment' && !appointmentText) {
+    warnings.push(APPOINTMENT_INSTRUCTIONS_WARNING)
+  }
   return { contradictions, warnings }
 }
 
-/** Hard contradictions only. Empty when text and status agree. */
+/** Hard closure contradictions only; appointment prose is advisory. */
 export function statusContradictions(input: StatusCheckInput): string[] {
   return statusChecks(input).contradictions
 }

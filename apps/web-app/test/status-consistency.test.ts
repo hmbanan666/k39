@@ -39,9 +39,28 @@ describe('status consistency', () => {
     expect(statusContradictions({ text, mode: 'always' })).toEqual(['text says closed, schedule mode is always'])
     expect(statusContradictions({ text, mode: 'closed' })).toEqual([])
   })
-  it('needs booking words for appointment mode', () => {
-    expect(statusContradictions({ text: 'Экскурсии по предварительной записи.', mode: 'appointment' })).toEqual([])
-    expect(statusContradictions({ text: 'Красивая кирха.', mode: 'appointment' })).toHaveLength(1)
+  it.each([
+    { mode: 'always', text: 'Экскурсии по записи.', warning: 'appointment wording needs context review' },
+    { mode: 'always', text: 'Ресторан местной пивоварни принимает по записи.', warning: 'appointment wording needs context review' },
+    { mode: 'always', text: 'Музей и небольшое кафе принимают по записи.', warning: 'appointment wording needs context review' },
+    { mode: 'appointment', text: 'Свяжитесь с кассой по телефону.', warning: 'appointment instructions need editorial review' },
+    { mode: 'appointment', text: 'Фасад доступен.', warning: 'appointment instructions need editorial review' },
+    { mode: 'appointment', text: 'Вход по предварительной записи.', warning: null },
+    { mode: 'hours', text: 'Экскурсии по записи.', warning: null },
+    { title: 'Бланкенштайн', mode: 'always', text: 'Музей «Бланкенштайн» принимает по записи.', warning: 'appointment wording needs context review' },
+    { title: 'Бланкенштайн', mode: 'appointment', text: 'Музей «Бланкенштайн» принимает по записи.', warning: null },
+  ].map((test) => ({ title: 'Полесск', ...test })))('uses uncertain appointment advisories without hard contradictions ($mode): $text', ({ title, mode, text, warning }) => {
+    const expected = { contradictions: [], warnings: warning ? [warning] : [] }
+    expect(statusChecks({ title, text, mode })).toEqual(expected)
+    expect(statusChecks({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+    expect(statusContradictions({ title: 'Кирха', text, mode })).toEqual([])
+  })
+
+  it('keeps a real closure contradiction alongside the zero-point booking advisory', () => {
+    expect(statusChecks({ text: 'Кирха закрыта на ремонт. Вход по записи.', mode: 'always' })).toEqual({
+      contradictions: ['text says closed, schedule mode is always'],
+      warnings: ['appointment wording needs context review'],
+    })
   })
 
   it('ignores a tenant or a quoted name named before the closure', () => {

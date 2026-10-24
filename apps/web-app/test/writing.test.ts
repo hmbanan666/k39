@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CONTENT_GUIDE } from '../server/utils/mcp/guide'
 import { writingGate } from '../server/utils/mcp/writing-guard'
-import { VENUE_COPY_RULES, WRITING_BANNED_SITES, WRITING_STOP_LIST, WRITING_STOP_PATTERNS, writingGuideSection, writingHits } from '../shared/writing'
+import { analyzeWriting, VENUE_COPY_RULES, WRITING_BANNED_SITES, WRITING_STOP_LIST, WRITING_STOP_PATTERNS, writingGuideSection, writingHits } from '../shared/writing'
 
 const skill = readFileSync(resolve(import.meta.dirname, '../../../.agents/skills/k39-writing/SKILL.md'), 'utf8')
 
@@ -27,7 +27,7 @@ describe('writing stop-list', () => {
     for (const word of ['идеальный', 'идеальны', 'идеальное', 'идеальная', 'идеального', 'идеально', 'идеален', 'уникального', 'неповторимый', 'лучший']) {
       expect(writingHits(word).map((hit) => hit.phrase), word).toContain('empty superlatives')
     }
-    for (const word of ['самый', 'самая', 'самое', 'самые', 'самого', 'самой', 'самому', 'самым', 'самыми', 'самую', 'самых', 'самом']) {
+    for (const word of ['самый', 'самая', 'самое', 'самые', 'самым', 'самыми', 'самую', 'самых']) {
       expect(writingHits(`Это ${word} день.`).map((hit) => hit.phrase), word).toContain('empty superlatives')
     }
     for (const word of ['самовар', 'самолёт', 'самолет', 'самостоятельно', 'самодеятельность', 'самокат', 'сам', 'сама', 'само', 'сами', 'самим', 'самих', 'лучше', 'улучшить']) {
@@ -49,6 +49,76 @@ describe('writing stop-list', () => {
     expect(writingHits('приятно удивят детей').map((hit) => hit.phrase)).toContain('приятно удивит')
     for (const item of WRITING_STOP_LIST) {
       expect(writingHits(item.phrase).map((hit) => hit.phrase), item.phrase).toContain(item.phrase)
+    }
+  })
+
+  it.each([
+    'Что посмотреть в самом Нестерове?', 'У самого моря.', 'К самому берегу.', 'В самом центре.',
+    'В самой кирхе.', 'У самой воды.', 'От самой границы.', 'Самого себя.', 'Самому себе.',
+    'В **самом** Нестерове.', 'У _самого_ моря.',
+  ])('publishes ambiguous pronoun wording with manual-review advice: %s', (text) => {
+    expect(writingHits(text)).toEqual([])
+    const warnings = writingGate({ prose: text, publishing: false })
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toMatch(/Неопределённость.*0 баллов/u)
+    expect(writingGate({ prose: text, publishing: true })).toEqual(warnings)
+  })
+
+  it.each([
+    'В самом красивом городе.', 'У самого высокого берега.', 'К самому древнему храму.',
+    'В самой высокой башне.', 'От самой дальней границы.', 'Самою красивою улицей.',
+    'В САМОМ КРАСИВОМ городе.', 'В самом северо-западном городе.',
+    'У самого **высокого** берега.', 'В самом _красивом_ городе.',
+    'В **самом** красивом городе.', 'В самом **очень красивом** городе.',
+    'В самом **очень** _красивом_ городе.',
+    'У самого действительно высокого берега.', 'В самой необычно красивой башне.',
+    'У самого моря, в самом красивом городе.',
+    'В самом Нестерове, в самой красивой башне.',
+  ])('treats morphologically ambiguous degree wording as uncertain too: %s', (text) => {
+    expect(analyzeWriting(text).blockers).toEqual([])
+    expect(analyzeWriting(text).advisories).toHaveLength(1)
+    const warnings = writingGate({ prose: text, publishing: false })
+    expect(warnings[0]).toMatch(/Неопределённость.*0 баллов/u)
+    expect(writingGate({ prose: text, publishing: true })).toEqual(warnings)
+  })
+
+  it.each(['Самый высокий дом.', 'Самая высокая башня.', 'Город с лучшей улицей.', 'В самом Нестерове есть самый высокий дом.'])(
+    'keeps unambiguous degree wording as a hard publication block: %s', (prose) => {
+      expect(writingHits(prose).map((hit) => hit.phrase)).toContain('empty superlatives')
+      expect(() => writingGate({ prose, publishing: true })).toThrow(/Нельзя опубликовать/)
+    },
+  )
+
+  it('keeps independent phrase bans after pronoun disambiguation', () => {
+    expect(writingHits('В самом сердце города.').map((hit) => hit.phrase)).toContain('в самом сердце')
+    expect(() => writingGate({ prose: 'В самом Нестерове уютная атмосфера.', publishing: true })).toThrow(/уютная атмосфера/)
+  })
+
+  it.each([
+    'Дом стоит у самой Куршской косы.',
+    'Дом стоит у самого Балтийского моря.',
+  ])('publishes geographic wording with an uncertainty advisory: %s', (prose) => {
+    const warnings = writingGate({ prose, publishing: true })
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toMatch(/Неопределённость.*0 баллов/u)
+    expect(writingGate({ prose, publishing: false })).toEqual(warnings)
+  })
+
+  it.each(['ой', 'ою'].flatMap((ending) => [
+    { adjective: 'высок', noun: 'башней', forms: ['ой', 'ою'] },
+    { adjective: 'красив', noun: 'улицей', forms: ['ой', 'ою'] },
+    { adjective: 'дальн', noun: 'границей', forms: ['ей', 'ею'] },
+  ].flatMap(({ adjective, noun, forms }) => forms.map((form) => ({
+    sam: `сам${ending}`, adjective: `${adjective}${form}`, noun,
+  })))))('keeps feminine instrumental variants explicitly uncertain: $sam $adjective $noun', ({ sam, adjective, noun }) => {
+    for (const prose of [
+      `Город гордится ${sam} ${adjective} ${noun}.`,
+      `Город гордится **${sam}** _${adjective}_ ${noun}.`,
+      `Город гордится ${sam} действительно **${adjective}** ${noun}.`,
+    ]) {
+      expect(analyzeWriting(prose).blockers, prose).toEqual([])
+      expect(analyzeWriting(prose).advisories, prose).toHaveLength(1)
+      expect(writingGate({ prose, publishing: true })[0], prose).toMatch(/Неопределённость.*0 баллов/u)
     }
   })
 

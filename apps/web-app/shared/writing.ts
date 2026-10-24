@@ -2,14 +2,14 @@
  * Banned Russian copy. `writingGuideSection()` is what `content_guide` prints.
  * `.agents/skills/k39-writing/SKILL.md` must contain every `phrase`.
  * `apps/web-app/test/writing.test.ts` fails when the two diverge.
- * Saves call `writingHits` on prose. Official names skip the stop-list
+ * Saves call `analyzeWriting` on prose. Official names skip the stop-list
  * (`writingSplit` in `shared/writing-split.ts`). Banned sites still apply
- * to names and URLs. A draft keeps the row and returns the hits.
- * Publishing throws.
+ * to names and URLs. A draft keeps the row and returns the findings.
+ * Publishing rejects blockers; uncertain forms remain advisories.
  *
  * Inflected forms are a stem plus a closed list of endings, with a letter
  * boundary on each side. That is not a substring: «сам» matches «самый» and
- * «самого», and does not match «самовар», «самолёт», or «самостоятельно».
+ * not «самовар», «самолёт», or «самостоятельно». Ambiguous forms stay separate.
  */
 
 export interface WritingStop {
@@ -19,12 +19,19 @@ export interface WritingStop {
   note: string
   /** Set on pattern rows. Phrase rows match the phrase itself. */
   pattern?: RegExp
+  /** An uncertain style signal. Never a publication or scoring blocker. */
+  advisory?: true
 }
 
 export interface WritingHit {
   phrase: string
   /** The text that matched. */
   match: string
+}
+
+export interface WritingAnalysis {
+  blockers: WritingHit[]
+  advisories: WritingHit[]
 }
 
 /** Brochure adjectives. A triad of these is banned. A neutral list is not. */
@@ -103,23 +110,17 @@ const SIBILANT_ADJECTIVE_ENDINGS = [
 ] as const
 
 /**
- * «самый» only. Not the pronoun «сам / сама / сами» and not compounds
- * (самовар, самолёт, самостоятельно).
+ * Degree forms outside the ambiguous oblique-form advisory below.
  */
 const SAM_ENDINGS = [
   'ыми',
-  'ого',
-  'ому',
-  'ою',
   'ый',
   'ая',
   'ое',
   'ые',
   'ую',
   'ых',
-  'ой',
   'ым',
-  'ом',
 ] as const
 
 function endingsGroup(endings: readonly string[], bare = false) {
@@ -211,8 +212,14 @@ export const WRITING_STOP_LIST = [
 export const WRITING_STOP_PATTERNS = [
   {
     phrase: 'empty superlatives',
-    note: 'лучший, самый, уникальный, неповторимый, незабываемый, идеальный, and the same words with other endings. A closed ending list, so самый does not match самовар, самолёт, or самостоятельно, and лучше stays allowed.',
+    note: 'лучший, самый, уникальный, неповторимый, незабываемый, идеальный, and the same words with other endings. Ambiguous самом/самого/самому/самой/самою are separate uncertainty advisories. A closed ending list excludes самовар, самолёт, самостоятельно, and лучше.',
     pattern: EMPTY_SUPERLATIVE,
+  },
+  {
+    phrase: 'ambiguous superlative',
+    note: 'самом, самого, самому, самой, самою can be emphatic pronouns or degree wording. Review the context manually; no degree or style certification. Advisory only: publication is allowed and scoring costs zero.',
+    pattern: bounded('самом|самого|самому|самой|самою'),
+    advisory: true,
   },
   {
     phrase: 'настоящий',
@@ -289,19 +296,30 @@ export function bannedSiteProblem(value: unknown): string | null {
   return `Нельзя использовать: ${sites}`
 }
 
-/** Stop-list, pattern, and (for a venue) price-copy hits. One hit per rule. */
-export function writingHits(text: string, options?: { venue?: boolean }): WritingHit[] {
+/** One canonical analysis for publication, save advisories and scoring. One hit per rule. */
+export function analyzeWriting(text: string, options?: { venue?: boolean }): WritingAnalysis {
   const rules: readonly WritingStop[] = options?.venue
     ? [...WRITING_STOP_LIST, ...WRITING_STOP_PATTERNS, ...VENUE_COPY_RULES]
     : [...WRITING_STOP_LIST, ...WRITING_STOP_PATTERNS]
-  const hits: WritingHit[] = []
+  const result: WritingAnalysis = { blockers: [], advisories: [] }
   for (const rule of rules) {
     const match = matchRule(text, rule)
     if (match) {
-      hits.push({ phrase: rule.phrase, match })
+      const target = rule.advisory ? result.advisories : result.blockers
+      target.push({ phrase: rule.phrase, match })
     }
   }
-  return hits
+  return result
+}
+
+/** Compatibility view for consumers that only apply hard stop-list penalties. */
+export function writingHits(text: string, options?: { venue?: boolean }): WritingHit[] {
+  return analyzeWriting(text, options).blockers
+}
+
+/** Shared wording for save responses and score labels, including topIssue. */
+export function writingAdvisoryMessage(hit: Pick<WritingHit, 'match'>) {
+  return `Неопределённость: «${hit.match}» может быть местоимением или превосходной степенью. Проверьте контекст вручную (0 баллов).`
 }
 
 export function writingCopy(parts: unknown[]) {
@@ -332,7 +350,7 @@ export function writingGuideSection() {
     venue,
     `Never name ${sites}. Never paste another site's sentences, photos, or structure. Write from the sources, in our words.`,
     'Do not pad a page to reach a length minimum. A longer ceiling is only the passport length override in .agents/skills/k39-writing/SKILL.md (ADR 0034).',
-    'Inflected forms are a stem plus a closed list of endings, with a letter boundary on each side. A short stem does not match a longer word: самый does not match самовар, самолёт, or самостоятельно. The comparative лучше is not banned.',
-    'A draft save returns writingWarnings and still stores the row. Publishing rejects when writingHits is not empty. The check reads the prose that renders, including collection module text. A venue name, a dish name, a source title, and a price-item name are official names: the stop-list and the venue price rules skip them. Banned sites still apply to those names and to every URL.',
+    'Inflected forms are a stem plus a closed list of endings, with a letter boundary on each side. A short stem does not match a longer word: самый does not match самовар, самолёт, or самостоятельно. The comparative лучше is not banned. The forms самом/самого/самому/самой/самою are explicit uncertainty advisories: «у самой Куршской косы» and «самой красивой улицей» both require manual context review, cost zero points and do not block publication. No adjective, proper-name or degree inference is made.',
+    'analyzeWriting is the canonical classification into blockers and advisories; writingHits is its blockers-only compatibility view. Every save returns advisory writingWarnings. A draft also returns blocker warnings and still stores the row. Publishing rejects blockers only. Ambiguous genuine promotional wording can publish with an advisory and must be checked in manual publication review. The check reads the prose that renders, including collection module text. A venue name, a dish name, a source title, and a price-item name are official names: the stop-list and the venue price rules skip them. Banned sites still apply to those names and to every URL.',
   ].join('\n')
 }

@@ -6,7 +6,7 @@ import { catalogHoursKnown, catalogPageRefs, scoresFromCatalog, toStored } from 
 import { personaCoverageReport } from '../server/utils/scoring/coverage'
 import { scorePreview } from '../server/utils/scoring/preview'
 import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, REPEATED_PARAGRAPH } from '../shared/length-override'
-import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage } from '../shared/scoring'
+import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage, topIssue } from '../shared/scoring'
 
 const TITLE = `Форт на окраине города K39 ${'а'.repeat(10)}`
 const DESCRIPTION = 'б'.repeat(120)
@@ -1084,6 +1084,57 @@ describe('goal grace and status scope', () => {
     const consistent = scorePage({ ...closedFaq, scheduleMode: 'closed' })
     expect(contradiction.checks.quality).toContain('status contradiction: text says closed, schedule mode is always')
     expect(contradiction.quality).toBe(consistent.quality - 15)
+  })
+
+  it.each([
+    { mode: 'always', prose: 'Вход по записи.', warning: 'appointment wording needs context review' },
+    { mode: 'always', prose: 'Ресторан местной пивоварни принимает по записи.', warning: 'appointment wording needs context review' },
+    { mode: 'appointment', prose: 'Свяжитесь с кассой по телефону.', warning: 'appointment instructions need editorial review' },
+  ])('keeps appointment advisories visible with zero quality/total impact ($mode): $prose', ({ mode, prose, warning }) => {
+    for (const fields of [{ body: prose }, { body: '', faq: [{ question: 'Как посетить?', answer: prose }] }]) {
+      const page = source({ ...fields, title: 'Полесск' })
+      const baseline = scorePage(page)
+      const advised = scorePage({ ...page, scheduleMode: mode })
+      expect(advised.quality).toBe(baseline.quality)
+      expect(advised.total).toBe(baseline.total)
+      expect(advised.checks.quality).toContain(`status warning: ${warning}`)
+      expect(advised.checks.quality.some((check) => check.startsWith('status contradiction:'))).toBe(false)
+    }
+  })
+
+  it.each([
+    { check: 'status warning: appointment wording needs context review', label: 'Упомянута запись: проверьте контекст и условия посещения' },
+    { check: 'status warning: appointment instructions need editorial review', label: 'Проверьте, понятны ли условия записи в тексте' },
+    { check: 'writing advisory: самой', label: 'Неопределённость: «самой» может быть местоимением или превосходной степенью. Проверьте контекст вручную (0 баллов).' },
+  ])('keeps the top issue label explicitly advisory: $check', ({ check, label }) => {
+    expect(topIssue({ quality: [check], linking: [], indexing: [], results: [] }, { quality: 50, linking: 100, indexing: 100, results: 100 })).toBe(check)
+    expect(issueLabel(check)).toBe(label)
+  })
+
+  it.each([2400, 6200])('keeps writing uncertainty visible without quality or filler deductions at %i chars', (chars) => {
+    const body = uniqueArticle(chars, 'Город')
+    const baseline = scorePage(source({ body }))
+    for (const prose of ['Дом стоит у самой Куршской косы.', 'Дом стоит у самого Балтийского моря.', 'Город гордится самою высокой башней.']) {
+      for (const inFaq of [false, true]) {
+        const page = scorePage(source({
+          body: inFaq ? body : `${body}\n\n${prose}`,
+          faq: inFaq ? [{ question: 'Где находится?', answer: prose }] : [],
+        }))
+        expect(page.quality, prose).toBe(baseline.quality)
+        expect(page.total, prose).toBe(baseline.total)
+        const advisory = page.checks.quality.find((check) => check.startsWith('writing advisory:'))
+        expect(advisory, prose).toBeDefined()
+        expect(issueLabel(advisory!)).toMatch(/Неопределённость.*0 баллов/u)
+        expect(page.checks.quality, prose).not.toContain('stop-list: empty superlatives')
+      }
+    }
+    if (chars > 6000) {
+      for (const prose of ['Самый высокий дом.', 'В самом сердце города.', 'Уютная атмосфера в доме.']) {
+        const blocked = scorePage(source({ body: `${body}\n\n${prose}` }))
+        expect(blocked.checks.quality.some((check) => check.startsWith('stop-list:'))).toBe(true)
+        expect(blocked.quality).toBe(baseline.quality - 10)
+      }
+    }
   })
 
   it('does not charge 15 points for a tenant closure, and still charges a real one', () => {
