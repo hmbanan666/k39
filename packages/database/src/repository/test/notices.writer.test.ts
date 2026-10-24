@@ -12,6 +12,7 @@ import { adminNoticesView, decideVenueNoticeDraft } from '../../../../../apps/we
 import { loadPublicNotices, sourcesWithNotices } from '../../../../../apps/web-app/server/utils/notices/read'
 import { noticesView, setNotices } from '../../../../../apps/web-app/server/utils/notices/write'
 import { practicalTarget } from '../../../../../apps/web-app/server/utils/practical/target'
+import { updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
 import { liveStatusText, noticeToday, withNoticeStatus } from '../../../../../apps/web-app/shared/notices'
 import { useDatabase } from '../../database'
 import { contentDrafts, mcpAudits, notices, places, revisions, venues } from '../../tables'
@@ -109,6 +110,41 @@ function stagedText(draft: { payload: Record<string, unknown> } | null) {
 }
 
 describe('notices writer', () => {
+  it.each((['place', 'venue'] as const).flatMap((subjectType) => [false, true].map((mixed) => ({ subjectType, mixed }))))(
+    'retains notice advisories through authorized pending publication ($subjectType, mixed=$mixed)', async ({ subjectType, mixed }) => {
+      const live = subjectType === 'place' ? await place('notice-advisory-apply') : await venue('notice-advisory-apply')
+      enterContentScope('draft')
+      if (mixed) {
+        if (subjectType === 'place') {
+          await updatePlaceDraft({ id: live.id, summary: 'Дом у самой площади.' }, 'place_update')
+        } else {
+          await updateVenue({ id: live.id, description: `${'description' in live ? live.description : ''} Дом у самой площади.` })
+        }
+      }
+      const staged = await setNotices({ subjectType, id: live.id, notices: [row({
+        kind: 'renovation', text: 'Ремонт у самого входа.', sourceUrl: subjectType === 'venue' ? VK_POST : SITE,
+      })] }, 'mcp')
+      expect(staged.writingWarnings).toHaveLength(1)
+      const warning = staged.writingWarnings[0]!
+      expect(warning).toMatch(/Неопределённость.*«самого».*0 баллов/u)
+      const pending = await Editor.contentDraft(subjectType, live.id)
+      expect(await Notices.forSubject(subjectType, live.id)).toEqual([])
+      await rejects(setPublication({ entity: subjectType, id: live.id, publicationStatus: 'published' }), 403)
+      expect(await Editor.contentDraft(subjectType, live.id)).toEqual(pending)
+      enterContentScope('editor')
+      const applied = await setPublication({ entity: subjectType, id: live.id, publicationStatus: 'published' })
+      expect(applied).toMatchObject({ writingWarnings: mixed
+        ? expect.arrayContaining([warning, expect.stringContaining('«самой»')])
+        : [warning] })
+      expect((await Notices.forSubject(subjectType, live.id))[0]?.text).toBe('Ремонт у самого входа.')
+      expect(await Editor.contentDraft(subjectType, live.id)).toBeNull()
+      const saved = subjectType === 'place' ? await Editor.placeById(live.id) : await Venues.byId(live.id)
+      expect(saved).toMatchObject(mixed
+        ? subjectType === 'place' ? { summary: 'Дом у самой площади.' } : { description: expect.stringContaining('Дом у самой площади.') }
+        : live)
+    },
+  )
+
   it('validates kinds, dates, the open end, text, and the source', async () => {
     const live = await place('notice-validate')
     enterContentScope('editor')

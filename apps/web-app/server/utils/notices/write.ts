@@ -245,18 +245,18 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
  * draft has nothing else for the page columns. Status is not changed.
  */
 export async function applyStagedNotices(target: NoticeTarget, pending: { id: string, updatedAt: string, payload: Record<string, unknown> }) {
-  const rows = await stagedForApply(target, pending.payload)
-  if (!rows) {
+  const prepared = await stagedForApply(target, pending.payload)
+  if (!prepared) {
     return null
   }
-  const saved = await db.notices.applyStaged(target.type, target.id, { id: pending.id, updatedAt: pending.updatedAt }, rows.map(toNoticeWrite))
+  const saved = await db.notices.applyStaged(target.type, target.id, { id: pending.id, updatedAt: pending.updatedAt }, prepared.rows.map(toNoticeWrite))
   if (!saved) {
     throw createError({ statusCode: 409, statusMessage: 'Черновик изменился. Обновите страницу.' })
   }
-  return saved
+  return { rows: saved, writingWarnings: prepared.writingWarnings }
 }
 
-/** Re-checks a staged list for apply. Null when the draft has no `notices` key. */
+/** Re-checks a staged list and retains publish advisories. Null without a `notices` key. */
 export async function stagedForApply(target: NoticeTarget, payload: Record<string, unknown>) {
   const staged = stagedNotices(payload)
   if (!staged) {
@@ -265,8 +265,8 @@ export async function stagedForApply(target: NoticeTarget, payload: Record<strin
   const today = noticeToday(new Date())
   const known = new Set((await db.notices.forSubject(target.type, target.id)).map((row) => row.id))
   const rows = prepareNotices(target, staged, today, known, false)
-  noticeWarnings(target, rows, isPublicSubject(target))
-  return rows
+  const writingWarnings = noticeWarnings(target, rows, isPublicSubject(target))
+  return { rows, writingWarnings }
 }
 
 /**

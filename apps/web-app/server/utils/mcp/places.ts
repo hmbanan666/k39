@@ -334,7 +334,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     if (onlyNoticesStaged(payload)) {
       const saved = await applyStagedNotices(noticeTarget, pending)
       await auditMcp(auditTool, 'place', current.id)
-      return { ...compactPlace(current), pendingReview: false, bodyLength: current.body.length, writingWarnings: [] as string[], notices: (saved ?? []).map(toNoticeValue) }
+      return { ...compactPlace(current), pendingReview: false, bodyLength: current.body.length, writingWarnings: saved?.writingWarnings ?? [], notices: (saved?.rows ?? []).map(toNoticeValue) }
     }
     const notices = await stagedForApply(noticeTarget, payload)
     const applied = await applyPendingPlaceContent(current.id, contentGate('place', {
@@ -396,14 +396,14 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
           tx,
         })
         if (notices) {
-          await db.notices.replace('place', current.id, notices.map(toNoticeWrite), tx)
+          await db.notices.replace('place', current.id, notices.rows.map(toNoticeWrite), tx)
         }
       },
     })
     const row = applied.row
     if (row) {
       await auditMcp(auditTool, 'place', current.id)
-      return { ...compactPlace(row), pendingReview: false, bodyLength: row.body.length, writingWarnings: applied.writingWarnings }
+      return { ...compactPlace(row), pendingReview: false, bodyLength: row.body.length, writingWarnings: [...new Set([...applied.writingWarnings, ...(notices?.writingWarnings ?? [])])] }
     }
   }
   if (publicationStatus === 'pending') {
