@@ -45,6 +45,48 @@ describe('status consistency', () => {
   })
 
   it.each([
+    { title: 'Музей «Старая пивоварня»', text: 'Музей «Старая пивоварня» принимает по записи.', own: true },
+    { title: 'Кафе «Старый музей»', text: 'Кафе «Старый музей» принимает по записи.', own: true },
+    { title: 'Музей «Старая пивоварня»', text: '«Старая пивоварня» принимает по записи.', own: true },
+    { title: 'Музей «Старая пивоварня»', text: 'Музей «Старая   пивоварня» принимает по записи.', own: true },
+    { title: 'Музей «Старая пивоварня»', text: 'Ресторан «Старая пивоварня» принимает по записи.', own: false },
+    { title: 'Музей «Старая пивоварня»', text: 'Музей «Новая пивоварня» принимает по записи.', own: false },
+    { title: 'Полесск', text: 'Музей «Старая пивоварня» принимает по записи.', own: false },
+    { title: 'Кафе «Башня»', text: 'В музее «Старая пивоварня» кафе принимает по записи.', own: true },
+    { title: 'Музей «Старая пивоварня»', text: 'В музее «Старая пивоварня» кафе принимает по записи.', own: false },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('attaches quoted-label nouns to their head ($title, $mode): $text', ({ title, text, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
+    { title: 'Музей «Бланкенштайн»', text: 'Музей и кафе принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Кафе и музей принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'По записи принимают музей и кафе.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'По записи принимают кафе и музей.', own: true },
+    { title: 'Музей «Старая пивоварня»', text: 'Музей «Старая пивоварня» и кафе принимают по записи.', own: true },
+    { title: 'Музей «Старая пивоварня»', text: 'Кафе и музей «Старая пивоварня» принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей и кафе и ресторан принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей, кафе и ресторан принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Кафе и ресторан принимают по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея и кафе принимают по записи.', own: false },
+    { title: 'Кафе музея', text: 'Кафе музея и ресторан принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей работает ежедневно и кафе принимает по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'Кафе работает ежедневно и музей принимает по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей работает ежедневно, кафе и ресторан принимают по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'В музее кафе и ресторан принимают по записи.', own: false },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('retains coordinated booking subjects ($title, $mode): $text', ({ title, text, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
     ...[', а', ', но'].flatMap((boundary) => [
       { text: `Пивоварня работает ежедневно${boundary} экскурсии по записи.`, subject: 'Пивоварня «Бланкенштайн»', context: 'Полесск' },
       { text: `Музей, построенный в 1904 году, работает ежедневно${boundary} экскурсии по записи.`, subject: 'Музей «Бланкенштайн»', context: 'Полесск' },

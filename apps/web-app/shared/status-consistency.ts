@@ -84,6 +84,9 @@ type ClosureKind = 'definite' | 'other' | 'ambiguous'
 interface AppointmentSubject {
   kind: ClosureKind
   complement: boolean
+  index?: number
+  end?: number
+  coordinated?: boolean
 }
 
 function normalizeName(value: string) {
@@ -203,10 +206,18 @@ function followsAppointmentHead(normalized: string, previous: { end: number, com
 }
 
 /** The same bounded noun roles determine title heads and text attribution. */
-function appointmentNouns(normalized: string) {
+function appointmentNouns(text: string) {
+  const normalized = normalizeName(text)
+  let nounText = normalized
+  // Mask labels after normalization so every remaining noun keeps its offset.
+  for (const match of text.matchAll(/«[^»\n]{1,80}»/gu)) {
+    const start = normalizeName(text.slice(0, match.index)).length
+    const end = normalizeName(text.slice(0, match.index + match[0].length)).length
+    nounText = `${nounText.slice(0, start)}${'·'.repeat(end - start)}${nounText.slice(end)}`
+  }
   const subjects: Array<{ index: number, end: number, pattern: RegExp, complement: boolean }> = []
   for (const pattern of APPOINTMENT_SUBJECTS) {
-    for (const match of normalized.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
+    for (const match of nounText.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
       subjects.push({
         index: match.index,
         end: match.index + match[0].length,
@@ -234,11 +245,11 @@ function appointmentSubject(text: string, title: string | null | undefined): App
   }
   const normalized = normalizeName(text)
   // A type in a possessive complement or quoted label is not the title's head.
-  const titleHeads = appointmentNouns(normalizeName((title ?? '').replace(/«[^»\n]{1,80}»/gu, ' ')))
+  const titleHeads = appointmentNouns(title ?? '')
     .filter((subject) => !subject.complement)
     .map((subject) => subject.pattern)
   const subjects: Array<AppointmentSubject & { index: number, end: number }> = title
-    ? appointmentNouns(normalized).map(({ index, end, pattern, complement }) => ({
+    ? appointmentNouns(text).map(({ index, end, pattern, complement }) => ({
         index, end, complement, kind: titleHeads.includes(pattern) ? 'definite' : 'other',
       }))
     : []
@@ -256,6 +267,7 @@ function appointmentSubject(text: string, title: string | null | undefined): App
   for (const match of text.matchAll(/«([^»\n]{1,80})»/gu)) {
     const before = text.slice(0, match.index)
     const index = normalizeName(before).length
+    const end = normalizeName(text.slice(0, match.index + match[0].length)).length
     const precedingSubject = subjects.filter((subject) => subject.index <= index).sort((a, b) => b.index - a.index)[0]
     const own = quoteIsPageTitle(match[1] ?? '', title)
       || appointmentPageIndex(normalizeName(before).slice(precedingSubject?.index ?? 0), title) >= 0
@@ -267,12 +279,54 @@ function appointmentSubject(text: string, title: string | null | undefined): App
       if (precedingSubject.kind !== 'other') {
         precedingSubject.kind = kind
       }
+      precedingSubject.end = Math.max(precedingSubject.end, end)
     } else {
-      subjects.push({ index, end: index + normalizeName(match[1] ?? '').length, kind, complement: APPOINTMENT_PREPOSITION.test(normalizeName(before)) })
+      subjects.push({ index, end, kind, complement: APPOINTMENT_PREPOSITION.test(normalizeName(before)) })
     }
   }
-  return subjects.sort((a, b) => Number(a.complement) - Number(b.complement)
-    || (a.complement ? a.index - b.index : b.index - a.index))[0] ?? null
+  const heads: Array<AppointmentSubject & { index: number, end: number }> = []
+  for (const subject of subjects.sort((a, b) => a.index - b.index)) {
+    const previous = heads.at(-1)
+    if (subject.complement) {
+      // Complements extend a noun phrase; they never become group members.
+      if (previous && subject.index >= previous.end) {
+        const gap = normalized.slice(previous.end, subject.index)
+        if (!gap.trim() || APPOINTMENT_PREPOSITION.exec(gap)?.index === 0) {
+          previous.end = Math.max(previous.end, subject.end)
+        }
+      }
+    } else if (previous?.index === subject.index) {
+      previous.end = Math.max(previous.end, subject.end)
+    } else {
+      heads.push({ ...subject })
+    }
+  }
+  const last = heads.at(-1)
+  if (!last) {
+    return subjects[0] ?? null
+  }
+  const group = [last]
+  let coordinated = false
+  for (let index = heads.length - 2; index >= 0; index -= 1) {
+    const head = heads[index]!
+    const gap = normalized.slice(head.end, group[0]!.index)
+    if (!/^\s*(?:и|,)\s*$/iu.test(gap)) {
+      break
+    }
+    coordinated ||= /^\s*и\s*$/iu.test(gap)
+    group.unshift(head)
+  }
+  if (!coordinated) {
+    return last
+  }
+  return {
+    ...last,
+    index: group[0]!.index,
+    coordinated,
+    kind: group.some((head) => head.kind === 'definite')
+      ? 'definite'
+      : group.some((head) => head.kind === 'ambiguous') ? 'ambiguous' : 'other',
+  }
 }
 
 /** Clause punctuation inside a quoted name does not introduce another subject. */
@@ -314,9 +368,24 @@ function ownAppointment(sentence: string, question: string, title: string | null
     const boundary = scopeBoundary(sentence, index)
     const start = boundary.start
     const parts = appointmentFragments(sentence.slice(start, index))
-    const before = parts.at(-1)?.text ?? ''
+    let before = parts.at(-1)?.text ?? ''
+    let beforeSubject = appointmentSubject(before, title)
+    // A comma list may prefix an explicit coordinated group with noun-only
+    // fragments. A preceding predicate or location cannot join that group.
+    if (beforeSubject?.coordinated && beforeSubject.index === 0) {
+      for (let previous = parts.length - 2; previous >= 0; previous -= 1) {
+        const part = parts[previous]!
+        const member = appointmentSubject(part.text, title)
+        if (part.separator !== ',' || !member || member.complement
+          || member.index !== 0 || member.end !== normalizeName(part.text).length) {
+          break
+        }
+        before = `${part.text}, ${before}`
+        beforeSubject = appointmentSubject(before, title)
+      }
+    }
     const after = appointmentFragments(sentence.slice(index + match[0].length))[0]?.text ?? ''
-    const candidates = [appointmentSubject(before, title), appointmentSubject(after, title)]
+    const candidates = [beforeSubject, appointmentSubject(after, title)]
       .filter((subject) => subject != null)
     let context = appointmentPreviousContext(parts, title)
     let parent = boundary
