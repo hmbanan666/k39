@@ -1,8 +1,11 @@
 import type { ContentTx, VenueWrite } from '@k39/database'
 import type { ScheduleRecord } from '../../../shared/schedule'
+import type { VenuePriceWarning } from './price-feedback'
 import { db } from '@k39/database'
+import { priceFreshCutoff } from '@k39/types/freshness'
 import { createError } from 'h3'
 import { z } from 'zod'
+import { resolveMenuPrice } from '../../../shared/price-compare'
 import { venueModulesSchema } from '../../../shared/venue-modules'
 import { contentScope } from '../access'
 import { contentGate, savePendingDraftContent, syncSavedPage, updateVenueContent } from '../content/save'
@@ -14,7 +17,9 @@ import { onlyNoticesStaged, stagedForApply, toNoticeWrite } from '../notices/wri
 import { practicalTarget } from '../practical/target'
 import { loadSchedule, saveSchedule } from '../schedule'
 import { normalizeDishModules } from './dishes'
+import { projectMenuPrices } from './menu-prices'
 import { recomputeTownPriceBands } from './price-band'
+import { venuePriceWarnings } from './price-feedback'
 import { venuePricesWriteSchema } from './prices'
 import { venueFields } from './schema'
 
@@ -56,12 +61,12 @@ export async function pendingVenueWrite(fields: StagedFields, tx?: ContentTx): P
   return { ...rest, ...(regionSlug === undefined ? {} : { regionId }) }
 }
 
-async function stage(id: string, prepare: (venue: Venue, tx: ContentTx) => Promise<Partial<VenuePendingPayload>>) {
+async function stage(id: string, prepare: (venue: Venue, tx: ContentTx, base: VenuePendingPayload) => Promise<Partial<VenuePendingPayload>>) {
   return db.venues.withLocked(id, async (tx, venue) => {
     liveVenue(venue)
     const previous = await db.editor.contentDraft('venue', id, tx)
     const base = (previous?.payload ?? {}) as VenuePendingPayload
-    const patch = await prepare(venue, tx)
+    const patch = await prepare(venue, tx, base)
     const now = new Date().toISOString()
     const fields = { ...base.fields, ...patch.fields }
     const payload: VenuePendingPayload = {
@@ -118,12 +123,31 @@ export function stageVenueSchedule(id: string, schedule: ScheduleRecord | null) 
   return stage(id, async () => ({ schedule }))
 }
 
-export function stageVenuePrices(id: string, input: unknown) {
-  return stage(id, async (_venue, tx) => {
+export async function stageVenuePrices(id: string, input: unknown) {
+  let warnings: VenuePriceWarning[] = []
+  const result = await stage(id, async (venue, tx, base) => {
     const parsed = venuePricesWriteSchema.parse(input)
     const prices = (await db.prices.prepareInput(parsed, tx)).map(({ itemId: _itemId, ...row }) => row)
+    const effective = { ...venue, ...base.fields }
+    const catalog = new Map((await db.prices.items(tx)).map((item) => [item.slug, item]))
+    const cutoff = priceFreshCutoff()
+    const shown = prices.flatMap((row) => {
+      const item = catalog.get(row.item)!
+      // Applying this proposal creates new facts; current live facts are not its overlay.
+      const resolved = resolveMenuPrice({ ...row, venueId: id, title: item.title, category: item.category, image: item.image }, null, cutoff, effective)
+      return resolved?.comparable ? [resolved.row] : []
+    })
+    warnings = venuePriceWarnings(effective, shown, true)
     return { prices }
   })
+  return { ...result, warnings }
+}
+
+/** The same fresh columns and fact overlay used by the public venue reader. */
+async function storedPriceWarnings(venue: Venue) {
+  const fresh = await db.prices.freshForVenue(venue.id)
+  const projected = await projectMenuPrices(fresh.map((row) => ({ ...row, venueId: venue.id })))
+  return venuePriceWarnings(venue, projected.filter((row) => row.comparable).map((row) => row.row))
 }
 
 /** The opening schedule tool; owner and admin weekly-table writers stay separate. */
@@ -174,19 +198,20 @@ export async function writeVenuePrices(id: string, input: unknown) {
     const prices = (await db.prices.prepareInput(venuePricesWriteSchema.parse(input), tx)).map(({ itemId: _itemId, ...row }) => row)
     const changed = (await venueChangedFields(current, { prices }, tx)).includes('prices')
     if (!changed) {
-      return { venueId: id, prices: await db.prices.forVenue(id, tx), unchanged: true, pendingReview: false, ownerConflicts: [] as string[], regionId: current.regionId }
+      return { venueId: id, prices: await db.prices.forVenue(id, tx), unchanged: true, pendingReview: false, ownerConflicts: [] as string[], regionId: current.regionId, venue: current }
     }
     const pending = await db.editor.contentDraft('venue', id, tx)
     const saved = await setVenuePrices(id, prices, 'mcp', current.status, tx)
     const draftDropped = contentScope() === 'editor' && pending && saved.conflicts.length === 0
       ? await db.editor.deleteContentDraftIfUnchanged(pending.id, pending.updatedAt, tx)
       : false
-    return { venueId: id, prices: saved.prices, pendingReview: false, ownerConflicts: saved.conflicts, draftDropped, regionId: current.regionId }
+    return { venueId: id, prices: saved.prices, pendingReview: false, ownerConflicts: saved.conflicts, draftDropped, regionId: current.regionId, venue: current }
   })
   if (!('unchanged' in result)) {
     await recomputeTownPriceBands(result.regionId)
   }
-  return result
+  const { venue: savedVenue, ...response } = result
+  return { ...response, warnings: await storedPriceWarnings(savedVenue) }
 }
 
 function equal(a: unknown, b: unknown) {
@@ -311,5 +336,6 @@ export async function applyPendingVenue(id: string, expected?: Pick<Draft, 'id' 
     }
   }
   const { pricesChanged: _pricesChanged, regionId: _regionId, previousRegionId: _previousRegionId, ...response } = result
-  return response
+  const current = result.pricesChanged ? await db.venues.byId(id) : null
+  return { ...response, warnings: current ? await storedPriceWarnings(current) : [] as VenuePriceWarning[] }
 }

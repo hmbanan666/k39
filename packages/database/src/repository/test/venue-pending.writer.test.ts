@@ -1,7 +1,9 @@
 import type { VenuePendingPayload } from '../../../../../apps/web-app/server/utils/venues/pending'
-import { eq, inArray } from 'drizzle-orm'
+import type { VenueModule } from '../../../../../apps/web-app/shared/venue-modules'
+import { and, eq, inArray } from 'drizzle-orm'
 import { createError } from 'h3'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import pricesSet from '../../../../../apps/web-app/server/mcp/tools/venue-prices-set'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
 import { decideVenueDraft, venueDraftNotice } from '../../../../../apps/web-app/server/utils/admin/venue-draft'
 import { saveOwnerVenue } from '../../../../../apps/web-app/server/utils/cabinet/flow'
@@ -16,6 +18,7 @@ import { projectMenuPrices } from '../../../../../apps/web-app/server/utils/venu
 import { applyPendingVenue, venuePendingReview, writeVenueOpeningSchedule, writeVenuePrices } from '../../../../../apps/web-app/server/utils/venues/pending'
 import { updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
 import { scheduleRulesSchema } from '../../../../../apps/web-app/shared/schedule'
+import { toPublicVenueModules } from '../../../../../apps/web-app/shared/venue-modules'
 import { useDatabase } from '../../database'
 import { contentDrafts, facts, mcpAudits, priceItems, revisions, schedules, users, venueAudits, venueMembers, venues, verificationQueue } from '../../tables'
 import { Editor } from '../content'
@@ -77,6 +80,127 @@ async function pending(id: string) {
 }
 
 describe('pending venue drafts (ADR 0047)', () => {
+  it.each(['editor', 'draft'] as const)('warns about usable official prices without a prices module in %s scope', async (scope) => {
+    const row = await venue()
+    const before = await Venues.byId(row.id)
+    const pricesBefore = await Prices.forVenue(row.id)
+    enterContentScope(scope)
+    const result = await writeVenuePrices(row.id, prices)
+    expect(result).toMatchObject({
+      pendingReview: scope === 'draft',
+      warnings: [{ code: 'prices_hidden_missing_module', message: expect.stringContaining('Ориентиры цен') }],
+    })
+    expect((await Venues.byId(row.id))?.modules).toEqual(before?.modules)
+    expect(await Prices.forVenue(row.id)).toEqual(pricesBefore)
+  })
+
+  const curated: VenueModule[] = [
+    { type: 'text', variant: 'plain', text: 'Зал на первом этаже.' },
+    { type: 'prices', title: 'Кофе из меню' },
+    { type: 'tips', items: ['Вход со двора.'] },
+  ]
+
+  it.each(['editor', 'draft'] as const)('keeps a custom prices title and stored order without warning in %s scope', async (scope) => {
+    const row = await venue()
+    await Venues.update(row.id, { modules: curated })
+    enterContentScope(scope)
+    const result = await writeVenuePrices(row.id, [{ ...prices[0]!, priceRub: 270 }])
+    expect(result.warnings).toEqual([])
+    expect((await Venues.byId(row.id))?.modules).toEqual(curated)
+  })
+
+  it.each(['editor', 'draft'] as const)('does not warn for empty, stale, ineligible or owner rows in %s scope', async (scope) => {
+    const row = await venue()
+    enterContentScope(scope)
+    for (const input of [
+      [],
+      [{ ...prices[0]!, checkedAt: '2000-01-01' }],
+      [{ ...prices[0]!, sourceUrl: 'https://vk.com/wall-123_456' }],
+      [{ ...prices[0]!, sourceKind: 'owner' as const, sourceUrl: null }],
+    ]) {
+      const result = await writeVenuePrices(row.id, input)
+      expect(result.warnings, JSON.stringify(input)).toEqual([])
+      expect((await Venues.byId(row.id))?.modules).toEqual([])
+    }
+  })
+
+  it('keeps map-source refusal and pending application guards instead of treating maps as usable prices', async () => {
+    const row = await venue()
+    const mapPrices = [{ ...prices[0]!, sourceUrl: 'https://yandex.ru/maps/org/cafe/123' }]
+    const before = await Prices.forVenue(row.id)
+    await expect(writeVenuePrices(row.id, mapPrices)).rejects.toMatchObject({ statusCode: 400 })
+    expect(await Prices.forVenue(row.id)).toEqual(before)
+    enterContentScope('draft')
+    const staged = await writeVenuePrices(row.id, mapPrices)
+    expect(staged.warnings).toEqual([])
+    const draft = await pending(row.id)
+    enterContentScope('editor')
+    await expect(applyPendingVenue(row.id)).rejects.toMatchObject({ statusCode: 400 })
+    expect(await pending(row.id)).toEqual(draft)
+    expect(await Prices.forVenue(row.id)).toEqual(before)
+  })
+
+  it('returns visibility feedback on a draft venue without publishing or staging it', async () => {
+    const row = await venue('draft')
+    enterContentScope('draft')
+    const result = await writeVenuePrices(row.id, [{ ...prices[0]!, priceRub: 270 }])
+    expect(result).toMatchObject({ pendingReview: false, warnings: [{ code: 'prices_hidden_missing_module' }] })
+    expect((await Venues.byId(row.id))?.status).toBe('draft')
+    expect(await Editor.contentDraft('venue', row.id)).toBeNull()
+  })
+
+  it.each([true, false])('evaluates pending modules, then admin application (add=%s)', async (add) => {
+    const row = await venue()
+    const liveModules = add ? [] : curated
+    const pendingModules = add ? curated : []
+    await Venues.update(row.id, { modules: liveModules })
+    const pricesBefore = await Prices.forVenue(row.id)
+    enterContentScope('draft')
+    await updateVenue({ id: row.id, modules: pendingModules })
+    const staged = await writeVenuePrices(row.id, [{ ...prices[0]!, priceRub: 270 }])
+    expect(staged.warnings).toHaveLength(add ? 0 : 1)
+    if (!add) {
+      expect(staged.warnings[0]?.message).toContain('После применения черновика')
+    }
+    expect((await Venues.byId(row.id))?.modules).toEqual(liveModules)
+    expect(await Prices.forVenue(row.id)).toEqual(pricesBefore)
+    const draft = await pending(row.id)
+    expect(draft.payload.fields).toMatchObject({ modules: pendingModules })
+    await expect(applyPendingVenue(row.id)).rejects.toMatchObject({ statusCode: 403 })
+    enterContentScope('editor')
+    const applied = await decideVenueDraft(row.id, 'apply', draft.updatedAt)
+    expect(applied).toMatchObject({ warnings: add ? [] : [{ code: 'prices_hidden_missing_module' }] })
+    expect((await Venues.byId(row.id))?.modules).toEqual(pendingModules)
+    expect((await Prices.forVenue(row.id))[0]?.priceRub).toBe(270)
+  })
+
+  it('uses the public fact overlay for unchanged saves rather than warning about a hidden gap', async () => {
+    const row = await venue()
+    await useDatabase().update(facts).set({ confidence: 'gap' }).where(and(eq(facts.subjectId, row.id), eq(facts.kind, 'price')))
+    const result = await writeVenuePrices(row.id, prices)
+    expect(result).toMatchObject({ unchanged: true, warnings: [] })
+  })
+
+  it('does not warn about an official proposal discarded by an owner conflict', async () => {
+    const row = await venue()
+    const userId = await owner(row.id)
+    await saveOwnerVenue(userId, row.id, { prices: [{ ...prices[0]!, priceRub: 290 }] })
+    enterContentScope('editor')
+    const result = await writeVenuePrices(row.id, [{ ...prices[0]!, priceRub: 270 }])
+    expect(result).toMatchObject({ warnings: [] })
+    expect('ownerConflicts' in result && result.ownerConflicts.length).toBeGreaterThan(0)
+    expect(await Prices.forVenue(row.id)).toMatchObject([{ priceRub: 290, sourceKind: 'owner' }])
+    expect((await Venues.byId(row.id))?.modules).toEqual([])
+  })
+
+  it('exposes the shared writer warning through the actual MCP handler', async () => {
+    const row = await venue()
+    const result = await pricesSet.handler({ venueId: row.id, slug: undefined, prices }, {} as Parameters<typeof pricesSet.handler>[1])
+    expect(result).toMatchObject({ warnings: [{ code: 'prices_hidden_missing_module' }] })
+    expect(toPublicVenueModules((await Venues.byId(row.id))?.modules, (text) => text)).toBeNull()
+    expect(await useDatabase().select().from(mcpAudits).where(eq(mcpAudits.entityId, row.id))).toHaveLength(1)
+  })
+
   it('keeps an allowed menu document comparable after the price fact is written', async () => {
     const row = await venue()
     await setVenuePrices(row.id, [{ ...prices[0]!, sourceUrl: 'https://drive.google.com/file/d/menu/view' }], 'editor', row.status)
