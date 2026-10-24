@@ -45,6 +45,21 @@ describe('status consistency', () => {
   })
 
   it.each([
+    { text: 'В музее кафе принимает по записи.', subject: 'Кафе «Башня»', context: 'Музей «Бланкенштайн»' },
+    { text: 'В кафе музей принимает по записи.', subject: 'Музей «Бланкенштайн»', context: 'Кафе «Башня»' },
+    { text: 'Ресторан музея принимает по записи.', subject: 'Ресторан «Окно»', context: 'Музей «Бланкенштайн»' },
+    { text: 'Кирха рядом с музеем доступна по записи.', subject: 'Кирха', context: null },
+  ].flatMap(({ text, subject, context }) => [
+    { text, title: subject, own: true }, ...(context ? [{ text, title: context, own: false }] : []),
+  ]).flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('distinguishes locative context from a possessive head ($title, $mode): $text', ({ text, title, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
     { title: 'Кирха', text: 'Кирха рядом с музеем доступна по записи.', own: true },
     { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея принимает по записи.', own: false },
   ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('keeps noun complements from replacing the subject ($mode): $text', ({ title, text, own, mode }) => {

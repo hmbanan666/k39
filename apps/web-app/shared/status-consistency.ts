@@ -29,7 +29,6 @@ const APPOINTMENT_SUBJECTS = [
 // still provide FAQ/location context when no clause subject is named.
 const APPOINTMENT_HEAD = /^(?:рестораны?|кафе|бары?|магазины?|выставк[аи]|экспозици[яи]|музей|музеи|пивоварн[яи]|конн(?:ый|ые)\s+заводы?)$/iu
 const APPOINTMENT_PREPOSITION = /(?:^|[^\p{L}])(?:[вуск]|во|на|при|около|возле|со|ко|из|от|для|без|над|под|перед|между|после|до|внутри)(?:\s+[\p{L}-]+(?:ым|им|ой|ей|ого|его|ому|ему|ом|ем|ую|юю|ых|их)){0,2}\s*$/iu
-const APPOINTMENT_NOUN_END = new RegExp(`(?:${APPOINTMENT_SUBJECTS.map((pattern) => pattern.source).join('|')})\\s*$`, 'iu')
 
 export const STATUS_SUBJECT_WARNING = 'closure may refer to another subject'
 
@@ -188,25 +187,41 @@ function appointmentSubject(text: string, title: string | null | undefined): Clo
     return 'other'
   }
   const normalized = normalizeName(text)
-  const subjects: Array<{ index: number, kind: ClosureKind, complement: boolean }> = []
-  const complementAt = (index: number) => {
-    const before = normalized.slice(0, index)
-    return APPOINTMENT_PREPOSITION.test(before) || APPOINTMENT_NOUN_END.test(before)
-  }
+  const subjects: Array<{ index: number, end: number, kind: ClosureKind, complement: boolean }> = []
+  const complementAt = (index: number) => APPOINTMENT_PREPOSITION.test(normalized.slice(0, index))
+  const followsHead = (previous: { end: number, complement: boolean } | undefined, index: number) =>
+    Boolean(previous && !previous.complement && previous.end <= index && !normalized.slice(previous.end, index).trim())
   for (const pattern of APPOINTMENT_SUBJECTS) {
     for (const match of normalized.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
       if (title) {
         subjects.push({
           index: match.index,
+          end: match.index + match[0].length,
           kind: pattern.test(normalizeName(title)) ? 'definite' : 'other',
           complement: !APPOINTMENT_HEAD.test(match[0]) || complementAt(match.index),
         })
       }
     }
   }
+  // Only a subject/head can own an adjacent noun. A locative such as
+  // «в музее» cannot turn the following «кафе» into its complement.
+  subjects.sort((a, b) => a.index - b.index)
+  for (let index = 1; index < subjects.length; index += 1) {
+    const subject = subjects[index]!
+    if (followsHead(subjects[index - 1], subject.index)) {
+      subject.complement = true
+    }
+  }
   const pageIndex = appointmentPageIndex(normalized, title)
   if (pageIndex >= 0) {
-    subjects.push({ index: pageIndex, kind: 'definite', complement: complementAt(pageIndex) })
+    const namedNoun = subjects.find((subject) => subject.index === pageIndex)
+    const previousNoun = subjects.filter((subject) => subject.end <= pageIndex).at(-1)
+    subjects.push({
+      index: pageIndex,
+      end: pageIndex + normalizeName(title ?? '').length,
+      kind: 'definite',
+      complement: namedNoun ? namedNoun.complement : complementAt(pageIndex) || followsHead(previousNoun, pageIndex),
+    })
   }
   for (const match of text.matchAll(/«([^»\n]{1,80})»/gu)) {
     const before = text.slice(0, match.index)
@@ -220,7 +235,7 @@ function appointmentSubject(text: string, title: string | null | undefined): Clo
       // it cannot promote that complement over the clause's subject.
       precedingSubject.kind = kind
     } else {
-      subjects.push({ index, kind, complement: APPOINTMENT_PREPOSITION.test(normalizeName(before)) })
+      subjects.push({ index, end: index + normalizeName(match[1] ?? '').length, kind, complement: APPOINTMENT_PREPOSITION.test(normalizeName(before)) })
     }
   }
   return subjects.sort((a, b) => Number(a.complement) - Number(b.complement)
