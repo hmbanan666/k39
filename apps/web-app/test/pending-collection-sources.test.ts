@@ -72,3 +72,61 @@ it('keeps the canonical error for an explicitly supplied invalid list', async ()
   })
   expect(store).not.toHaveBeenCalled()
 })
+
+const malformedSources = [
+  {}, false, 0, '', 'sources', { length: 0 },
+  [null], [false], [0], [[]], [{}],
+  [{ title: 1, url: 'https://example.com' }],
+  [{ title: false, url: 'https://example.com' }],
+  [{ title: null, url: 'https://example.com' }],
+  [{ title: {}, url: 'https://example.com' }],
+  [{ title: 'Источник', url: 1 }],
+  [{ title: 'Источник', url: false }],
+  [{ title: 'Источник', url: null }],
+  [{ title: 'Источник', url: {} }],
+]
+
+it.each(malformedSources.map((rows) => [rows]))('refuses malformed pending sources %j before any write', async (rows) => {
+  const pending = { payload: { sources: rows, body: 'Старая правка.' } }
+  const before = structuredClone(pending)
+  draft.mockResolvedValue(pending)
+  await expect(saveCollectionDraft({ id: 'fixture', body: 'Правка текста.' })).rejects.toMatchObject({
+    statusCode: 400,
+    statusMessage: expect.stringMatching(/ожидающего черновика.*sources/u),
+  })
+  expect(pending).toEqual(before)
+  expect(store).not.toHaveBeenCalled()
+  expect(audit).not.toHaveBeenCalled()
+})
+
+it.each(malformedSources.map((rows) => [rows]))('refuses malformed live sources %j before any write', async (rows) => {
+  const live = { ...(await list())[0], sources: rows }
+  const before = structuredClone(live)
+  list.mockResolvedValue([live])
+  await expect(saveCollectionDraft({ id: 'fixture', body: 'Правка текста.' })).rejects.toMatchObject({
+    statusCode: 400,
+    statusMessage: expect.stringMatching(/опубликованной версии.*sources/u),
+  })
+  expect(live).toEqual(before)
+  expect(store).not.toHaveBeenCalled()
+  expect(audit).not.toHaveBeenCalled()
+})
+
+it.each([null, []].map((rows) => [rows]))('keeps inherited null/empty sources %j as an empty list', async (rows) => {
+  draft.mockResolvedValue({ payload: { sources: rows } })
+  await saveCollectionDraft({ id: 'fixture' })
+  expect(store.mock.calls[0]?.[0].payload.sources).toEqual([])
+})
+
+it('uses live sources when pending sources are omitted and allows explicit repair of malformed JSON', async () => {
+  const corrected = sources(1)
+  list.mockResolvedValue([{ ...(await list())[0], sources: corrected }])
+  draft.mockResolvedValue({ payload: { body: 'Старая правка.' } })
+  await saveCollectionDraft({ id: 'fixture' })
+  expect(store.mock.calls[0]?.[0].payload.sources).toEqual(corrected)
+  draft.mockResolvedValue({ payload: { sources: {} } })
+  await saveCollectionDraft({ id: 'fixture', sources: corrected })
+  expect(store.mock.calls[1]?.[0].payload.sources).toEqual(corrected)
+  await saveCollectionDraft({ id: 'fixture', sources: [] })
+  expect(store.mock.calls[2]?.[0].payload.sources).toEqual([])
+})

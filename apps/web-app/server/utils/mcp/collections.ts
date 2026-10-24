@@ -1,5 +1,5 @@
 import type { Collection, StoredPageModule } from '@k39/database'
-import { db, prepareSourceLinks, SourceInputError } from '@k39/database'
+import { db } from '@k39/database'
 import { createError } from 'h3'
 import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../shared/page-modules'
 import { slugError } from '../../../shared/seo'
@@ -11,6 +11,7 @@ import { rethrowContentWrite } from './content-error'
 import { resolvePublication } from './draft'
 import { isPublicationOnly, mergedField, mergedPresent, pendingDraftFields, pendingPublication } from './pending'
 import { describedStops, orderedStopView } from './routes'
+import { sources } from './schemas'
 
 type CollectionStop = Parameters<typeof orderedStopView>[0][number]
 
@@ -94,18 +95,21 @@ function collectionMonth(kind: string, input: CollectionWriteInput, base: Record
 
 /** Validate the effective list, including old rows that predate the source cap. */
 function pendingCollectionSources(input: CollectionWriteInput, base: Record<string, unknown>, current: Collection) {
-  const rows = mergedField(input.sources, base, 'sources', current.sources ?? [])
-  try {
-    return prepareSourceLinks(rows) ?? []
-  } catch (error) {
-    if (!(error instanceof SourceInputError)) {
-      throw error
-    }
-    const inherited = input.sources === undefined
-      ? `Унаследовано ${rows.length} строк источников из ${Object.hasOwn(base, 'sources') ? 'ожидающего черновика' : 'опубликованной версии'}. `
-      : ''
-    throw createError({ statusCode: 400, statusMessage: `${inherited}${error.message}${inherited ? '. Передайте исправленный список sources.' : ''}` })
+  const rows = mergedField<unknown>(input.sources, base, 'sources', current.sources)
+  const parsed = sources.safeParse(rows ?? [])
+  if (parsed.success) {
+    return parsed.data ?? []
   }
+  const issue = parsed.error.issues[0]!
+  const message = issue.code === 'invalid_type'
+    ? typeof issue.path[0] === 'number'
+      ? `Источник ${issue.path[0] + 1}: подпись и ссылка должны быть строками`
+      : 'Источники: нужен список'
+    : issue.message
+  const inherited = input.sources === undefined
+    ? `${Array.isArray(rows) ? `Унаследовано ${rows.length} строк источников` : 'Унаследованы источники'} из ${Object.hasOwn(base, 'sources') ? 'ожидающего черновика' : 'опубликованной версии'}. `
+    : ''
+  throw createError({ statusCode: 400, statusMessage: `${inherited}${message}${inherited ? '. Передайте исправленный список sources.' : ''}` })
 }
 
 export async function saveCollectionDraft(input: CollectionWriteInput, auditTool = 'collection_save', options?: { create?: boolean }) {
