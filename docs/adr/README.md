@@ -59,7 +59,7 @@ Proposed.
 | 0031 | [Personal cabinet and venue claims](0031-cabinet-venue-claims.md) | Accepted |
 | 0032 | [«Что заказать» is a showcase, not a menu](0032-dish-showcase.md) | Accepted |
 | 0033 | [Typed shared facts as the core data layer](0033-typed-shared-facts.md) | Accepted |
-| 0034 | [Earned length ceilings](0034-earned-length-ceilings.md) | Accepted |
+| 0034 | [Earned length ceilings](0034-earned-length-ceilings.md) | Accepted; writing advisory exception in ADR 0053 |
 | 0035 | [Draft content token](0035-draft-content-token.md) | Accepted |
 | 0036 | [Guest submissions](0036-guest-content.md) | Accepted |
 | 0037 | [Visitor map on MapLibre and OpenFreeMap](0037-visitor-map.md) | Accepted |
@@ -78,6 +78,7 @@ Proposed.
 | 0050 | [Admission extras and larger entry lists](0050-admission-extras.md) | Accepted; see implementation review in record |
 | 0051 | [Regions are named catalogue areas](0051-region-catalog-areas.md) | Accepted |
 | 0052 | [Appointment text is an editorial advisory](0052-appointment-text-advisories.md) | Accepted |
+| 0053 | [Ambiguous writing forms are editorial advisories](0053-writing-uncertainty-advisories.md) | Accepted |
 
 ## Redirects
 
