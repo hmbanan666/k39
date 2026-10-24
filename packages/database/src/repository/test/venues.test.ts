@@ -136,7 +136,7 @@ describe('venue policy', () => {
       lat: FORT.latitude,
       lon: FORT.longitude,
       tags: { amenity: 'cafe', name: 'Порто', phone: phones },
-    })?.phone).toBe(phones)
+    })?.phone).toBeNull()
     expect(osmElementToDraft({
       type: 'node',
       id: 43,
@@ -178,6 +178,17 @@ describe('venue policy', () => {
       kind: 'coffee',
     })
   })
+  it.each(['phone', 'contact:phone'])('does not turn the OSM %s tag into a reviewed phone', (tag) => {
+    const draft = osmElementToDraft({
+      type: 'node',
+      id: 299001,
+      lat: FORT.latitude,
+      lon: FORT.longitude,
+      tags: { amenity: 'cafe', name: 'Контакты из импорта', [tag]: '+7 000 111-22-33' },
+    })
+    expect(draft).not.toBeNull()
+    expect(draft?.phone).toBeNull()
+  })
 })
 
 describe('venue repository', () => {
@@ -203,6 +214,57 @@ describe('venue repository', () => {
     expect(row?.firstPublishedAt).toBeNull()
     expect(row?.osmId).toBe('way/7')
     await expect(Venues.update(row!.id, { status: 'published', description: 'Коротко' })).rejects.toBeInstanceOf(VenueInputError)
+  })
+
+  it('keeps a legacy import payload phone out of the draft and later publication', async () => {
+    const draft = osmElementToDraft({
+      type: 'node',
+      id: 299002,
+      lat: FORT.latitude,
+      lon: FORT.longitude,
+      tags: { 'amenity': 'cafe', 'name': 'Телефон ждёт проверки', 'contact:phone': '+7 000 111-22-33' },
+    })!
+    const imported = await Venues.importDrafts([{ ...draft, phone: '+7 000 111-22-33' }], null)
+    expect(imported.created).toHaveLength(1)
+    const id = imported.created[0]!
+    expect(await Venues.byId(id)).toMatchObject({
+      phone: null,
+      status: 'draft',
+      lastVerifiedAt: null,
+      osmId: draft.osmId,
+      latitude: draft.latitude,
+      longitude: draft.longitude,
+      sources: draft.sources,
+    })
+    await Venues.update(id, { description: description(), sources: [{ title: 'Сайт', url: 'https://cafe.example' }], status: 'published' })
+    expect((await Venues.byId(id))?.phone).toBeNull()
+    await Venues.update(id, { phone: '+7 000 111-22-33', sources: draft.sources })
+    expect((await Venues.byId(id))?.phone).toBe('+7 000 111-22-33')
+  })
+
+  it.each(['draft', 'published', 'closed', 'archived'] as const)('preserves reviewed contacts and coordinates when reimport skips an existing %s venue', async (status) => {
+    const draft = osmElementToDraft({
+      type: 'node',
+      id: 299003,
+      lat: FORT.latitude,
+      lon: FORT.longitude,
+      tags: { amenity: 'cafe', name: 'Повторный импорт', phone: '+7 000 111-22-33' },
+    })!
+    const row = await Venues.create({
+      name: draft.name,
+      kind: draft.kind,
+      osmId: draft.osmId,
+      phone: '+7 4012 12-34-56',
+      latitude: 54.7,
+      longitude: 20.5,
+      description: description(),
+      sources: [{ title: 'Сайт', url: 'https://cafe.example' }],
+      status,
+    })
+    const result = await Venues.importDrafts([{ ...draft, phone: '+7 000 111-22-33' }], null)
+    expect(result.created).toEqual([])
+    expect(result.existing).toEqual([row.id])
+    expect(await Venues.byId(row.id)).toEqual(row)
   })
 
   it('keeps three phone numbers that used to be cut at 40 characters', async () => {

@@ -2,7 +2,6 @@ import type { SourceLink } from './types/entities'
 import { ownWebsiteProblem } from '@k39/types/official-url'
 import { isSocialHost } from '@k39/types/social-hosts'
 import { HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG } from './hours-note'
-import { PHONE_TEXT_MAX } from './phone'
 
 export const FOOD_KINDS = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other'] as const
 
@@ -153,6 +152,7 @@ export interface OsmDraft {
   address: string | null
   town: string | null
   district: string | null
+  /** Mapped imports leave this null; importDrafts also ignores legacy values. */
   phone: string | null
   website: string | null
   contactEmail: string | null
@@ -660,7 +660,7 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
     address: address ? address.slice(0, 300) : null,
     town,
     district,
-    phone: (tags.phone || tags['contact:phone'] || '').trim().slice(0, PHONE_TEXT_MAX) || null,
+    phone: null,
     ...ownSiteAndSocials((tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null, osmSocials(tags)),
     contactEmail: osmEmail(tags.email || tags['contact:email']),
     menuUrl: osmUrl(tags['website:menu'] || tags['contact:menu'] || tags.menu),

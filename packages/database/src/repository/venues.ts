@@ -884,7 +884,8 @@ export class Venues {
           address: draft.address,
           latitude: draft.latitude,
           longitude: draft.longitude,
-          phone: draft.phone,
+          // Imported phone tags require explicit review before an editorial write.
+          phone: null,
           website: draft.website,
           contactEmail: draft.contactEmail,
           socials: draft.socials,
