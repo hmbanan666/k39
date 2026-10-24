@@ -1,5 +1,6 @@
 import type { PublicMedia } from './media'
 import type { PriceSummary, PublicPriceCard, SharedPriceSource, StoredPriceBand } from './price-compare'
+import type { RegionDisplay } from './region'
 import { priceInName, priceInNameMessage } from '@k39/database/price-label'
 import { priceFreshCutoff } from '@k39/types/freshness'
 import { createId } from '@paralleldrive/cuid2'
@@ -190,9 +191,11 @@ function venueBlockRank(type: string) {
 export interface VenueModuleView {
   now?: Date
   mediaById?: ReadonlyMap<string, PublicMedia>
-  /** «Сравниваем с другими заведениями Светлогорска». */
+  /** Computed catalogue-area comparison lead. */
   priceLead?: string
-  /** Town slug for the price chip («по Светлогорску»). */
+  /** Selected area display inputs, including custom names. */
+  region?: RegionDisplay | null
+  /** Legacy fallback for callers without region display inputs. */
   regionSlug?: string | null
   /** Stored comparison. The badge does not recompute this from the cards. */
   priceBand?: StoredPriceBand | null
@@ -205,6 +208,7 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
     return null
   }
   let howToGetHtml: string | null = null
+  const priceRegion = view.region === undefined ? view.regionSlug : view.region
   const blocks: PublicVenueModule[] = []
   const used = new Map<string, number>()
   const idFor = (type: VenueModule['type']) => {
@@ -250,8 +254,8 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
             id: idFor('prices'),
             title: heading,
             items: prices,
-            lead: view.priceLead || priceCompareLead(null),
-            summary: priceBadgeFromBand(view.priceBand, view.regionSlug),
+            lead: view.priceLead || priceCompareLead(priceRegion),
+            summary: priceBadgeFromBand(view.priceBand, priceRegion),
             source: sharedPriceSource(prices),
           })
         }

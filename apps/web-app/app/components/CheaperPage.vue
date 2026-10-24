@@ -9,7 +9,7 @@
     <nav
       v-if="page.cities.length"
       class="towns"
-      aria-label="Города"
+      aria-label="Территории"
     >
       <a
         v-for="city in page.cities"
@@ -51,7 +51,7 @@
       v-else-if="!page.cities.length"
       class="empty"
     >
-      Пока ни в одном городе нет трёх сопоставимых цен из официального меню.
+      Пока ни на одной территории нет трёх сопоставимых цен из официального меню.
     </p>
   </article>
 </template>

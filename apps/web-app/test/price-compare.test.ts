@@ -68,34 +68,44 @@ function compare(priceRub: number, peers: ReturnType<typeof peer>[], variant = '
     priceRub,
     variant,
     regionId: REGION,
-    place: 'Светлогорска',
-    where: 'в Светлогорске',
-    by: 'Светлогорску',
+    place: 'Светлогорска и окрестностей',
+    where: 'в Светлогорске и окрестностях',
+    by: 'Светлогорску и окрестностям',
     peers,
   })
 }
 
 describe('price comparison', () => {
+  it('keeps a known area slug custom display name in grammatical cases and aggregate accessibility copy', () => {
+    const region = { slug: 'zelenogradsk', title: 'Историческое название', shortTitle: 'Побережье' }
+    expect(ofTown(region)).toBe('территории «Побережье»')
+    expect(byTown(region)).toBe('территории «Побережье»')
+    expect(inPlace(region)).toBe('на территории «Побережье»')
+    expect(priceCompareLead(region)).toBe('Сравниваем с другими заведениями территории «Побережье»')
+    expect(priceBlockSummary(['cheap', 'cheap', 'medium'], region)).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по территории «Побережье»' })
+    expect(priceBadgeFromBand('high', region)).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по территории «Побережье»' })
+  })
+
   it('names the only price, a two-venue range, and a rank from three venues', () => {
     expect(compare(220, [])).toMatchObject({
       band: null,
       position: null,
       line: 'Пока единственная цена',
       scaleLabel: '',
-      town: { medianRub: 220, minRub: 220, maxRub: 220, places: 1, where: 'В Светлогорске' },
+      town: { medianRub: 220, minRub: 220, maxRub: 220, places: 1, where: 'В Светлогорске и окрестностях' },
     })
     expect(compare(220, [peer('a', 180)])).toMatchObject({
       band: null,
       position: null,
       line: 'Пока мало данных для сравнения',
       scaleLabel: '',
-      town: { medianRub: 200, minRub: 180, maxRub: 220, places: 2, where: 'В Светлогорске' },
+      town: { medianRub: 200, minRub: 180, maxRub: 220, places: 2, where: 'В Светлогорске и окрестностях' },
     })
     expect(compare(180, [peer('a', 180)]).town).toMatchObject({ minRub: 180, maxRub: 180, places: 2 })
     const ranked = compare(300, [peer('a', 100), peer('b', 150)])
     expect(ranked.band).toBe('expensive')
     expect(ranked.position).not.toBeNull()
-    expect(ranked.line).toBe('Дороже, чем в 2 из 3 мест Светлогорска')
+    expect(ranked.line).toBe('Дороже, чем в 2 из 3 мест Светлогорска и окрестностей')
   })
 
   it('uses Russian plurals for the range and for «из N»', () => {
@@ -116,9 +126,9 @@ describe('price comparison', () => {
     expect(placesOutOf(21)).toBe('21 места')
     expect(placesOutOf(22)).toBe('22 мест')
     const twenty = Array.from({ length: 20 }, (_, index) => peer(`p${index}`, 100 + index))
-    expect(compare(90, twenty).line).toBe('Дешевле, чем в 20 из 21 места Светлогорска')
+    expect(compare(90, twenty).line).toBe('Дешевле, чем в 20 из 21 места Светлогорска и окрестностей')
     const twentyOne = Array.from({ length: 21 }, (_, index) => peer(`q${index}`, 200))
-    expect(compare(100, twentyOne).line).toBe('Дешевле, чем в 21 из 22 мест Светлогорска')
+    expect(compare(100, twentyOne).line).toBe('Дешевле, чем в 21 из 22 мест Светлогорска и окрестностей')
   })
 
   it('puts the town in the prepositional, the genitive, and the dative', () => {
@@ -141,17 +151,17 @@ describe('price comparison', () => {
       ['pravdinsk', 'Правдинска', 'Правдинску', 'в Правдинске'],
     ]
     for (const [slug, genitive, dative, prepositional] of towns) {
-      expect(ofTown(slug)).toBe(genitive)
-      expect(byTown(slug)).toBe(dative)
-      expect(inPlace(slug)).toBe(prepositional)
+      expect(ofTown(slug)).toBe(`${genitive} и окрестностей`)
+      expect(byTown(slug)).toBe(`${dative} и окрестностям`)
+      expect(inPlace(slug)).toBe(`${prepositional} и окрестностях`)
     }
-    expect(inPlace('missing')).toBe('в регионе')
-    expect(inPlace(null)).toBe('в регионе')
-    expect(byTown('missing')).toBe('региону')
-    expect(byTown(null)).toBe('региону')
-    expect(priceCompareLead('svetlogorsk')).toBe('Сравниваем с другими заведениями Светлогорска')
-    expect(priceCompareLead('kaliningrad')).toBe('Сравниваем с другими заведениями Калининграда')
-    expect(priceCompareLead(null)).toBe('Сравниваем с другими заведениями региона')
+    expect(inPlace('missing')).toBe('на этой территории')
+    expect(inPlace(null)).toBe('на этой территории')
+    expect(byTown('missing')).toBe('этой территории')
+    expect(byTown(null)).toBe('этой территории')
+    expect(priceCompareLead('svetlogorsk')).toBe('Сравниваем с другими заведениями Светлогорска и окрестностей')
+    expect(priceCompareLead('kaliningrad')).toBe('Сравниваем с другими заведениями Калининграда и окрестностей')
+    expect(priceCompareLead(null)).toBe('Сравниваем с другими заведениями этой территории')
     const only = compareVenuePrice({
       venueId: 'self',
       priceRub: 160,
@@ -175,7 +185,7 @@ describe('price comparison', () => {
       peers: [peer('a', 180, '300 мл', null)],
     })
     expect(pair.line).toBe('Пока мало данных для сравнения')
-    expect(pair.town.where).toBe('В регионе')
+    expect(pair.town.where).toBe('На этой территории')
     expect(pair.scaleLabel).toBe('')
   })
 
@@ -184,17 +194,17 @@ describe('price comparison', () => {
     const result = compare(180, peers)
     expect(result.band).toBe('cheap')
     expect(result.position).toBe(23)
-    expect(result.line).toBe('Дешевле, чем в 7 из 10 мест Светлогорска')
-    expect(result.town).toEqual({ medianRub: 215, minRub: 100, maxRub: 400, places: 10, where: 'В Светлогорске' })
-    expect(result.scaleLabel).toBe('Дешевле медианы по Светлогорску')
+    expect(result.line).toBe('Дешевле, чем в 7 из 10 мест Светлогорска и окрестностей')
+    expect(result.town).toEqual({ medianRub: 215, minRub: 100, maxRub: 400, places: 10, where: 'В Светлогорске и окрестностях' })
+    expect(result.scaleLabel).toBe('Дешевле медианы по Светлогорску и окрестностям')
   })
 
   it('calls the expensive end of a large sample a top price in that town', () => {
     const peers = [100, 110, 120, 130, 140, 150, 160].map((price, index) => peer(`v${index}`, price))
     const top = compare(400, peers)
-    expect(top.line).toBe('Топ-3 по цене в Светлогорске')
+    expect(top.line).toBe('Топ-3 по цене в Светлогорске и окрестностях')
     expect(top.band).toBe('expensive')
-    expect(top.scaleLabel).toBe('Дороже медианы по Светлогорску')
+    expect(top.scaleLabel).toBe('Дороже медианы по Светлогорску и окрестностям')
     const unknown = compareVenuePrice({
       venueId: 'self',
       priceRub: 400,
@@ -205,22 +215,22 @@ describe('price comparison', () => {
       by: byTown(null),
       peers: peers.map((row) => ({ ...row, regionId: null })),
     })
-    expect(unknown.line).toBe('Топ-3 по цене в регионе')
-    expect(unknown.scaleLabel).toBe('Дороже медианы по региону')
+    expect(unknown.line).toBe('Топ-3 по цене на этой территории')
+    expect(unknown.scaleLabel).toBe('Дороже медианы по этой территории')
   })
 
   it('does not call three venues a top-3', () => {
     const result = compare(300, [peer('a', 100), peer('b', 150)])
     expect(result.band).toBe('expensive')
-    expect(result.line).toBe('Дороже, чем в 2 из 3 мест Светлогорска')
+    expect(result.line).toBe('Дороже, чем в 2 из 3 мест Светлогорска и окрестностей')
   })
 
   it('says the price matches the others when every venue charges the same', () => {
     const result = compare(200, [peer('a', 200), peer('b', 200), peer('c', 200), peer('d', 200)])
     expect(result.band).toBe('medium')
     expect(result.position).toBe(50)
-    expect(result.line).toBe('Как в других местах Светлогорска')
-    expect(result.scaleLabel).toBe('Около медианы по Светлогорску')
+    expect(result.line).toBe('Как в других местах Светлогорска и окрестностей')
+    expect(result.scaleLabel).toBe('Около медианы по Светлогорску и окрестностям')
   })
 
   it('ignores other regions and prefers the same portion', () => {
@@ -233,7 +243,7 @@ describe('price comparison', () => {
     ]
     const result = compare(220, peers)
     expect(result.band).toBe('cheap')
-    expect(result.line).toBe('Дешевле, чем в 3 из 4 мест Светлогорска')
+    expect(result.line).toBe('Дешевле, чем в 3 из 4 мест Светлогорска и окрестностей')
   })
 
   it('names icons per catalog item and falls back by category, then ticket', () => {
@@ -265,9 +275,9 @@ describe('price comparison', () => {
     expect(priceItemImage('latte', 'https://cdn.example/latte.webp')).toBe('https://cdn.example/latte.webp')
     delete PRICE_ITEM_IMAGES.latte
     expect(priceItemSticker('latte', null)).toBe('latte')
-    expect(ofTown('svetlogorsk')).toBe('Светлогорска')
-    expect(ofTown('missing')).toBe('региона')
-    expect(ofTown(null)).toBe('региона')
+    expect(ofTown('svetlogorsk')).toBe('Светлогорска и окрестностей')
+    expect(ofTown('missing')).toBe('этой территории')
+    expect(ofTown(null)).toBe('этой территории')
   })
 
   it('keeps one price per venue, matching the portion when it exists', () => {
@@ -281,9 +291,9 @@ describe('price comparison', () => {
 
   it('summarizes the cards and collapses one shared source', () => {
     expect(PRICE_BAND_MIN).toBe(3)
-    expect(priceBlockSummary(['cheap', 'cheap', 'expensive'], 'svetlogorsk')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску' })
-    expect(priceBlockSummary(['expensive', 'expensive', 'cheap'], 'svetlogorsk')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по Светлогорску' })
-    expect(priceBlockSummary(['medium', 'medium', 'medium'], 'zelenogradsk')).toEqual({ text: 'около среднего', label: 'Цены около среднего по Зеленоградску' })
+    expect(priceBlockSummary(['cheap', 'cheap', 'expensive'], 'svetlogorsk')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску и окрестностям' })
+    expect(priceBlockSummary(['expensive', 'expensive', 'cheap'], 'svetlogorsk')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по Светлогорску и окрестностям' })
+    expect(priceBlockSummary(['medium', 'medium', 'medium'], 'zelenogradsk')).toEqual({ text: 'около среднего', label: 'Цены около среднего по Зеленоградску и окрестностям' })
     expect(priceBlockSummary(['cheap', 'cheap'], 'svetlogorsk')).toBeNull()
     expect(priceBlockSummary(['cheap'], 'yantarnyy')).toBeNull()
     expect(priceBlockSummary(['expensive'], 'missing')).toBeNull()
@@ -294,10 +304,10 @@ describe('price comparison', () => {
     expect(priceBandFromBands(['expensive', 'medium'])).toEqual({ level: null, basis: 2 })
     expect(priceBandFromBands(['medium'])).toEqual({ level: null, basis: 1 })
     expect(priceBandFromBands([null, null])).toEqual({ level: null, basis: 0 })
-    expect(priceBadgeFromBand('low', 'yantarnyy')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Янтарному' })
-    expect(priceBadgeFromBand('low', 'mamonovo')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Мамоново' })
-    expect(priceBadgeFromBand('high', 'missing')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по региону' })
-    expect(priceBadgeFromBand('low', null)).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по региону' })
+    expect(priceBadgeFromBand('low', 'yantarnyy')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Янтарному и окрестностям' })
+    expect(priceBadgeFromBand('low', 'mamonovo')).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по Мамоново и окрестностям' })
+    expect(priceBadgeFromBand('high', 'missing')).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по этой территории' })
+    expect(priceBadgeFromBand('low', null)).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по этой территории' })
     expect(priceBadgeFromBand(null, 'svetlogorsk')).toBeNull()
     const shared = sharedPriceSource([
       { sourceTitle: 'Старое меню', sourceUrl: 'https://cafe.example/menu', checkedAt: '2026-03-01' },
@@ -324,7 +334,7 @@ describe('price comparison', () => {
     expect(knownPortion('300 мл')).toBe('300 мл')
     expect(knownPortion('объём не указан')).toBeNull()
     expect(knownPortion('')).toBeNull()
-    expect(formatTownRange({ medianRub: 300, minRub: 185, maxRub: 420, places: 5, where: 'В Светлогорске' })).toBe('185–420 ₽')
+    expect(formatTownRange({ medianRub: 300, minRub: 185, maxRub: 420, places: 5, where: 'В Светлогорске и окрестностях' })).toBe('185–420 ₽')
     expect(priceCardTap({ finePointer: true, keyboard: false, open: false })).toBe('follow')
     expect(priceCardTap({ finePointer: false, keyboard: true, open: false })).toBe('follow')
     expect(priceCardTap({ finePointer: false, keyboard: false, open: true })).toBe('follow')
@@ -336,7 +346,7 @@ describe('price comparison', () => {
     expect(isPriceIndexable(5)).toBe(true)
     const thin = priceListingMeta({ title: 'Капучино', slug: 'cappuccino', regionSlug: 'svetlogorsk', regionName: 'Светлогорск', count: 4 })
     expect(thin.path).toBe('/ceny/cappuccino/svetlogorsk')
-    expect(thin.h1).toBe('Капучино в Светлогорске')
+    expect(thin.h1).toBe('Капучино в Светлогорске и окрестностях')
     expect(thin.noindex).toBe(true)
     expect(thin.seoTitle).not.toContain('—')
     const ready = priceListingMeta({ title: 'Капучино', slug: 'cappuccino', regionSlug: null, regionName: '', count: 5 })
@@ -396,7 +406,7 @@ describe('price comparison', () => {
     expect(cards[0]?.icon).toBe('coffee')
     expect(cards[0]?.image).toBeNull()
     expect(cards[0]?.sticker).toBe('cappuccino')
-    expect(cards[0]?.comparison.line).toBe('Дешевле, чем в 7 из 10 мест Светлогорска')
+    expect(cards[0]?.comparison.line).toBe('Дешевле, чем в 7 из 10 мест Светлогорска и окрестностей')
     const pictured = buildPublicPrices({
       venueId: 'self',
       regionId: REGION,
@@ -439,7 +449,7 @@ describe('price comparison', () => {
     const out = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards, { regionSlug: 'svetlogorsk', priceBand: 'low' })
     expect(out?.blocks[0]).toMatchObject({
       type: 'prices',
-      summary: { text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску' },
+      summary: { text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску и окрестностям' },
       source: { title: 'Меню на сайте заведения', url: 'https://cafe.example/menu', date: '2026-10-01' },
     })
     const list = priceListNode(cards, 'Ориентиры цен')
@@ -457,9 +467,9 @@ describe('price comparison', () => {
     })
     expect(priceListNode([], 'Ориентиры цен')).toBeNull()
     expect(list && schemaProblems([{ '@context': 'https://schema.org', ...list }])).toEqual([])
-    expect(cards[0]?.comparison.scaleLabel).toBe('Дешевле медианы по Светлогорску')
+    expect(cards[0]?.comparison.scaleLabel).toBe('Дешевле медианы по Светлогорску и окрестностям')
     const unnamed = toPublicVenueModules([{ type: 'prices' }], (text) => text, cards, { priceBand: 'low' })
-    expect(unnamed?.blocks[0]).toMatchObject({ summary: { text: 'ниже среднего', label: 'Цены ниже среднего по региону' } })
+    expect(unnamed?.blocks[0]).toMatchObject({ summary: { text: 'ниже среднего', label: 'Цены ниже среднего по этой территории' } })
   })
 })
 
@@ -479,9 +489,9 @@ describe('price cards', () => {
     comparison: {
       band: 'cheap' as const,
       position: 23,
-      line: 'Дешевле, чем в 7 из 10 мест Светлогорска',
-      scaleLabel: 'Дешевле медианы по Светлогорску',
-      town: { medianRub: 215, minRub: 100, maxRub: 400, places: 10, where: 'В Светлогорске' },
+      line: 'Дешевле, чем в 7 из 10 мест Светлогорска и окрестностей',
+      scaleLabel: 'Дешевле медианы по Светлогорску и окрестностям',
+      town: { medianRub: 215, minRub: 100, maxRub: 400, places: 10, where: 'В Светлогорске и окрестностях' },
     },
   }
 
@@ -492,7 +502,7 @@ describe('price cards', () => {
           type: 'prices',
           id: 'tseny',
           title: 'Ориентиры цен',
-          lead: 'Сравниваем с другими заведениями Светлогорска',
+          lead: 'Сравниваем с другими заведениями Светлогорска и окрестностей',
           items,
           summary,
           source,
@@ -510,7 +520,7 @@ describe('price cards', () => {
   }
 
   it('renders the glance row, keeps the conclusion in the tooltip, and one source line', () => {
-    const wrapper = mountPrices([card, { ...card, slug: 'americano', title: 'Американо', priceRub: 140, icon: 'cup', image: '/stickers/americano.webp', sticker: null, variant: 'объём не указан' }], { text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску' }, {
+    const wrapper = mountPrices([card, { ...card, slug: 'americano', title: 'Американо', priceRub: 140, icon: 'cup', image: '/stickers/americano.webp', sticker: null, variant: 'объём не указан' }], { text: 'ниже среднего', label: 'Цены ниже среднего по Светлогорску и окрестностям' }, {
       title: 'Меню на сайте заведения',
       url: 'https://cafe.example/menu',
       date: '2026-10-01',
@@ -527,14 +537,14 @@ describe('price cards', () => {
     expect(cards[0]?.find('.scale-labels').exists()).toBe(false)
     const detail = wrapper.get('#tseny-d0')
     expect(detail.attributes('role')).toBe('tooltip')
-    expect(detail.text()).toContain('Дешевле, чем в 7 из 10 мест Светлогорска')
-    expect(detail.text()).toContain('В Светлогорске')
+    expect(detail.text()).toContain('Дешевле, чем в 7 из 10 мест Светлогорска и окрестностей')
+    expect(detail.text()).toContain('В Светлогорске и окрестностях')
     expect(detail.text()).toContain('Медиана: 215 ₽')
     expect(detail.text()).toContain('Диапазон: 100–400 ₽')
     expect(detail.text()).toContain('Мест: 10')
     expect(detail.text()).toContain('Порция: 300 мл')
     expect(detail.text()).not.toContain('дёшево')
-    expect(wrapper.html()).toContain('Дешевле, чем в 7 из 10 мест Светлогорска')
+    expect(wrapper.html()).toContain('Дешевле, чем в 7 из 10 мест Светлогорска и окрестностей')
     expect(wrapper.find('#tseny-d1').text()).not.toContain('Порция:')
     expect(cards[0]?.find('.price-art picture.sticker').exists()).toBe(true)
     const picture = cards[0]?.find('picture.sticker')
@@ -549,12 +559,12 @@ describe('price cards', () => {
     expect(cards[1]?.find('.price-art img').attributes('src')).toBe('/stickers/americano.webp')
     expect(wrapper.findAll('.stub-icon')).toHaveLength(0)
     expect(wrapper.findAll('picture.sticker')).toHaveLength(1)
-    expect(wrapper.text()).toContain('Сравниваем с другими заведениями Светлогорска')
-    expect(cards[0]?.find('.scale').attributes('aria-label')).toBe('Дешевле медианы по Светлогорску')
+    expect(wrapper.text()).toContain('Сравниваем с другими заведениями Светлогорска и окрестностей')
+    expect(cards[0]?.find('.scale').attributes('aria-label')).toBe('Дешевле медианы по Светлогорску и окрестностям')
     const badge = wrapper.get('.price-badge')
     expect(badge.text()).toBe('ниже среднего')
-    expect(badge.attributes('title')).toBe('Цены ниже среднего по Светлогорску')
-    expect(badge.attributes('aria-label')).toBe('Цены ниже среднего по Светлогорску')
+    expect(badge.attributes('title')).toBe('Цены ниже среднего по Светлогорску и окрестностям')
+    expect(badge.attributes('aria-label')).toBe('Цены ниже среднего по Светлогорску и окрестностям')
     expect(wrapper.find('.price-chip').exists()).toBe(false)
     expect(wrapper.get('.price-head h2').text()).toBe('Ориентиры цен')
     const links = wrapper.findAll('.stub-link')
@@ -574,7 +584,7 @@ describe('price cards', () => {
       position: null,
       line: 'Пока единственная цена',
       scaleLabel: '',
-      town: { medianRub: 180, minRub: 180, maxRub: 180, places: 1, where: 'В Светлогорске' },
+      town: { medianRub: 180, minRub: 180, maxRub: 180, places: 1, where: 'В Светлогорске и окрестностях' },
     }
     const wrapper = mountPrices([
       card,
@@ -701,7 +711,7 @@ describe('price cards', () => {
   it('highlights the venue from the query and leaves the cheaper ones unmarked', () => {
     const doc = collectionDocument({
       path: '/ceny/cappuccino/svetlogorsk',
-      h1: 'Капучино в Светлогорске',
+      h1: 'Капучино в Светлогорске и окрестностях',
       summary: 'Капучино в Светлогорске: свежие цены.',
       seoTitle: 'Капучино в Светлогорске: цены',
       crumbName: 'список',
@@ -740,7 +750,7 @@ describe('price cards', () => {
         },
       },
     })
-    expect(wrapper.text()).toContain('Капучино в Светлогорске')
+    expect(wrapper.text()).toContain('Капучино в Светлогорске и окрестностях')
     const rows = wrapper.findAll('li')
     expect(rows[0]?.text()).toContain('Дешёвое')
     expect(rows[0]?.classes()).not.toContain('current')
@@ -753,7 +763,7 @@ describe('price cards', () => {
   it('prints the median, the range, one menu link, and the check dates', () => {
     const doc = collectionDocument({
       path: '/ceny/cappuccino/svetlogorsk',
-      h1: 'Капучино в Светлогорске',
+      h1: 'Капучино в Светлогорске и окрестностях',
       summary: 'Капучино в Светлогорске: свежие цены.',
       seoTitle: 'Капучино в Светлогорске: цены',
       crumbName: 'список',
@@ -908,16 +918,16 @@ describe('where cheaper samples', () => {
     expect(grouped.cities.some((city) => city.slug === 'yantarnyy')).toBe(false)
     expect(cheaperCityMeta({ regionSlug: 'zelenogradsk', regionName: 'Зеленоградск', venueCount: 4 }).noindex).toBe(true)
     expect(cheaperCityMeta({ regionSlug: 'svetlogorsk', regionName: 'Светлогорск', venueCount: 10 }).noindex).toBe(false)
-    expect(cheaperCityMeta({ regionSlug: 'svetlogorsk', regionName: 'Светлогорск', venueCount: 10 }).h1).toBe('Где дешевле в Светлогорске')
+    expect(cheaperCityMeta({ regionSlug: 'svetlogorsk', regionName: 'Светлогорск', venueCount: 10 }).h1).toBe('Где дешевле в Светлогорске и окрестностях')
     expect(cheaperCityMeta({ regionSlug: 'svetlogorsk', regionName: 'Светлогорск', venueCount: 10 }).h1).not.toContain('—')
     const page = mount(CheaperPage, {
       props: {
         page: {
           doc: collectionDocument({
             path: '/gde-deshevle/svetlogorsk',
-            h1: 'Где дешевле в Светлогорске',
+            h1: 'Где дешевле в Светлогорске и окрестностях',
             summary: 'Где дешевле в Светлогорске. Позиции из официальных меню.',
-            seoTitle: 'Где дешевле в Светлогорске',
+            seoTitle: 'Где дешевле в Светлогорске и окрестностях',
             crumbName: 'список',
             parent: { name: 'Где дешевле', href: '/gde-deshevle' },
             items: [],

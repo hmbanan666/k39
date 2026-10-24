@@ -8,10 +8,10 @@
   >
     <nav
       class="pick"
-      aria-label="Города"
+      aria-label="Территории"
     >
       <p class="pick-label">
-        Города
+        Территории
       </p>
       <ul class="towns">
         <li>

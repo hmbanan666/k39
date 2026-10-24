@@ -1,6 +1,6 @@
 <template>
   <main class="admin">
-    <h1>Разделы и регионы</h1>
+    <h1>Разделы и территории каталога</h1>
     <h2>Разделы</h2>
     <form
       v-for="item in meta.categories"
@@ -27,7 +27,8 @@
         Сохранить раздел
       </button>
     </form>
-    <h2>Регионы</h2>
+    <h2>Территории каталога</h2>
+    <p>Поисковые группы могут включать окрестные посёлки. Это не границы города и не подтверждение населённого пункта в адресе.</p>
     <form
       v-for="item in meta.regions"
       :key="item.id"
@@ -36,7 +37,7 @@
       <label>Название <input v-model="item.title"></label>
       <label>Описание <textarea v-model="item.description" rows="3" /></label>
       <button type="submit">
-        Сохранить регион
+        Сохранить территорию
       </button>
     </form>
   </main>

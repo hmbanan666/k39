@@ -54,7 +54,7 @@ export async function pendingVenueWrite(fields: StagedFields, tx?: ContentTx): P
   if (regionSlug !== undefined) {
     const region = regionSlug ? await db.venues.regionBySlug(regionSlug, tx) : null
     if (regionSlug && !region) {
-      throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
+      throw createError({ statusCode: 400, statusMessage: 'Территория каталога не найдена' })
     }
     regionId = region?.id ?? null
   }

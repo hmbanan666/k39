@@ -29,7 +29,7 @@ export default defineStrictMcpTool({
   handler: async ({ area: box, regionSlug }) => {
     const region = regionSlug ? await db.venues.regionBySlug(regionSlug) : null
     if (regionSlug && !region) {
-      throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
+      throw createError({ statusCode: 400, statusMessage: 'Территория каталога не найдена' })
     }
     try {
       const drafts = await fetchOverpass(box)

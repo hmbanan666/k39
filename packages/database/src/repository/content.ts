@@ -418,6 +418,8 @@ export class Content {
       categorySlug: categories.slug,
       categoryTitle: categories.title,
       regionTitle: regions.title,
+      regionSlug: regions.slug,
+      regionShortTitle: regions.shortTitle,
     }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id)).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(and(eq(collectionItems.collectionId, collection.id), eq(places.publicationStatus, published))).orderBy(asc(collectionItems.position))
     return { collection, items }
   }

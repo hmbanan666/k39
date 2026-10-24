@@ -7,6 +7,7 @@ import { describedAlt, toPublicMedia } from '../../shared/media'
 import { monthName, splitCollections } from '../../shared/month-guide'
 import { categoryTags, collectionArticle, toPublicModules } from '../../shared/page-modules'
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
+import { regionLabel } from '../../shared/region'
 import { routeStopViews } from '../../shared/route-nav'
 import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
 import { omitFactGap, readShownFacts } from './facts/read'
@@ -187,7 +188,7 @@ export async function loadPlace(slug: string, page = 1) {
     categorySlug: loaded.category.slug,
     categoryTitle: loaded.category.title,
     schemaType: loaded.place.schemaType,
-    regionTitle: loaded.region?.title ?? null,
+    regionTitle: regionLabel(loaded.region) || null,
     latitude,
     longitude,
     phone: omitFactGap(shown.phone),
@@ -232,7 +233,7 @@ export async function loadPlace(slug: string, page = 1) {
       media: nearCovers.get(item.place_id) ? toPublicMedia(nearCovers.get(item.place_id)!) : null,
     })) },
     loaded.region
-      ? { title: `Ещё в регионе ${loaded.region.title}`, links: loaded.sameRegion.map((item) => ({ href: `/${item.slug}`, text: item.title })) }
+      ? { title: `Ещё: ${regionLabel(loaded.region)}`, links: loaded.sameRegion.map((item) => ({ href: `/${item.slug}`, text: item.title })) }
       : null,
     { title: 'Маршруты', links: loaded.routeRows.map((item) => ({ href: `/marshruty/${item.slug}`, text: item.title })) },
     { title: 'Подборки', links: loaded.collectionRows.map((item) => ({ href: `/podborki/${item.slug}`, text: item.title })) },

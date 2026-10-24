@@ -43,8 +43,8 @@ export const regions = pgTable('regions', {
   updatedAt: updatedAt(),
   slug: varchar('slug').notNull().unique(),
   title: varchar('title').notNull(),
-  // Town name for eyebrows and filters («Зеленоградск» for the official
-  // «Зеленоградский муниципальный округ»). Null: use title.
+  // Catalogue-area display input, not a verified settlement (ADR 0051).
+  // Public readers add truthful area wording; null falls back to title/anchor.
   shortTitle: varchar('short_title'),
   description: text('description'),
   // Optional map center. Both stay null until an editor sets them.

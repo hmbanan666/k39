@@ -309,7 +309,7 @@ interface PlacePage {
   upcoming: EventLine[]
   categoryTitle: string
   categorySlug: string
-  region: { title: string, shortTitle?: string | null } | null
+  region: { slug: string, title: string, shortTitle?: string | null } | null
   images: Array<{ src: string, url: string, alt: string, width: number | null, height: number | null }>
   gallery: PublicMedia[]
   cover: PublicMedia | null

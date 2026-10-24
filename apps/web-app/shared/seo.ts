@@ -473,10 +473,9 @@ function geoNode(latitude?: number | null, longitude?: number | null) {
   }
 }
 
-function postalAddress(streetAddress?: string | null, addressLocality?: string | null) {
+function postalAddress(streetAddress?: string | null) {
   const street = streetAddress?.trim()
-  const locality = addressLocality?.trim()
-  if (!street && !locality) {
+  if (!street) {
     return null
   }
   const address: Record<string, unknown> = {
@@ -486,9 +485,6 @@ function postalAddress(streetAddress?: string | null, addressLocality?: string |
   }
   if (street) {
     address.streetAddress = street
-  }
-  if (locality) {
-    address.addressLocality = locality
   }
   return address
 }
@@ -644,7 +640,9 @@ function practicalMarkup(node: Record<string, unknown>, practical: PracticalSeoI
 
 export function venueDocument(input: VenueSeoInput): SeoDocument {
   const path = `/zavedeniya/${input.slug}`
-  const title = intentTitle(venueTitleBase(input.name, input.kindLabel, input.inTown), venueIntent(input), input.seoTitle)
+  const base = venueTitleBase(input.name, input.kindLabel, input.inTown)
+  // Never truncate an area qualifier into a city-only location claim.
+  const title = intentTitle(pageTitle(base).length <= TITLE_MAX ? base : input.name, venueIntent(input), input.seoTitle)
   const description = pageDescription(searchBlurb(input.description || input.name), input.seoDescription, [
     input.regionTitle,
     input.address,
@@ -674,7 +672,7 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
   if (geo) {
     node.geo = geo
   }
-  const address = postalAddress(input.address, input.regionTitle)
+  const address = postalAddress(input.address)
   if (address) {
     node.address = address
   }
@@ -905,10 +903,6 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   const geo = geoNode(input.latitude, input.longitude)
   if (geo) {
     node.geo = geo
-  }
-  const address = postalAddress(null, input.regionTitle)
-  if (address) {
-    node.address = address
   }
   const hours = schemaOpeningHours(input.hours)
   if (hours) {
