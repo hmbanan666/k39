@@ -15,7 +15,7 @@ import { practicalTarget } from '../../../../../apps/web-app/server/utils/practi
 import { updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
 import { liveStatusText, noticeToday, withNoticeStatus } from '../../../../../apps/web-app/shared/notices'
 import { useDatabase } from '../../database'
-import { contentDrafts, mcpAudits, notices, places, revisions, venues } from '../../tables'
+import { contentDrafts, mcpAudits, notices, places, revisions, venueAudits, venues } from '../../tables'
 import { Editor } from '../content'
 import { Notices } from '../notices'
 import { Schedules } from '../schedules'
@@ -121,8 +121,26 @@ describe('notices writer', () => {
           await updateVenue({ id: live.id, description: `${'description' in live ? live.description : ''} Дом у самой площади.` })
         }
       }
+      const sourceUrl = subjectType === 'venue' ? VK_POST : SITE
+      await setNotices({ subjectType, id: live.id, notices: [row({
+        kind: 'renovation', text: 'Ремонт в самом сердце здания.', sourceUrl,
+      })] }, 'mcp')
+      const database = useDatabase()
+      const state = async () => ({
+        live: subjectType === 'place' ? await Editor.placeById(live.id) : await Venues.byId(live.id),
+        pending: await Editor.contentDraft(subjectType, live.id),
+        notices: await Notices.forSubject(subjectType, live.id),
+        audits: await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id)),
+        revisions: await database.select().from(revisions).where(eq(revisions.entityId, live.id)),
+        venueAudits: subjectType === 'venue' ? await database.select().from(venueAudits).where(eq(venueAudits.venueId, live.id)) : [],
+      })
+      const beforeRefusal = await state()
+      enterContentScope('editor')
+      await rejects(setPublication({ entity: subjectType, id: live.id, publicationStatus: 'published' }), 400, /в самом сердце/u)
+      expect(await state()).toEqual(beforeRefusal)
+      enterContentScope('draft')
       const staged = await setNotices({ subjectType, id: live.id, notices: [row({
-        kind: 'renovation', text: 'Ремонт у самого входа.', sourceUrl: subjectType === 'venue' ? VK_POST : SITE,
+        kind: 'renovation', text: 'Ремонт у самого входа.', sourceUrl,
       })] }, 'mcp')
       expect(staged.writingWarnings).toHaveLength(1)
       const warning = staged.writingWarnings[0]!
