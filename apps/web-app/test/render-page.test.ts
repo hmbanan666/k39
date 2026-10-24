@@ -2,6 +2,7 @@ import type { VenuePageData } from '../app/components/VenuePage.vue'
 import { describe, expect, it } from 'vitest'
 import VenuePage from '../app/components/VenuePage.vue'
 import Consents from '../app/pages/admin/consents.vue'
+import { scheduleDetails, scheduleRulesSchema } from '../shared/schedule'
 import { renderPage } from './helpers/render-page'
 
 function venueFixture(): VenuePageData {
@@ -71,6 +72,17 @@ describe('db-free page render', () => {
     expect(html).toContain('https://instagram.com/k39_fixture')
     expect(html).toContain('Фикстура, улица Проверки, 1')
     expect(html).not.toContain('undefined')
+  })
+
+  it('server-renders neutral closed access and outside viewing before hydration', async () => {
+    const page = venueFixture()
+    const rules = scheduleRulesSchema.parse({ mode: 'closed', closure: { reason: 'other', viewableOutside: true } })
+    page.venue.schedule = { rules, sourceUrl: null, verifiedAt: '2026-10-14' }
+    page.venue.hours = scheduleDetails(rules)
+    const html = await renderPage(VenuePage, { page })
+    expect(html).toContain('Закрыто · снаружи можно посмотреть')
+    expect(html).not.toContain('Временно закрыто')
+    expect(html).not.toContain('Не обслуживается')
   })
 
   it('renders the consent admin screen from the sign-in rule', async () => {

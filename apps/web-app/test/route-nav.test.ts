@@ -48,7 +48,26 @@ describe('route navigation', () => {
     expect(links?.yandex).toBe('https://yandex.ru/maps/?rtext=54.60000,21.00000~54.70000,21.20000&rtt=auto')
     expect(links?.google).not.toContain('waypoints')
     expect(routeLinks([{ latitude: 1, longitude: 2 }], 'auto')).toBeNull()
-    expect(formatStraightLine(12.2)).toBe('около 12 км')
-    expect(formatStraightLine(0.476)).toBe('около 500 м')
+    expect(formatStraightLine(12.2)).toBe('около 12 км по прямой')
+    expect(formatStraightLine(0.476)).toBe('около 500 м по прямой')
+  })
+
+  it('labels short and long legs without changing stop order or inventing a final leg', () => {
+    const input = [
+      { href: '/a', text: 'А', latitude: 54.7, longitude: 20.5 },
+      { href: '/b', text: 'Б', latitude: 54.704, longitude: 20.5 },
+      { href: '/c', text: 'В', latitude: 54.9, longitude: 20.5 },
+    ]
+    const stops = routeStopViews(input)
+    expect(stops.map((stop) => stop.href)).toEqual(input.map((stop) => stop.href))
+    expect(stops.map((stop) => stop.distanceLabel)).toEqual([
+      'около 450 м по прямой до следующей',
+      'около 22 км по прямой до следующей',
+      null,
+    ])
+  })
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1])('does not label an invalid distance %s', (distance) => {
+    expect(formatStraightLine(distance)).toBe('')
   })
 })
