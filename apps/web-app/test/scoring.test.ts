@@ -2,8 +2,9 @@ import type { CatalogArticle, CatalogHub, CatalogVenue, ContentCatalog, ScorePla
 import type { LengthOverride } from '../shared/length-override'
 import type { LinkCatalog, ScoreSource } from '../shared/scoring'
 import { describe, expect, it } from 'vitest'
-import { catalogHoursKnown, catalogPageRefs, scoresFromCatalog } from '../server/utils/scoring/assemble'
+import { catalogHoursKnown, catalogPageRefs, scoresFromCatalog, toStored } from '../server/utils/scoring/assemble'
 import { personaCoverageReport } from '../server/utils/scoring/coverage'
+import { scorePreview } from '../server/utils/scoring/preview'
 import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, REPEATED_PARAGRAPH } from '../shared/length-override'
 import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage } from '../shared/scoring'
 
@@ -777,6 +778,53 @@ describe('score run', () => {
     expect(hub?.signals.faqCount).toBe(1)
     expect(hub?.checks.linking).not.toContain('no outbound')
     expect(hub?.checks.quality).not.toContain('no Как добраться')
+  })
+})
+
+describe('collection member admission evidence', () => {
+  function linked() {
+    return catalog({
+      places: [catalogPlace()],
+      collections: [catalogArticle({ id: 'collection-1', publicationStatus: 'published' })],
+      collectionStops: [{ parentId: 'collection-1', placeSlug: 'fort-a', placePublished: true, regionId: null, access: null }],
+      practical: [{ subjectType: 'place', subjectId: 'place-1', admissionRows: 1, freshAdmission: 1, upcomingEvents: 0 }],
+    })
+  }
+
+  it.each(['published', 'draft', 'review'] as const)('shares collection evidence across catalog/storage and %s previews', (publicationStatus) => {
+    const rows = linked()
+    rows.collections[0]!.publicationStatus = publicationStatus
+    rows.collections[0]!.modules = [{ type: 'text', variant: 'lead', text: 'Дома стоят возле реки.' }]
+    const now = new Date()
+    const scores = scoresFromCatalog(rows, [], [], false, now, undefined, { include: [{ kind: 'collection', id: 'collection-1' }] })
+    const stored = toStored(scores.find((score) => score.entityId === 'collection-1')!)
+    expect(stored.checks.quality).not.toContain('no prices')
+    const preview = scorePreview({ catalog: rows, pageType: 'collection', entityId: 'collection-1', source: publicationStatus === 'published' ? 'live' : 'draft', publicationStatus, now })
+    expect(preview?.checks.quality).toEqual(stored.checks.quality)
+    expect(preview?.quality).toBe(stored.quality)
+  })
+
+  it('does not inherit member hours/events or another subject type\'s entries', () => {
+    const rows = linked()
+    rows.places[0]!.schedule = { rules: { mode: 'always' }, verifiedAt: UPDATED }
+    rows.practical = [
+      { subjectType: 'place', subjectId: 'place-1', admissionRows: 0, freshAdmission: 0, upcomingEvents: 2 },
+      { subjectType: 'route', subjectId: 'place-1', admissionRows: 1, freshAdmission: 1, upcomingEvents: 0 },
+      { subjectType: 'venue', subjectId: 'place-1', admissionRows: 1, freshAdmission: 1, upcomingEvents: 0 },
+    ]
+    expect(scoresFromCatalog(rows, [], [], false).find((score) => score.entityId === 'collection-1')?.checks.quality).toContain('no prices')
+  })
+
+  it('leaves route and quest inheritance unchanged', () => {
+    const rows = linked()
+    rows.routes = [catalogArticle({ id: 'route-1', slug: 'route', publicationStatus: 'published' })]
+    rows.quests = [catalogArticle({ id: 'quest-1', slug: 'quest', publicationStatus: 'published' })]
+    rows.routeStops = [{ parentId: 'route-1', placeSlug: 'fort-a', placePublished: true, regionId: null, access: null }]
+    rows.questStops = [{ parentId: 'quest-1', placeSlug: 'fort-a', placePublished: true, regionId: null, access: null }]
+    const scores = scoresFromCatalog(rows, [], [], false)
+    expect(scores.find((score) => score.entityId === 'collection-1')?.checks.quality).not.toContain('no prices')
+    expect(scores.find((score) => score.entityId === 'route-1')?.checks.quality).toContain('no prices')
+    expect(scores.find((score) => score.entityId === 'quest-1')?.checks.quality).toContain('no prices')
   })
 })
 

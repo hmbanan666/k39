@@ -138,6 +138,21 @@ export function scoresFromCatalog(
     }
   }
 
+  /** Entry evidence of published collection members, already batched by the catalog. */
+  function memberAdmissions(slugs: string[]): ScoreSource['practical'] {
+    const evidence = { schedule: false, admissionRows: 0, freshAdmission: 0, upcomingEvents: 0 }
+    for (const slug of new Set(slugs)) {
+      const id = placeId.get(slug)
+      if (!id) {
+        continue
+      }
+      const row = practicalRows.get(`place:${id}`)
+      evidence.admissionRows += row?.admissionRows ?? 0
+      evidence.freshAdmission += row?.freshAdmission ?? 0
+    }
+    return evidence
+  }
+
   function photosFor(slugs: string[]) {
     return slugs.reduce((sum, slug) => sum + (photos.get(placeId.get(slug) || '') ?? 0), 0)
   }
@@ -266,6 +281,7 @@ export function scoresFromCatalog(
         title: collection.title,
         summary: collection.summary,
         body: collectionArticle(collection),
+        practical: memberAdmissions(members),
         howToGet: null,
         hours: null,
         price: null,
