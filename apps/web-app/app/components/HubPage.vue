@@ -37,7 +37,7 @@
             :row="{ key: 'hours', label: 'Сейчас' }"
           >
             <p>
-              <a :href="EAT_NOW_PATH">Где поесть сейчас: что открыто по городам</a>
+              <a :href="EAT_NOW_PATH">Где поесть сейчас: что открыто по территориям</a>
             </p>
             <p v-if="eatTowns.length">
               Заведения:
@@ -56,7 +56,7 @@
             :row="{ key: 'menu', label: 'Меню' }"
           >
             <p>
-              <a :href="CHEAPER_PATH">Где дешевле: цены из меню по городам</a>
+              <a :href="CHEAPER_PATH">Где дешевле: цены из меню по территориям</a>
             </p>
           </GuideFactRow>
         </FactsCard>

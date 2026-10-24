@@ -18,7 +18,7 @@ export const venueFields = {
   name: z.string().optional().describe('Public name'),
   kind: z.string().optional().describe('cafe, restaurant, coffee, bar, bakery, market, fastfood, other, or a later token'),
   cuisineTags: z.array(z.string()).optional(),
-  regionSlug: z.string().nullable().optional().describe('Region slug from region_list. Null clears it'),
+  regionSlug: z.string().nullable().optional().describe('Catalogue-area slug from region_list; may include surrounding settlements, not verified address locality. Null clears it'),
   address: z.string().nullable().optional(),
   latitude: point.nullable().optional(),
   longitude: point.nullable().optional(),

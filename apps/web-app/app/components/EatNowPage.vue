@@ -8,7 +8,7 @@
     />
     <nav
       class="towns"
-      aria-label="Города"
+      aria-label="Территории"
     >
       <a
         v-for="town in page.towns"

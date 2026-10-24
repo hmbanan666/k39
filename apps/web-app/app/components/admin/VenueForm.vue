@@ -33,7 +33,7 @@
           </option>
         </select>
       </label>
-      <label>Регион
+      <label>Территория каталога
         <select v-model="form.regionSlug">
           <option value="">
             не выбран
@@ -43,10 +43,11 @@
             :key="region.id"
             :value="region.slug"
           >
-            {{ region.title }}
+            {{ regionLabel(region) }}
           </option>
         </select>
       </label>
+      <p>Территория может включать окрестные посёлки. Она не определяет населённый пункт в адресе.</p>
       <label>Статус
         <select v-model="form.status">
           <option value="draft">черновик</option>
@@ -235,13 +236,14 @@
 import type { PlaceDraftNotice } from '~~/shared/place-draft-diff'
 import type { HoursFormState } from '~~/shared/venue-hours-form'
 import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
+import { regionLabel } from '~~/shared/region'
 import { emptyHoursForm, hoursPayload } from '~~/shared/venue-hours-form'
 import { vkCommunityField } from '~~/shared/venue-vk-form'
 
 const props = defineProps<{ venueId?: string }>()
 const requestFetch = useRequestFetch()
 const kinds = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other']
-const regions = ref<Array<{ id: string, slug: string, title: string }>>([])
+const regions = ref<Array<{ id: string, slug: string, title: string, shortTitle?: string | null }>>([])
 const error = ref('')
 const pending = ref<PlaceDraftNotice | null>(null)
 const draftBusy = ref(false)

@@ -224,7 +224,7 @@ const FIELDS: Array<{
   },
   {
     field: 'regionId',
-    label: 'Регион',
+    label: 'Территория каталога',
     read: (side, names) => ({ key: side.regionId ?? '', text: named(side.regionId, names.region) }),
   },
   { field: 'visitDuration', label: 'Сколько времени', read: (side) => textRead(side.visitDuration) },

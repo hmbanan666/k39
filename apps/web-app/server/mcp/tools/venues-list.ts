@@ -12,7 +12,7 @@ export default defineStrictMcpTool({
     const parsed = venuesListInput.parse(input)
     const region = parsed.regionSlug ? await db.venues.regionBySlug(parsed.regionSlug) : null
     if (parsed.regionSlug && !region) {
-      throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
+      throw createError({ statusCode: 400, statusMessage: 'Территория каталога не найдена' })
     }
     const page = await db.venues.listPage({
       regionId: region?.id,

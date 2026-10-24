@@ -18,7 +18,7 @@ export default defineStrictMcpTool({
     requireEditorContent('edit a venue listing')
     const region = input.regionSlug ? await db.venues.regionBySlug(input.regionSlug) : null
     if (input.regionSlug && !region) {
-      throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
+      throw createError({ statusCode: 400, statusMessage: 'Территория каталога не найдена' })
     }
     try {
       const row = await db.venues.setListingIntro({

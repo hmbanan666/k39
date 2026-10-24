@@ -7,7 +7,7 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'venue_listing_modules_set',
-  description: 'Replace the content modules of a venue listing (/zavedeniya, a town, a kind, or both). regionSlug and kind are optional; null means all regions or all kinds. An empty array clears the modules. Does not change the intro text. Each situation placeSlug must be a published venue. Writes an mcp_audits row. See docs/venue-modules.md.',
+  description: 'Replace the content modules of a venue listing (/zavedeniya, a catalogue area, a kind, or both). regionSlug and kind are optional; null means all regions or all kinds. An empty array clears the modules. Does not change the intro text. Each situation placeSlug must be a published venue. Writes an mcp_audits row. See docs/venue-modules.md.',
   inputSchema: {
     regionSlug: z.string().nullable().optional(),
     kind: z.string().nullable().optional(),
@@ -17,7 +17,7 @@ export default defineStrictMcpTool({
     requireEditorContent('edit a venue listing')
     const region = input.regionSlug ? await db.venues.regionBySlug(input.regionSlug) : null
     if (input.regionSlug && !region) {
-      throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
+      throw createError({ statusCode: 400, statusMessage: 'Территория каталога не найдена' })
     }
     const parsed = listingModulesSchema.safeParse(input.modules)
     if (!parsed.success) {

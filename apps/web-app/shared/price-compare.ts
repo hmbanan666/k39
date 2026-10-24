@@ -4,6 +4,7 @@ import { classifyOfficialUrl } from '@k39/types/official-url'
 import { vkMenuMatchesSocial } from '@k39/types/vk-community'
 import { inTown } from './eat-now'
 import { isFoodStickerSlug } from './food-stickers'
+import { regionArea } from './region'
 import { pageTitle } from './seo'
 
 /**
@@ -159,30 +160,6 @@ export const PRICE_CATEGORY_ICONS: Record<string, string> = {
  */
 export const PRICE_ITEM_IMAGES: Partial<Record<string, string>> = {}
 
-/**
- * Town name cases for price comparison. `of` is genitive («мест Светлогорска»).
- * `by` is dative («по Светлогорску»). The prepositional («в Светлогорске») is
- * `inTown`. Unknown slugs stay «региона» and «региону».
- */
-const TOWN: Record<string, { of: string, by: string }> = {
-  kaliningrad: { of: 'Калининграда', by: 'Калининграду' },
-  svetlogorsk: { of: 'Светлогорска', by: 'Светлогорску' },
-  zelenogradsk: { of: 'Зеленоградска', by: 'Зеленоградску' },
-  yantarnyy: { of: 'Янтарного', by: 'Янтарному' },
-  baltiysk: { of: 'Балтийска', by: 'Балтийску' },
-  sovetsk: { of: 'Советска', by: 'Советску' },
-  pionerskiy: { of: 'Пионерского', by: 'Пионерскому' },
-  chernyakhovsk: { of: 'Черняховска', by: 'Черняховску' },
-  gusev: { of: 'Гусева', by: 'Гусеву' },
-  gvardeysk: { of: 'Гвардейска', by: 'Гвардейску' },
-  guryevsk: { of: 'Гурьевска', by: 'Гурьевску' },
-  bagrationovsk: { of: 'Багратионовска', by: 'Багратионовску' },
-  mamonovo: { of: 'Мамоново', by: 'Мамоново' },
-  neman: { of: 'Немана', by: 'Неману' },
-  polessk: { of: 'Полесска', by: 'Полесску' },
-  pravdinsk: { of: 'Правдинска', by: 'Правдинску' },
-}
-
 const SCALE_LEAD: Record<PriceBand, string> = {
   cheap: 'Дешевле медианы по',
   medium: 'Около медианы по',
@@ -224,31 +201,20 @@ export function priceItemPath(slug: string, regionSlug?: string | null) {
   return regionSlug ? `${base}/${regionSlug}` : base
 }
 
+// Legacy helper names; cases come from the canonical catalogue-area builder.
 export function ofTown(slug: string | null | undefined) {
-  if (!slug) {
-    return 'региона'
-  }
-  return TOWN[slug]?.of ?? 'региона'
+  return regionArea({ slug, title: '' }).of
 }
 
-/** Dative for «по Светлогорску». Unknown slugs stay «региону». */
 export function byTown(slug: string | null | undefined) {
-  if (!slug) {
-    return 'региону'
-  }
-  return TOWN[slug]?.by ?? 'региону'
+  return regionArea({ slug, title: '' }).by
 }
 
-/** Prepositional phrase for «в Светлогорске». Unknown towns stay «в регионе». */
 export function inPlace(slug: string | null | undefined) {
-  if (!slug) {
-    return 'в регионе'
-  }
-  const phrase = inTown(slug, '')
-  return phrase.startsWith('в ') ? phrase : 'в регионе'
+  return regionArea({ slug, title: '' }).inside
 }
 
-/** One line under «Ориентиры цен». Town is genitive: «заведениями Светлогорска». */
+/** One line under «Ориентиры цен». The sample covers the catalogue area. */
 export function priceCompareLead(slug: string | null | undefined) {
   return `Сравниваем с другими заведениями ${ofTown(slug)}`
 }
@@ -284,7 +250,7 @@ export function placesOutOf(count: number) {
 }
 
 /** Accessible name of the scale. `by` is the dative town («Светлогорску»). */
-export function priceScaleLabel(band: PriceBand, by = 'региону') {
+export function priceScaleLabel(band: PriceBand, by = regionArea(null).by) {
   return `${SCALE_LEAD[band]} ${by}`
 }
 
@@ -603,7 +569,7 @@ export function groupCheaperSamples(samples: CheaperSample[]) {
 
 export function cheaperCityMeta(input: { regionSlug: string, regionName: string, venueCount: number }) {
   const known = inTown(input.regionSlug, input.regionName)
-  const h1 = known.startsWith('в ') ? `Где дешевле ${known}` : `Где дешевле: ${input.regionName}`
+  const h1 = `Где дешевле ${known}`
   return {
     h1,
     path: cheaperCityPath(input.regionSlug),
@@ -618,7 +584,7 @@ export function cheaperIndexMeta(indexable: boolean) {
   return {
     h1,
     path: CHEAPER_PATH,
-    description: 'Города, где хотя бы одну позицию можно сравнить в трёх заведениях по официальному меню.',
+    description: 'Территории, где хотя бы одну позицию можно сравнить в трёх заведениях по официальному меню.',
     seoTitle: h1,
     noindex: !indexable,
   }
@@ -953,12 +919,8 @@ export function priceListingMeta(input: {
   count: number
 }) {
   const known = input.regionSlug ? inTown(input.regionSlug, input.regionName) : ''
-  const h1 = known.startsWith('в ')
-    ? `${input.title} ${known}`
-    : input.regionSlug && input.regionName
-      ? `${input.title}: ${input.regionName}`
-      : input.title
-  const scope = known.startsWith('в ') ? known : 'в области'
+  const h1 = known ? `${input.title} ${known}` : input.title
+  const scope = known || 'в области'
   const withIntent = `${h1}: цены`
   return {
     h1,

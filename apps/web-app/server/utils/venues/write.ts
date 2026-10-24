@@ -56,7 +56,7 @@ export async function regionIdForSlug(slug: string | null | undefined) {
   }
   const region = await db.venues.regionBySlug(slug)
   if (!region) {
-    throw createError({ statusCode: 400, statusMessage: 'Регион не найден' })
+    throw createError({ statusCode: 400, statusMessage: 'Территория каталога не найдена' })
   }
   return region.id
 }

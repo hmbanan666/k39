@@ -10,11 +10,11 @@ const point = z.object({
 
 export default defineStrictMcpTool({
   name: 'region_upsert',
-  description: 'Create or update a region by slug. name is stored as the title. coordinates and center are the same optional { latitude, longitude }. Null clears the center. Omit both to keep it. Writes an mcp_audits row. Does not manage users or settings.',
+  description: 'Create or update a named catalogue area by slug. Membership is not verified settlement or legal-boundary evidence. name is stored as the title. coordinates and center are the same optional { latitude, longitude }. Null clears the center. Omit both to keep it. Writes an mcp_audits row. Does not manage users or settings.',
   inputSchema: {
     slug: z.string().describe('Stable latin slug, such as zelenogradsk'),
-    name: z.string().describe('Official name, stored as the region title'),
-    shortTitle: z.string().nullable().optional().describe('Town name for eyebrows and filters, e.g. Зеленоградск. Null clears it; omit to keep it'),
+    name: z.string().describe('Catalogue-area name, stored as the region title; not a legal municipal claim'),
+    shortTitle: z.string().nullable().optional().describe('Optional display anchor/name for the catalogue area, e.g. Зеленоградск; not verified address locality. Null clears it; omit to keep it'),
     description: z.string().nullable().optional(),
     coordinates: point.nullable().optional(),
     center: point.nullable().optional().describe('Alias of coordinates'),

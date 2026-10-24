@@ -1,5 +1,7 @@
+import { regionArea } from './region'
+
 // «Где поесть сейчас» (ADR 0029). The server sends every published venue of
-// a town in distance order; the browser only adds the live status and the
+// a catalogue area in distance order; the browser only adds the live status and the
 // grouping, so search engines and people get the same list.
 
 export const EAT_NOW_PATH = '/gde-poest-seychas'
@@ -12,28 +14,9 @@ export const EAT_NOW_GROUPS: Array<{ key: EatNowGroup, title: string }> = [
   { key: 'unknown', title: 'Часы не проверены' },
 ]
 
-// Prepositional case for titles: «где поесть в Светлогорске».
-const IN_TOWN: Record<string, string> = {
-  kaliningrad: 'в Калининграде',
-  svetlogorsk: 'в Светлогорске',
-  zelenogradsk: 'в Зеленоградске',
-  yantarnyy: 'в Янтарном',
-  baltiysk: 'в Балтийске',
-  sovetsk: 'в Советске',
-  pionerskiy: 'в Пионерском',
-  chernyakhovsk: 'в Черняховске',
-  gusev: 'в Гусеве',
-  gvardeysk: 'в Гвардейске',
-  guryevsk: 'в Гурьевске',
-  bagrationovsk: 'в Багратионовске',
-  mamonovo: 'в Мамоново',
-  neman: 'в Немане',
-  polessk: 'в Полесске',
-  pravdinsk: 'в Правдинске',
-}
-
+// Legacy helper name retained for callers; every phrase describes a catalogue area.
 export function inTown(slug: string, label: string) {
-  return IN_TOWN[slug] ?? `: ${label}`
+  return regionArea({ slug, title: label, shortTitle: label }).inside
 }
 
 export function eatNowPath(regionSlug?: string | null) {

@@ -1,13 +1,7 @@
 // Client side of site search (ADR 0030): result labels and the event beacon.
+import type { SearchHit } from './search-results'
 
-export interface SearchHit {
-  kind: 'place' | 'route' | 'collection' | 'quest' | 'venue' | 'hub' | 'city'
-  path: string
-  title: string
-  label: string
-  region: string
-  snippet: string
-}
+export type { SearchHit } from './search-results'
 
 export interface SearchResponse {
   query: string

@@ -5,6 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createSSRApp, defineComponent, h, reactive, ref, Suspense } from 'vue'
 import SearchPage from '../app/pages/poisk.vue'
+import { areaSearchResults } from '../shared/search-results'
 
 const { fetchPage, sendEvents } = vi.hoisted(() => ({ fetchPage: vi.fn(), sendEvents: vi.fn() }))
 vi.mock('./nuxt-stubs', async (original) => ({
@@ -141,6 +142,18 @@ it('server-renders the same failure and a plain GET recovery form without analyt
   expect(html).toContain('action="/poisk"')
   expect(html).toContain('method="get"')
   expect(html).toContain('href="/forty"')
+  expect(sendEvents).not.toHaveBeenCalled()
+})
+
+it('server-renders area labels and retains the subject name and destination link', async () => {
+  data.value = response()
+  data.value.results = areaSearchResults([{ kind: 'place', path: '/primorsk', title: 'Приморск', label: 'Курорты', region: 'Балтийск', snippet: 'Фикстура' }], [{ slug: 'baltiysk', title: 'Историческое название', shortTitle: 'Балтийск' }])
+  status.value = 'success'
+  error.value = null
+  const html = await renderToString(createSSRApp(SearchPage))
+  expect(html).toContain('Приморск')
+  expect(html).toContain('Балтийск и окрестности')
+  expect(html).toContain('href="/primorsk"')
   expect(sendEvents).not.toHaveBeenCalled()
 })
 

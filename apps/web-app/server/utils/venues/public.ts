@@ -252,7 +252,7 @@ async function loadVenue(slug: string) {
     noindex: venue.noindex || venue.status === 'closed' || operatingClosed || missingDescription,
     image: cover ? socialImage(cover, cover.alt || venue.name) : null,
     kindLabel: kindLabel(venue.kind),
-    inTown: town.startsWith('в ') ? town : null,
+    inTown: town || null,
     regionSlug: region?.slug ?? null,
     cuisineLabels: cuisineLabels(venue.cuisineTags, 6),
     menuUrl: venue.menuUrl,
@@ -576,12 +576,12 @@ export async function loadEatNow(regionSlug: string | null) {
     const doc = collectionDocument({
       path: EAT_NOW_PATH,
       h1: 'Где поесть сейчас',
-      summary: 'Кафе, рестораны и пекарни Калининградской области с проверенными часами: что открыто прямо сейчас и что откроется позже, по городам.',
+      summary: 'Кафе, рестораны и пекарни Калининградской области с проверенными часами: что открыто прямо сейчас и что откроется позже, по территориям.',
       crumbName: 'список',
       parent: { name: 'Еда', href: '/eda' },
       items: townLinks.map((town) => ({ name: `Где поесть сейчас ${inTown(town.slug, town.title)}`, url: town.href })),
-      seoTitle: 'Где поесть сейчас: открытые кафе и рестораны по городам',
-      seoDescription: 'Что открыто прямо сейчас в Калининграде, Светлогорске, Зеленоградске и других городах области: кафе и рестораны с проверенными часами работы.',
+      seoTitle: 'Где поесть сейчас: открытые кафе и рестораны по территориям',
+      seoDescription: 'Что открыто прямо сейчас в Калининграде, Светлогорске, Зеленоградске и окрестностях этих городов: кафе и рестораны с проверенными часами работы.',
       kind: 'CollectionPage',
     })
     return { type: 'index' as const, doc, towns: townLinks }
