@@ -37,6 +37,12 @@ const APPOINTMENT_SUBJECTS = [
 // still provide FAQ/location context when no clause subject is named.
 const APPOINTMENT_HEAD = /^(?:рестораны?|кафе|бары?|магазины?|выставк[аи]|экспозици[яи]|музей|музеи|пивоварн[яи]|конн(?:ый|ые)\s+заводы?)$/iu
 const APPOINTMENT_PREPOSITION = /(?:^|[^\p{L}])(?:[вуск]|во|на|при|около|возле|со|ко|из|от|для|без|над|под|перед|между|после|до|внутри)(?:\s+[\p{L}-]+(?:ым|им|ой|ей|ого|его|ому|ему|ом|ем|ую|юю|ых|их)){0,2}\s*$/iu
+// At most two full-form attributive modifiers; short predicates do not qualify.
+// Stems are limited to 40 letters/hyphens. This is a shape cue, not a word list.
+const APPOINTMENT_GROUP_MODIFIERS = String.raw`(?:[\p{L}-]{1,40}(?:ый|ий|ой|ая|яя|ое|ее|ые|ие)\s+){0,2}`
+const APPOINTMENT_GROUP_LINK = new RegExp(String.raw`^\s*(?:и(?!\p{L})|,)\s*${APPOINTMENT_GROUP_MODIFIERS}$`, 'iu')
+const APPOINTMENT_GROUP_AND = new RegExp(String.raw`^\s*и(?!\p{L})\s*${APPOINTMENT_GROUP_MODIFIERS}$`, 'iu')
+const APPOINTMENT_GROUP_PREFIX = new RegExp(String.raw`^\s*${APPOINTMENT_GROUP_MODIFIERS}$`, 'iu')
 
 export const STATUS_SUBJECT_WARNING = 'closure may refer to another subject'
 
@@ -305,15 +311,19 @@ function appointmentSubject(text: string, title: string | null | undefined): App
   if (!last) {
     return subjects[0] ?? null
   }
+  const first = heads[0]!
+  if (APPOINTMENT_GROUP_PREFIX.test(normalized.slice(0, first.index))) {
+    first.index = 0
+  }
   const group = [last]
   let coordinated = false
   for (let index = heads.length - 2; index >= 0; index -= 1) {
     const head = heads[index]!
     const gap = normalized.slice(head.end, group[0]!.index)
-    if (!/^\s*(?:и|,)\s*$/iu.test(gap)) {
+    if (!APPOINTMENT_GROUP_LINK.test(gap)) {
       break
     }
-    coordinated ||= /^\s*и\s*$/iu.test(gap)
+    coordinated ||= APPOINTMENT_GROUP_AND.test(gap)
     group.unshift(head)
   }
   if (!coordinated) {

@@ -45,6 +45,30 @@ describe('status consistency', () => {
   })
 
   it.each([
+    { title: 'Музей «Бланкенштайн»', text: 'Музей и небольшое кафе принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Небольшое кафе и старый музей принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'По записи принимают музей и небольшое кафе.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'По записи принимают кафе и старый музей.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей и небольшое новое кафе принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей и небольшая пивоварня принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей и соседние кафе принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей и летнее кафе принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей и небольшой бар принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей «Бланкенштайн» и небольшое кафе принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей, небольшое кафе и ресторан принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Небольшой музей «Бланкенштайн» и кафе принимают по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея и небольшое кафе принимают по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей открыт и небольшое кафе принимает по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей работает ежедневно, небольшое кафе принимает по записи.', own: false },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('retains coordinated heads across adjective modifiers ($title, $mode): $text', ({ title, text, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
     { title: 'Музей «Старая пивоварня»', text: 'Музей «Старая пивоварня» принимает по записи.', own: true },
     { title: 'Кафе «Старый музей»', text: 'Кафе «Старый музей» принимает по записи.', own: true },
     { title: 'Музей «Старая пивоварня»', text: '«Старая пивоварня» принимает по записи.', own: true },
