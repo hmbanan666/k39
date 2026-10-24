@@ -15,7 +15,8 @@ const TENANT_WORDS = [String.raw`ресторан\p{L}*`, 'кафе', 'бар', 
 const TENANT_WORD = TENANT_WORDS.join('|')
 const TENANT = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})(?!\p{L})|музе\p{L}*\s+внутри`, 'iu')
 const TENANT_THEN_QUOTE = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})\s+$`, 'iu')
-const CLAUSE_RESET = /,\s*(?:а|но)(?!\p{L})|(?:^|[^\p{L}])сам[ао]?(?!\p{L})/giu
+const COORDINATING_CLAUSE_RESET = /,\s*(?:а|но)(?!\p{L})/iu
+const CLAUSE_RESET = new RegExp(String.raw`${COORDINATING_CLAUSE_RESET.source}|(?:^|[^\p{L}])сам[ао]?(?!\p{L})`, 'giu')
 
 // Appointment subjects also include attractions discussed on a town page.
 // A matching type in the page title can still name the page itself.
@@ -140,17 +141,21 @@ function subjectKind(text: string, title: string | null | undefined): 'other' | 
   return ambiguous ? 'ambiguous' : null
 }
 
-/** «, а», «, но», and сам/сама/само start a new subject. Earlier words do not apply. */
-function scopeStart(sentence: string, index: number) {
-  let start = 0
+/** Only the existing coordinating resets may inherit an implicit subject. */
+function scopeBoundary(sentence: string, index: number) {
+  let boundary = { start: 0, index: 0, continuation: false }
   CLAUSE_RESET.lastIndex = 0
   for (const match of sentence.matchAll(CLAUSE_RESET)) {
     const end = (match.index ?? 0) + match[0].length
     if (end <= index) {
-      start = end
+      boundary = { start: end, index: match.index ?? 0, continuation: COORDINATING_CLAUSE_RESET.test(match[0]) }
     }
   }
-  return start
+  return boundary
+}
+
+function scopeStart(sentence: string, index: number) {
+  return scopeBoundary(sentence, index).start
 }
 
 function closureKind(sentence: string, title: string | null | undefined): ClosureKind | null {
@@ -258,7 +263,10 @@ function appointmentSubject(text: string, title: string | null | undefined): App
     if (precedingSubject && !APPOINTMENT_PREPOSITION.test(normalizeName(before))) {
       // A quoted label qualifies its noun, including an oblique complement;
       // it cannot promote that complement over the clause's subject.
-      precedingSubject.kind = kind
+      // A shared name cannot change an explicitly incompatible subject type.
+      if (precedingSubject.kind !== 'other') {
+        precedingSubject.kind = kind
+      }
     } else {
       subjects.push({ index, end: index + normalizeName(match[1] ?? '').length, kind, complement: APPOINTMENT_PREPOSITION.test(normalizeName(before)) })
     }
@@ -281,32 +289,48 @@ function appointmentFragments(text: string) {
   return parts
 }
 
+function appointmentPreviousContext(parts: ReturnType<typeof appointmentFragments>, title: string | null | undefined) {
+  const location = parts.at(-2)
+  const preceding = parts.at(-3)
+  // A comma-bracketed location can inherit its head, but cannot displace
+  // an explicit subject in the active booking clause.
+  let context = location?.separator === ',' && preceding?.separator === ','
+    && appointmentSubject(location.text, title)?.complement
+    ? appointmentSubject(preceding.text, title)
+    : null
+  for (let previous = parts.length - 2; !context && previous >= 0; previous -= 1) {
+    const part = parts[previous]!
+    if (part.separator !== ',') {
+      break
+    }
+    context = appointmentSubject(part.text, title)
+  }
+  return context
+}
+
 function ownAppointment(sentence: string, question: string, title: string | null | undefined) {
   for (const match of sentence.matchAll(new RegExp(APPOINTMENT.source, `${APPOINTMENT.flags}g`))) {
     const index = match.index
-    const start = scopeStart(sentence, index)
+    const boundary = scopeBoundary(sentence, index)
+    const start = boundary.start
     const parts = appointmentFragments(sentence.slice(start, index))
     const before = parts.at(-1)?.text ?? ''
     const after = appointmentFragments(sentence.slice(index + match[0].length))[0]?.text ?? ''
     const candidates = [appointmentSubject(before, title), appointmentSubject(after, title)]
       .filter((subject) => subject != null)
-    const location = parts.at(-2)
-    const preceding = parts.at(-3)
-    // A comma-bracketed location can inherit its head, but cannot displace
-    // an explicit subject in the active booking clause.
-    const inherited = location?.separator === ',' && preceding?.separator === ','
-      && appointmentSubject(location.text, title)?.complement
-      ? appointmentSubject(preceding.text, title)
-      : null
-    // With no active-clause candidate, a comma continuation/parenthetical
-    // retains its nearest clear context. A semicolon ends that inheritance.
-    let context = inherited
-    for (let previous = parts.length - 2; !context && previous >= 0; previous -= 1) {
-      const part = parts[previous]!
-      if (part.separator !== ',') {
+    let context = appointmentPreviousContext(parts, title)
+    let parent = boundary
+    // An implicit adversative continuation may reuse its preceding context.
+    // Current candidates, semicolons and explicit сам/сама/само still win.
+    while (!candidates.length && !context && parent.continuation) {
+      const parentBoundary = scopeBoundary(sentence, parent.index)
+      const parentParts = appointmentFragments(sentence.slice(parentBoundary.start, parent.index))
+      context = appointmentSubject(parentParts.at(-1)?.text ?? '', title)
+        ?? appointmentPreviousContext(parentParts, title)
+      if (parentParts.some((part) => part.separator === ';')) {
         break
       }
-      context = appointmentSubject(part.text, title)
+      parent = parentBoundary
     }
     // A location before the booking phrase cannot override a subject after it.
     const subject = candidates.find((candidate) => !candidate.complement)

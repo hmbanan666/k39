@@ -45,6 +45,44 @@ describe('status consistency', () => {
   })
 
   it.each([
+    ...[', а', ', но'].flatMap((boundary) => [
+      { text: `Пивоварня работает ежедневно${boundary} экскурсии по записи.`, subject: 'Пивоварня «Бланкенштайн»', context: 'Полесск' },
+      { text: `Музей, построенный в 1904 году, работает ежедневно${boundary} экскурсии по записи.`, subject: 'Музей «Бланкенштайн»', context: 'Полесск' },
+      { text: `Пивоварня работает ежедневно${boundary} музей принимает по записи.`, subject: 'Музей «Бланкенштайн»', context: 'Пивоварня «Бланкенштайн»' },
+      { text: `Пивоварня работает ежедневно${boundary} в музее принимают по записи.`, subject: 'Музей «Бланкенштайн»', context: 'Пивоварня «Бланкенштайн»' },
+    ]).flatMap(({ text, subject, context }) => [
+      { title: subject, text, own: true }, { title: context, text, own: false },
+    ]),
+    { title: 'Полесск', text: 'Пивоварня работает ежедневно, а сам Полесск доступен по записи.', own: true },
+    { title: 'Полесск', text: 'Пивоварня работает ежедневно, а экскурсии идут ежедневно, но посещение по записи.', own: false },
+    { title: 'Пивоварня «Бланкенштайн»', text: 'Пивоварня работает ежедневно, а экскурсии идут ежедневно, но посещение по записи.', own: true },
+    { title: 'Кирха', text: 'Пивоварня работает ежедневно, а экскурсии идут; осмотр свободный, но вход по записи.', own: true },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('inherits implicit context across existing coordinating boundaries ($title, $mode): $text', ({ title, text, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
+    { title: 'Музей «Бланкенштайн»', text: 'Ресторан «Бланкенштайн» принимает по записи.', own: false },
+    { title: 'Форт №5', text: 'Ресторан «Форт №5» принимает по записи.', own: false },
+    { title: 'Ресторан «Бланкенштайн»', text: 'Музей «Бланкенштайн» принимает по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей «Бланкенштайн» принимает по записи.', own: true },
+    { title: 'Ресторан «Бланкенштайн»', text: 'Ресторан «Бланкенштайн» принимает по записи.', own: true },
+    { title: 'Форт №5', text: 'Форт №5 «Король Фридрих Вильгельм III» доступен по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: '«Бланкенштайн» принимает по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей «Окно» принимает по записи.', own: false },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('keeps explicit subject types authoritative over shared names ($title, $mode): $text', ({ title, text, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
     ...[
       { text: 'Пивоварня работает ежедневно, экскурсии по записи.', subject: 'Пивоварня «Бланкенштайн»', context: 'Полесск' },
       { text: 'Музей, построенный в 1904 году, принимает по записи.', subject: 'Музей «Бланкенштайн»', context: 'Полесск' },

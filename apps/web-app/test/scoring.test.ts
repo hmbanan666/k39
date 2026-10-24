@@ -1098,7 +1098,15 @@ describe('goal grace and status scope', () => {
     const own = scorePage({ ...page, scheduleMode: 'always', faq: [{ question: 'Как попасть в Полесск?', answer: 'Сам город доступен по записи.' }] })
     expect(own.checks.quality).toContain('status contradiction: text says by appointment, schedule is always open')
     expect(own.quality).toBe(town.quality - 15)
-    const museum = scorePage({ ...page, title: 'Музей «Бланкенштайн»', scheduleMode: 'always' })
+    const museumTenant = scorePage({ ...page, title: 'Музей «Бланкенштайн»', scheduleMode: 'always' })
+    expect(museumTenant.checks.quality).toEqual(town.checks.quality)
+    expect(museumTenant.quality).toBe(town.quality)
+    const museum = scorePage({
+      ...page,
+      title: 'Музей «Бланкенштайн»',
+      scheduleMode: 'always',
+      faq: [{ question: 'Как посетить музей «Бланкенштайн»?', answer: 'Ул. Рабочая, 5, экскурсии по записи.' }],
+    })
     expect(museum.checks.quality).toContain('status contradiction: text says by appointment, schedule is always open')
     expect(museum.quality).toBe(town.quality - 15)
   })
@@ -1127,6 +1135,10 @@ describe('goal grace and status scope', () => {
     { title: 'Пивоварня «Бланкенштайн»', text: 'Пивоварня работает ежедневно, экскурсии по записи.', own: true },
     { title: 'Кафе музея', text: 'Музей принимает по записи.', own: false },
     { title: 'Кафе музея', text: 'Кафе принимает по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Ресторан «Бланкенштайн» принимает по записи.', own: false },
+    { title: 'Форт №5', text: 'Ресторан «Форт №5» принимает по записи.', own: false },
+    { title: 'Полесск', text: 'Пивоварня работает ежедневно, а экскурсии по записи.', own: false },
+    { title: 'Пивоварня «Бланкенштайн»', text: 'Пивоварня работает ежедневно, а экскурсии по записи.', own: true },
   ])('preserves the 15-point appointment subject penalty with complements: $text', ({ title, text, own }) => {
     const page = source({ title, body: text })
     const unchecked = scorePage(page)
