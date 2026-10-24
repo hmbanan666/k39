@@ -76,6 +76,7 @@ Proposed.
 | 0048 | [Declared VK community id for menu prices](0048-vk-community-id.md) | Accepted |
 | 0049 | [Dated temporary notices](0049-temporary-notices.md) | Accepted |
 | 0050 | [Admission extras and larger entry lists](0050-admission-extras.md) | Accepted; see implementation review in record |
+| 0051 | [Regions are named catalogue areas](0051-region-catalog-areas.md) | Accepted |
 
 ## Redirects
 
