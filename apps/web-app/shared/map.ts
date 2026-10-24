@@ -459,10 +459,10 @@ export function formatDistance(km: number) {
   }
   if (km < 0.95) {
     const meters = Math.max(50, Math.round((km * 1000) / 10) * 10)
-    return `${meters} м`
+    return `${meters} м по прямой`
   }
   const digits = km < 10 ? 1 : 0
-  return `${km.toFixed(digits).replace('.', ',')} км`
+  return `${km.toFixed(digits).replace('.', ',')} км по прямой`
 }
 
 export function stopsLabel(count: number) {

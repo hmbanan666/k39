@@ -408,7 +408,7 @@ function nextSlot(label: string, start: string | null, at: Date, unknownDays: Un
 export function closureText(closure: NonNullable<ScheduleRules['closure']>) {
   const until = closure.until ? ` до ${closure.until.slice(8, 10)}.${closure.until.slice(5, 7)}.${closure.until.slice(0, 4)}` : ''
   const reason = CLOSURE_REASON[closure.reason]
-  const head = `${reason || until ? 'Закрыто' : 'Временно закрыто'}${reason}${until}`
+  const head = `Закрыто${reason}${until}`
   return closure.viewableOutside ? `${head} · снаружи можно посмотреть` : head
 }
 

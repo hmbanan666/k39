@@ -84,7 +84,7 @@ describe('by appointment', () => {
   })
 })
 
-describe('temporarily closed', () => {
+describe('closed access', () => {
   it('names the reason and the outside view, never hours', async () => {
     const { closureText } = await import('../shared/schedule')
     const bastion = { rules: scheduleRulesSchema.parse({ mode: 'closed', closure: { reason: 'restoration', viewableOutside: true } }), sourceUrl: null, verifiedAt: '2026-10-14' }
@@ -95,7 +95,27 @@ describe('temporarily closed', () => {
     expect(closureText({ reason: 'repair', until: '2027-05-01', viewableOutside: false })).toBe('Закрыто на ремонт до 01.05.2027')
     expect(availabilityText(availabilityFromWindow({ currentEnd: null, nextStart: null, verified: true, closed: true }, now), now)).toBe('Закрыто')
     expect(closureText({ reason: 'military', viewableOutside: false })).toBe('Закрыто: военный объект')
-    expect(closureText({ reason: 'other', viewableOutside: true })).toBe('Временно закрыто · снаружи можно посмотреть')
+    expect(closureText({ reason: 'other', viewableOutside: true })).toBe('Закрыто · снаружи можно посмотреть')
+  })
+
+  it.each([
+    { reason: 'other', viewableOutside: false, expected: 'Закрыто' },
+    { reason: 'other', viewableOutside: true, expected: 'Закрыто · снаружи можно посмотреть' },
+    { reason: 'other', until: '2027-05-01', viewableOutside: true, expected: 'Закрыто до 01.05.2027 · снаружи можно посмотреть' },
+    { reason: 'restoration', viewableOutside: true, expected: 'Закрыто на реставрацию · снаружи можно посмотреть' },
+    { reason: 'repair', until: '2027-05-01', viewableOutside: false, expected: 'Закрыто на ремонт до 01.05.2027' },
+    { reason: 'military', viewableOutside: false, expected: 'Закрыто: военный объект' },
+    { reason: 'private', viewableOutside: true, expected: 'Закрыто: частная территория · снаружи можно посмотреть' },
+    { reason: 'season', until: '2027-05-01', viewableOutside: false, expected: 'Закрыто до начала сезона до 01.05.2027' },
+  ])('keeps closed availability and SSR details for $expected', ({ expected, ...closure }) => {
+    const rules = scheduleRulesSchema.parse({ mode: 'closed', closure })
+    const schedule = { rules, sourceUrl: null, verifiedAt: '2026-10-14' }
+    const now = at('2026-10-14T12:00')
+    const status = statusFromRules(schedule, now)
+    expect(status).toMatchObject({ status: 'closed', opensAt: null, closesAt: null, closure: rules.closure })
+    expect(availabilityText(status, now)).toBe(expected)
+    expect(scheduleDetails(rules)).toEqual([expected])
+    expect(expandIntervals(rules, '2026-10-14', 7)).toEqual([])
   })
 })
 

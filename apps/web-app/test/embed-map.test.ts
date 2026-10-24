@@ -20,9 +20,13 @@ describe('k39 map', () => {
     expect(pinOffer(offer, true)).toEqual({ partner: true, offer: 'Обед со скидкой' })
   })
 
-  it('keeps the walking distance off a point that is the focus', () => {
+  it('labels straight-line distances and keeps the focus threshold', () => {
     expect(mapDistanceLabel(0)).toBe('')
-    expect(mapDistanceLabel(0.4)).toContain('м')
+    expect(mapDistanceLabel(0.049)).toBe('')
+    expect(mapDistanceLabel(null)).toBe('')
+    expect(mapDistanceLabel(Number.NaN)).toBe('')
+    expect(mapDistanceLabel(0.4)).toBe('около 400 м по прямой')
+    expect(mapDistanceLabel(12.2)).toBe('12 км по прямой')
     expect(WALKING_RADIUS_KM).toBe(1.2)
   })
 

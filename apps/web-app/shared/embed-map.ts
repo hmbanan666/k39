@@ -95,7 +95,7 @@ export function mapDistanceLabel(km: number | null) {
   if (km == null || !Number.isFinite(km) || km < 0.05) {
     return ''
   }
-  return formatDistance(km)
+  return `${formatDistance(km)} по прямой`
 }
 
 export function shortMapText(value: string, max = 140) {

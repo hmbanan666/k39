@@ -50,13 +50,13 @@ function pair(point: RoutePoint) {
   return `${point.latitude.toFixed(5)},${point.longitude.toFixed(5)}`
 }
 
-// Straight line, not the road. «около» marks that approximation for every leg.
+// The approximation and the straight-line measure are explicit for every leg.
 export function formatStraightLine(km: number) {
   const text = formatDistance(km)
   if (!text) {
     return ''
   }
-  return text.startsWith('около ') ? text : `около ${text}`
+  return `${text.startsWith('около ') ? text : `около ${text}`} по прямой`
 }
 
 export function straightLineLabel(km: number | null) {
