@@ -70,13 +70,14 @@ Proposed.
 | 0042 | [Opening hours with an unknown closing time](0042-open-ended-hours.md) | Accepted |
 | 0043 | [Anonymous event rows are not a session](0043-anonymous-events-session.md) | Accepted |
 | 0044 | [Weekdays with unknown hours](0044-schedule-unknown-days.md) | Accepted |
-| 0045 | [Goal grace and the status check](0045-goal-grace-and-status-check.md) | Accepted |
+| 0045 | [Goal grace and the status check](0045-goal-grace-and-status-check.md) | Accepted; appointment policy superseded by ADR 0052 |
 | 0046 | [Structured practical info](0046-structured-practical-info.md) | Accepted |
 | 0047 | [Pending drafts for published venues](0047-venue-pending-drafts.md) | Accepted |
 | 0048 | [Declared VK community id for menu prices](0048-vk-community-id.md) | Accepted |
 | 0049 | [Dated temporary notices](0049-temporary-notices.md) | Accepted |
 | 0050 | [Admission extras and larger entry lists](0050-admission-extras.md) | Accepted; see implementation review in record |
 | 0051 | [Regions are named catalogue areas](0051-region-catalog-areas.md) | Accepted |
+| 0052 | [Appointment text is an editorial advisory](0052-appointment-text-advisories.md) | Accepted |
 
 ## Redirects
 
