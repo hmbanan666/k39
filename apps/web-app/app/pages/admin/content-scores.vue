@@ -264,8 +264,7 @@
 <script setup lang="ts">
 import type { TrustCounts } from '~~/shared/facts'
 import type { PageKind, PrimaryAction, ScoreChecks } from '~~/shared/scoring'
-import { trustText } from '~~/shared/facts'
-import { issueLabel, pageKindLabel } from '~~/shared/scoring'
+import { issueLabel, pageKindLabel, trustText } from '~~/shared/score-labels'
 
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
 useHead({ title: 'Оценки страниц | K39' })
