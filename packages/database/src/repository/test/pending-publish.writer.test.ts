@@ -66,7 +66,7 @@ describe('pending place publish', () => {
     const faq = [{ question, answer: 'Вход со стороны площади.' }]
     enterContentScope('draft')
     const staged = await updatePlaceDraft({ id: live.id, faq }, 'place_update')
-    expect(staged.writingWarnings).toEqual([])
+    expect(staged.writingWarnings[0]).toMatch(/Неопределённость.*0 баллов/u)
     expect((await Editor.placeById(live.id))?.faq).toEqual([])
     const pending = await Editor.contentDraft('place', live.id)
     expect(pending?.payload.faq).toEqual(faq)
@@ -74,29 +74,49 @@ describe('pending place publish', () => {
     expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
     enterContentScope('editor')
     const applied = await setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })
-    expect(applied.writingWarnings).toEqual([])
+    expect(applied.writingWarnings).toEqual(staged.writingWarnings)
     expect((await Editor.placeById(live.id))?.faq).toEqual(faq)
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
   })
 
+  it.each(['Дом стоит у самой Куршской косы.', 'Дом стоит у самого Балтийского моря.'].flatMap((prose) =>
+    [false, true].map((inFaq) => ({ prose, inFaq })),
+  ))('publishes geographic ambiguity from body/FAQ with visible advice ($inFaq): $prose', async ({ prose, inFaq }) => {
+    const live = await publishedPlace('pending-geographic-advisory')
+    const patch = inFaq ? { faq: [{ question: 'Где находится?', answer: prose }] } : { body: prose }
+    enterContentScope('draft')
+    const staged = await updatePlaceDraft({ id: live.id, ...patch }, 'place_update')
+    expect(staged.writingWarnings).toHaveLength(1)
+    expect(staged.writingWarnings[0]).toMatch(/Неопределённость.*0 баллов/u)
+    expect(await Editor.placeById(live.id)).toEqual(live)
+    const pending = await Editor.contentDraft('place', live.id)
+    await expect(setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })).rejects.toMatchObject({ statusCode: 403 })
+    expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
+    enterContentScope('editor')
+    const applied = await setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })
+    expect(applied.writingWarnings).toEqual(staged.writingWarnings)
+    expect(await Editor.placeById(live.id)).toMatchObject({ ...patch, publicationStatus: 'published' })
+    expect(await Editor.contentDraft('place', live.id)).toBeNull()
+  })
+
   it.each([
-    { answer: 'Дом стоит в самом красивом городе.', match: 'самом' },
-    { answer: 'Город гордится самою высокой башней.', match: 'самою' },
-    { answer: 'Город гордится самой красивою улицей.', match: 'самой' },
-  ])('warns on a real superlative and refuses editor application without changing stored state: $answer', async ({ answer, match }) => {
+    { answer: 'Дом имеет самый высокий фасад.', phrase: 'empty superlatives', match: 'самый' },
+    { answer: 'Город гордится лучшей улицей.', phrase: 'empty superlatives', match: 'лучшей' },
+    { answer: 'Дом стоит в самом сердце города.', phrase: 'в самом сердце', match: 'в самом сердце' },
+  ])('keeps hard style blockers and refuses editor application without changing stored state: $answer', async ({ answer, phrase, match }) => {
     const live = await publishedPlace('pending-superlative')
     enterContentScope('draft')
     const staged = await updatePlaceDraft({
       id: live.id, faq: [{ question: 'Что посмотреть в самом Нестерове?', answer }],
     }, 'place_update')
-    expect(staged.writingWarnings).toContain(`empty superlatives: ${match}`)
+    expect(staged.writingWarnings).toContain(`${phrase}: ${match}`)
     const pending = await Editor.contentDraft('place', live.id)
     const database = useDatabase()
     const auditBefore = await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id))
     const revisionsBefore = await database.select().from(revisions).where(eq(revisions.entityId, live.id))
     enterContentScope('editor')
     await expect(setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })).rejects.toMatchObject({
-      statusCode: 400, statusMessage: expect.stringContaining('empty superlatives'),
+      statusCode: 400, statusMessage: expect.stringContaining(phrase),
     })
     expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
     expect(await Editor.placeById(live.id)).toEqual(live)

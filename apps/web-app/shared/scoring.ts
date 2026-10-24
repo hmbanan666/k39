@@ -5,6 +5,7 @@ import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, lengthOverrideApplies, 
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
 import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, pageFaq, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
 import { statusChecks } from './status-consistency'
+import { analyzeWriting, writingAdvisoryMessage, writingCopy } from './writing'
 
 export type PageKind = 'place' | 'route' | 'collection' | 'hub' | 'quest' | 'venue'
 export type PrimaryAction = 'build_route' | 'buy_ticket' | 'go_next_place' | 'claim_offer' | 'read'
@@ -977,13 +978,15 @@ function resultsPoints(page: ScoreSource, now: Date) {
 }
 
 export function scorePage(page: ScoreSource, now = new Date()): PageScore {
+  const text = articleText(page)
+  const writingChecks = analyzeWriting(writingCopy([text, page.faq])).advisories.map((hit) => `writing advisory: ${hit.match}`)
   if (page.kind === 'venue') {
     const quality = venueQuality(page, now)
     const linking = linkingPoints(page)
     const indexing = indexingPoints(page)
     const results = resultsPoints(page, now)
     const checks: ScoreChecks = {
-      quality: quality.checks,
+      quality: [...quality.checks, ...writingChecks],
       linking: linking.checks,
       indexing: indexing.checks,
       results: results.checks,
@@ -1046,7 +1049,6 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
       goal90d: page.passport?.goal90d ?? null,
     }
   }
-  const text = articleText(page)
   const bodyChars = articleTextLength(text)
   const norm = lengthNorm(page.kind, page.categorySlug)
   const applied = lengthOverrideApplies(page.passport?.lengthOverride, norm.max)
@@ -1068,7 +1070,7 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
     results.points = clamp(results.points - 10)
   }
   const checks: ScoreChecks = {
-    quality: [...length.checks, ...ignored, ...filler.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks, ...status.checks],
+    quality: [...length.checks, ...ignored, ...filler.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks, ...status.checks, ...writingChecks],
     linking: linking.checks,
     indexing: indexing.checks,
     results: results.checks,
@@ -1195,6 +1197,7 @@ export function issueLabel(check: string) {
     [/^status warning: closure may refer to another subject$/, () => 'Фраза про закрытие может относиться к другому месту'],
     [/^status warning: appointment wording needs context review$/, () => 'Упомянута запись: проверьте контекст и условия посещения'],
     [/^status warning: appointment instructions need editorial review$/, () => 'Проверьте, понятны ли условия записи в тексте'],
+    [/^writing advisory: (.+)$/, (match) => writingAdvisoryMessage({ match: match[1]! })],
     [/^organic 30d: (\d+), goal (\d+)$/, (match) => `Поиск за 30 дней: ${match[1]}, цель ${match[2]}`],
     [/^organic 90d: (\d+), goal (\d+)$/, (match) => `Поиск за 90 дней: ${match[1]}, цель ${match[2]}`],
     [/^no search queries$/, () => 'Нет поисковых запросов'],

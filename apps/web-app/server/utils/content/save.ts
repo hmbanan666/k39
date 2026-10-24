@@ -23,7 +23,7 @@ export interface ContentGate {
   prose: unknown[]
   /** Official names and URLs. Banned sites read this; the stop-list does not. */
   names?: unknown[]
-  /** A published result rejects hits before the write. */
+  /** A published result rejects writing blockers before the write. */
   publishing: boolean
   /** Venue copy also checks price retelling in prose. */
   venue?: boolean

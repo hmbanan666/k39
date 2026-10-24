@@ -1105,18 +1105,36 @@ describe('goal grace and status scope', () => {
   it.each([
     { check: 'status warning: appointment wording needs context review', label: 'Упомянута запись: проверьте контекст и условия посещения' },
     { check: 'status warning: appointment instructions need editorial review', label: 'Проверьте, понятны ли условия записи в тексте' },
+    { check: 'writing advisory: самой', label: 'Неопределённость: «самой» может быть местоимением или превосходной степенью. Проверьте контекст вручную (0 баллов).' },
   ])('keeps the top issue label explicitly advisory: $check', ({ check, label }) => {
     expect(topIssue({ quality: [check], linking: [], indexing: [], results: [] }, { quality: 50, linking: 100, indexing: 100, results: 100 })).toBe(check)
     expect(issueLabel(check)).toBe(label)
   })
 
-  it('uses the corrected shared superlative rule in long-page filler scoring', () => {
-    const body = uniqueArticle(6200, 'Город')
-    const neutral = scorePage(source({ body: `${body}\n\nВ самом Нестерове стоит дом.` }))
-    const superlative = scorePage(source({ body: `${body}\n\nВ самом красивом городе стоит дом.` }))
-    expect(neutral.checks.quality).not.toContain('stop-list: empty superlatives')
-    expect(superlative.checks.quality).toContain('stop-list: empty superlatives')
-    expect(superlative.quality).toBeLessThan(neutral.quality)
+  it.each([2400, 6200])('keeps writing uncertainty visible without quality or filler deductions at %i chars', (chars) => {
+    const body = uniqueArticle(chars, 'Город')
+    const baseline = scorePage(source({ body }))
+    for (const prose of ['Дом стоит у самой Куршской косы.', 'Дом стоит у самого Балтийского моря.', 'Город гордится самою высокой башней.']) {
+      for (const inFaq of [false, true]) {
+        const page = scorePage(source({
+          body: inFaq ? body : `${body}\n\n${prose}`,
+          faq: inFaq ? [{ question: 'Где находится?', answer: prose }] : [],
+        }))
+        expect(page.quality, prose).toBe(baseline.quality)
+        expect(page.total, prose).toBe(baseline.total)
+        const advisory = page.checks.quality.find((check) => check.startsWith('writing advisory:'))
+        expect(advisory, prose).toBeDefined()
+        expect(issueLabel(advisory!)).toMatch(/Неопределённость.*0 баллов/u)
+        expect(page.checks.quality, prose).not.toContain('stop-list: empty superlatives')
+      }
+    }
+    if (chars > 6000) {
+      for (const prose of ['Самый высокий дом.', 'В самом сердце города.', 'Уютная атмосфера в доме.']) {
+        const blocked = scorePage(source({ body: `${body}\n\n${prose}` }))
+        expect(blocked.checks.quality.some((check) => check.startsWith('stop-list:'))).toBe(true)
+        expect(blocked.quality).toBe(baseline.quality - 10)
+      }
+    }
   })
 
   it('does not charge 15 points for a tenant closure, and still charges a real one', () => {

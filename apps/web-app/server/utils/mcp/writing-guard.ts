@@ -1,17 +1,18 @@
 import { createError } from 'h3'
-import { bannedSiteHits, bannedSiteProblem, writingHits } from '../../../shared/writing'
+import { analyzeWriting, bannedSiteHits, bannedSiteProblem, writingAdvisoryMessage } from '../../../shared/writing'
 
 /**
  * Draft and review saves return the messages and still store the row.
- * A published result, including a hub write, throws 400 before the write.
+ * A published result, including a hub write, rejects blockers before the write.
+ * Uncertain style findings remain visible advisories on every save.
  * Stylistic rules read `prose` only. Banned sites read prose and names.
  */
 export function writingGate(input: { prose: string, names?: string, publishing: boolean, venue?: boolean }) {
-  const style = writingHits(input.prose, { venue: input.venue })
+  const style = analyzeWriting(input.prose, { venue: input.venue })
   const banned = bannedSiteHits([input.prose, input.names ?? ''].filter(Boolean).join('\n'))
   const seen = new Set<string>()
   const writingWarnings: string[] = []
-  for (const hit of [...style, ...banned]) {
+  for (const hit of [...style.blockers, ...banned]) {
     const key = `${hit.phrase}\0${hit.match}`
     if (seen.has(key)) {
       continue
@@ -25,7 +26,7 @@ export function writingGate(input: { prose: string, names?: string, publishing: 
       statusMessage: `Нельзя опубликовать: ${writingWarnings.join('; ')}`,
     })
   }
-  return writingWarnings
+  return [...writingWarnings, ...style.advisories.map(writingAdvisoryMessage)]
 }
 
 /** Banned sites are rejected on every save, including a draft. */

@@ -74,9 +74,10 @@ function catalog(patch: Partial<ContentCatalog> = {}): ContentCatalog {
 
 describe('content score preview', () => {
   it.each((['live', 'pending', 'draft'] as const).flatMap((source) => [
-    { source, mode: 'always', prose: 'Ресторан местной пивоварни принимает по записи.', warning: 'appointment wording needs context review' },
-    { source, mode: 'appointment', prose: 'Уточните условия посещения по телефону.', warning: 'appointment instructions need editorial review' },
-  ]))('keeps zero-point appointment advisories consistent in $source preview ($mode)', ({ source, mode, prose, warning }) => {
+    { source, mode: 'always', prose: 'Ресторан местной пивоварни принимает по записи.', check: 'status warning: appointment wording needs context review' },
+    { source, mode: 'appointment', prose: 'Уточните условия посещения по телефону.', check: 'status warning: appointment instructions need editorial review' },
+    { source, mode: null, prose: 'Дом стоит у самой Куршской косы.', check: 'writing advisory: самой' },
+  ]))('keeps zero-point editorial advisories consistent in $source preview ($mode)', ({ source, mode, prose, check }) => {
     for (const inFaq of [false, true]) {
       const subject = place({
         title: 'Полесск', scheduleMode: mode,
@@ -89,7 +90,12 @@ describe('content score preview', () => {
             categorySlug: 'forty', categoryTitle: 'Форты', regionTitle: null,
           })
         : catalog({ places: [{ ...subject, publicationStatus: source === 'draft' ? 'draft' : 'published' }] })
-      const baseline = { ...rows, places: rows.places.map((row) => ({ ...row, scheduleMode: null })) }
+      const baseline = { ...rows, places: rows.places.map((row) => ({
+        ...row,
+        scheduleMode: null,
+        body: row.body.replaceAll('самой', 'такой'),
+        faq: row.faq.map((item) => ({ ...item, answer: item.answer.replaceAll('самой', 'такой') })),
+      })) }
       const include = { include: [{ kind: 'place' as const, id: subject.id }] }
       const stored = toStored(scoresFromCatalog(rows, [], [], false, NOW, undefined, include)[0]!)
       const baselineStored = toStored(scoresFromCatalog(baseline, [], [], false, NOW, undefined, include)[0]!)
@@ -102,7 +108,7 @@ describe('content score preview', () => {
       expect(preview?.total).toBe(baselinePreview?.total)
       expect(stored.quality).toBe(baselineStored.quality)
       expect(stored.total).toBe(baselineStored.total)
-      expect(stored.checks.quality).toContain(`status warning: ${warning}`)
+      expect(stored.checks.quality).toContain(check)
       expect(stored.checks.quality.some((check) => check.startsWith('status contradiction:'))).toBe(false)
     }
   })
