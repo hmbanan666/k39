@@ -76,6 +76,16 @@ function compare(priceRub: number, peers: ReturnType<typeof peer>[], variant = '
 }
 
 describe('price comparison', () => {
+  it('keeps a known area slug custom display name in grammatical cases and aggregate accessibility copy', () => {
+    const region = { slug: 'zelenogradsk', title: 'Историческое название', shortTitle: 'Побережье' }
+    expect(ofTown(region)).toBe('территории «Побережье»')
+    expect(byTown(region)).toBe('территории «Побережье»')
+    expect(inPlace(region)).toBe('на территории «Побережье»')
+    expect(priceCompareLead(region)).toBe('Сравниваем с другими заведениями территории «Побережье»')
+    expect(priceBlockSummary(['cheap', 'cheap', 'medium'], region)).toEqual({ text: 'ниже среднего', label: 'Цены ниже среднего по территории «Побережье»' })
+    expect(priceBadgeFromBand('high', region)).toEqual({ text: 'выше среднего', label: 'Цены выше среднего по территории «Побережье»' })
+  })
+
   it('names the only price, a two-venue range, and a rank from three venues', () => {
     expect(compare(220, [])).toMatchObject({
       band: null,

@@ -170,6 +170,8 @@ Sitemap source: `server/routes/sitemap-urls.get.ts` (published, indexable rows o
 
 A region ID is a named search/catalogue area, which may include surrounding settlements (ADR 0051). It is not proof of a subject's settlement or a legal municipal boundary. `shared/region.ts` supplies the public label and grammatical forms: for example, «Зеленоградск и окрестности». Listings, food pages, comparisons, search, breadcrumbs and place/venue labels use that contract. Custom names use neutral territory wording; missing names stay unknown. Search retains its legacy `city` wire kind and existing ranking/index membership, but presents it as a catalogue area.
 
+Price leads, cards and badge/accessibility summaries share the selected region display inputs, including a custom `shortTitle` on a known slug. Slug-only helper inputs remain a legacy fallback; a reader with the region row must pass that row rather than reconstruct its name from the slug.
+
 IDs, slugs, URLs, memberships, peer samples, coverage thresholds, coordinates and centre/centroid distance origins stay unchanged. Full addresses remain intact. JSON-LD never derives `addressLocality` from a region, address string or pin; the current model has no verified settlement contract, so it omits the field. A place with no usable street address has no invented address object. Authored article and SEO overrides still require separate source-backed editorial review.
 
 ## Admission entry and extra lists

@@ -1,5 +1,6 @@
 import type { OfficialUrlClass } from '@k39/types/official-url'
 import type { FoodStickerSlug } from './food-stickers'
+import type { RegionDisplay } from './region'
 import { classifyOfficialUrl } from '@k39/types/official-url'
 import { vkMenuMatchesSocial } from '@k39/types/vk-community'
 import { inTown } from './eat-now'
@@ -202,21 +203,28 @@ export function priceItemPath(slug: string, regionSlug?: string | null) {
 }
 
 // Legacy helper names; cases come from the canonical catalogue-area builder.
-export function ofTown(slug: string | null | undefined) {
-  return regionArea({ slug, title: '' }).of
+type PriceAreaInput = RegionDisplay | string | null | undefined
+
+// Slug-only callers remain compatible; readers with display inputs pass the row.
+function comparisonArea(region: PriceAreaInput) {
+  return regionArea(typeof region === 'string' ? { slug: region, title: '' } : region)
 }
 
-export function byTown(slug: string | null | undefined) {
-  return regionArea({ slug, title: '' }).by
+export function ofTown(region: PriceAreaInput) {
+  return comparisonArea(region).of
 }
 
-export function inPlace(slug: string | null | undefined) {
-  return regionArea({ slug, title: '' }).inside
+export function byTown(region: PriceAreaInput) {
+  return comparisonArea(region).by
+}
+
+export function inPlace(region: PriceAreaInput) {
+  return comparisonArea(region).inside
 }
 
 /** One line under «Ориентиры цен». The sample covers the catalogue area. */
-export function priceCompareLead(slug: string | null | undefined) {
-  return `Сравниваем с другими заведениями ${ofTown(slug)}`
+export function priceCompareLead(region: PriceAreaInput) {
+  return `Сравниваем с другими заведениями ${ofTown(region)}`
 }
 
 /**
@@ -752,7 +760,7 @@ export function priceBandFromBands(bands: Array<PriceBand | null>): { level: Sto
 }
 
 /** Badge copy for a stored band. Null hides the badge. */
-export function priceBadgeFromBand(level: StoredPriceBand | null | undefined, regionSlug?: string | null): PriceSummary | null {
+export function priceBadgeFromBand(level: StoredPriceBand | null | undefined, region?: PriceAreaInput): PriceSummary | null {
   if (!level) {
     return null
   }
@@ -764,12 +772,12 @@ export function priceBadgeFromBand(level: StoredPriceBand | null | undefined, re
   }
   return {
     text: `${word} среднего`,
-    label: `Цены ${word} среднего по ${byTown(regionSlug)}`,
+    label: `Цены ${word} среднего по ${byTown(region)}`,
   }
 }
 
-export function priceBlockSummary(bands: Array<PriceBand | null>, regionSlug?: string | null): PriceSummary | null {
-  return priceBadgeFromBand(priceBandFromBands(bands).level, regionSlug)
+export function priceBlockSummary(bands: Array<PriceBand | null>, region?: PriceAreaInput): PriceSummary | null {
+  return priceBadgeFromBand(priceBandFromBands(bands).level, region)
 }
 
 /**
@@ -867,6 +875,7 @@ export function buildPublicPrices(input: {
   venueSlug?: string | null
   regionId: string | null
   regionSlug: string | null
+  region?: RegionDisplay | null
   rows: Array<{
     item: string
     title: string
@@ -880,9 +889,7 @@ export function buildPublicPrices(input: {
   }>
   peersByItem: Record<string, CatalogPricePoint[]>
 }): PublicPriceCard[] {
-  const place = ofTown(input.regionSlug)
-  const where = inPlace(input.regionSlug)
-  const by = byTown(input.regionSlug)
+  const area = comparisonArea(input.region === undefined ? input.regionSlug : input.region)
   return input.rows.map((row) => {
     const peers = input.peersByItem[row.item] ?? []
     return {
@@ -902,9 +909,9 @@ export function buildPublicPrices(input: {
         priceRub: row.priceRub,
         variant: row.variant,
         regionId: input.regionId,
-        place,
-        where,
-        by,
+        place: area.of,
+        where: area.inside,
+        by: area.by,
         peers,
       }),
     }

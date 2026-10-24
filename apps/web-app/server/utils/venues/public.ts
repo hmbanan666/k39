@@ -220,6 +220,7 @@ async function loadVenue(slug: string) {
     venueSlug: venue.slug,
     regionId: venue.regionId,
     regionSlug: region?.slug ?? null,
+    region,
     rows: ownPrices,
     peersByItem: peers,
   })
@@ -227,7 +228,8 @@ async function loadVenue(slug: string) {
   const modules = toPublicVenueModules(moduleSource, renderMarkdown, prices, {
     now,
     mediaById,
-    priceLead: priceCompareLead(region?.slug ?? null),
+    priceLead: priceCompareLead(region),
+    region,
     regionSlug: region?.slug ?? null,
     priceBand: venue.priceBand,
   })
