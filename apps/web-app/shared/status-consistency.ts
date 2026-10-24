@@ -19,12 +19,18 @@ const CLAUSE_RESET = /,\s*(?:а|но)(?!\p{L})|(?:^|[^\p{L}])сам[ао]?(?!\p{
 
 // Appointment subjects also include attractions discussed on a town page.
 // A matching type in the page title can still name the page itself.
+const APPOINTMENT_HARD_NOUN_ENDINGS = '(?:а|у|ом|е|ы|ов|ам|ами|ах)?'
 const APPOINTMENT_SUBJECTS = [
-  ...TENANT_WORDS,
-  // Museum nouns include oblique context; «музейном» only modifies its noun.
+  // Only noun inflections: adjectives such as «музейном» modify a later head.
+  `ресторан${APPOINTMENT_HARD_NOUN_ENDINGS}`,
+  'кафе',
+  `бар${APPOINTMENT_HARD_NOUN_ENDINGS}`,
+  `магазин${APPOINTMENT_HARD_NOUN_ENDINGS}`,
+  String.raw`выстав(?:к(?:а|и|е|у|ой|ою|ам|ами|ах)|ок)`,
+  String.raw`экспозици(?:я|и|ю|ей|ею|й|ям|ями|ях)`,
   String.raw`музе(?:й|я|ю|ем|е|и|ев|ям|ями|ях)`,
-  String.raw`пивоварн\p{L}*`,
-  String.raw`конн\p{L}*\s+завод\p{L}*`,
+  String.raw`пивовар(?:н(?:я|и|е|ю|ей|ею|ям|ями|ях)|ен)`,
+  String.raw`конн(?:ый|ого|ому|ым|ом|ые|ых|ыми)\s+завод${APPOINTMENT_HARD_NOUN_ENDINGS}`,
 ].map((word) => new RegExp(String.raw`(?<!\p{L})(?:${word})(?!\p{L})`, 'iu'))
 // Bounded noun-phrase cues, not a general morphology parser. Oblique forms
 // still provide FAQ/location context when no clause subject is named.
@@ -248,17 +254,42 @@ function appointmentSubject(text: string, title: string | null | undefined): App
     || (a.complement ? a.index - b.index : b.index - a.index))[0] ?? null
 }
 
+/** Clause punctuation inside a quoted name does not introduce another subject. */
+function appointmentFragments(text: string) {
+  const parts: Array<{ text: string, separator: string | null }> = []
+  let start = 0
+  for (const match of text.matchAll(/«[^»\n]{1,80}»|[;,]/gu)) {
+    if (match[0] === ',' || match[0] === ';') {
+      parts.push({ text: text.slice(start, match.index), separator: match[0] })
+      start = match.index + 1
+    }
+  }
+  parts.push({ text: text.slice(start), separator: null })
+  return parts
+}
+
 function ownAppointment(sentence: string, question: string, title: string | null | undefined) {
   for (const match of sentence.matchAll(new RegExp(APPOINTMENT.source, `${APPOINTMENT.flags}g`))) {
     const index = match.index
     const start = scopeStart(sentence, index)
-    const before = sentence.slice(start, index)
-    const after = sentence.slice(index + match[0].length).split(',')[0] ?? ''
+    const parts = appointmentFragments(sentence.slice(start, index))
+    const before = parts.at(-1)?.text ?? ''
+    const after = appointmentFragments(sentence.slice(index + match[0].length))[0]?.text ?? ''
     const candidates = [appointmentSubject(before, title), appointmentSubject(after, title)]
       .filter((subject) => subject != null)
+    const location = parts.at(-2)
+    const preceding = parts.at(-3)
+    // A comma-bracketed location can inherit its head, but cannot displace
+    // an explicit subject in the active booking clause.
+    const inherited = location?.separator === ',' && preceding?.separator === ','
+      && appointmentSubject(location.text, title)?.complement
+      ? appointmentSubject(preceding.text, title)
+      : null
     // A location before the booking phrase cannot override a subject after it.
     const subject = candidates.find((candidate) => !candidate.complement)
+      ?? (inherited && !inherited.complement ? inherited : null)
       ?? candidates[0]
+      ?? inherited
       ?? appointmentSubject(start ? '' : question, title)
     if (subject == null || subject.kind === 'definite') {
       return true

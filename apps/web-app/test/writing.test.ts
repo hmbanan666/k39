@@ -56,6 +56,7 @@ describe('writing stop-list', () => {
     'Что посмотреть в самом Нестерове?', 'У самого моря.', 'К самому берегу.', 'В самом центре.',
     'В самой кирхе.', 'У самой воды.', 'От самой границы.', 'Самого себя.', 'Самому себе.',
     'САМ Нестеров стоит у реки.', 'Самомнение не помогает.',
+    'В **самом** Нестерове.', 'У _самого_ моря.',
   ])('allows emphatic pronouns without an evaluative adjective: %s', (text) => {
     expect(writingHits(text)).toEqual([])
     expect(writingGate({ prose: text, publishing: false })).toEqual([])
@@ -82,6 +83,24 @@ describe('writing stop-list', () => {
   it('keeps independent phrase bans after pronoun disambiguation', () => {
     expect(writingHits('В самом сердце города.').map((hit) => hit.phrase)).toContain('в самом сердце')
     expect(() => writingGate({ prose: 'В самом Нестерове уютная атмосфера.', publishing: true })).toThrow(/уютная атмосфера/)
+  })
+
+  it.each(['ой', 'ою'].flatMap((ending) => [
+    { adjective: 'высок', noun: 'башней', forms: ['ой', 'ою'] },
+    { adjective: 'красив', noun: 'улицей', forms: ['ой', 'ою'] },
+    { adjective: 'дальн', noun: 'границей', forms: ['ей', 'ею'] },
+  ].flatMap(({ adjective, noun, forms }) => forms.map((form) => ({
+    sam: `сам${ending}`, adjective: `${adjective}${form}`, noun,
+  })))))('warns and blocks feminine instrumental variants: $sam $adjective $noun', ({ sam, adjective, noun }) => {
+    for (const prose of [
+      `Город гордится ${sam} ${adjective} ${noun}.`,
+      `Город гордится **${sam}** _${adjective}_ ${noun}.`,
+      `Город гордится ${sam} действительно **${adjective}** ${noun}.`,
+    ]) {
+      expect(writingHits(prose).map((hit) => hit.phrase), prose).toContain('empty superlatives')
+      expect(writingGate({ prose, publishing: false }), prose).not.toEqual([])
+      expect(() => writingGate({ prose, publishing: true }), prose).toThrow(/Нельзя опубликовать/)
+    }
   })
 
   it('matches stems, intensifiers, evaluative triads, and the em dash', () => {

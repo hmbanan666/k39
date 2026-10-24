@@ -135,11 +135,12 @@ const hard = endingsGroup(HARD_ADJECTIVE_ENDINGS)
 const hardBare = endingsGroup(HARD_ADJECTIVE_ENDINGS, true)
 
 /** Case agreement distinguishes «в самом красивом городе» from «в самом городе». */
+const FEMININE_INSTRUMENTAL_ENDINGS = ['ой', 'ою', 'ей', 'ею'] as const
 const SAM_ADJECTIVE_FORMS = [
   ['ого', ['ого', 'его']],
   ['ому', ['ому', 'ему']],
-  ['ою', ['ою', 'ею']],
-  ['ой', ['ой', 'ей']],
+  ['ою', FEMININE_INSTRUMENTAL_ENDINGS],
+  ['ой', FEMININE_INSTRUMENTAL_ENDINGS],
   ['ом', ['ом', 'ем']],
 ] as const
 const SAM_MARKUP = '[*_~`]*'

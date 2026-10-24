@@ -45,6 +45,44 @@ describe('status consistency', () => {
   })
 
   it.each([
+    { title: 'Ресторан «Окно»', adjective: 'ресторанном', noun: 'ресторане' },
+    { title: 'Магазин «Окно»', adjective: 'магазинном', noun: 'магазине' },
+    { title: 'Экспозиция «Окно»', adjective: 'экспозиционном', noun: 'экспозиции' },
+    { title: 'Пивоварня «Окно»', adjective: 'пивоварном', noun: 'пивоварне' },
+  ].flatMap(({ title, adjective, noun }) => [
+    { title, text: `В ${adjective} кафе принимают по записи.`, own: false },
+    { title: 'Кафе «Башня»', text: `В ${adjective} кафе принимают по записи.`, own: true },
+    { title, text: `В ${noun} принимают по записи.`, own: true },
+    { title: 'Кафе «Башня»', text: `В ${noun} принимают по записи.`, own: false },
+  ]).flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('distinguishes attraction-family adjectives from nouns ($title, $mode): $text', ({ text, title, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
+    ...[';', ','].flatMap((separator) => [
+      { title: 'Кирха', text: `Музей открыт ежедневно${separator} по записи доступна Кирха.`, own: true },
+      { title: 'Кирха', text: `Кирха открыта ежедневно${separator} по записи принимает музей.`, own: false },
+      { title: 'Музей «Бланкенштайн»', text: `Кирха доступна ежедневно${separator} по записи принимает музей.`, own: true },
+      { title: 'Музей «Бланкенштайн»', text: `Музей открыт ежедневно${separator} по записи принимает кафе.`, own: false },
+      { title: 'Музей «Бланкенштайн»', text: `В музее принимают по записи${separator} кафе открыто ежедневно.`, own: true },
+    ]),
+    { title: 'Музей «Бланкенштайн»', text: 'Кафе, рядом с музеем, принимает по записи.', own: false },
+    { title: 'Кафе «Башня»', text: 'Кафе, рядом с музеем, принимает по записи.', own: true },
+    { title: 'Кафе «Башня, зал»', text: 'Кафе «Башня, зал» принимает по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Кафе «Башня, зал» принимает по записи.', own: false },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('bounds appointment candidates to their clause ($title, $mode): $text', ({ text, title, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
     { text: 'В музейном кафе принимают по записи.', museum: false },
     { text: 'По записи принимают в музейном кафе.', museum: false },
     { text: 'Музейное кафе принимает по записи.', museum: false },

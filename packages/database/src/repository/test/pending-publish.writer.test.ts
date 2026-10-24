@@ -79,13 +79,17 @@ describe('pending place publish', () => {
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
   })
 
-  it('still warns on a real superlative and refuses editor application without changing stored state', async () => {
+  it.each([
+    { answer: 'Дом стоит в самом красивом городе.', match: 'самом' },
+    { answer: 'Город гордится самою высокой башней.', match: 'самою' },
+    { answer: 'Город гордится самой красивою улицей.', match: 'самой' },
+  ])('warns on a real superlative and refuses editor application without changing stored state: $answer', async ({ answer, match }) => {
     const live = await publishedPlace('pending-superlative')
     enterContentScope('draft')
     const staged = await updatePlaceDraft({
-      id: live.id, faq: [{ question: 'Что посмотреть в самом Нестерове?', answer: 'Дом стоит в самом красивом городе.' }],
+      id: live.id, faq: [{ question: 'Что посмотреть в самом Нестерове?', answer }],
     }, 'place_update')
-    expect(staged.writingWarnings).toContain('empty superlatives: самом')
+    expect(staged.writingWarnings).toContain(`empty superlatives: ${match}`)
     const pending = await Editor.contentDraft('place', live.id)
     const database = useDatabase()
     const auditBefore = await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id))
