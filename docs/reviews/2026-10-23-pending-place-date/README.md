@@ -21,7 +21,3 @@ This does not change publication scope, the shared content writer, owner conflic
 Local repository/lint/link/diff checks, parser regression (26 tests), application typecheck and the corrected writer-test typecheck passed.
 
 [Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/39947236000) passed on `e1c5be9617679f57de7bd8631db5bf14b13a0798`: frozen install, repository validation, ESLint, all typechecks, 813 tests across 117 files, production build, standalone SSR smoke (including map metadata/final sitemap XML), and Docker image build. The three new PostgreSQL regressions passed with the real reader, pending writer and editor application. The final follow-up only records this evidence and removes the temporary branch push trigger. A later documentation-only intake update records reports 293–295 outside the agreed seven-item batch; none is claimed reproduced or fixed here. CI policy is unchanged in the final diff; normal PR CI checks the final head again. The local host has no Postgres/Docker, so database tests run in CI with Postgres 18. No production content, bearer or configuration is used or changed.
-
-## Queue handoff
-
-The [roadmap](../../roadmap.md) now starts with the agreed seven-item queue and an explicit merge count. When this fix merges, item 1 becomes 1/7 merged; S03 geolocation feedback is next. The five tourist journeys, six feature decisions and unsplit operational verification remain later work, not seven more promised PRs. Production deployment acceptance remains separate from merge/CI evidence.

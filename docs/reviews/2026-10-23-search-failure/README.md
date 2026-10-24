@@ -1,6 +1,6 @@
 # Search failure and recovery
 
-Task: V01's first tourist journey, F15/F23. Base: `ac3da9500118a5a5bcec60c7a7e542b331d73b60` (PR 313 merged). This is one discovered defect, outside the completed seven-item stabilization batch. No whole journey is accepted by this change.
+Scope: search failure and recovery, F15/F23. Base: `ac3da9500118a5a5bcec60c7a7e542b331d73b60` (PR 313 merged). No whole journey is accepted by this change.
 
 ## Trigger and correction
 
@@ -48,6 +48,6 @@ Focused page/helper tests pass: 11 tests across two files. Local `check:quick` p
 
 [Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/40020678330) passed on `11c7ec5577a7b9973f8e8ccda28799e77b56e9e8`: frozen install, literal `pnpm run check:full` (repository validation, read-only lint, all typechecks and 901 tests across 124 files), a clean diff after verification, production build, standalone SSR and Docker image build. CI used pinned Node 24.21.0, pnpm 12.15.0 and Postgres 18. The final follow-up only records these results and restores the original workflow; application, tests, capture script and screenshots are unchanged. Normal PR CI verifies the final head again.
 
-After merge: verify the deployed commit, ordinary/empty search and retry behavior on the deployed Nuxt page; do not inject a production outage. Finish phone, no-JavaScript, unknown/stale and source/directions acceptance before accepting the first journey. Four further V01 journeys, six D01 scope decisions and unsized O01 recovery work remain.
+These checks did not establish the deployed commit or complete phone, no-JavaScript, unknown/stale and source/directions journey acceptance. No production outage was induced.
 
 PR 313's main CI [passed](https://github.com/hmbanan666/k39/actions/runs/40016964587) on the base above. Admission issue #290 remains open for all-instance migration/writer/flag verification and an authorized editorial pass. This change does not enable extra writes or modify live tickets.

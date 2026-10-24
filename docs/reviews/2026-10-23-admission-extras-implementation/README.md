@@ -1,6 +1,6 @@
 # Admission extras implementation
 
-Date: 2026-10-23. Baseline: `2a332295f9f4f918616ac89cde343fb2e3745e33` (PR 312 merged). Implements [ADR 0050](../../adr/0050-admission-extras.md) for [issue 290](https://github.com/hmbanan666/k39/issues/290). The seven-item batch is 7/7 merged; this is its separately sized implementation follow-up. Merge, deployment, enabling extra writes and live editorial acceptance are distinct states.
+Date: 2026-10-23. Baseline: `2a332295f9f4f918616ac89cde343fb2e3745e33` (PR 312 merged). Implements [ADR 0050](../../adr/0050-admission-extras.md) for [issue 290](https://github.com/hmbanan666/k39/issues/290). Merge, deployment, enabling extra writes and live editorial acceptance are distinct states.
 
 ## Change
 
@@ -41,4 +41,4 @@ The final follow-up only records evidence/rollout wording, updates three desktop
 
 ## Remaining acceptance
 
-After merge, verify the deployed SHA and migration on every instance, enable extra writes, then re-read official prices/effective dates and use authorized editor writes for representative place/venue/route output. Check source ownership, units, entry prerequisites, fresh/stale/unknown behavior, JSON-LD and refreshed stored scores. The [design-source review](../2026-10-23-admission-extras/README.md) records contradictory/partially unavailable official pages; fixtures do not resolve those prices. Five V01 journeys, six D01 scope decisions and O01 recovery/editorial work remain separately visible in the [roadmap](../../roadmap.md).
+After merge, verify the deployed SHA and migration on every instance, enable extra writes, then re-read official prices/effective dates and use authorized editor writes for representative place/venue/route output. Check source ownership, units, entry prerequisites, fresh/stale/unknown behavior, JSON-LD and refreshed stored scores. The [design-source review](../2026-10-23-admission-extras/README.md) records contradictory/partially unavailable official pages; fixtures do not resolve those prices. Work and issue status are tracked in [GitHub Issues](https://github.com/hmbanan666/k39/issues).

@@ -1,8 +1,10 @@
-# Admission extras: design evidence and implementation estimate
+# Admission extras: design-source evidence
 
 Date: 2026-10-23. Baseline: `cac4720f1e2e89869ae2bce6f080c710514eb51c` (PR 310 merged). Design: [ADR 0050](../../adr/0050-admission-extras.md). Issue: [290](https://github.com/hmbanan666/k39/issues/290). This is a design review, not a price import, stored-content audit or implementation acceptance.
 
-## Inspected implementation
+The implementation findings below describe this baseline, before [PR 313](https://github.com/hmbanan666/k39/pull/313). See the [implementation review](../2026-10-23-admission-extras-implementation/README.md) and [current contract](../../content-system.md#admission-entry-and-extra-lists) for the delivered behavior.
+
+## Inspected implementation at the baseline
 
 | Path | Finding |
 | --- | --- |
@@ -35,14 +37,6 @@ The art-museum matrix can be represented by 31 ordinary audience cells including
 ADR 0050 uses separate entry/extra lists backed by the existing admission primitive, with explicit omitted-list preservation. It keeps old entry fact values/hashes intact and gives extras a separate slot namespace. Extras have their own public group, source/check lifecycle and optional source-stated unit; they cannot set entry offers, fallback, free-access inference or admission-based scoring.
 
 The larger entry cap is the chosen response to the combined-ticket/capacity part of issue 290. Cross-subject price sharing is deferred explicitly, with the maintenance cost of per-subject rows recorded. No deduplication or collection-price-drift fix is claimed. Deposits, ranges and booking/payment are outside this increment.
-
-## Estimate and acceptance boundary
-
-One medium-to-large implementation PR after the ADR merge, containing three internal tasks: storage/shared writes/facts; UI/public/admin consumers and scoring; compatibility/failure/boundary acceptance. They belong in one deployable change so an old whole-list writer cannot accidentally retire new extras. The ADR specifies concrete caps, clears, omission, permissions, freshness, SSR, JSON-LD, fact and rollback cases.
-
-A separate post-deployment editorial pass re-reads official prices, uses authorized editor writes and verifies representative place/venue/route output. No seed, automatic content classification or copied article pricing is planned. Issue 290 stays open until the implementation and its agreed acceptance are complete.
-
-Current-batch progress is **6/7 merged**. This ADR is the deliverable for item 7; merging it completes that bounded design item, not the implementation or whole-product cleanup. The next concrete handoff is the single implementation PR above; V01's five journeys, D01's six scope decisions and O01's undecomposed operations/recovery work remain visible in the roadmap.
 
 ## Validation of this documentation change
 
