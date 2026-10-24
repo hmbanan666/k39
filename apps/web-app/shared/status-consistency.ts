@@ -73,6 +73,11 @@ function ownSentences(input: StatusCheckInput) {
 
 type ClosureKind = 'definite' | 'other' | 'ambiguous'
 
+interface AppointmentSubject {
+  kind: ClosureKind
+  complement: boolean
+}
+
 function normalizeName(value: string) {
   return value.replace(/[«»„“”"]/g, ' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase('ru')
 }
@@ -182,12 +187,12 @@ function appointmentPageIndex(text: string, title: string | null | undefined) {
 }
 
 /** Prefer a clause subject over a locative/possessive complement or its quoted name. */
-function appointmentSubject(text: string, title: string | null | undefined): ClosureKind | null {
+function appointmentSubject(text: string, title: string | null | undefined): AppointmentSubject | null {
   if (text.includes('](/')) {
-    return 'other'
+    return { kind: 'other', complement: false }
   }
   const normalized = normalizeName(text)
-  const subjects: Array<{ index: number, end: number, kind: ClosureKind, complement: boolean }> = []
+  const subjects: Array<AppointmentSubject & { index: number, end: number }> = []
   const complementAt = (index: number) => APPOINTMENT_PREPOSITION.test(normalized.slice(0, index))
   const followsHead = (previous: { end: number, complement: boolean } | undefined, index: number) =>
     Boolean(previous && !previous.complement && previous.end <= index && !normalized.slice(previous.end, index).trim())
@@ -239,7 +244,7 @@ function appointmentSubject(text: string, title: string | null | undefined): Clo
     }
   }
   return subjects.sort((a, b) => Number(a.complement) - Number(b.complement)
-    || (a.complement ? a.index - b.index : b.index - a.index))[0]?.kind ?? null
+    || (a.complement ? a.index - b.index : b.index - a.index))[0] ?? null
 }
 
 function ownAppointment(sentence: string, question: string, title: string | null | undefined) {
@@ -248,10 +253,13 @@ function ownAppointment(sentence: string, question: string, title: string | null
     const start = scopeStart(sentence, index)
     const before = sentence.slice(start, index)
     const after = sentence.slice(index + match[0].length).split(',')[0] ?? ''
-    const kind = appointmentSubject(before, title)
-      ?? appointmentSubject(after, title)
+    const candidates = [appointmentSubject(before, title), appointmentSubject(after, title)]
+      .filter((subject) => subject != null)
+    // A location before the booking phrase cannot override a subject after it.
+    const subject = candidates.find((candidate) => !candidate.complement)
+      ?? candidates[0]
       ?? appointmentSubject(start ? '' : question, title)
-    if (kind == null || kind === 'definite') {
+    if (subject == null || subject.kind === 'definite') {
       return true
     }
   }

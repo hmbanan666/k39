@@ -1117,6 +1117,8 @@ describe('goal grace and status scope', () => {
     { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея принимает по записи.', own: false },
     { title: 'Музей «Бланкенштайн»', text: 'В музее кафе принимает по записи.', own: false },
     { title: 'Кафе «Башня»', text: 'В музее кафе принимает по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'В музее по записи принимает кафе.', own: false },
+    { title: 'Кафе «Башня»', text: 'В музее по записи принимает кафе.', own: true },
   ])('preserves the 15-point appointment subject penalty with complements: $text', ({ title, text, own }) => {
     const page = source({ title, body: text })
     const unchecked = scorePage(page)
