@@ -583,7 +583,7 @@ function freshPoints(page: ScoreSource, now: Date) {
   return { points: 0, checks: [`facts checked ${age} days ago`], age }
 }
 
-/** Places only: page text and schedule must agree (closed, по записи). */
+/** Places only: closure penalties and zero-point appointment advisories. */
 function statusPoints(page: ScoreSource, text: string) {
   if (page.kind !== 'place' || page.scheduleMode === undefined) {
     return { points: 0, checks: [] as string[] }
@@ -1193,6 +1193,8 @@ export function issueLabel(check: string) {
     [/^goal pending \(not indexable\)$/, () => 'Цель не оценивается: страница закрыта от индекса'],
     [/^goal pending \(unpublished\)$/, () => 'Цель не оценивается: страница не опубликована'],
     [/^status warning: closure may refer to another subject$/, () => 'Фраза про закрытие может относиться к другому месту'],
+    [/^status warning: appointment wording needs context review$/, () => 'Упомянута запись: проверьте контекст и условия посещения'],
+    [/^status warning: appointment instructions need editorial review$/, () => 'Проверьте, понятны ли условия записи в тексте'],
     [/^organic 30d: (\d+), goal (\d+)$/, (match) => `Поиск за 30 дней: ${match[1]}, цель ${match[2]}`],
     [/^organic 90d: (\d+), goal (\d+)$/, (match) => `Поиск за 90 дней: ${match[1]}, цель ${match[2]}`],
     [/^no search queries$/, () => 'Нет поисковых запросов'],

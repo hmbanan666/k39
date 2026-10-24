@@ -73,27 +73,38 @@ function catalog(patch: Partial<ContentCatalog> = {}): ContentCatalog {
 }
 
 describe('content score preview', () => {
-  it.each(['live', 'pending', 'draft'] as const)('keeps appointment subject checks consistent in %s preview and stored scoring', (source) => {
-    const town = place({
-      title: 'Полесск', scheduleMode: 'always',
-      faq: [{ question: 'Как посетить пивоварню «Бланкенштайн»?', answer: 'Ул. Рабочая, 5, экскурсии по записи.' }],
-      faqCount: 1,
-    })
-    const rows = source === 'pending'
-      ? catalogWithPendingPlace(catalog({ places: [place({ scheduleMode: 'always' })] }), town.id, { ...town, lastVerifiedAt: null }, {
-          categorySlug: 'forty', categoryTitle: 'Форты', regionTitle: null,
-        })
-      : catalog({ places: [{ ...town, publicationStatus: source === 'draft' ? 'draft' : 'published' }] })
-    const include = { include: [{ kind: 'place' as const, id: town.id }] }
-    const stored = toStored(scoresFromCatalog(rows, [], [], false, NOW, undefined, include)[0]!)
-    const preview = scorePreview({ catalog: rows, pageType: 'place', entityId: town.id, source, publicationStatus: source === 'draft' ? 'draft' : 'published', now: NOW })
-    expect(preview?.checks.quality).toEqual(stored.checks.quality)
-    expect(stored.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(false)
-    rows.places[0]!.faq = [{ question: 'Как попасть в Полесск?', answer: 'Сам Полесск доступен по записи.' }]
-    const ownPreview = scorePreview({ catalog: rows, pageType: 'place', entityId: town.id, source, publicationStatus: source === 'draft' ? 'draft' : 'published', now: NOW })
-    const ownStored = toStored(scoresFromCatalog(rows, [], [], false, NOW, undefined, include)[0]!)
-    expect(ownPreview?.checks.quality).toEqual(ownStored.checks.quality)
-    expect(ownStored.checks.quality).toContain('status contradiction: text says by appointment, schedule is always open')
+  it.each((['live', 'pending', 'draft'] as const).flatMap((source) => [
+    { source, mode: 'always', prose: 'Ресторан местной пивоварни принимает по записи.', warning: 'appointment wording needs context review' },
+    { source, mode: 'appointment', prose: 'Уточните условия посещения по телефону.', warning: 'appointment instructions need editorial review' },
+  ]))('keeps zero-point appointment advisories consistent in $source preview ($mode)', ({ source, mode, prose, warning }) => {
+    for (const inFaq of [false, true]) {
+      const subject = place({
+        title: 'Полесск', scheduleMode: mode,
+        body: inFaq ? 'Живой текст страницы.' : prose,
+        faq: inFaq ? [{ question: 'Как посетить?', answer: prose }] : [],
+        faqCount: inFaq ? 1 : 0,
+      })
+      const rows = source === 'pending'
+        ? catalogWithPendingPlace(catalog({ places: [place({ scheduleMode: mode })] }), subject.id, { ...subject, lastVerifiedAt: null }, {
+            categorySlug: 'forty', categoryTitle: 'Форты', regionTitle: null,
+          })
+        : catalog({ places: [{ ...subject, publicationStatus: source === 'draft' ? 'draft' : 'published' }] })
+      const baseline = { ...rows, places: rows.places.map((row) => ({ ...row, scheduleMode: null })) }
+      const include = { include: [{ kind: 'place' as const, id: subject.id }] }
+      const stored = toStored(scoresFromCatalog(rows, [], [], false, NOW, undefined, include)[0]!)
+      const baselineStored = toStored(scoresFromCatalog(baseline, [], [], false, NOW, undefined, include)[0]!)
+      const input = { pageType: 'place' as const, entityId: subject.id, source, publicationStatus: source === 'draft' ? 'draft' as const : 'published' as const, now: NOW }
+      const preview = scorePreview({ ...input, catalog: rows })
+      const baselinePreview = scorePreview({ ...input, catalog: baseline })
+      expect(preview).not.toBeNull()
+      expect(preview?.checks.quality).toEqual(stored.checks.quality)
+      expect(preview?.quality).toBe(baselinePreview?.quality)
+      expect(preview?.total).toBe(baselinePreview?.total)
+      expect(stored.quality).toBe(baselineStored.quality)
+      expect(stored.total).toBe(baselineStored.total)
+      expect(stored.checks.quality).toContain(`status warning: ${warning}`)
+      expect(stored.checks.quality.some((check) => check.startsWith('status contradiction:'))).toBe(false)
+    }
   })
 
   it.each(['live', 'pending'] as const)('uses the same visible length in %s preview, catalog scoring and stored signals', (source) => {

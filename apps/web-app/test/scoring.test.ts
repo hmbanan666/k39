@@ -6,7 +6,7 @@ import { catalogHoursKnown, catalogPageRefs, scoresFromCatalog, toStored } from 
 import { personaCoverageReport } from '../server/utils/scoring/coverage'
 import { scorePreview } from '../server/utils/scoring/preview'
 import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, REPEATED_PARAGRAPH } from '../shared/length-override'
-import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage } from '../shared/scoring'
+import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage, topIssue } from '../shared/scoring'
 
 const TITLE = `Форт на окраине города K39 ${'а'.repeat(10)}`
 const DESCRIPTION = 'б'.repeat(120)
@@ -1086,29 +1086,28 @@ describe('goal grace and status scope', () => {
     expect(contradiction.quality).toBe(consistent.quality - 15)
   })
 
-  it('keeps town appointment scores neutral for another attraction and charges 15 for the town itself', () => {
-    const page = source({
-      title: 'Полесск', body: uniqueArticle(3100, 'Город'),
-      faq: [{ question: 'Как посетить пивоварню «Бланкенштайн»?', answer: 'Ул. Рабочая, 5, экскурсии по записи.' }],
-    })
-    const unchecked = scorePage(page)
-    const town = scorePage({ ...page, scheduleMode: 'always' })
-    expect(town.checks.quality).toEqual(unchecked.checks.quality)
-    expect(town.quality).toBe(unchecked.quality)
-    const own = scorePage({ ...page, scheduleMode: 'always', faq: [{ question: 'Как попасть в Полесск?', answer: 'Сам город доступен по записи.' }] })
-    expect(own.checks.quality).toContain('status contradiction: text says by appointment, schedule is always open')
-    expect(own.quality).toBe(town.quality - 15)
-    const museumTenant = scorePage({ ...page, title: 'Музей «Бланкенштайн»', scheduleMode: 'always' })
-    expect(museumTenant.checks.quality).toEqual(town.checks.quality)
-    expect(museumTenant.quality).toBe(town.quality)
-    const museum = scorePage({
-      ...page,
-      title: 'Музей «Бланкенштайн»',
-      scheduleMode: 'always',
-      faq: [{ question: 'Как посетить музей «Бланкенштайн»?', answer: 'Ул. Рабочая, 5, экскурсии по записи.' }],
-    })
-    expect(museum.checks.quality).toContain('status contradiction: text says by appointment, schedule is always open')
-    expect(museum.quality).toBe(town.quality - 15)
+  it.each([
+    { mode: 'always', prose: 'Вход по записи.', warning: 'appointment wording needs context review' },
+    { mode: 'always', prose: 'Ресторан местной пивоварни принимает по записи.', warning: 'appointment wording needs context review' },
+    { mode: 'appointment', prose: 'Свяжитесь с кассой по телефону.', warning: 'appointment instructions need editorial review' },
+  ])('keeps appointment advisories visible with zero quality/total impact ($mode): $prose', ({ mode, prose, warning }) => {
+    for (const fields of [{ body: prose }, { body: '', faq: [{ question: 'Как посетить?', answer: prose }] }]) {
+      const page = source({ ...fields, title: 'Полесск' })
+      const baseline = scorePage(page)
+      const advised = scorePage({ ...page, scheduleMode: mode })
+      expect(advised.quality).toBe(baseline.quality)
+      expect(advised.total).toBe(baseline.total)
+      expect(advised.checks.quality).toContain(`status warning: ${warning}`)
+      expect(advised.checks.quality.some((check) => check.startsWith('status contradiction:'))).toBe(false)
+    }
+  })
+
+  it.each([
+    { check: 'status warning: appointment wording needs context review', label: 'Упомянута запись: проверьте контекст и условия посещения' },
+    { check: 'status warning: appointment instructions need editorial review', label: 'Проверьте, понятны ли условия записи в тексте' },
+  ])('keeps the top issue label explicitly advisory: $check', ({ check, label }) => {
+    expect(topIssue({ quality: [check], linking: [], indexing: [], results: [] }, { quality: 50, linking: 100, indexing: 100, results: 100 })).toBe(check)
+    expect(issueLabel(check)).toBe(label)
   })
 
   it('uses the corrected shared superlative rule in long-page filler scoring', () => {
@@ -1118,41 +1117,6 @@ describe('goal grace and status scope', () => {
     expect(neutral.checks.quality).not.toContain('stop-list: empty superlatives')
     expect(superlative.checks.quality).toContain('stop-list: empty superlatives')
     expect(superlative.quality).toBeLessThan(neutral.quality)
-  })
-
-  it.each([
-    { title: 'Кирха', text: 'Кирха рядом с музеем доступна по записи.', own: true },
-    { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея принимает по записи.', own: false },
-    { title: 'Музей «Бланкенштайн»', text: 'В музее кафе принимает по записи.', own: false },
-    { title: 'Кафе «Башня»', text: 'В музее кафе принимает по записи.', own: true },
-    { title: 'Музей «Бланкенштайн»', text: 'В музее по записи принимает кафе.', own: false },
-    { title: 'Кафе «Башня»', text: 'В музее по записи принимает кафе.', own: true },
-    { title: 'Музей «Бланкенштайн»', text: 'В музейном кафе принимают по записи.', own: false },
-    { title: 'Кафе «Башня»', text: 'В музейном кафе принимают по записи.', own: true },
-    { title: 'Кирха', text: 'Музей открыт ежедневно; по записи доступна Кирха.', own: true },
-    { title: 'Музей «Бланкенштайн»', text: 'Музей открыт ежедневно, по записи принимает кафе.', own: false },
-    { title: 'Полесск', text: 'Пивоварня работает ежедневно, экскурсии по записи.', own: false },
-    { title: 'Пивоварня «Бланкенштайн»', text: 'Пивоварня работает ежедневно, экскурсии по записи.', own: true },
-    { title: 'Кафе музея', text: 'Музей принимает по записи.', own: false },
-    { title: 'Кафе музея', text: 'Кафе принимает по записи.', own: true },
-    { title: 'Музей «Бланкенштайн»', text: 'Ресторан «Бланкенштайн» принимает по записи.', own: false },
-    { title: 'Форт №5', text: 'Ресторан «Форт №5» принимает по записи.', own: false },
-    { title: 'Полесск', text: 'Пивоварня работает ежедневно, а экскурсии по записи.', own: false },
-    { title: 'Пивоварня «Бланкенштайн»', text: 'Пивоварня работает ежедневно, а экскурсии по записи.', own: true },
-    { title: 'Музей «Старая пивоварня»', text: 'Музей «Старая пивоварня» принимает по записи.', own: true },
-    { title: 'Музей «Бланкенштайн»', text: 'Музей и кафе принимают по записи.', own: true },
-    { title: 'Музей «Бланкенштайн»', text: 'Музей и небольшое кафе принимают по записи.', own: true },
-    { title: 'Музей «Бланкенштайн»', text: 'Музей открыт и небольшое кафе принимает по записи.', own: false },
-    { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея и кафе принимают по записи.', own: false },
-  ])('preserves the 15-point appointment subject penalty with complements: $text', ({ title, text, own }) => {
-    const page = source({ title, body: text })
-    const unchecked = scorePage(page)
-    const always = scorePage({ ...page, scheduleMode: 'always' })
-    const appointment = scorePage({ ...page, scheduleMode: 'appointment' })
-    expect(always.quality).toBe(unchecked.quality - (own ? 15 : 0))
-    expect(appointment.quality).toBe(unchecked.quality - (own ? 0 : 15))
-    expect(always.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(own)
-    expect(appointment.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(!own)
   })
 
   it('does not charge 15 points for a tenant closure, and still charges a real one', () => {
