@@ -3,6 +3,7 @@ import type { VenueModule } from '../../../../../apps/web-app/shared/venue-modul
 import { and, eq, inArray } from 'drizzle-orm'
 import { createError } from 'h3'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import pricesSet from '../../../../../apps/web-app/server/mcp/tools/venue-prices-set'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
 import { decideVenueDraft, venueDraftNotice } from '../../../../../apps/web-app/server/utils/admin/venue-draft'
@@ -16,11 +17,13 @@ import { loadSchedule, saveSchedule } from '../../../../../apps/web-app/server/u
 import { previewContentScore } from '../../../../../apps/web-app/server/utils/scoring/run'
 import { projectMenuPrices } from '../../../../../apps/web-app/server/utils/venues/menu-prices'
 import { applyPendingVenue, venuePendingReview, writeVenueOpeningSchedule, writeVenuePrices } from '../../../../../apps/web-app/server/utils/venues/pending'
+import { venueFields } from '../../../../../apps/web-app/server/utils/venues/schema'
 import { updateVenue } from '../../../../../apps/web-app/server/utils/venues/write'
 import { scheduleRulesSchema } from '../../../../../apps/web-app/shared/schedule'
 import { toPublicVenueModules } from '../../../../../apps/web-app/shared/venue-modules'
 import { useDatabase } from '../../database'
 import { contentDrafts, facts, mcpAudits, priceItems, revisions, schedules, users, venueAudits, venueMembers, venues, verificationQueue } from '../../tables'
+import { osmElementToDraft } from '../../venues'
 import { Editor } from '../content'
 import { Facts } from '../facts'
 import { Prices } from '../prices'
@@ -262,6 +265,62 @@ describe('pending venue drafts (ADR 0047)', () => {
     await expect(updateVenue({ id: row.id, hours: { note: 'Текст' }, phone: '123' })).rejects.toMatchObject({ statusCode: 400 })
     expect(await Editor.contentDraft('venue', row.id)).toBeNull()
     expect((await Venues.byId(row.id))?.description).toBe(DESCRIPTION)
+  })
+
+  it.each(['https://cafe.example/contacts', 'https://2gis.ru/kaliningrad/firm/fixture'])('preserves editor-reviewed coordinates, contacts and facts against OSM reimport (%s)', async (sourceUrl) => {
+    enterContentScope('editor')
+    const draft = osmElementToDraft({ type: 'node', id: 303001, lat: 54.8, lon: 20.7, tags: { amenity: 'cafe', name: 'Проверенный филиал' } })!
+    const imported = await Venues.importDrafts([draft], null)
+    ids.push(...imported.created)
+    const id = imported.created[0]!
+    await updateVenue({ id, description: DESCRIPTION, status: 'published', phone: '+7 4012 12-34-56', latitude: 54.7, longitude: 20.5, sources: [{ title: 'Проверенный источник', url: sourceUrl }] })
+    const before = await Venues.byId(id)
+    const phone = (await Facts.liveSlot('venue', id, 'phone'))!
+    await Facts.upsert({
+      kind: 'phone', subjectType: 'venue', subjectId: id, slot: 'phone',
+      value: { text: before!.phone }, valueHash: phone.valueHash,
+      sourceUrl: null, sourceTitle: null, sourceKind: 'owner',
+      checkedAt: '2026-10-20T00:00:00.000Z', ttlDays: 180, confidence: 'owner', actor: 'owner',
+    }, [{ consumerType: 'venue', consumerId: id, path: 'short.phone' }])
+    expect(await Facts.latestActor(phone.id)).toBe('owner')
+    const ownerHistory = await Facts.revisions(phone.id)
+    const factsBefore = await useDatabase().select().from(facts).where(eq(facts.subjectId, id)).orderBy(facts.id)
+    expect(factsBefore.some((fact) => fact.slot === 'coordinates')).toBe(true)
+    const again = await Venues.importDrafts([{ ...draft, latitude: 54.9, longitude: 20.9, phone: '+7 000 111-22-33' }], null)
+    expect(again.created).toEqual([])
+    expect(again.existing).toEqual([id])
+    expect(await Venues.byId(id)).toEqual(before)
+    expect(await useDatabase().select().from(facts).where(eq(facts.subjectId, id)).orderBy(facts.id)).toEqual(factsBefore)
+    expect(await Facts.revisions(phone.id)).toEqual(ownerHistory)
+  })
+
+  it('lets an editor detach a wrong OSM identity without changing its occupied archived duplicate', async () => {
+    const live = await venue()
+    await updateVenue({ id: live.id, osmId: 'node/303011', latitude: 54.7, longitude: 20.5, sources: [{ title: 'Сайт', url: 'https://cafe.example/contacts' }] })
+    const archived = await Venues.create({ name: 'Архивный филиал', kind: 'cafe', osmId: 'node/303012', latitude: 54.7, longitude: 20.5, phone: '+7 4012 98-76-54', description: DESCRIPTION, status: 'archived' })
+    ids.push(archived.id)
+    const before = await Venues.byId(live.id)
+    const factsBefore = await useDatabase().select().from(facts).where(eq(facts.subjectId, live.id)).orderBy(facts.id)
+    const clear = z.object(venueFields).parse({ osmId: null })
+    enterContentScope('draft')
+    await expect(updateVenue({ id: live.id, ...clear })).rejects.toMatchObject({ statusCode: 409 })
+    expect(await Editor.contentDraft('venue', live.id)).toBeNull()
+    expect(await Venues.byId(live.id)).toEqual(before)
+    enterContentScope('editor')
+    await expect(updateVenue({ id: live.id, osmId: archived.osmId })).rejects.toMatchObject({ statusCode: 400, statusMessage: 'Такой osmId уже есть' })
+    await expect(updateVenue({ id: live.id, ...clear })).resolves.toMatchObject({ id: live.id, osmId: null, pendingReview: false })
+    const detached = await Venues.byId(live.id)
+    expect(detached).toMatchObject({ status: 'published', phone: before!.phone, latitude: before!.latitude, longitude: before!.longitude, sources: before!.sources, osmId: null })
+    const wrong = osmElementToDraft({ type: 'node', id: 303011, lat: 54.9, lon: 20.9, tags: { amenity: 'cafe', name: 'Другой филиал' } })!
+    const occupied = { ...wrong, osmId: archived.osmId! }
+    const again = await Venues.importDrafts([wrong, occupied], null)
+    ids.push(...again.created)
+    expect(again.created).toHaveLength(1)
+    expect(again.existing).toEqual([archived.id])
+    expect(await Venues.byId(again.created[0]!)).toMatchObject({ status: 'draft', osmId: wrong.osmId })
+    expect(await Venues.byId(live.id)).toEqual(detached)
+    expect(await Venues.byId(archived.id)).toEqual(archived)
+    expect(await useDatabase().select().from(facts).where(eq(facts.subjectId, live.id)).orderBy(facts.id)).toEqual(factsBefore)
   })
 
   it('refuses archived writes through every staged entry point', async () => {

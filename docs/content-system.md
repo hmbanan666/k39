@@ -54,6 +54,35 @@ Tools: `places_list`, `place_get`, `place_draft_create`, `place_update`, `place_
 }
 ```
 
+### OSM venue imports and identity repair
+
+`venue_import_osm` uses `osmElementToDraft` and the shared `Venues.importDrafts` repository writer. New imports leave `phone` empty, including a legacy import payload that still supplies it. There is no dedicated raw-contact snapshot in the import model. Website, coordinates, sources and the unverified hours import keep their existing behavior. Review the venue's own site first, then explicitly set a checked phone through `venue_update`; the [venue source rules](../.agents/skills/k39-sources-and-facts/SKILL.md#venue-facts) still allow map/OSM fallback when the site is silent. Existing phones are not cleared by this change.
+
+Re-import looks up `osmId` before creating a draft. Any existing match, including an archived venue, is returned as `existing` without updating its phone, coordinates, sources or facts. This path does not refresh OSM tags onto reviewed venues.
+
+To detach a venue from a wrong OSM branch:
+
+1. Use `venue_get` by id or slug to inspect its identity, coordinates, phone and `pendingReview`. Resolve any pending review through the ordinary editor workflow before the repair.
+2. With an authorized editor bearer, call `venue_update` with `{"id":"<venue-id>","osmId":null}`. Omit coordinates, phone, sources and status to preserve them. The draft bearer still receives 409 for `osmId`, including null; there is no draft-plus-approve identity transfer.
+3. Read the venue back and verify the cleared association and retained practical data. An occupied `osmId` cannot be assigned while another row, including an archived duplicate, holds it. Clearing the wrong association does not require editing that duplicate.
+
+Detachment is not a ban on the old OSM id. A later import of it can create a separate draft requiring review; it does not reattach or replace the detached live venue. Importing an id still held by an archived duplicate skips that duplicate as before. Identity repairs use the shared editor writer and its existing audit, pending-review and owner-conflict rules, not direct SQL updates.
+
+An authorized operator can list legacy review candidates on an explicitly selected database:
+
+```sql
+BEGIN READ ONLY;
+SELECT id, slug, status, osm_id, phone AS stored_column_phone
+FROM venues
+WHERE osm_id IS NOT NULL
+  AND phone IS NOT NULL AND btrim(phone) <> ''
+  AND status IN ('published', 'closed')
+ORDER BY slug;
+ROLLBACK;
+```
+
+These are OSM-linked rows with a stored phone column, not proven unchecked phones. A phone may already have been reviewed by an editor or supplied by an owner; the public fact projection can differ from the column. The query neither compares an original OSM tag value nor fetches current OSM data. Review provenance and the official-first fallback policy before any separately authorized correction; do not clear these rows automatically.
+
 ### Facts and verification
 
 The fact layer writes `facts` beside the existing columns (ADR 0033); selected public readers already use the phase-2 projection. Public venue pages, venue cards, and their JSON-LD read phone, address, coordinates, and operating status from `facts` through `fact_refs`, and fall back to the column only when that fact is missing. A gap renders «уточняйте». Place pages do the same for phone, coordinates, and status. A place phone (`places.phone`) is official-only and its fact carries the source URL. Hours on venue pages, cards, and JSON-LD come from `schedules` and `schedule_intervals`, not from `venues.hours` or a copy in the description. Prose that repeats those hours or a phone is a `fact_repeated` review warning and does not block publish. Verification starts at `queue_list`. A fact whose latest revision actor is `owner` is not overwritten by the content token. That conflict waits in `/admin`. The daily source watcher claims `analytics_runs` kind `source-watch` and fetches official URLs only. Map sources are `map_yandex`, `map_2gis`, `map_google`, and `osm`, venues only. The public reader is `readShownFacts` in `apps/web-app/server/utils/facts/read.ts`.

@@ -62,7 +62,7 @@ Menu lines and prices stay the official menu: a page or PDF on the venue's site,
 
 Use «уточняйте» only when the official site says nothing about that field and neither a map card nor OSM states it. If the site states the fact, write the fact. An empty hours week still renders «Часы уточняйте» (ADR 0018). That is the empty state, not a reason to ignore the site or a map card that states the hours.
 
-`venue_import_osm` still creates a draft and does not publish. After import, check the official site and overwrite any conflicting address, hours, phone, or menu before publish. A map card may fill a fact the site still does not state. Put that card in `sources`.
+`venue_import_osm` creates a draft and leaves its phone empty for explicit source review. After import, check the official site and correct any conflicting address, hours, or menu before publish. Set the phone with `venue_update` only after reviewing the official site first; a map/OSM phone remains an allowed fallback when that site is silent. Put the source in `sources`. Re-import skips an existing `osmId` without changing its reviewed fields. The [import and identity workflow](../../../docs/content-system.md#osm-venue-imports-and-identity-repair) describes editor-only detachment and the legacy-candidate query.
 
 ## Tickets and events
 
