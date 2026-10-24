@@ -193,26 +193,21 @@ function appointmentPageIndex(text: string, title: string | null | undefined) {
   return [...text.matchAll(pattern)].at(-1)?.index ?? -1
 }
 
-/** Prefer a clause subject over a locative/possessive complement or its quoted name. */
-function appointmentSubject(text: string, title: string | null | undefined): AppointmentSubject | null {
-  if (text.includes('](/')) {
-    return { kind: 'other', complement: false }
-  }
-  const normalized = normalizeName(text)
-  const subjects: Array<AppointmentSubject & { index: number, end: number }> = []
-  const complementAt = (index: number) => APPOINTMENT_PREPOSITION.test(normalized.slice(0, index))
-  const followsHead = (previous: { end: number, complement: boolean } | undefined, index: number) =>
-    Boolean(previous && !previous.complement && previous.end <= index && !normalized.slice(previous.end, index).trim())
+function followsAppointmentHead(normalized: string, previous: { end: number, complement: boolean } | undefined, index: number) {
+  return Boolean(previous && !previous.complement && previous.end <= index && !normalized.slice(previous.end, index).trim())
+}
+
+/** The same bounded noun roles determine title heads and text attribution. */
+function appointmentNouns(normalized: string) {
+  const subjects: Array<{ index: number, end: number, pattern: RegExp, complement: boolean }> = []
   for (const pattern of APPOINTMENT_SUBJECTS) {
     for (const match of normalized.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
-      if (title) {
-        subjects.push({
-          index: match.index,
-          end: match.index + match[0].length,
-          kind: pattern.test(normalizeName(title)) ? 'definite' : 'other',
-          complement: !APPOINTMENT_HEAD.test(match[0]) || complementAt(match.index),
-        })
-      }
+      subjects.push({
+        index: match.index,
+        end: match.index + match[0].length,
+        pattern,
+        complement: !APPOINTMENT_HEAD.test(match[0]) || APPOINTMENT_PREPOSITION.test(normalized.slice(0, match.index)),
+      })
     }
   }
   // Only a subject/head can own an adjacent noun. A locative such as
@@ -220,10 +215,28 @@ function appointmentSubject(text: string, title: string | null | undefined): App
   subjects.sort((a, b) => a.index - b.index)
   for (let index = 1; index < subjects.length; index += 1) {
     const subject = subjects[index]!
-    if (followsHead(subjects[index - 1], subject.index)) {
+    if (followsAppointmentHead(normalized, subjects[index - 1], subject.index)) {
       subject.complement = true
     }
   }
+  return subjects
+}
+
+/** Prefer a clause subject over a locative/possessive complement or its quoted name. */
+function appointmentSubject(text: string, title: string | null | undefined): AppointmentSubject | null {
+  if (text.includes('](/')) {
+    return { kind: 'other', complement: false }
+  }
+  const normalized = normalizeName(text)
+  // A type in a possessive complement or quoted label is not the title's head.
+  const titleHeads = appointmentNouns(normalizeName((title ?? '').replace(/«[^»\n]{1,80}»/gu, ' ')))
+    .filter((subject) => !subject.complement)
+    .map((subject) => subject.pattern)
+  const subjects: Array<AppointmentSubject & { index: number, end: number }> = title
+    ? appointmentNouns(normalized).map(({ index, end, pattern, complement }) => ({
+        index, end, complement, kind: titleHeads.includes(pattern) ? 'definite' : 'other',
+      }))
+    : []
   const pageIndex = appointmentPageIndex(normalized, title)
   if (pageIndex >= 0) {
     const namedNoun = subjects.find((subject) => subject.index === pageIndex)
@@ -232,7 +245,7 @@ function appointmentSubject(text: string, title: string | null | undefined): App
       index: pageIndex,
       end: pageIndex + normalizeName(title ?? '').length,
       kind: 'definite',
-      complement: namedNoun ? namedNoun.complement : complementAt(pageIndex) || followsHead(previousNoun, pageIndex),
+      complement: namedNoun ? namedNoun.complement : APPOINTMENT_PREPOSITION.test(normalized.slice(0, pageIndex)) || followsAppointmentHead(normalized, previousNoun, pageIndex),
     })
   }
   for (const match of text.matchAll(/«([^»\n]{1,80})»/gu)) {
@@ -285,11 +298,20 @@ function ownAppointment(sentence: string, question: string, title: string | null
       && appointmentSubject(location.text, title)?.complement
       ? appointmentSubject(preceding.text, title)
       : null
+    // With no active-clause candidate, a comma continuation/parenthetical
+    // retains its nearest clear context. A semicolon ends that inheritance.
+    let context = inherited
+    for (let previous = parts.length - 2; !context && previous >= 0; previous -= 1) {
+      const part = parts[previous]!
+      if (part.separator !== ',') {
+        break
+      }
+      context = appointmentSubject(part.text, title)
+    }
     // A location before the booking phrase cannot override a subject after it.
     const subject = candidates.find((candidate) => !candidate.complement)
-      ?? (inherited && !inherited.complement ? inherited : null)
       ?? candidates[0]
-      ?? inherited
+      ?? context
       ?? appointmentSubject(start ? '' : question, title)
     if (subject == null || subject.kind === 'definite') {
       return true

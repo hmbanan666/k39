@@ -45,6 +45,45 @@ describe('status consistency', () => {
   })
 
   it.each([
+    ...[
+      { text: 'Пивоварня работает ежедневно, экскурсии по записи.', subject: 'Пивоварня «Бланкенштайн»', context: 'Полесск' },
+      { text: 'Музей, построенный в 1904 году, принимает по записи.', subject: 'Музей «Бланкенштайн»', context: 'Полесск' },
+      { text: 'Ресторан музея, построенный в 1904 году, принимает по записи.', subject: 'Ресторан «Окно»', context: 'Музей «Бланкенштайн»' },
+      { text: 'Пивоварня работает ежедневно, в музее принимают по записи.', subject: 'Музей «Бланкенштайн»', context: 'Пивоварня «Бланкенштайн»' },
+    ].flatMap(({ text, subject, context }) => [
+      { title: subject, text, own: true }, { title: context, text, own: false },
+    ]),
+    { title: 'Полесск', text: 'Полесск открыт ежедневно, экскурсии по записи.', own: true },
+    { title: 'Полесск', text: 'Полесск, основанный в XIII веке, доступен по записи.', own: true },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('retains subject context in implicit continuations ($title, $mode): $text', ({ title, text, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
+    ...[{ title: 'Кафе музея', head: 'Кафе' }, { title: 'Ресторан музея', head: 'Ресторан' }].flatMap(({ title, head }) => [
+      { title, text: 'Музей принимает по записи.', own: false },
+      { title, text: `${head} принимает по записи.`, own: true },
+      { title, text: `${title} принимает по записи.`, own: true },
+    ]),
+    { title: 'Кафе у музея', text: 'Музей принимает по записи.', own: false },
+    { title: 'Кафе у музея', text: 'Кафе принимает по записи.', own: true },
+    { title: 'Музей кафе', text: 'Кафе принимает по записи.', own: false },
+    { title: 'Музей кафе', text: 'Музей принимает по записи.', own: true },
+    { title: 'Кафе «Музей»', text: 'Музей принимает по записи.', own: false },
+    { title: 'Кафе «Музей»', text: 'Кафе принимает по записи.', own: true },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('uses the title head for appointment ownership ($title, $mode): $text', ({ title, text, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
     { title: 'Ресторан «Окно»', adjective: 'ресторанном', noun: 'ресторане' },
     { title: 'Магазин «Окно»', adjective: 'магазинном', noun: 'магазине' },
     { title: 'Экспозиция «Окно»', adjective: 'экспозиционном', noun: 'экспозиции' },
