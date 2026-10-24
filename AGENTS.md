@@ -4,6 +4,8 @@ K39 is a Russian-language travel guide to Kaliningrad Oblast. Public pages are s
 
 Use this file as the task entry point. Read the matching skill and the relevant section of [development](docs/development.md) or [application reference](docs/content-system.md); do not load every guide or ADR for every task. Verify behavior against code and tests: an accepted ADR records a decision, not proof that every phase is implemented.
 
+Find current work in [GitHub Issues](https://github.com/hmbanan666/k39/issues). Read the assigned issue and linked context; keep task progress in the issue, PR or agent session. Repository docs hold maintained references and decision history, not a parallel work queue.
+
 ## Start a task
 
 Use a clean checkout or isolated worktree; preserve existing changes and local commits. Before the first edit, synchronize, then create a new branch from the fetched main:

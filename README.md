@@ -1,6 +1,6 @@
 # K39
 
-[K39](https://k39.online) is a Russian-language site for tourists in Kaliningrad Oblast. Every place (forts, castles, beaches, resort towns, food) gets its own page, and a visitor map, routes and quests tie them together. Local businesses will later attach pay-per-result offers to places and routes.
+[K39](https://k39.online) is a Russian-language site for tourists in Kaliningrad Oblast. Every place (forts, castles, beaches, resort towns, food) gets its own page, and a visitor map, routes and quests tie them together.
 
 The earlier social product (follows, pins, feed, advent calendar and badges) was removed. Moderated guest reviews, tips, photos and corrections exist as a separate workflow; implementation does not imply whole-product readiness.
 
@@ -18,7 +18,7 @@ The UI and place articles are in Russian. Documentation, ADRs and code comments 
 - **Cookieless page analytics** with no IP storage.
 - **SEO-first rendering**: published pages are server-rendered from Postgres.
 
-The [feature inventory](docs/product-state.md) distinguishes implementation, known gaps and unverified scenarios. The [stabilization roadmap](docs/roadmap.md) is the current task queue; feature visibility recommendations are proposals until accepted.
+The [implementation inventory](docs/product-state.md) maps capabilities to code, tests and evidence limits. Current work and defect reports live in [GitHub Issues](https://github.com/hmbanan666/k39/issues).
 
 ## Stack
 
@@ -41,7 +41,7 @@ packages/database   Drizzle schema, repositories, SQL migrations, seed
 packages/types      Zod schemas shared by the API
 packages/map        Shared map scene and style core
 docker/web-app      Dockerfile for the production image
-docs                Design system, ADRs, facts, roadmap and other guides
+docs                Design system, ADRs, facts and operational guides
 scripts             Repository and git helper scripts
 .agents/skills      Shared Agent Skills for Codex and Cursor
 .cursor             Cursor rules and cloud environment

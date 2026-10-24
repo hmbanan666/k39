@@ -4,7 +4,7 @@ One record per number. The heading is `# ADR NNNN: Title`. CI rejects a duplicat
 
 Fetch `origin/main` before choosing a number. The next number is one higher than the highest record below. Land the ADR on `main` before the implementation PR. An open pull request does not reserve the number.
 
-An accepted status records a design decision, not completion of every phase. See the [feature inventory](../product-state.md) for inspected implementation and evidence limits, and the [roadmap](../roadmap.md) for current work. Keep decision history; verify a subsystem before adding implementation-status claims.
+An accepted status records a design decision, not completion of every phase. See the [implementation inventory](../product-state.md) for code and evidence limits, and [GitHub Issues](https://github.com/hmbanan666/k39/issues) for current work. Keep decision history; verify a subsystem before adding implementation-status claims.
 
 ## Template
 

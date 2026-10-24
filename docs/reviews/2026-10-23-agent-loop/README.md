@@ -53,10 +53,8 @@ node /absolute/path/to/review/measure-start.mjs
 
 Keep the raw command list, cache state and comparison refs with any new run. Do not compare a docs-only quick check to a feature edit or call an inherited store cold.
 
-## Validation and next step
+## Validation and limits
 
 Fifteen focused tooling tests and the local timed quick check pass, including six preflight cases and timing-enabled/disabled child failure propagation. [Full pre-PR CI](https://github.com/hmbanan666/k39/actions/runs/39978842660) passed on `318e802d9a05125de82fa8b574b5e46d78247d46`: frozen install, literal check:full, clean diff after lint fixes, all typechecks, **868 tests across 120 files**, production workspace build, standalone SSR and Docker. The separate baseline job also passed all measured steps above. Local Node remains 24.19.0 and local Postgres/Docker are unavailable; local diagnostic success is not pinned-environment acceptance.
 
-The final follow-up records measurements and restores the original CI workflow; preflight, quick runner, tests and startup probe contents are unchanged. Normal PR CI checks that final head again. No UI, product data, migration, dependency pin or permission-boundary changes are included. The remaining A02 task must preserve final verification coverage and demonstrate transitive type failures before changing selection.
-
-Current batch: **4 of 7 merged**, item 5 measured and awaiting merge. Next: A02, then the admission-extras design decision in #290. See the [roadmap](../../roadmap.md).
+The final follow-up records measurements and restores the original CI workflow; preflight, quick runner, tests and startup probe contents are unchanged. Normal PR CI checks that final head again. No UI, product data, migration, dependency pin or permission-boundary changes are included. The subsequent [verification-coverage review](../2026-10-23-verification-coverage/README.md) records the transitive-consumer and read-only lint proof.
