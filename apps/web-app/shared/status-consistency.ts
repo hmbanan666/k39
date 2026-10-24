@@ -25,6 +25,11 @@ const APPOINTMENT_SUBJECTS = [
   String.raw`пивоварн\p{L}*`,
   String.raw`конн\p{L}*\s+завод\p{L}*`,
 ].map((word) => new RegExp(String.raw`(?<!\p{L})(?:${word})(?!\p{L})`, 'iu'))
+// Bounded noun-phrase cues, not a general morphology parser. Oblique forms
+// still provide FAQ/location context when no clause subject is named.
+const APPOINTMENT_HEAD = /^(?:рестораны?|кафе|бары?|магазины?|выставк[аи]|экспозици[яи]|музей|музеи|пивоварн[яи]|конн(?:ый|ые)\s+заводы?)$/iu
+const APPOINTMENT_PREPOSITION = /(?:^|[^\p{L}])(?:[вуск]|во|на|при|около|возле|со|ко|из|от|для|без|над|под|перед|между|после|до|внутри)(?:\s+[\p{L}-]+(?:ым|им|ой|ей|ого|его|ому|ему|ом|ем|ую|юю|ых|их)){0,2}\s*$/iu
+const APPOINTMENT_NOUN_END = new RegExp(`(?:${APPOINTMENT_SUBJECTS.map((pattern) => pattern.source).join('|')})\\s*$`, 'iu')
 
 export const STATUS_SUBJECT_WARNING = 'closure may refer to another subject'
 
@@ -166,32 +171,60 @@ function closureKind(sentence: string, title: string | null | undefined): Closur
   return null
 }
 
-/** Prefer the last named subject, so an earlier page name cannot hide a tenant. */
+/** Appointment titles may be followed by punctuation, but not another letter/number. */
+function appointmentPageIndex(text: string, title: string | null | undefined) {
+  const name = normalizeName(title ?? '')
+  if (!name) {
+    return -1
+  }
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}-])${escaped}(?![\\p{L}\\p{N}-])`, 'gu')
+  return [...text.matchAll(pattern)].at(-1)?.index ?? -1
+}
+
+/** Prefer a clause subject over a locative/possessive complement or its quoted name. */
 function appointmentSubject(text: string, title: string | null | undefined): ClosureKind | null {
   if (text.includes('](/')) {
     return 'other'
   }
   const normalized = normalizeName(text)
-  const subjects: Array<{ index: number, kind: ClosureKind }> = []
+  const subjects: Array<{ index: number, kind: ClosureKind, complement: boolean }> = []
+  const complementAt = (index: number) => {
+    const before = normalized.slice(0, index)
+    return APPOINTMENT_PREPOSITION.test(before) || APPOINTMENT_NOUN_END.test(before)
+  }
   for (const pattern of APPOINTMENT_SUBJECTS) {
     for (const match of normalized.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
       if (title) {
-        subjects.push({ index: match.index, kind: pattern.test(normalizeName(title)) ? 'definite' : 'other' })
+        subjects.push({
+          index: match.index,
+          kind: pattern.test(normalizeName(title)) ? 'definite' : 'other',
+          complement: !APPOINTMENT_HEAD.test(match[0]) || complementAt(match.index),
+        })
       }
     }
   }
-  if (namesThisPage(text, title)) {
-    subjects.push({ index: normalized.lastIndexOf(normalizeName(title ?? '')), kind: 'definite' })
+  const pageIndex = appointmentPageIndex(normalized, title)
+  if (pageIndex >= 0) {
+    subjects.push({ index: pageIndex, kind: 'definite', complement: complementAt(pageIndex) })
   }
   for (const match of text.matchAll(/«([^»\n]{1,80})»/gu)) {
     const before = text.slice(0, match.index)
     const index = normalizeName(before).length
     const precedingSubject = subjects.filter((subject) => subject.index <= index).sort((a, b) => b.index - a.index)[0]
     const own = quoteIsPageTitle(match[1] ?? '', title)
-      || namesThisPage(normalizeName(before).slice(precedingSubject?.index ?? 0), title)
-    subjects.push({ index, kind: own ? 'definite' : quotedSubject(match[1] ?? '', before, title) ?? 'ambiguous' })
+      || appointmentPageIndex(normalizeName(before).slice(precedingSubject?.index ?? 0), title) >= 0
+    const kind = own ? 'definite' : quotedSubject(match[1] ?? '', before, title) ?? 'ambiguous'
+    if (precedingSubject && !APPOINTMENT_PREPOSITION.test(normalizeName(before))) {
+      // A quoted label qualifies its noun, including an oblique complement;
+      // it cannot promote that complement over the clause's subject.
+      precedingSubject.kind = kind
+    } else {
+      subjects.push({ index, kind, complement: APPOINTMENT_PREPOSITION.test(normalizeName(before)) })
+    }
   }
-  return subjects.sort((a, b) => b.index - a.index)[0]?.kind ?? null
+  return subjects.sort((a, b) => Number(a.complement) - Number(b.complement)
+    || (a.complement ? a.index - b.index : b.index - a.index))[0]?.kind ?? null
 }
 
 function ownAppointment(sentence: string, question: string, title: string | null | undefined) {

@@ -45,6 +45,46 @@ describe('status consistency', () => {
   })
 
   it.each([
+    { title: 'Кирха', text: 'Кирха рядом с музеем доступна по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея принимает по записи.', own: false },
+  ].flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('keeps noun complements from replacing the subject ($mode): $text', ({ title, text, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ question: 'Как попасть внутрь?', answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
+    { title: 'Кирха', text: 'Кирха рядом с новым кафе доступна по записи.', own: true },
+    { title: 'Кирха', text: 'Кирха, рядом с музеем, доступна по записи.', own: true },
+    { title: 'Кирха', text: 'Кирха рядом с музеем «Бланкенштайн» доступна по записи.', own: true },
+    { title: 'Кирха', text: 'Кирха рядом с «Бланкенштайном» доступна по записи.', own: true },
+    { title: 'Кирха', text: 'По записи доступна Кирха рядом с музеем.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея «Бланкенштайн» принимает по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'Ресторан «Окно» принимает по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'По записи принимает ресторан музея.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'Кафе музея принимает по записи.', own: false },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей возле ресторана «Окно» принимает по записи.', own: true },
+    { title: 'Кафе «Башня»', text: 'Ресторан кафе «Башня» принимает по записи.', own: false },
+    { title: 'Полесск', text: 'Полесск открыт круглосуточно, музей принимает по записи.', own: false },
+  ])('keeps bounded complement and quoted-name attribution: $text', ({ title, text, own }) => {
+    for (const mode of ['always', 'appointment']) {
+      const expected = mode === 'always'
+        ? own ? ['text says by appointment, schedule is always open'] : []
+        : own ? [] : ['schedule by appointment, text does not say how to book']
+      expect(statusContradictions({ title, text, mode })).toEqual(expected)
+      expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+    }
+  })
+
+  it('keeps FAQ complement context on its tenant rather than the museum', () => {
+    const faq = [{ question: 'Как попасть в кафе музея «Бланкенштайн»?', answer: 'Принимает по записи.' }]
+    expect(statusContradictions({ title: 'Музей «Бланкенштайн»', text: '', mode: 'always', faq })).toEqual([])
+    expect(statusContradictions({ title: 'Музей «Бланкенштайн»', text: '', mode: 'appointment', faq })).toEqual(['schedule by appointment, text does not say how to book'])
+  })
+
+  it.each([
     'Пивоварня принимает по предварительной записи.',
     'Конный завод принимает по записи.',
     'Музей открывает подвалы по заявке.',

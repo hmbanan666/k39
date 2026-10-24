@@ -1112,6 +1112,20 @@ describe('goal grace and status scope', () => {
     expect(superlative.quality).toBeLessThan(neutral.quality)
   })
 
+  it.each([
+    { title: 'Кирха', text: 'Кирха рядом с музеем доступна по записи.', own: true },
+    { title: 'Музей «Бланкенштайн»', text: 'Ресторан музея принимает по записи.', own: false },
+  ])('preserves the 15-point appointment subject penalty with complements: $text', ({ title, text, own }) => {
+    const page = source({ title, body: text })
+    const unchecked = scorePage(page)
+    const always = scorePage({ ...page, scheduleMode: 'always' })
+    const appointment = scorePage({ ...page, scheduleMode: 'appointment' })
+    expect(always.quality).toBe(unchecked.quality - (own ? 15 : 0))
+    expect(appointment.quality).toBe(unchecked.quality - (own ? 0 : 15))
+    expect(always.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(own)
+    expect(appointment.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(!own)
+  })
+
   it('does not charge 15 points for a tenant closure, and still charges a real one', () => {
     const body = 'Ворота временно закрыты на реставрацию.'
     const closed = scorePage(source({ scheduleMode: 'closed', body }))
