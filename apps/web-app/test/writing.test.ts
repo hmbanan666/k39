@@ -27,7 +27,7 @@ describe('writing stop-list', () => {
     for (const word of ['идеальный', 'идеальны', 'идеальное', 'идеальная', 'идеального', 'идеально', 'идеален', 'уникального', 'неповторимый', 'лучший']) {
       expect(writingHits(word).map((hit) => hit.phrase), word).toContain('empty superlatives')
     }
-    for (const word of ['самый', 'самая', 'самое', 'самые', 'самого', 'самой', 'самому', 'самым', 'самыми', 'самую', 'самых', 'самом']) {
+    for (const word of ['самый', 'самая', 'самое', 'самые', 'самым', 'самыми', 'самую', 'самых']) {
       expect(writingHits(`Это ${word} день.`).map((hit) => hit.phrase), word).toContain('empty superlatives')
     }
     for (const word of ['самовар', 'самолёт', 'самолет', 'самостоятельно', 'самодеятельность', 'самокат', 'сам', 'сама', 'само', 'сами', 'самим', 'самих', 'лучше', 'улучшить']) {
@@ -50,6 +50,38 @@ describe('writing stop-list', () => {
     for (const item of WRITING_STOP_LIST) {
       expect(writingHits(item.phrase).map((hit) => hit.phrase), item.phrase).toContain(item.phrase)
     }
+  })
+
+  it.each([
+    'Что посмотреть в самом Нестерове?', 'У самого моря.', 'К самому берегу.', 'В самом центре.',
+    'В самой кирхе.', 'У самой воды.', 'От самой границы.', 'Самого себя.', 'Самому себе.',
+    'САМ Нестеров стоит у реки.', 'Самомнение не помогает.',
+  ])('allows emphatic pronouns without an evaluative adjective: %s', (text) => {
+    expect(writingHits(text)).toEqual([])
+    expect(writingGate({ prose: text, publishing: false })).toEqual([])
+    expect(writingGate({ prose: text, publishing: true })).toEqual([])
+  })
+
+  it.each([
+    'В самом красивом городе.', 'У самого высокого берега.', 'К самому древнему храму.',
+    'В самой высокой башне.', 'От самой дальней границы.', 'Самою красивою улицей.',
+    'В САМОМ КРАСИВОМ городе.', 'В самом северо-западном городе.',
+    'У самого **высокого** берега.', 'В самом _красивом_ городе.',
+    'В **самом** красивом городе.', 'В самом **очень красивом** городе.',
+    'В самом **очень** _красивом_ городе.',
+    'У самого действительно высокого берега.', 'В самой необычно красивой башне.',
+    'В самом Нестерове есть самый высокий дом.',
+    'У самого моря, в самом красивом городе.',
+    'В самом Нестерове, в самой красивой башне.',
+  ])('still warns and blocks a real superlative: %s', (text) => {
+    expect(writingHits(text).map((hit) => hit.phrase)).toContain('empty superlatives')
+    expect(writingGate({ prose: text, publishing: false })).not.toEqual([])
+    expect(() => writingGate({ prose: text, publishing: true })).toThrow(/Нельзя опубликовать/)
+  })
+
+  it('keeps independent phrase bans after pronoun disambiguation', () => {
+    expect(writingHits('В самом сердце города.').map((hit) => hit.phrase)).toContain('в самом сердце')
+    expect(() => writingGate({ prose: 'В самом Нестерове уютная атмосфера.', publishing: true })).toThrow(/уютная атмосфера/)
   })
 
   it('matches stems, intensifiers, evaluative triads, and the em dash', () => {

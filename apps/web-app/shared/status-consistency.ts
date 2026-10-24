@@ -11,10 +11,20 @@ const APPOINTMENT = /по\s+(?:предварительн\p{L}*\s+)?(?:запи�
 // A tenant word names someone else. A «quoted name» does too only when it
 // follows one of those words. Any other quote that is not this page's title
 // is ambiguous, unless the words before it already name this page. ADR 0045.
-const TENANT_WORD = String.raw`ресторан\p{L}*|кафе|бар|магазин\p{L}*|выставк\p{L}*|экспозици\p{L}*`
+const TENANT_WORDS = [String.raw`ресторан\p{L}*`, 'кафе', 'бар', String.raw`магазин\p{L}*`, String.raw`выставк\p{L}*`, String.raw`экспозици\p{L}*`]
+const TENANT_WORD = TENANT_WORDS.join('|')
 const TENANT = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})(?!\p{L})|музе\p{L}*\s+внутри`, 'iu')
 const TENANT_THEN_QUOTE = new RegExp(String.raw`(?:^|[^\p{L}])(?:${TENANT_WORD})\s+$`, 'iu')
 const CLAUSE_RESET = /,\s*(?:а|но)(?!\p{L})|(?:^|[^\p{L}])сам[ао]?(?!\p{L})/giu
+
+// Appointment subjects also include attractions discussed on a town page.
+// A matching type in the page title can still name the page itself.
+const APPOINTMENT_SUBJECTS = [
+  ...TENANT_WORDS,
+  String.raw`музе\p{L}*`,
+  String.raw`пивоварн\p{L}*`,
+  String.raw`конн\p{L}*\s+завод\p{L}*`,
+].map((word) => new RegExp(String.raw`(?<!\p{L})(?:${word})(?!\p{L})`, 'iu'))
 
 export const STATUS_SUBJECT_WARNING = 'closure may refer to another subject'
 
@@ -27,7 +37,7 @@ export interface StatusCheckInput {
   text: string
   /** Schedule rules mode; null when the page has no schedule. */
   mode: string | null
-  /** FAQ answers, as text. The check does not read a JSON encoding of this array. */
+  /** FAQ answers as text; the question supplies an otherwise implicit appointment subject. */
   faq?: StatusFaqItem[]
   /** Page title. A «quoted name» that is this title is the place, not a tenant. */
   title?: string | null
@@ -47,12 +57,14 @@ function answerSentence(answer: string) {
 }
 
 function ownSentences(input: StatusCheckInput) {
-  const answers = (input.faq ?? []).map((item) => answerSentence(item.answer ?? '')).filter(Boolean)
-  const text = [input.text, ...answers].filter((part) => part.trim()).join('\n')
-  return text
+  const parts = [
+    { text: input.text, question: '' },
+    ...(input.faq ?? []).map((item) => ({ text: answerSentence(item.answer ?? ''), question: item.question ?? '' })),
+  ]
+  return parts.flatMap(({ text, question }) => text
     .split(/(?<=[.!?])\s+|\n+/)
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => sentence && !sentence.includes('](/'))
+    .map((sentence) => ({ text: sentence.trim(), question }))
+    .filter((sentence) => sentence.text && !sentence.text.includes('](/')))
 }
 
 type ClosureKind = 'definite' | 'other' | 'ambiguous'
@@ -154,12 +166,56 @@ function closureKind(sentence: string, title: string | null | undefined): Closur
   return null
 }
 
+/** Prefer the last named subject, so an earlier page name cannot hide a tenant. */
+function appointmentSubject(text: string, title: string | null | undefined): ClosureKind | null {
+  if (text.includes('](/')) {
+    return 'other'
+  }
+  const normalized = normalizeName(text)
+  const subjects: Array<{ index: number, kind: ClosureKind }> = []
+  for (const pattern of APPOINTMENT_SUBJECTS) {
+    for (const match of normalized.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
+      if (title) {
+        subjects.push({ index: match.index, kind: pattern.test(normalizeName(title)) ? 'definite' : 'other' })
+      }
+    }
+  }
+  if (namesThisPage(text, title)) {
+    subjects.push({ index: normalized.lastIndexOf(normalizeName(title ?? '')), kind: 'definite' })
+  }
+  for (const match of text.matchAll(/«([^»\n]{1,80})»/gu)) {
+    const before = text.slice(0, match.index)
+    const index = normalizeName(before).length
+    const precedingSubject = subjects.filter((subject) => subject.index <= index).sort((a, b) => b.index - a.index)[0]
+    const own = quoteIsPageTitle(match[1] ?? '', title)
+      || namesThisPage(normalizeName(before).slice(precedingSubject?.index ?? 0), title)
+    subjects.push({ index, kind: own ? 'definite' : quotedSubject(match[1] ?? '', before, title) ?? 'ambiguous' })
+  }
+  return subjects.sort((a, b) => b.index - a.index)[0]?.kind ?? null
+}
+
+function ownAppointment(sentence: string, question: string, title: string | null | undefined) {
+  for (const match of sentence.matchAll(new RegExp(APPOINTMENT.source, `${APPOINTMENT.flags}g`))) {
+    const index = match.index
+    const start = scopeStart(sentence, index)
+    const before = sentence.slice(start, index)
+    const after = sentence.slice(index + match[0].length).split(',')[0] ?? ''
+    const kind = appointmentSubject(before, title)
+      ?? appointmentSubject(after, title)
+      ?? appointmentSubject(start ? '' : question, title)
+    if (kind == null || kind === 'definite') {
+      return true
+    }
+  }
+  return false
+}
+
 /** Short English check strings. Warnings do not take the closed-text penalty. */
 export function statusChecks(input: StatusCheckInput): StatusCheckResult {
   const sentences = ownSentences(input)
   let definite = false
   let ambiguous = false
-  for (const sentence of sentences) {
+  for (const { text: sentence } of sentences) {
     const kind = closureKind(sentence, input.title)
     if (kind === 'definite') {
       definite = true
@@ -167,8 +223,7 @@ export function statusChecks(input: StatusCheckInput): StatusCheckResult {
       ambiguous = true
     }
   }
-  const own = sentences.join('\n')
-  const appointmentText = APPOINTMENT.test(own)
+  const appointmentText = sentences.some(({ text, question }) => ownAppointment(text, question, input.title))
   const contradictions: string[] = []
   if (definite && input.mode !== 'closed') {
     contradictions.push(`text says closed, schedule mode is ${input.mode ?? 'missing'}`)

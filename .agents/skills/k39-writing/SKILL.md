@@ -43,7 +43,7 @@ Phrases (`WRITING_STOP_LIST`):
 
 Patterns (`WRITING_STOP_PATTERNS`, real regexes in `writing.ts`):
 
-- empty superlatives: лучший, самый, уникальный, неповторимый, незабываемый, идеальный, with other endings. A stem plus a closed list of endings, so «самый» does not match «самовар», «самолёт», or «самостоятельно». «лучше» stays allowed. «сам», «сама», and «сами» are not «самый»
+- empty superlatives: лучший, самый, уникальный, неповторимый, незабываемый, идеальный, with other endings. A stem plus a closed list of endings, so «самый» does not match «самовар», «самолёт», or «самостоятельно». «лучше» stays allowed. «сам», «сама», and «сами» are not «самый». Ambiguous «самом», «самого», «самому», «самой», and «самою» need a following adjective with case agreement to be superlatives: «в самом красивом городе» is banned; «в самом Нестерове», «у самого моря», and «к самому берегу» are neutral pronouns
 - настоящий as an intensifier only («настоящий борщ», «настоящая история»). Not «в настоящее время», «настоящий адрес», «настоящее имя»
 - triads of evaluative adjectives («вкусно, душевно и атмосферно»). A neutral list («хлеб, молоко и сыр») is allowed
 - «не просто X, а Y»

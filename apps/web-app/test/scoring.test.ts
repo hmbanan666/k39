@@ -1086,6 +1086,32 @@ describe('goal grace and status scope', () => {
     expect(contradiction.quality).toBe(consistent.quality - 15)
   })
 
+  it('keeps town appointment scores neutral for another attraction and charges 15 for the town itself', () => {
+    const page = source({
+      title: 'Полесск', body: uniqueArticle(3100, 'Город'),
+      faq: [{ question: 'Как посетить пивоварню «Бланкенштайн»?', answer: 'Ул. Рабочая, 5, экскурсии по записи.' }],
+    })
+    const unchecked = scorePage(page)
+    const town = scorePage({ ...page, scheduleMode: 'always' })
+    expect(town.checks.quality).toEqual(unchecked.checks.quality)
+    expect(town.quality).toBe(unchecked.quality)
+    const own = scorePage({ ...page, scheduleMode: 'always', faq: [{ question: 'Как попасть в Полесск?', answer: 'Сам город доступен по записи.' }] })
+    expect(own.checks.quality).toContain('status contradiction: text says by appointment, schedule is always open')
+    expect(own.quality).toBe(town.quality - 15)
+    const museum = scorePage({ ...page, title: 'Музей «Бланкенштайн»', scheduleMode: 'always' })
+    expect(museum.checks.quality).toContain('status contradiction: text says by appointment, schedule is always open')
+    expect(museum.quality).toBe(town.quality - 15)
+  })
+
+  it('uses the corrected shared superlative rule in long-page filler scoring', () => {
+    const body = uniqueArticle(6200, 'Город')
+    const neutral = scorePage(source({ body: `${body}\n\nВ самом Нестерове стоит дом.` }))
+    const superlative = scorePage(source({ body: `${body}\n\nВ самом красивом городе стоит дом.` }))
+    expect(neutral.checks.quality).not.toContain('stop-list: empty superlatives')
+    expect(superlative.checks.quality).toContain('stop-list: empty superlatives')
+    expect(superlative.quality).toBeLessThan(neutral.quality)
+  })
+
   it('does not charge 15 points for a tenant closure, and still charges a real one', () => {
     const body = 'Ворота временно закрыты на реставрацию.'
     const closed = scorePage(source({ scheduleMode: 'closed', body }))

@@ -44,6 +44,53 @@ describe('status consistency', () => {
     expect(statusContradictions({ text: 'Красивая кирха.', mode: 'appointment' })).toHaveLength(1)
   })
 
+  it.each([
+    'Пивоварня принимает по предварительной записи.',
+    'Конный завод принимает по записи.',
+    'Музей открывает подвалы по заявке.',
+    'В Полесске музей принимает по записи.',
+    'Полесск открыт круглосуточно, а музей принимает по записи.',
+    'Ресторан «Бланкенштайн» принимает по договорённости.',
+    '«Бланкенштайн» принимает по записи.',
+    'По записи принимает музей «Бланкенштайн».',
+    'Рядом [музей](/museum), туда пускают по записи.',
+  ])('does not attribute another attraction booking to the page: %s', (text) => {
+    expect(statusContradictions({ title: 'Полесск', text, mode: 'always' })).toEqual([])
+    expect(statusContradictions({ title: 'Полесск', text, mode: 'appointment' })).toEqual(['schedule by appointment, text does not say how to book'])
+  })
+
+  it.each([
+    { title: 'Полесск', text: 'Сам Полесск доступен по записи.' },
+    { title: 'Полесск', text: 'Музей открыт, а сам Полесск доступен по записи.' },
+    { title: 'Полесск', text: 'Сам Полесск доступен по записи, а музей открыт.' },
+    { title: 'Полесск', text: 'Музей принимает по записи. Сам Полесск тоже доступен по записи.' },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей «Бланкенштайн» принимает по записи.' },
+    { title: 'Музей «Бланкенштайн»', text: 'Музей принимает по записи.' },
+    { title: 'Пивоварня «Бланкенштайн»', text: 'Пивоварня принимает по записи.' },
+    { title: 'Конный завод', text: 'Конный завод принимает по записи.' },
+    { title: 'Ресторан «Башня»', text: 'Ресторан «Башня» принимает по записи.' },
+    { title: 'Форт №5', text: 'Форт №5 «Король Фридрих Вильгельм III» доступен по записи.' },
+    { title: 'Кирха', text: 'Вход по предварительной записи.' },
+  ])('retains own-subject booking contradictions: $text', ({ title, text }) => {
+    expect(statusContradictions({ title, text, mode: 'always' })).toEqual(['text says by appointment, schedule is always open'])
+    expect(statusContradictions({ title, text, mode: 'appointment' })).toEqual([])
+  })
+
+  it('uses FAQ question context without letting one answer hide another', () => {
+    const brewery = {
+      question: 'Как посетить пивоварню «Бланкенштайн»?',
+      answer: 'Ул. Рабочая, 5, ежедневно с 11:00 до 18:00, экскурсии по записи.',
+    }
+    expect(statusContradictions({ title: 'Полесск', text: '', mode: 'always', faq: [brewery] })).toEqual([])
+    expect(statusContradictions({ title: 'Полесск', text: '', mode: 'appointment', faq: [brewery] })).toHaveLength(1)
+    const own = { question: 'Как попасть в Полесск?', answer: 'Вход по записи.' }
+    expect(statusContradictions({ title: 'Полесск', text: '', mode: 'always', faq: [brewery, own] })).toHaveLength(1)
+    expect(statusContradictions({ title: 'Полесск', text: '', mode: 'appointment', faq: [brewery, own] })).toEqual([])
+    expect(statusContradictions({ title: 'Полесск', text: '', mode: 'always', faq: [{ ...brewery, answer: 'Сам Полесск доступен по записи.' }] })).toHaveLength(1)
+    expect(statusContradictions({ title: 'Полесск', text: '', mode: 'always', faq: [{ ...brewery, answer: 'Сам город доступен по записи.' }] })).toHaveLength(1)
+    expect(statusContradictions({ title: 'Музей «Бланкенштайн»', text: '', mode: 'always', faq: [{ question: 'Нужна запись?', answer: 'Музей принимает по записи' }] })).toHaveLength(1)
+  })
+
   it('ignores a tenant or a quoted name named before the closure', () => {
     expect(statusChecks({
       text: ROSGARTEN_BODY,

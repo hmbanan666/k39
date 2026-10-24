@@ -58,6 +58,48 @@ function withDraftLengths(value: object) {
 }
 
 describe('pending place publish', () => {
+  it.each([
+    'Что посмотреть в самом Нестерове?', 'Как дойти к самому берегу?',
+    'Что находится у самого моря?', 'Где вход в самом центре?',
+  ])('stages and publishes neutral pronoun wording in a FAQ: %s', async (question) => {
+    const live = await publishedPlace('pending-pronoun')
+    const faq = [{ question, answer: 'Вход со стороны площади.' }]
+    enterContentScope('draft')
+    const staged = await updatePlaceDraft({ id: live.id, faq }, 'place_update')
+    expect(staged.writingWarnings).toEqual([])
+    expect((await Editor.placeById(live.id))?.faq).toEqual([])
+    const pending = await Editor.contentDraft('place', live.id)
+    expect(pending?.payload.faq).toEqual(faq)
+    await expect(setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })).rejects.toMatchObject({ statusCode: 403 })
+    expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
+    enterContentScope('editor')
+    const applied = await setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })
+    expect(applied.writingWarnings).toEqual([])
+    expect((await Editor.placeById(live.id))?.faq).toEqual(faq)
+    expect(await Editor.contentDraft('place', live.id)).toBeNull()
+  })
+
+  it('still warns on a real superlative and refuses editor application without changing stored state', async () => {
+    const live = await publishedPlace('pending-superlative')
+    enterContentScope('draft')
+    const staged = await updatePlaceDraft({
+      id: live.id, faq: [{ question: 'Что посмотреть в самом Нестерове?', answer: 'Дом стоит в самом красивом городе.' }],
+    }, 'place_update')
+    expect(staged.writingWarnings).toContain('empty superlatives: самом')
+    const pending = await Editor.contentDraft('place', live.id)
+    const database = useDatabase()
+    const auditBefore = await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id))
+    const revisionsBefore = await database.select().from(revisions).where(eq(revisions.entityId, live.id))
+    enterContentScope('editor')
+    await expect(setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })).rejects.toMatchObject({
+      statusCode: 400, statusMessage: expect.stringContaining('empty superlatives'),
+    })
+    expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
+    expect(await Editor.placeById(live.id)).toEqual(live)
+    expect(await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id))).toEqual(auditBefore)
+    expect(await database.select().from(revisions).where(eq(revisions.entityId, live.id))).toEqual(revisionsBefore)
+  })
+
   it('re-saves a checked place and round-trips the actual place_get date without touching live content', async () => {
     const live = await publishedPlace('pending-date-round-trip')
     await useDatabase().update(places).set({ lastVerifiedAt: '2026-10-12T00:00:00.123456Z' }).where(eq(places.id, live.id))

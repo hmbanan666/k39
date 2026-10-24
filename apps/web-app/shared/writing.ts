@@ -9,7 +9,7 @@
  *
  * Inflected forms are a stem plus a closed list of endings, with a letter
  * boundary on each side. That is not a substring: «сам» matches «самый» and
- * «самого», and does not match «самовар», «самолёт», or «самостоятельно».
+ * adjective-led «самого», not «самовар», «самолёт», or «самостоятельно».
  */
 
 export interface WritingStop {
@@ -103,23 +103,18 @@ const SIBILANT_ADJECTIVE_ENDINGS = [
 ] as const
 
 /**
- * «самый» only. Not the pronoun «сам / сама / сами» and not compounds
- * (самовар, самолёт, самостоятельно).
+ * Unambiguous forms of «самый». Oblique forms shared with the emphatic
+ * pronoun need an adjective after them; «у самого моря» is not a ranking.
  */
 const SAM_ENDINGS = [
   'ыми',
-  'ого',
-  'ому',
-  'ою',
   'ый',
   'ая',
   'ое',
   'ые',
   'ую',
   'ых',
-  'ой',
   'ым',
-  'ом',
 ] as const
 
 function endingsGroup(endings: readonly string[], bare = false) {
@@ -139,6 +134,20 @@ function wordPattern(phrase: string) {
 const hard = endingsGroup(HARD_ADJECTIVE_ENDINGS)
 const hardBare = endingsGroup(HARD_ADJECTIVE_ENDINGS, true)
 
+/** Case agreement distinguishes «в самом красивом городе» from «в самом городе». */
+const SAM_ADJECTIVE_FORMS = [
+  ['ого', ['ого', 'его']],
+  ['ому', ['ому', 'ему']],
+  ['ою', ['ою', 'ею']],
+  ['ой', ['ой', 'ей']],
+  ['ом', ['ом', 'ем']],
+] as const
+const SAM_MARKUP = '[*_~`]*'
+const SAM_MODIFIER = String.raw`(?:${SAM_MARKUP}(?:действительно|очень|необычно|удивительно|особенно|по-настоящему|ещ[её])${SAM_MARKUP}\s+){0,2}`
+const SAM_WITH_ADJECTIVE = SAM_ADJECTIVE_FORMS.map(([ending, adjectiveEndings]) =>
+  String.raw`сам${ending}(?=${SAM_MARKUP}\s+${SAM_MODIFIER}${SAM_MARKUP}[\p{L}-]+${endingsGroup(adjectiveEndings)}(?!\p{L}))`,
+).join('|')
+
 const EMPTY_SUPERLATIVE = bounded([
   `идеальн${hard}`,
   'идеален',
@@ -148,6 +157,7 @@ const EMPTY_SUPERLATIVE = bounded([
   `незабываем${hardBare}`,
   `лучш${endingsGroup(SIBILANT_ADJECTIVE_ENDINGS)}`,
   `сам${endingsGroup(SAM_ENDINGS)}`,
+  SAM_WITH_ADJECTIVE,
 ].join('|'))
 
 const DIP_VERB = bounded(`окун${endingsGroup([
@@ -211,7 +221,7 @@ export const WRITING_STOP_LIST = [
 export const WRITING_STOP_PATTERNS = [
   {
     phrase: 'empty superlatives',
-    note: 'лучший, самый, уникальный, неповторимый, незабываемый, идеальный, and the same words with other endings. A closed ending list, so самый does not match самовар, самолёт, or самостоятельно, and лучше stays allowed.',
+    note: 'лучший, самый, уникальный, неповторимый, незабываемый, идеальный, and the same words with other endings. Ambiguous самом/самого/самому/самой/самою need a following adjective with case agreement; neutral pronouns such as «у самого моря» stay allowed. A closed ending list excludes самовар, самолёт, самостоятельно, and лучше.',
     pattern: EMPTY_SUPERLATIVE,
   },
   {
@@ -332,7 +342,7 @@ export function writingGuideSection() {
     venue,
     `Never name ${sites}. Never paste another site's sentences, photos, or structure. Write from the sources, in our words.`,
     'Do not pad a page to reach a length minimum. A longer ceiling is only the passport length override in .agents/skills/k39-writing/SKILL.md (ADR 0034).',
-    'Inflected forms are a stem plus a closed list of endings, with a letter boundary on each side. A short stem does not match a longer word: самый does not match самовар, самолёт, or самостоятельно. The comparative лучше is not banned.',
+    'Inflected forms are a stem plus a closed list of endings, with a letter boundary on each side. A short stem does not match a longer word: самый does not match самовар, самолёт, or самостоятельно. The comparative лучше is not banned. Ambiguous oblique forms such as самом need a following adjective with case agreement: «в самом Нестерове» is neutral, «в самом красивом городе» is not.',
     'A draft save returns writingWarnings and still stores the row. Publishing rejects when writingHits is not empty. The check reads the prose that renders, including collection module text. A venue name, a dish name, a source title, and a price-item name are official names: the stop-list and the venue price rules skip them. Banned sites still apply to those names and to every URL.',
   ].join('\n')
 }
