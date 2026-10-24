@@ -21,7 +21,8 @@ const CLAUSE_RESET = /,\s*(?:а|но)(?!\p{L})|(?:^|[^\p{L}])сам[ао]?(?!\p{
 // A matching type in the page title can still name the page itself.
 const APPOINTMENT_SUBJECTS = [
   ...TENANT_WORDS,
-  String.raw`музе\p{L}*`,
+  // Museum nouns include oblique context; «музейном» only modifies its noun.
+  String.raw`музе(?:й|я|ю|ем|е|и|ев|ям|ями|ях)`,
   String.raw`пивоварн\p{L}*`,
   String.raw`конн\p{L}*\s+завод\p{L}*`,
 ].map((word) => new RegExp(String.raw`(?<!\p{L})(?:${word})(?!\p{L})`, 'iu'))

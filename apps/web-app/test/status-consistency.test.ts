@@ -45,6 +45,23 @@ describe('status consistency', () => {
   })
 
   it.each([
+    { text: 'В музейном кафе принимают по записи.', museum: false },
+    { text: 'По записи принимают в музейном кафе.', museum: false },
+    { text: 'Музейное кафе принимает по записи.', museum: false },
+    { text: 'В музее принимают по записи.', museum: true },
+    { text: 'Экскурсии музея доступны по записи.', museum: true },
+  ].flatMap(({ text, museum }) => [
+    { text, title: 'Музей «Бланкенштайн»', own: museum },
+    { text, title: 'Кафе «Башня»', own: !museum },
+  ]).flatMap((test) => ['always', 'appointment'].map((mode) => ({ ...test, mode }))))('recognizes museum nouns without promoting their adjectives ($title, $mode): $text', ({ text, title, own, mode }) => {
+    const expected = mode === 'always'
+      ? own ? ['text says by appointment, schedule is always open'] : []
+      : own ? [] : ['schedule by appointment, text does not say how to book']
+    expect(statusContradictions({ title, text, mode })).toEqual(expected)
+    expect(statusContradictions({ title, text: '', mode, faq: [{ answer: text }] })).toEqual(expected)
+  })
+
+  it.each([
     { text: 'В музее по записи принимает кафе.', subject: 'Кафе «Башня»', context: 'Музей «Бланкенштайн»' },
     { text: 'В кафе по записи принимает музей.', subject: 'Музей «Бланкенштайн»', context: 'Кафе «Башня»' },
     { text: 'Кафе принимает по записи в музее.', subject: 'Кафе «Башня»', context: 'Музей «Бланкенштайн»' },
