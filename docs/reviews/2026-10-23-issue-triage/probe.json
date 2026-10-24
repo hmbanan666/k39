@@ -1,0 +1,55 @@
+{
+  "baseline": "cf06c4fcb1c52d806a330c271c34460868de31b6",
+  "boundary": "Isolated synthetic inputs; no production writes or external source verification",
+  "pronouns": [
+    {
+      "text": "Что посмотреть в самом Нестерове?",
+      "hits": [
+        {
+          "phrase": "empty superlatives",
+          "match": "самом"
+        }
+      ]
+    },
+    {
+      "text": "У самого моря.",
+      "hits": [
+        {
+          "phrase": "empty superlatives",
+          "match": "самого"
+        }
+      ]
+    },
+    {
+      "text": "К самому берегу.",
+      "hits": [
+        {
+          "phrase": "empty superlatives",
+          "match": "самому"
+        }
+      ]
+    }
+  ],
+  "appointment": {
+    "contradictions": [
+      "text says by appointment, schedule is always open"
+    ],
+    "warnings": []
+  },
+  "closure": "Временно закрыто · снаружи можно посмотреть",
+  "legs": [
+    "около 450 м до следующей",
+    "около 22 км до следующей",
+    null
+  ],
+  "hiddenPrices": null,
+  "importedPhone": {
+    "phone": "+7 000 000 00 00",
+    "sources": [
+      {
+        "title": "OpenStreetMap",
+        "url": "https://www.openstreetmap.org/node/1"
+      }
+    ]
+  }
+}

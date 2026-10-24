@@ -11,6 +11,7 @@ import { rethrowContentWrite } from './content-error'
 import { resolvePublication } from './draft'
 import { isPublicationOnly, mergedField, mergedPresent, pendingDraftFields, pendingPublication } from './pending'
 import { describedStops, orderedStopView } from './routes'
+import { sources } from './schemas'
 
 type CollectionStop = Parameters<typeof orderedStopView>[0][number]
 
@@ -90,6 +91,25 @@ function collectionMonth(kind: string, input: CollectionWriteInput, base: Record
     return null
   }
   return mergedField(input.month, base, 'month', current)
+}
+
+/** Validate the effective list, including old rows that predate the source cap. */
+function pendingCollectionSources(input: CollectionWriteInput, base: Record<string, unknown>, current: Collection) {
+  const rows = mergedField<unknown>(input.sources, base, 'sources', current.sources)
+  const parsed = sources.safeParse(rows ?? [])
+  if (parsed.success) {
+    return parsed.data ?? []
+  }
+  const issue = parsed.error.issues[0]!
+  const message = issue.code === 'invalid_type'
+    ? typeof issue.path[0] === 'number'
+      ? `Источник ${issue.path[0] + 1}: подпись и ссылка должны быть строками`
+      : 'Источники: нужен список'
+    : issue.message
+  const inherited = input.sources === undefined
+    ? `${Array.isArray(rows) ? `Унаследовано ${rows.length} строк источников` : 'Унаследованы источники'} из ${Object.hasOwn(base, 'sources') ? 'ожидающего черновика' : 'опубликованной версии'}. `
+    : ''
+  throw createError({ statusCode: 400, statusMessage: `${inherited}${message}${inherited ? '. Передайте исправленный список sources.' : ''}` })
 }
 
 export async function saveCollectionDraft(input: CollectionWriteInput, auditTool = 'collection_save', options?: { create?: boolean }) {
@@ -173,7 +193,7 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
       noindex: mergedField(input.noindex, base, 'noindex', current.noindex),
       kind,
       month: collectionMonth(kind, input, base, current.month),
-      sources: mergedField(input.sources, base, 'sources', current.sources ?? []),
+      sources: pendingCollectionSources(input, base, current),
       modules,
     }
     if (items.set) {

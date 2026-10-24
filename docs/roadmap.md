@@ -1,6 +1,6 @@
 # Roadmap
 
-Updated 2026-10-23. Baseline: `ac3da95` (PR 313 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
+Updated 2026-10-23. Baseline: `cf06c4f` (PR 314 merged). This is the current work queue, linked to the [25-capability inventory](product-state.md). A capability is not a task or a readiness certificate. Visibility recommendations remain proposals until accepted.
 
 ## Current position
 
@@ -44,29 +44,30 @@ V01 has resumed with the first of five tourist journeys below. The admission rol
 
 The first journey is **in progress; 0 of 5 full journeys accepted**. On 23 Oct, read-only browser checks covered the public header search for «Форт», Fort 5's ticket/source/directions output, real zero-result recovery through `/forty`, and Fort 9's closed/private-access explanation. This is a dated sample of live output, not a fresh official-source review, mobile acceptance or deployed-commit proof.
 
-**One scoped implementation is prepared here: search request failure and recovery (F15/F23).** The existing page treated failed API requests as zero results and logged them as completed searches; retained responses could also be labelled with a new query. The [review](reviews/2026-10-23-search-failure/README.md) records isolated reproduction, error/loading/retry/empty states, analytics and SSR evidence. No production fault was injected. This is the first defect found during V01, outside the completed seven-item batch.
+**Search request failure and recovery (F15/F23) is merged in [PR 314](https://github.com/hmbanan666/k39/pull/314).** The existing page treated failed API requests as zero results and logged them as completed searches; retained responses could also be labelled with a new query. The [review](reviews/2026-10-23-search-failure/README.md) records isolated reproduction, error/loading/retry/empty states, analytics and SSR evidence. No production fault was injected. This is the first defect found during V01, outside the completed seven-item batch.
 
-After this change merges, verify its deployment and finish the first journey's phone, unknown/stale and no-JavaScript acceptance. Then assess ordered route stops/navigation, including report #307. The other four journeys have not received full acceptance. Keep admission #290 open for all-instance rollout/flag and an authorized editorial pass; no live ticket writes or rollout changes were performed here.
+After the editorial issue packet below, verify PR 314 deployment and finish the first journey's phone, unknown/stale and no-JavaScript acceptance. Then assess ordered route stops/navigation, including report #307. The other four journeys have not received full acceptance. Keep admission #290 open for all-instance rollout/flag and an authorized editorial pass; no live ticket writes or rollout changes were performed here.
 
-## Incoming reports outside the current batch
+## Reviewed issue queue after PR 314
 
-Intake snapshot through report #311 on 23 Oct. Thirteen reports are outside the batch; only #294 was reproduced locally during #291. They do not change the seven-item denominator or authorize their proposed fixes. Triage them before the related subsystem work; record any priority change explicitly.
+The owner explicitly called attention to the issue backlog after merging PR 314. All **14 open issues** were read; the [dated triage](reviews/2026-10-23-issue-triage/README.md) records reproduction, code evidence, corrected assumptions and limits for every report. None was closed just because a historic content example had been repaired by hand. This changes priority, not the completed seven-item batch denominator.
 
-| Report | Intake state / routing |
-| --- | --- |
-| [#293](https://github.com/hmbanan666/k39/issues/293) · pronoun forms rejected as superlatives | Unverified writing-check report; assess editorial impact |
-| [#294](https://github.com/hmbanan666/k39/issues/294) · a sub-attraction makes a town appointment-only | Reproduced on isolated text: an appointment phrase about a brewery contradicts the town’s always-open mode. Separate subject-scoping issue; #291 does not fix it. Needs its own scope and regression cases |
-| [#295](https://github.com/hmbanan666/k39/issues/295) · existing collections exceed the source cap and cannot publish an unrelated draft edit | Unverified publishing/compatibility report; reproduce on isolated data and assess blocking impact |
-| [#297](https://github.com/hmbanan666/k39/issues/297) · copied admission prices drift in collection prose | Unverified data-consistency report; assess with practical-fact/collection acceptance |
-| [#298](https://github.com/hmbanan666/k39/issues/298) · stored venue prices lack a visible prices module | Unverified reader/writer feedback report; assess with venue-price acceptance |
-| [#299](https://github.com/hmbanan666/k39/issues/299) · imported phone lacks official provenance | Unverified publishing/source report; reproduce and assess impact on published contacts before prioritizing |
-| [#302](https://github.com/hmbanan666/k39/issues/302) · abandoned ruins shown as temporarily closed | Unverified schedule wording/model report; distinguish lexical scoring corrections from the actual visit-status model |
-| [#303](https://github.com/hmbanan666/k39/issues/303) · venue OSM identity refers to another branch | Unverified identity/provenance report; inspect import overwrite and reviewed editorial-field boundaries before choosing a change |
-| [#304](https://github.com/hmbanan666/k39/issues/304) · district venues labelled as the district town | Unverified locality/grouping report; assess location model and comparison coverage together |
-| [#306](https://github.com/hmbanan666/k39/issues/306) · nature and town sights lack a fitting hub | Unverified taxonomy/model proposal; assess classification and public navigation before adding hubs or overrides |
-| [#307](https://github.com/hmbanan666/k39/issues/307) · route leg distance wording implies road distance | Unverified route-output report; trace distance source and short-leg omission during route acceptance |
-| [#308](https://github.com/hmbanan666/k39/issues/308) · places lack an official social-page contact field | Unverified contact/model proposal; review provenance, public output and shared writer boundaries before adding a field |
-| [#311](https://github.com/hmbanan666/k39/issues/311) · hand-written place counts drift in route/collection copy | Unverified save-warning/scoring proposal; report says historic examples were already corrected in content. Reproduce independently, including legitimate subset counts, during guide/route acceptance |
+**Next bounded editorial packet: 0 of 3 merged.** Fix the save/publish blocker first, then false-positive checks that obstruct useful agent work. One scoped implementation is prepared here; the following items still need their own implementation and evidence.
+
+| Order | Task | Completion contract |
+| --- | --- | --- |
+| 1 | [#295](https://github.com/hmbanan666/k39/issues/295), effective collection source list | Prepared in this change. Reject invalid inherited/sent sources before staging, identify origin, preserve existing live/pending state on failure, accept explicit repair/clear, retain canonical dedupe/cap and publish guard. Provide a read-only legacy audit; deployed acceptance remains |
+| 2 | [#293](https://github.com/hmbanan666/k39/issues/293), pronoun versus superlative | Reproduced. Allow ordinary «в самом Нестерове / у самого моря» uses; preserve actual superlatives and verify FAQ/save/publish behavior |
+| 3 | [#294](https://github.com/hmbanan666/k39/issues/294), appointment subject | Reproduced. A tenant/sub-attraction must not make the town appointment-only; retain own-subject contradictions. Existing internal-link sentence exclusion already works |
+
+| Remaining group | Issues | Routing |
+| --- | --- | --- |
+| Source/identity/model investigations (5) | [299](https://github.com/hmbanan666/k39/issues/299), [303](https://github.com/hmbanan666/k39/issues/303), [304](https://github.com/hmbanan666/k39/issues/304), [306](https://github.com/hmbanan666/k39/issues/306), [308](https://github.com/hmbanan666/k39/issues/308) | Size phone provenance and reviewed OSM identity repair next, before a wider acceptance sweep. Current OSM re-import skips existing IDs, so automatic rollback is not established. Locality, taxonomy and social contacts need explicit model decisions/ADRs before schema work |
+| Public presentation (3) | [298](https://github.com/hmbanan666/k39/issues/298), [307](https://github.com/hmbanan666/k39/issues/307), [302](https://github.com/hmbanan666/k39/issues/302) | Hidden-price feedback, honest straight-line labels and undated closure wording. A short leg is visible with valid coordinates; investigate the reported missing real leg separately |
+| Guide-warning decisions (2) | [297](https://github.com/hmbanan666/k39/issues/297), [311](https://github.com/hmbanan666/k39/issues/311) | Price/count consistency and false-positive boundaries during guide/route acceptance; no automatic publish block or token-template product |
+| Admission acceptance (1) | [290](https://github.com/hmbanan666/k39/issues/290) | Implementation merged; all-instance rollout, guarded enablement and authorized official-source editorial pass remain |
+
+These groups total 14 issues: 3 + 5 + 3 + 2 + 1. They are not estimates of 14 PRs. The [triage](reviews/2026-10-23-issue-triage/README.md) explains why proposed fixes are not automatically accepted. V01 remains in progress, with 0/5 full journeys accepted; its unknown/stale/phone/no-JavaScript evidence is still required.
 
 ## Work after the current batch
 

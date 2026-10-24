@@ -1,7 +1,7 @@
 // Lives in the database suite so it uses that Postgres.
 // The .writer.test.ts suffix is the typecheck rule: this package's tsc
 // excludes it, and scripts/typecheck-writer.mjs includes every match.
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope, requireEditorContent } from '../../../../../apps/web-app/server/utils/access'
 import { saveAdminCollection } from '../../../../../apps/web-app/server/utils/admin/collection-write'
@@ -529,7 +529,7 @@ describe('pending collection and route drafts', () => {
     expect(await Editor.contentDraft('route', route.id)).not.toBeNull()
 
     enterContentScope('draft')
-    await saveCollectionDraft({
+    await expect(saveCollectionDraft({
       id: collection.id,
       slug: 'pending-source-collection',
       title: 'Слишком много источников',
@@ -537,6 +537,15 @@ describe('pending collection and route drafts', () => {
         title: `Источник ${index + 1}`,
         url: `https://example.com/collection/${index + 1}`,
       })),
+    })).rejects.toMatchObject({ statusCode: 400, statusMessage: sourceLimitMessage() })
+    // Legacy/raw pending payloads still meet the independent publish-time guard.
+    await Editor.saveContentDraft({
+      entityType: 'collection',
+      entityId: collection.id,
+      publicationStatus: 'review',
+      payload: { sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+        title: `Источник ${index + 1}`, url: `https://example.com/legacy/${index + 1}`,
+      })) },
     })
     await Editor.saveContentDraft({
       entityType: 'route',
@@ -562,6 +571,138 @@ describe('pending collection and route drafts', () => {
     expect(await Editor.contentDraft('collection', collection.id)).not.toBeNull()
     expect((await Editor.routeById(route.id))?.title).toBe('Маршрут после проверки')
     expect(await Editor.contentDraft('route', route.id)).toBeNull()
+  })
+
+  it('rejects inherited legacy sources before staging, then accepts a repaired list for editor application', async () => {
+    await place('pending-stop-a', 'Первая остановка')
+    const collection = await publishedCollection('pending-legacy-sources')
+    const legacy = Array.from({ length: 29 }, (_, index) => ({ title: `Источник ${index}`, url: `https://example.com/${index}` }))
+    await useDatabase().update(collections).set({ sources: legacy }).where(eq(collections.id, collection.id))
+    const auditBefore = await useDatabase().select().from(mcpAudits).where(eq(mcpAudits.entityId, collection.id))
+    enterContentScope('draft')
+    await expect(saveCollectionDraft({ id: collection.id, body: 'Правка текста.' })).rejects.toMatchObject({
+      statusCode: 400, statusMessage: expect.stringMatching(/29.*опубликованной версии.*Не больше 24/u),
+    })
+    expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
+    expect(await useDatabase().select().from(mcpAudits).where(eq(mcpAudits.entityId, collection.id))).toEqual(auditBefore)
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(legacy)
+    await Editor.saveContentDraft({
+      entityType: 'collection', entityId: collection.id, publicationStatus: 'review',
+      payload: { sources: legacy, body: 'Старая правка.' },
+    })
+    const previous = await Editor.contentDraft('collection', collection.id)
+    await expect(saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })).rejects.toMatchObject({
+      statusCode: 400, statusMessage: expect.stringMatching(/29.*ожидающего черновика/u),
+    })
+    expect(await Editor.contentDraft('collection', collection.id)).toEqual(previous)
+    const corrected = legacy.slice(0, SOURCE_LINK_LIMIT)
+    await saveCollectionDraft({ id: collection.id, sources: corrected, body: 'Правка с исправленными источниками.' })
+    expect((await Editor.contentDraft('collection', collection.id))?.payload.sources).toEqual(corrected)
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(legacy)
+    enterContentScope('editor')
+    await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(corrected)
+    expect((await Editor.collectionById(collection.id))?.body).toBe('Правка с исправленными источниками.')
+    expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
+  })
+
+  const malformedSources = [
+    {}, false, 0, '', { length: 0 }, [null], [false], [{}],
+    [{ title: 1, url: 'https://example.com' }],
+    [{ title: null, url: 'https://example.com' }],
+    [{ title: 'Источник', url: false }],
+    [{ title: 'Источник', url: {} }],
+  ]
+
+  async function collectionState(id: string) {
+    const database = useDatabase()
+    return {
+      live: await Editor.collectionById(id),
+      pending: await Editor.contentDraft('collection', id),
+      items: await Editor.collectionItems(id),
+      audits: await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, id)),
+      revisions: await database.select().from(revisions).where(eq(revisions.entityId, id)),
+    }
+  }
+
+  it.each(malformedSources.flatMap((sources) => ['pending', 'live'].map((origin) => ({ origin, sources }))))('refuses malformed $origin JSONB sources $sources without changing stored state', async ({ origin, sources }) => {
+    const database = useDatabase()
+    const collection = await Editor.saveCollection({
+      slug: 'pending-malformed-sources', title: 'Подборка', body: 'Опубликованный текст.',
+      publicationStatus: 'published', sources: [{ title: 'Источник', url: 'https://example.com/live' }],
+    })
+    collectionIds.push(collection.id)
+    if (origin === 'live') {
+      await database.update(collections).set({ sources: sql`${JSON.stringify(sources)}::jsonb` }).where(eq(collections.id, collection.id))
+    }
+    await Editor.saveContentDraft({
+      entityType: 'collection', entityId: collection.id, publicationStatus: 'review',
+      payload: { body: 'Старая правка.', ...(origin === 'pending' ? { sources } : {}) },
+    })
+    const before = await collectionState(collection.id)
+    enterContentScope('draft')
+    await expect(saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })).rejects.toMatchObject({
+      statusCode: 400,
+      statusMessage: expect.stringMatching(origin === 'pending' ? /ожидающего черновика.*sources/u : /опубликованной версии.*sources/u),
+    })
+    expect(await collectionState(collection.id)).toEqual(before)
+    if (origin === 'pending' && !Array.isArray(sources)) {
+      enterContentScope('editor')
+      await expect(setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })).rejects.toMatchObject({
+        statusCode: 400, statusMessage: 'Источники: нужен список',
+      })
+      expect(await collectionState(collection.id)).toEqual(before)
+    }
+  })
+
+  const liveSources = [{ title: 'Источник', url: 'https://example.com/live' }]
+  const duplicateSources = Array.from({ length: 29 }, (_, index) => ({
+    title: ' Новый источник ', url: index % 2 ? 'http://www.example.com/new/' : ' https://example.com/new ',
+  }))
+  it.each([
+    { label: 'omitted', payload: {}, expected: liveSources },
+    { label: 'null', payload: { sources: null }, expected: [] },
+    { label: 'empty', payload: { sources: [] }, expected: [] },
+    { label: 'duplicates', payload: { sources: duplicateSources }, expected: [{ title: 'Новый источник', url: 'https://example.com/new' }] },
+  ])('preserves inherited $label source semantics through staging and editor application', async ({ payload, expected }) => {
+    const collection = await Editor.saveCollection({
+      slug: 'pending-valid-sources', title: 'Подборка', body: 'Опубликованный текст.',
+      publicationStatus: 'published', sources: liveSources,
+    })
+    collectionIds.push(collection.id)
+    await Editor.saveContentDraft({
+      entityType: 'collection', entityId: collection.id, publicationStatus: 'review',
+      payload: { body: 'Старая правка.', ...payload },
+    })
+    enterContentScope('draft')
+    await saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })
+    expect((await Editor.contentDraft('collection', collection.id))?.payload.sources).toEqual(expected)
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(liveSources)
+    await expect(setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })).rejects.toMatchObject({ statusCode: 403 })
+    enterContentScope('editor')
+    await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(expected)
+    expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
+  })
+
+  it.each([false, true])('allows explicit repair/clear of malformed pending JSON (clear=%s)', async (clear) => {
+    const collection = await Editor.saveCollection({
+      slug: 'pending-repair-sources', title: 'Подборка', body: 'Опубликованный текст.',
+      publicationStatus: 'published', sources: liveSources,
+    })
+    collectionIds.push(collection.id)
+    await Editor.saveContentDraft({
+      entityType: 'collection', entityId: collection.id, publicationStatus: 'review', payload: { sources: {} },
+    })
+    enterContentScope('draft')
+    const corrected = clear ? [] : liveSources
+    await saveCollectionDraft({ id: collection.id, sources: corrected, body: 'Новая правка.' })
+    expect((await Editor.contentDraft('collection', collection.id))?.payload.sources).toEqual(corrected)
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(liveSources)
+    enterContentScope('editor')
+    await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
+    expect((await Editor.collectionById(collection.id))?.sources).toEqual(corrected)
+    expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
   })
 
   it('shows the admin diff, refuses a save, then apply and discard', async () => {
