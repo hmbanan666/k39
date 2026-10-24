@@ -124,6 +124,14 @@ tell, in one glance, whether this place is cheap or expensive.
   and belongs in `socials`.
   Other social networks are not a menu. Set with `venue_prices_set` (replaces
   the list); `venue_get` returns them.
+- `venue_prices_set` and editor application of staged prices return typed
+  `warnings: [{ code: "prices_hidden_missing_module", message: string }]`
+  when usable official prices have no rendered `prices` block; otherwise
+  `warnings` is empty. Staging checks the proposed prices and pending modules
+  and describes the result after application. Immediate/application feedback
+  checks actual stored prices with the public fact overlay. Empty, stale,
+  disallowed-source and owner-only lists do not trigger this warning.
+  No module is inserted or reordered, and custom titles stay as saved.
 - Prices are never invented or taken from aggregators. Rows older than 365
   days are not shown. Without fresh rows the module is hidden.
 

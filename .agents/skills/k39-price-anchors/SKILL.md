@@ -54,6 +54,8 @@ The public grid prints one source line under the cards (`sharedPriceSource` in `
 
 `sourceKind: owner` is the cabinet. The server forces it and drops `sourceUrl` (ADR 0031). An editor agent does not send `owner`.
 
+`venue_prices_set` returns `warnings` with code `prices_hidden_missing_module` when usable official prices would not render because the curated module list has no prices block. A pending warning describes editor application and uses pending modules. Add the module explicitly through `venue_update` when intended; the price writer never inserts or reorders modules. Empty, stale, ineligible-source, and owner-only lists do not produce this warning.
+
 At most 12 prices per venue. A longer list fails the write. Prices older than 365 days stay stored and are hidden.
 
 ## Thresholds
