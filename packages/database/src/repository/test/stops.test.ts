@@ -270,6 +270,16 @@ describe('ordered stops and archive', () => {
     expect((await storedRedirects()).some((item) => item.fromPath === '/podborki/live-collection' && item.statusCode === 410)).toBe(true)
   })
 
+  it('projects existing region display inputs with collection items without changing order or identity', async () => {
+    const region = await Editor.upsertRegion({ slug: 'baltiysk', title: 'Балтийск', shortTitle: 'Балтийск' })
+    await Editor.savePlace({ slug: 'primorsk', title: 'Приморск', regionId: region.id, publicationStatus: 'published' })
+    await Editor.saveCollection({ slug: 'area-cards', title: 'Территории', publicationStatus: 'published', items: [{ placeSlug: 'primorsk' }, { placeSlug: 'stop-live' }] })
+    expect((await Content.publishedCollection('area-cards'))?.items).toMatchObject([
+      { slug: 'primorsk', title: 'Приморск', position: 0, regionSlug: 'baltiysk', regionTitle: 'Балтийск', regionShortTitle: 'Балтийск' },
+      { slug: 'stop-live', position: 1, regionSlug: null, regionTitle: null, regionShortTitle: null },
+    ])
+  })
+
   it('returns quest task text and only a published route', async () => {
     const live = await Editor.saveRoute({
       slug: 'live-ring',

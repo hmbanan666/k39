@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { collectionPlaceCards } from '../shared/collection-page'
 
 describe('collection place cards', () => {
-  it('maps places to cards with category, town, and a one-line summary', () => {
+  it('maps places to cards with category, area, and a one-line summary', () => {
     expect(collectionPlaceCards([
       {
         slug: 'fringilla',
@@ -12,6 +12,8 @@ describe('collection place cards', () => {
         categorySlug: 'muzei',
         categoryTitle: 'Музеи',
         regionTitle: 'Зеленоградский муниципальный округ',
+        regionSlug: 'zelenogradsk',
+        regionShortTitle: 'Зеленоградск',
       },
       {
         slug: 'vysota-efa',
@@ -29,7 +31,9 @@ describe('collection place cards', () => {
         note: null,
         categorySlug: null,
         categoryTitle: null,
-        regionTitle: 'Багратионовский муниципальный округ',
+        regionTitle: 'Побережье',
+        regionSlug: 'coast',
+        regionShortTitle: null,
       },
     ])).toEqual([
       {
@@ -37,7 +41,7 @@ describe('collection place cards', () => {
         title: 'Орнитологическая станция «Фрингилла»',
         summary: 'Полевой стационар. Сезон и цены.',
         hub: 'Музеи',
-        town: 'Зеленоградский муниципальный округ',
+        town: 'Зеленоградск и окрестности',
         kind: 'muzei',
       },
       {
@@ -53,9 +57,17 @@ describe('collection place cards', () => {
         title: 'Замок',
         summary: '',
         hub: '',
-        town: 'Багратионовский муниципальный округ',
+        town: 'Территория «Побережье»',
         kind: '',
       },
     ])
+  })
+
+  it('keeps unknown regions empty and does not duplicate explicit area labels', () => {
+    expect(collectionPlaceCards([
+      { slug: 'unknown', title: 'Без территории' },
+      { slug: 'named', title: 'Предмет', regionSlug: 'baltiysk', regionTitle: 'Балтийск', regionShortTitle: 'Балтийск и окрестности' },
+      { slug: 'custom', title: 'Другой предмет', regionSlug: 'coast', regionTitle: 'Побережье и окрестности' },
+    ]).map((card) => card.town)).toEqual(['', 'Балтийск и окрестности', 'Побережье и окрестности'])
   })
 })
