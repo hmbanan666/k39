@@ -13,9 +13,12 @@ import { readAdmission, setAdmission } from '../../../../../apps/web-app/server/
 import { retirePastEvents, upsertEvent } from '../../../../../apps/web-app/server/utils/practical/events'
 import { loadAdmission, loadMemberEvents, loadSubjectEvents } from '../../../../../apps/web-app/server/utils/practical/public'
 import { practicalTarget } from '../../../../../apps/web-app/server/utils/practical/target'
+import { scoresFromCatalog, toStored } from '../../../../../apps/web-app/server/utils/scoring/assemble'
+import { scorePreview } from '../../../../../apps/web-app/server/utils/scoring/preview'
+import { admissionFree } from '../../../../../apps/web-app/shared/admission'
 import { useDatabase } from '../../database'
 import { resolveMigrationsFolder } from '../../migrations'
-import { admissionPrices, calendarEvents, contentDrafts, facts, places, routes, venues, verificationQueue } from '../../tables'
+import { admissionPrices, calendarEvents, collections, contentDrafts, contentScores, facts, places, routes, venues, verificationQueue } from '../../tables'
 import { Editor } from '../content'
 import { Facts } from '../facts'
 import { CalendarEvents } from '../practical'
@@ -24,6 +27,7 @@ import { Scoring } from '../scoring'
 const placeIds: string[] = []
 const venueIds: string[] = []
 const routeIds: string[] = []
+const collectionIds: string[] = []
 
 beforeEach(() => {
   vi.stubEnv('FEATURE_ADMISSION_EXTRAS_WRITE', 'true')
@@ -34,12 +38,16 @@ afterEach(async () => {
   vi.unstubAllEnvs()
   enterContentScope('editor')
   const database = useDatabase()
-  for (const id of [...placeIds, ...venueIds, ...routeIds]) {
+  for (const id of [...placeIds, ...venueIds, ...routeIds, ...collectionIds]) {
     await database.delete(verificationQueue).where(eq(verificationQueue.entityId, id))
     await database.delete(facts).where(eq(facts.subjectId, id))
     await database.delete(admissionPrices).where(eq(admissionPrices.subjectId, id))
     await database.delete(calendarEvents).where(eq(calendarEvents.subjectId, id))
     await database.delete(contentDrafts).where(eq(contentDrafts.entityId, id))
+    await database.delete(contentScores).where(eq(contentScores.entityId, id))
+  }
+  for (const id of collectionIds) {
+    await database.delete(collections).where(eq(collections.id, id))
   }
   for (const id of routeIds) {
     await database.delete(routes).where(eq(routes.id, id))
@@ -53,6 +61,7 @@ afterEach(async () => {
   placeIds.length = 0
   venueIds.length = 0
   routeIds.length = 0
+  collectionIds.length = 0
 })
 
 const SOURCE = { sourceUrl: 'https://museum.example/tickets', sourceTitle: 'Музей: цены', checkedAt: new Date().toISOString().slice(0, 10) }
@@ -95,6 +104,89 @@ async function status(promise: Promise<unknown>) {
 }
 
 describe('admission writer', () => {
+  it('preserves collection price credit after copied amounts are removed when a member has fresh entry data', async () => {
+    const target = await place('collection-admission-member', 'published')
+    await setAdmission(target, [row('general')], 'editor')
+    const body = 'Площадь у реки находится возле старого квартала. '.repeat(120)
+    const collection = await Editor.saveCollection({
+      slug: 'collection-admission-evidence', title: 'Прогулка по кварталам', body: `${body}\n\n400 ₽.`,
+      publicationStatus: 'published', items: [{ placeSlug: target.slug }],
+    })
+    collectionIds.push(collection.id)
+    const copied = scoresFromCatalog(await Scoring.loadCatalog(), [], [], false).find((score) => score.entityId === collection.id)!
+    expect(copied.checks.quality).not.toContain('no prices')
+    await Editor.saveCollection({ id: collection.id, slug: collection.slug, title: collection.title, body })
+    const catalog = await Scoring.loadCatalog()
+    const score = scoresFromCatalog(catalog, [], [], false).find((score) => score.entityId === collection.id)!
+    expect(score.checks.quality).not.toContain('no prices')
+    expect(score.quality).toBe(copied.quality)
+    expect(scorePreview({ catalog, pageType: 'collection', entityId: collection.id, source: 'live', publicationStatus: 'published' })?.checks.quality).toEqual(score.checks.quality)
+    await Scoring.replaceScores([toStored(score)])
+    expect((await Scoring.listScores()).find((stored) => stored.entityId === collection.id)?.checks.quality).toEqual(score.checks.quality)
+  })
+
+  it.each([
+    { label: 'fresh paid', rows: [row('adult')], evidence: true, shown: 1, free: false },
+    { label: 'fresh free', rows: [row('free', { audience: 'free', priceRub: 0 })], evidence: true, shown: 1, free: true },
+    { label: 'conditional free only', rows: [row('free', { audience: 'free', priceRub: 0, condition: 'Дети до семи лет' })], evidence: true, shown: 1, free: null },
+    { label: 'freshness boundary', rows: [row('adult', { checkedAt: inDays(-365) })], evidence: true, shown: 1, free: false },
+    { label: 'unknown', rows: [], evidence: false, shown: 0, free: null },
+    { label: 'stale paid', rows: [row('adult', { checkedAt: inDays(-366) })], evidence: false, shown: 0, free: null },
+    { label: 'stale free', rows: [row('free', { audience: 'free', priceRub: 0, checkedAt: inDays(-366) })], evidence: false, shown: 0, free: null },
+    { label: 'draft member', rows: [row('adult')], status: 'draft' as const, evidence: false, shown: 1, free: false },
+    { label: 'review member', rows: [row('adult')], status: 'review' as const, evidence: false, shown: 1, free: false },
+    { label: 'archived member', rows: [row('adult')], status: 'archived' as const, evidence: false, shown: 1, free: false },
+    { label: 'extras only', rows: [], extra: true, evidence: false, shown: 0, free: null },
+    { label: 'stale entry and fresh extra', rows: [row('adult', { checkedAt: inDays(-366) })], extra: true, evidence: false, shown: 0, free: null },
+    { label: 'paid entry and extra', rows: [row('adult')], extra: true, evidence: true, shown: 1, free: false },
+    { label: 'invalid map source', rows: [row('adult', { sourceUrl: 'https://yandex.ru/maps/org/1' })], rejected: true, evidence: false, shown: 0, free: null },
+  ])('uses canonical member entry evidence for collections: $label', async (test) => {
+    const target = await place('collection-entry-member', 'published')
+    const input = {
+      rows: test.rows,
+      extras: test.extra ? [{ slot: 'audio', label: 'Аудиогид', priceRub: 200, unit: 'device' as const, ...SOURCE }] : [],
+    }
+    if (test.rejected) {
+      await expect(setAdmission(target, input, 'editor')).rejects.toMatchObject({ statusCode: 400 })
+    } else {
+      await setAdmission(target, input, 'editor')
+    }
+    const collection = await Editor.saveCollection({
+      slug: 'collection-entry-edges', title: 'Прогулка по кварталам', body: 'Дома стоят возле реки.',
+      publicationStatus: 'published', items: [{ placeSlug: target.slug }],
+    })
+    collectionIds.push(collection.id)
+    if (test.status) {
+      await useDatabase().update(places).set({ publicationStatus: test.status }).where(eq(places.id, target.id))
+    }
+    const view = await loadAdmission('place', target.id)
+    expect(view.rows).toHaveLength(test.shown)
+    expect(admissionFree(view)).toBe(test.free)
+    const catalog = await Scoring.loadCatalog()
+    const score = scoresFromCatalog(catalog, [], [], false).find((score) => score.entityId === collection.id)!
+    expect(score.checks.quality.includes('no prices')).toBe(!test.evidence)
+    const preview = scorePreview({ catalog, pageType: 'collection', entityId: collection.id, source: 'live', publicationStatus: 'published' })
+    expect(preview?.checks.quality).toEqual(toStored(score).checks.quality)
+  })
+
+  it('uses only members and accepts partial evidence without asserting that unknown members are free', async () => {
+    const unknown = await place('collection-unknown', 'published')
+    const known = await place('collection-known', 'published')
+    await setAdmission(known, [row('adult')], 'editor')
+    const collection = await Editor.saveCollection({
+      slug: 'collection-members-only', title: 'Прогулка по кварталам', body: 'Дома стоят возле реки.',
+      publicationStatus: 'published', items: [{ placeSlug: unknown.slug }],
+    })
+    collectionIds.push(collection.id)
+    let catalog = await Scoring.loadCatalog()
+    expect(scoresFromCatalog(catalog, [], [], false).find((score) => score.entityId === collection.id)?.checks.quality).toContain('no prices')
+    await Editor.saveCollection({ id: collection.id, slug: collection.slug, title: collection.title, items: [{ placeSlug: unknown.slug }, { placeSlug: known.slug }] })
+    catalog = await Scoring.loadCatalog()
+    expect(scoresFromCatalog(catalog, [], [], false).find((score) => score.entityId === collection.id)?.checks.quality).not.toContain('no prices')
+    expect((await loadAdmission('place', unknown.id)).rows).toEqual([])
+    expect(admissionFree(await loadAdmission('place', unknown.id))).toBeNull()
+  })
+
   it('validates audience rules, free at zero, the row cap, and the official source', async () => {
     const target = await place('practical-validate')
     expect(await status(setAdmission(target, Array.from({ length: 49 }, (_, index) => row(`r${index}`)), 'mcp'))).toBe(400)
