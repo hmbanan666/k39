@@ -7,7 +7,7 @@ import { savePassportContent } from '../content/save'
 import { syncVerificationQueue } from '../facts/queue'
 import { auditMcp } from '../mcp/audit'
 import { pendingVenueWrite } from '../venues/pending'
-import { catalogPageRefs, scoresFromCatalog, toStored } from './assemble'
+import { catalogPageRefs, scoreFactRefs, scoresFromCatalog, toStored } from './assemble'
 import { catalogWithPendingPlace, findCatalogPage, scorePreview } from './preview'
 
 function dayStamp(date: Date) {
@@ -34,7 +34,7 @@ export async function refreshContentScores(options?: { force?: boolean }) {
   const queries = await db.scoring.searchQueriesSince(shiftDay(today, -90))
   const searchImported = await db.scoring.searchImported()
   const freshness = await db.facts.freshnessByConsumer(now.toISOString())
-  const factRefs = new Map(freshness.map((row) => [`${row.consumer_type}:${row.consumer_id}`, { count: Number(row.refs), stale: Number(row.stale) }]))
+  const factRefs = scoreFactRefs(freshness)
   const scores = scoresFromCatalog(catalog, metrics, queries, searchImported, now, factRefs)
   const stored = scores.map(toStored)
   await db.scoring.replaceScores(stored, now.toISOString())
@@ -176,7 +176,7 @@ export async function previewContentScore(path: string) {
     db.scoring.searchImported(),
     db.facts.freshnessByConsumer(now.toISOString()),
   ])
-  const factRefs = new Map(freshness.map((row) => [`${row.consumer_type}:${row.consumer_id}`, { count: Number(row.refs), stale: Number(row.stale) }]))
+  const factRefs = scoreFactRefs(freshness)
   return scorePreview({
     catalog: working,
     pageType: page.pageType,

@@ -88,6 +88,30 @@ function faq(count: number) {
 }
 
 describe('page score', () => {
+  it.each([0, 180, 181])('reports the page stamp age (%i days) even when structured facts determine freshness', (days) => {
+    const now = new Date('2026-10-25T12:00:00Z')
+    const checked = new Date(now.getTime() - days * 86_400_000).toISOString()
+    const score = scorePage(source({ factsCheckedAt: checked, factRefs: { count: 1, stale: 0 } }), now)
+    expect(score.signals.factsAgeDays).toBe(days)
+    expect(score.checks.quality).not.toContain('stale facts')
+    expect(score.checks.quality.some((check) => check.startsWith('facts checked '))).toBe(false)
+  })
+
+  it.each([null, 'not-a-date'])('keeps an unavailable page stamp %j null without overriding fresh cited facts', (factsCheckedAt) => {
+    const score = scorePage(source({ factsCheckedAt, factRefs: { count: 1, stale: 0 } }))
+    expect(score.signals.factsAgeDays).toBeNull()
+    expect(score.checks.quality).not.toContain('facts not checked')
+  })
+
+  it('retains the 180-day fallback boundary when no cited facts replace the page stamp', () => {
+    const now = new Date('2026-10-25T12:00:00Z')
+    const fresh = scorePage(source({ factsCheckedAt: new Date(now.getTime() - 180 * 86_400_000).toISOString() }), now)
+    const old = scorePage(source({ factsCheckedAt: new Date(now.getTime() - 181 * 86_400_000).toISOString() }), now)
+    expect(fresh.quality - old.quality).toBe(15)
+    expect(old.checks.quality).toContain('facts checked 181 days ago')
+    expect(old.signals.factsAgeDays).toBe(181)
+  })
+
   it('uses fact refs instead of the 180-day stamp once a page cites facts', () => {
     const stale = scorePage(source({ factsCheckedAt: null, factRefs: { count: 2, stale: 1 } }))
     const fresh = scorePage(source({ factsCheckedAt: null, factRefs: { count: 2, stale: 0 } }))

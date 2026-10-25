@@ -1,3 +1,4 @@
+import type { ConsumerFactFreshness } from '../types/scoring'
 import type { ContentTx } from './content'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
@@ -330,23 +331,32 @@ export class Facts {
 
   static async freshnessByConsumer(nowIso: string) {
     const rows = await useDatabase().execute(sql`
-      select r.consumer_type, r.consumer_id,
-        count(*)::int as refs,
-        count(*) filter (
-          where f.checked_at is null
-            or f.checked_at + (f.ttl_days || ' days')::interval <= ${nowIso}::timestamptz
-            or exists (
+      with referenced as (
+        select r.consumer_type, r.consumer_id,
+          f.checked_at is null as unchecked,
+          f.checked_at + (f.ttl_days || ' days')::interval <= ${nowIso}::timestamptz as expired,
+          coalesce(f.kind = 'hours' and f.value->>'needsCheck' = 'true', false) as schedule_needs_check,
+          exists (
               select 1 from verification_queue q
               where q.fact_id = f.id
                 and q.resolved_at is null
                 and q.reason in ('source_changed', 'owner_conflict', 'source_gone')
-            )
-        )::int as stale
-      from fact_refs r
-      join facts f on f.id = r.fact_id and f.retired_at is null
-      group by r.consumer_type, r.consumer_id
+          ) as review
+        from fact_refs r
+        join facts f on f.id = r.fact_id and f.retired_at is null
+      )
+      select consumer_type, consumer_id, count(*)::int as refs,
+        count(*) filter (where unchecked or expired or review)::int as stale,
+        jsonb_build_object(
+          'expired', count(*) filter (where expired),
+          'unchecked', count(*) filter (where unchecked and not schedule_needs_check),
+          'scheduleNeedsCheck', count(*) filter (where schedule_needs_check),
+          'review', count(*) filter (where review)
+        ) as reasons
+      from referenced
+      group by consumer_type, consumer_id
     `)
-    return rowsOf<{ consumer_type: string, consumer_id: string, refs: number, stale: number }>(rows)
+    return rowsOf<ConsumerFactFreshness>(rows)
   }
 
   static async review(pageType: string, entityId: string) {

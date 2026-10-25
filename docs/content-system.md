@@ -135,6 +135,23 @@ Any one member with useful fresh entry data can support this practical credit; i
 
 ### Content score status checks
 
+Fact freshness uses the canonical batched consumer query. Its existing `stale` aggregate
+still controls one 15-point freshness bucket and retains per-fact TTLs and unresolved
+source/owner conflicts. Additive reason counts distinguish expired facts (`stale facts`),
+unverified facts (`facts not checked`), an hours fact explicitly marked `needsCheck`
+(`schedule needs check`), and open source/owner review conflicts (`facts need review`).
+Several reasons can be shown together without another deduction. A recent schedule's
+`needsCheck` remains an uncertainty requiring review; no fact check date is fabricated
+and no public availability or queue rule changes. The existing trust badge continues to
+use the aggregate, including unverified/conflicted facts, rather than only age expiry.
+
+`signals.factsAgeDays` always measures the catalog's page `factsCheckedAt` when valid,
+including when cited facts determine freshness points. It is null only for a missing or
+invalid stamp; it is not the age of every referenced fact. Without fact references the
+existing 180-day page-stamp fallback is unchanged. Preview and stored refresh share the
+same reason mapping, scorer and client-safe Russian labels. Existing stored scores
+change through the normal refresh lifecycle; this change performs no production refresh.
+
 `shared/status-consistency.ts` feeds the place-only status checks in `shared/scoring.ts`. A bare sentence-opening closure must be a complete short form (`закрыт`, `закрыта`, `закрыто`, `закрыты`), followed by no Unicode letter; adjective and noun prefixes such as `Закрытую обувь` do not establish a closure. Existing contextual closure phrases and ADR 0045 closure-subject handling still apply. Closure contradictions deduct 15 quality points once per page; ambiguous closure-subject warnings cost zero.
 
 Appointment wording follows [ADR 0052](adr/0052-appointment-text-advisories.md) and the [revised acceptance for issue 294](https://github.com/hmbanan666/k39/issues/294#issuecomment-6387179677). An `always` schedule with recognized booking wording asks an editor to review its context. An `appointment` schedule without recognized wording asks an editor to check that booking instructions are understandable. Both return `status warning:` checks and Russian advisory labels, costing zero quality and total points, even when the text appears to name this page. They neither establish ownership nor prove a schedule error or missing instructions. A real booking inconsistency therefore no longer automatically loses 15 points. The expanded appointment attribution rules are removed; absence of an advisory does not certify the booking instructions.

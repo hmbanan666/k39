@@ -1,3 +1,4 @@
+import type { FactFreshnessReasons } from '@k39/database'
 import type { LengthOverride } from './length-override'
 import { articleBody } from './address'
 import { articleTextLength } from './article-length'
@@ -23,6 +24,13 @@ export interface ScoreChecks {
   linking: string[]
   indexing: string[]
   results: string[]
+}
+
+export interface ScoreFactRefs {
+  count: number
+  stale: number
+  /** Absent only for older callers; the canonical reader supplies reason counts. */
+  reasons?: FactFreshnessReasons
 }
 
 export interface PassportFields {
@@ -80,7 +88,7 @@ export interface ScoreSource {
   seoDescription: string | null
   factsCheckedAt: string | null
   /** Set when the page cites facts. Replaces the 180-day stamp for this check. */
-  factRefs?: { count: number, stale: number }
+  factRefs?: ScoreFactRefs
   /** Places only: schedule rules mode, null without a schedule. */
   scheduleMode?: string | null
   /** Places and venues: `scheduleHoursKnown` of the stored schedule. */
@@ -570,13 +578,29 @@ function ageDays(value: string | null, now: Date) {
 }
 
 function freshPoints(page: ScoreSource, now: Date) {
-  if (page.factRefs && page.factRefs.count > 0) {
-    if (page.factRefs.stale > 0) {
-      return { points: 0, checks: ['stale facts'], age: null as number | null }
-    }
-    return { points: 15, checks: [] as string[], age: null as number | null }
-  }
+  // The page stamp is a signal even when cited facts determine the points.
   const age = ageDays(page.factsCheckedAt, now)
+  if (page.factRefs && page.factRefs.count > 0) {
+    const checks: string[] = []
+    const reasons = page.factRefs.reasons
+    if (reasons) {
+      if (reasons.expired > 0) {
+        checks.push('stale facts')
+      }
+      if (reasons.scheduleNeedsCheck > 0) {
+        checks.push('schedule needs check')
+      }
+      if (reasons.unchecked > 0) {
+        checks.push('facts not checked')
+      }
+      if (reasons.review > 0) {
+        checks.push('facts need review')
+      }
+    } else if (page.factRefs.stale > 0) {
+      checks.push('stale facts')
+    }
+    return { points: page.factRefs.stale > 0 ? 0 : 15, checks, age }
+  }
   if (age == null) {
     return { points: 0, checks: ['facts not checked'], age: null as number | null }
   }

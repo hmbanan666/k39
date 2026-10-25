@@ -7,6 +7,22 @@ export interface ScoreChecks {
   results: string[]
 }
 
+/** Reasons behind the existing freshness aggregate; none changes its penalty or TTL. */
+export interface FactFreshnessReasons {
+  expired: number
+  unchecked: number
+  scheduleNeedsCheck: number
+  review: number
+}
+
+export interface ConsumerFactFreshness {
+  consumer_type: string
+  consumer_id: string
+  refs: number
+  stale: number
+  reasons: FactFreshnessReasons
+}
+
 /** The stored schedule row (ADR 0028). The web app parses `rules` and decides whether the hours are known. */
 export interface CatalogSchedule {
   rules: unknown
