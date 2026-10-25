@@ -88,121 +88,129 @@
     >
       Считаю…
     </p>
-    <table v-else>
-      <thead>
-        <tr>
-          <th>
-            <button
-              type="button"
-              @click="toggleSort('title')"
-            >
-              Страница
-            </button>
-          </th>
-          <th>
-            <button
-              type="button"
-              @click="toggleSort('pageType')"
-            >
-              Тип
-            </button>
-          </th>
-          <th>
-            <button
-              type="button"
-              @click="toggleSort('total')"
-            >
-              Итого
-            </button>
-          </th>
-          <th>
-            <button
-              type="button"
-              @click="toggleSort('quality')"
-            >
-              Качество
-            </button>
-          </th>
-          <th>
-            <button
-              type="button"
-              @click="toggleSort('linking')"
-            >
-              Ссылки
-            </button>
-          </th>
-          <th>
-            <button
-              type="button"
-              @click="toggleSort('indexing')"
-            >
-              Индексация
-            </button>
-          </th>
-          <th>
-            <button
-              type="button"
-              @click="toggleSort('results')"
-            >
-              Результат
-            </button>
-          </th>
-          <th>Персоны</th>
-          <th>Доверие</th>
-          <th>Проблема</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="row in sorted"
-          :key="row.path"
-          :class="{ selected: selectedPath === row.path }"
-          @click="openPassport(row.path)"
-        >
-          <td>
-            <b>{{ row.title }}</b>
-            <span class="path">{{ row.path }}</span>
-          </td>
-          <td>{{ kindLabel(row.pageType) }}</td>
-          <td class="num">
-            {{ row.total }}
-          </td>
-          <td class="num">
-            {{ row.quality }}
-          </td>
-          <td class="num">
-            {{ row.linking }}
-          </td>
-          <td class="num">
-            {{ row.indexing }}
-          </td>
-          <td class="num">
-            {{ row.results }}
-          </td>
-          <td>
-            <span
-              v-if="row.personas.length"
-              class="personas"
-            >
-              <b
-                v-for="persona in row.personas.filter((item) => item.primary)"
-                :key="persona.code"
-              >{{ persona.title }}</b>
+    <div
+      v-else
+      class="score-table"
+      role="region"
+      aria-label="Оценки страниц"
+      tabindex="0"
+    >
+      <table>
+        <thead>
+          <tr>
+            <th>
+              <button
+                type="button"
+                @click="toggleSort('title')"
+              >
+                Страница
+              </button>
+            </th>
+            <th>
+              <button
+                type="button"
+                @click="toggleSort('pageType')"
+              >
+                Тип
+              </button>
+            </th>
+            <th>
+              <button
+                type="button"
+                @click="toggleSort('total')"
+              >
+                Итого
+              </button>
+            </th>
+            <th>
+              <button
+                type="button"
+                @click="toggleSort('quality')"
+              >
+                Качество
+              </button>
+            </th>
+            <th>
+              <button
+                type="button"
+                @click="toggleSort('linking')"
+              >
+                Ссылки
+              </button>
+            </th>
+            <th>
+              <button
+                type="button"
+                @click="toggleSort('indexing')"
+              >
+                Индексация
+              </button>
+            </th>
+            <th>
+              <button
+                type="button"
+                @click="toggleSort('results')"
+              >
+                Результат
+              </button>
+            </th>
+            <th>Персоны</th>
+            <th>Доверие</th>
+            <th>Проблема</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in sorted"
+            :key="row.path"
+            :class="{ selected: selectedPath === row.path }"
+            @click="openPassport(row.path)"
+          >
+            <td>
+              <b>{{ row.title }}</b>
+              <span class="path">{{ row.path }}</span>
+            </td>
+            <td>{{ kindLabel(row.pageType) }}</td>
+            <td class="num">
+              {{ row.total }}
+            </td>
+            <td class="num">
+              {{ row.quality }}
+            </td>
+            <td class="num">
+              {{ row.linking }}
+            </td>
+            <td class="num">
+              {{ row.indexing }}
+            </td>
+            <td class="num">
+              {{ row.results }}
+            </td>
+            <td>
               <span
-                v-for="persona in row.personas.filter((item) => !item.primary)"
-                :key="persona.code"
-              >{{ persona.title }}</span>
-            </span>
-            <span
-              v-else
-              class="missing"
-            >нет</span>
-          </td>
-          <td>{{ trustText(row.trust) }}</td>
-          <td>{{ row.topIssue ? issueLabel(row.topIssue) : 'нет' }}</td>
-        </tr>
-      </tbody>
-    </table>
+                v-if="row.personas.length"
+                class="personas"
+              >
+                <b
+                  v-for="persona in row.personas.filter((item) => item.primary)"
+                  :key="persona.code"
+                >{{ persona.title }}</b>
+                <span
+                  v-for="persona in row.personas.filter((item) => !item.primary)"
+                  :key="persona.code"
+                >{{ persona.title }}</span>
+              </span>
+              <span
+                v-else
+                class="missing"
+              >нет</span>
+            </td>
+            <td>{{ trustText(row.trust) }}</td>
+            <td>{{ row.topIssue ? issueLabel(row.topIssue) : 'нет' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     <form
       v-if="passport"
       class="passport"
@@ -477,6 +485,7 @@ h2 { margin: 0 0 0.8rem; font-size: 1.25rem; }
 .personas span { color: var(--muted); }
 .missing { color: var(--color-danger); }
 .error { color: var(--color-brick); }
+.score-table { max-width: 100%; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 th, td { padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--color-line); text-align: left; vertical-align: top; }
 th button { padding: 0; border: 0; background: none; font: inherit; font-weight: 700; cursor: pointer; }

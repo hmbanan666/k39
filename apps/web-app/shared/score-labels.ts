@@ -40,6 +40,8 @@ export function issueLabel(check: string) {
     [/^0 photos$/, () => 'Нет фотографий'],
     [/^(\d+) photos?, need (\d+)$/, (match) => `Фотографий: ${match[1]}, нужно ${match[2]}`],
     [/^stale facts$/, () => 'Устаревшие факты'],
+    [/^schedule needs check$/, () => 'Режим работы требует проверки'],
+    [/^facts need review$/, () => 'Факты требуют проверки'],
     [/^facts not checked$/, () => 'Факты не проверены'],
     [/^facts checked (\d+) days ago$/, (match) => `Факты проверены ${match[1]} дн. назад`],
     [/^passport empty$/, () => 'Паспорт пустой'],

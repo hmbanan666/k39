@@ -1,5 +1,5 @@
-import type { CatalogSchedule, CatalogStop, ContentCatalog, PageMetric, StoredScore } from '@k39/database'
-import type { LinkCatalog, PageKind, PageScore, PassportFields, ScoreSource } from '../../../shared/scoring'
+import type { CatalogSchedule, CatalogStop, ConsumerFactFreshness, ContentCatalog, PageMetric, StoredScore } from '@k39/database'
+import type { LinkCatalog, PageKind, PageScore, PassportFields, ScoreFactRefs, ScoreSource } from '../../../shared/scoring'
 import { collectionArticle } from '../../../shared/page-modules'
 import { readRules, scheduleHoursKnown } from '../../../shared/schedule'
 import { emptyResults, linkStats, scorePage, searchTotalsForPath } from '../../../shared/scoring'
@@ -54,13 +54,20 @@ export interface ScoreInclude {
   id: string
 }
 
+/** Preview and stored runs retain the canonical reader's reasons without reclassifying facts. */
+export function scoreFactRefs(rows: ConsumerFactFreshness[]): Map<string, ScoreFactRefs> {
+  return new Map(rows.map((row) => [`${row.consumer_type}:${row.consumer_id}`, {
+    count: Number(row.refs), stale: Number(row.stale), reasons: row.reasons,
+  }]))
+}
+
 export function scoresFromCatalog(
   catalog: ContentCatalog,
   metrics: PageMetric[],
   queries: Array<{ page: string, query: string }>,
   searchImported: boolean,
   now = new Date(),
-  factRefs?: Map<string, { count: number, stale: number }>,
+  factRefs?: Map<string, ScoreFactRefs>,
   options?: { include?: ScoreInclude[] },
 ): PageScore[] {
   const linkCatalog: LinkCatalog = {

@@ -1,5 +1,5 @@
 import type { ContentCatalog, PageMetric, ScorePlace } from '@k39/database'
-import type { PageKind } from '../../../shared/scoring'
+import type { PageKind, ScoreFactRefs } from '../../../shared/scoring'
 import { topIssue } from '../../../shared/scoring'
 import { scoresFromCatalog } from './assemble'
 
@@ -166,7 +166,7 @@ export function scorePreview(input: {
   queries?: Array<{ page: string, query: string }>
   searchImported?: boolean
   now?: Date
-  factRefs?: Map<string, { count: number, stale: number }>
+  factRefs?: Map<string, ScoreFactRefs>
 }) {
   const now = input.now ?? new Date()
   const scores = scoresFromCatalog(
