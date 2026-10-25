@@ -5,6 +5,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
+    "./source-audit": "./src/source-audit.ts",
     "./hours-note": "./src/hours-note.ts",
     "./price-label": "./src/price-label.ts"
   },

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "nuxt build",
+    "build": "nuxt build && node ../../scripts/build-source-audit.mjs",
     "dev": "nuxt dev --host 0.0.0.0 --port 3000",
     "preview": "nuxt preview",
     "generate": "nuxt generate",

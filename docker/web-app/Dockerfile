@@ -8,6 +8,7 @@ COPY packages ./packages
 COPY apps/web-app ./apps/web-app
 # prepare runs chain-hooks. The image context has no .git, so the script exits.
 COPY scripts/git/chain-hooks.mjs ./scripts/git/chain-hooks.mjs
+COPY scripts/build-source-audit.mjs ./scripts/build-source-audit.mjs
 
 # Corepack follows the exact packageManager pin from package.json.
 # The filter belongs before the script, so it is not passed to nuxt build.
