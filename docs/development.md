@@ -107,6 +107,48 @@ There is no separate migration job. On boot the Nitro plugin (`server/plugins/01
 
 Do not add Kubernetes manifests or GitHub Actions deploy workflows.
 
+### Read-only source-list audit
+
+Inside a running web image with an explicitly configured, nonempty `DATABASE_URL`:
+
+```bash
+node /app/server/audits/report-source-lists.mjs
+```
+
+From a source checkout after the frozen install, with the same explicit variable:
+
+```bash
+node --import jiti/register apps/web-app/scripts/report-source-lists.ts
+```
+
+The image entry point is already `node`; a one-off container invocation is
+`docker run --rm -e DATABASE_URL <image> /app/server/audits/report-source-lists.mjs`.
+Supply the variable through the existing secure environment, not a literal credential in
+shell history. The image command needs no runtime install or TypeScript loader; the
+checkout command uses the installed `jiti` only. Neither command boots Nuxt, migrates,
+seeds or repairs data. The build bundles the shared report engine and canonical source
+validator; the image command uses its existing `pg` dependency.
+
+The audit scans stored place, collection and venue sources plus pending payloads with an
+explicit `sources` key. It retains null/empty-list semantics and canonical URL deduplication
+before the 24-source cap. It does not read prose or fetch source URLs. It asserts a
+repeatable-read, read-only transaction, attempts rollback after any connected outcome,
+and closes its dedicated connection. Connection, query, lock and cleanup timeouts bound
+execution. It never uses database defaults when `DATABASE_URL` is missing or blank.
+
+Stdout is one JSON object: `scanned`, `problemCount`, at most 100 `problems` (bounded
+entity/id/slug/origin, optional row count and generic problem), `problemsTruncated`,
+`readOnly`, `rollback`, `cleanup`, `status` and fixed limits. Validator/driver error text,
+source titles/URLs, article bodies and connection strings are not printed. Exit 0 means
+a complete clean scan, 1 a complete scan with findings, and 2 blocked/incomplete execution.
+`complete` requires confirmed read-only, rollback and cleanup outcomes. A 10,000-record
+scan cap or a source value above 65,536 serialized bytes makes the report incomplete;
+an oversized list is unvalidated, not automatically invalid. Truncated problem metadata
+is explicit even when the bounded scan completed. Treat any incomplete report as partial
+evidence, never a clean audit. Even a complete report is a database snapshot, not source
+freshness, official-source correctness, publication acceptance or protection against later
+writes. It does not apply drafts, repair lists, refresh scores or certify production data.
+
 ## Admission extras rollout
 
 Migration `0046_admission_extras.sql` preserves every existing price as `kind = entry`; it does not rewrite amounts, sources, check dates or fact hashes. Normal startup applies it. There is no content seed or label-based reclassification.
