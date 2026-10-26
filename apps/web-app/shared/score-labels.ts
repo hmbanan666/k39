@@ -80,9 +80,18 @@ export function issueLabel(check: string) {
     [/^goal pending \((\d+) days\)$/, (match) => `Цель ещё не оценивается (${match[1]} дн.)`],
     [/^goal pending \(not indexable\)$/, () => 'Цель не оценивается: страница закрыта от индекса'],
     [/^goal pending \(unpublished\)$/, () => 'Цель не оценивается: страница не опубликована'],
-    [/^status warning: closure may refer to another subject$/, () => 'Фраза про закрытие может относиться к другому месту'],
-    [/^status warning: appointment wording needs context review$/, () => 'Упомянута запись: проверьте контекст и условия посещения'],
-    [/^status warning: appointment instructions need editorial review$/, () => 'Проверьте, понятны ли условия записи в тексте'],
+    [
+      /^status warning: closure may refer to another subject$/,
+      () => 'Фраза про закрытие может относиться к другому месту',
+    ],
+    [
+      /^status warning: appointment wording needs context review$/,
+      () => 'Упомянута запись: проверьте контекст и условия посещения',
+    ],
+    [
+      /^status warning: appointment instructions need editorial review$/,
+      () => 'Проверьте, понятны ли условия записи в тексте',
+    ],
     [/^writing advisory: (.+)$/, (match) => writingAdvisoryMessage({ match: match[1]! })],
     [/^organic 30d: (\d+), goal (\d+)$/, (match) => `Поиск за 30 дней: ${match[1]}, цель ${match[2]}`],
     [/^organic 90d: (\d+), goal (\d+)$/, (match) => `Поиск за 90 дней: ${match[1]}, цель ${match[2]}`],

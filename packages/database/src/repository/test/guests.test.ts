@@ -91,21 +91,24 @@ describe('guest submissions', () => {
     const author = await person('Анна Косарева')
     const editor = await person('Редактор')
     const row = await place()
-    const written = await Facts.upsert({
-      kind: 'price',
-      subjectType: 'place',
-      subjectId: row.id,
-      slot: 'price:cappuccino:300',
-      value: { itemId: 'cappuccino', itemSlug: 'cappuccino', variant: '300', priceRub: 200 },
-      valueHash: HASH,
-      sourceUrl: 'https://fixture.k39.test/menu',
-      sourceTitle: 'Меню',
-      sourceKind: 'official',
-      checkedAt: '2026-10-01T00:00:00.000Z',
-      ttlDays: 90,
-      confidence: 'stated',
-      actor: 'editor',
-    }, [])
+    const written = await Facts.upsert(
+      {
+        kind: 'price',
+        subjectType: 'place',
+        subjectId: row.id,
+        slot: 'price:cappuccino:300',
+        value: { itemId: 'cappuccino', itemSlug: 'cappuccino', variant: '300', priceRub: 200 },
+        valueHash: HASH,
+        sourceUrl: 'https://fixture.k39.test/menu',
+        sourceTitle: 'Меню',
+        sourceKind: 'official',
+        checkedAt: '2026-10-01T00:00:00.000Z',
+        ttlDays: 90,
+        confidence: 'stated',
+        actor: 'editor',
+      },
+      [],
+    )
     const created = await Guests.create({
       userId: author.id,
       subjectType: 'place',
@@ -153,7 +156,10 @@ describe('guest submissions', () => {
     expect(stored?.value).toMatchObject({ priceRub: 200 })
     const prices = await useDatabase().select().from(venuePrices).where(eq(venuePrices.venueId, row.id))
     expect(prices).toEqual([])
-    const open = await useDatabase().select().from(verificationQueue).where(eq(verificationQueue.reason, 'guest_report'))
+    const open = await useDatabase()
+      .select()
+      .from(verificationQueue)
+      .where(eq(verificationQueue.reason, 'guest_report'))
     expect(open.filter((item) => !item.resolvedAt)).toHaveLength(1)
   })
 
@@ -173,21 +179,24 @@ describe('guest submissions', () => {
     })
     expect(signal.target).toBe('section')
     expect(signal.path).toBe('guest:phone')
-    await Facts.upsert({
-      kind: 'phone',
-      subjectType: 'place',
-      subjectId: row.id,
-      slot: 'phone',
-      value: { text: '+7 401 000' },
-      valueHash: HASH,
-      sourceUrl: null,
-      sourceTitle: null,
-      sourceKind: 'official',
-      checkedAt: '2026-10-16T00:00:00.000Z',
-      ttlDays: 180,
-      confidence: 'stated',
-      actor: 'editor',
-    }, [])
+    await Facts.upsert(
+      {
+        kind: 'phone',
+        subjectType: 'place',
+        subjectId: row.id,
+        slot: 'phone',
+        value: { text: '+7 401 000' },
+        valueHash: HASH,
+        sourceUrl: null,
+        sourceTitle: null,
+        sourceKind: 'official',
+        checkedAt: '2026-10-16T00:00:00.000Z',
+        ttlDays: 180,
+        confidence: 'stated',
+        actor: 'editor',
+      },
+      [],
+    )
     const [closed] = await useDatabase().select().from(verificationQueue).where(eq(verificationQueue.id, signal.id))
     expect(closed?.resolvedAt).toBeTruthy()
   })
@@ -278,7 +287,12 @@ describe('guest submissions', () => {
     if (!pending.ok) {
       return
     }
-    const byToken = await Guests.decide(pending.id, null, 'rejected', 'На фото узнаваемый человек. Такие снимки не публикуем.')
+    const byToken = await Guests.decide(
+      pending.id,
+      null,
+      'rejected',
+      'На фото узнаваемый человек. Такие снимки не публикуем.',
+    )
     expect(byToken?.status).toBe('rejected')
     expect(byToken?.decidedBy).toBeNull()
     expect(byToken?.decisionNote).toBe('На фото узнаваемый человек. Такие снимки не публикуем.')

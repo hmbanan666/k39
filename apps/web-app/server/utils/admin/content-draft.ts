@@ -6,7 +6,7 @@ import { formatDraftUpdated } from '../../../shared/place-draft-diff'
 import { withContentScope } from '../access'
 import { setPublication } from '../mcp/publish'
 
-type Stop = { placeSlug: string, note?: string | null }
+type Stop = { placeSlug: string; note?: string | null }
 
 function asStops(value: unknown): Stop[] | null {
   if (!Array.isArray(value)) {
@@ -16,13 +16,16 @@ function asStops(value: unknown): Stop[] | null {
     if (!item || typeof item !== 'object' || typeof (item as { placeSlug?: unknown }).placeSlug !== 'string') {
       return []
     }
-    const row = item as { placeSlug: string, note?: unknown }
+    const row = item as { placeSlug: string; note?: unknown }
     const note = typeof row.note === 'string' ? row.note : null
     return [{ placeSlug: row.placeSlug, note }]
   })
 }
 
-function notice(draft: { updatedAt: string, publicationStatus: 'draft' | 'review' }, changes: ContentDraftNotice['changes']): ContentDraftNotice {
+function notice(
+  draft: { updatedAt: string; publicationStatus: 'draft' | 'review' },
+  changes: ContentDraftNotice['changes'],
+): ContentDraftNotice {
   return {
     updatedAt: draft.updatedAt,
     updatedLabel: formatDraftUpdated(draft.updatedAt),
@@ -32,9 +35,7 @@ function notice(draft: { updatedAt: string, publicationStatus: 'draft' | 'review
 }
 
 async function liveStops(kind: 'collection' | 'route', id: string): Promise<Stop[]> {
-  const rows = kind === 'collection'
-    ? await db.editor.collectionItems(id)
-    : await db.editor.routePoints(id)
+  const rows = kind === 'collection' ? await db.editor.collectionItems(id) : await db.editor.routePoints(id)
   return rows.map((row) => ({ placeSlug: row.placeSlug, note: row.note }))
 }
 
@@ -49,7 +50,7 @@ export async function collectionDraftNotice(id: string): Promise<ContentDraftNot
   }
   const next = db.editor.pendingCollectionNext(row, draft.payload)
   const payloadItems = asStops(draft.payload.items)
-  const items = payloadItems ?? await liveStops('collection', id)
+  const items = payloadItems ?? (await liveStops('collection', id))
   const liveItems = payloadItems ? await liveStops('collection', id) : items
   const live: CollectionDraftSide = {
     title: row.title,
@@ -97,7 +98,7 @@ export async function routeDraftNotice(id: string): Promise<ContentDraftNotice |
   }
   const next = db.editor.pendingRouteNext(row, draft.payload)
   const payloadPoints = asStops(draft.payload.points)
-  const points = payloadPoints ?? await liveStops('route', id)
+  const points = payloadPoints ?? (await liveStops('route', id))
   const livePoints = payloadPoints ? await liveStops('route', id) : points
   const live: RouteDraftSide = {
     title: row.title,
@@ -128,17 +129,16 @@ export async function routeDraftNotice(id: string): Promise<ContentDraftNotice |
   return notice(draft, routeDraftChanges(live, pending))
 }
 
-export async function attachDraftNotices<T extends { id: string }>(
-  entity: 'collection' | 'route',
-  rows: T[],
-) {
+export async function attachDraftNotices<T extends { id: string }>(entity: 'collection' | 'route', rows: T[]) {
   const drafts = await db.editor.contentDraftsFor(entity)
   const wanted = new Set(drafts.map((draft) => draft.entityId))
   const notices = new Map<string, ContentDraftNotice | null>()
-  await Promise.all([...wanted].map(async (id) => {
-    const view = entity === 'collection' ? await collectionDraftNotice(id) : await routeDraftNotice(id)
-    notices.set(id, view)
-  }))
+  await Promise.all(
+    [...wanted].map(async (id) => {
+      const view = entity === 'collection' ? await collectionDraftNotice(id) : await routeDraftNotice(id)
+      notices.set(id, view)
+    }),
+  )
   return rows
     .map((row) => ({ ...row, pending: notices.get(row.id) ?? null }))
     .sort((left, right) => Number(Boolean(right.pending)) - Number(Boolean(left.pending)))
@@ -150,17 +150,21 @@ export async function applyAdminContentDraft(entity: 'collection' | 'route', id:
     throw createError({ statusCode: 409, statusMessage: 'Черновика нет' })
   }
   if (entity === 'collection') {
-    return withContentScope('editor', () => setPublication({
-      entity: 'collection',
+    return withContentScope('editor', () =>
+      setPublication({
+        entity: 'collection',
+        id,
+        publicationStatus: 'published',
+      }),
+    )
+  }
+  return withContentScope('editor', () =>
+    setPublication({
+      entity: 'route',
       id,
       publicationStatus: 'published',
-    }))
-  }
-  return withContentScope('editor', () => setPublication({
-    entity: 'route',
-    id,
-    publicationStatus: 'published',
-  }))
+    }),
+  )
 }
 
 export async function discardAdminContentDraft(entity: 'collection' | 'route', id: string) {

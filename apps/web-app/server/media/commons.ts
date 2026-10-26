@@ -61,7 +61,11 @@ interface ApiPage {
 }
 
 export function plainText(value: string) {
-  return value.replace(/<[^>]+>/g, ' ').replace(/&\w+;/g, ' ').replace(/\s+/g, ' ').trim()
+  return value
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&\w+;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function categoryNames(page: { categories?: Array<{ title?: string }> }) {
@@ -103,7 +107,7 @@ async function commonsQuery(params: Record<string, string>) {
     url.searchParams.set(key, value)
   }
   const response = await commonsFetch(url)
-  const body = await response.json() as { query?: { pages?: Record<string, ApiPage> } }
+  const body = (await response.json()) as { query?: { pages?: Record<string, ApiPage> } }
   return Object.values(body.query?.pages ?? {})
 }
 
@@ -165,14 +169,23 @@ async function searchCategoryFiles(query: string) {
     gsrnamespace: '14',
     gsrlimit: '2',
   })
-  const titles = categories.map((page) => page.title).filter((title): title is string => Boolean(title?.startsWith('Category:')))
-  const groups = await Promise.all(titles.map((title) => commonsQuery({
-    generator: 'categorymembers',
-    gcmtitle: title,
-    gcmtype: 'file',
-    gcmlimit: '8',
-  })))
-  return groups.flat().map(toHit).filter((item): item is CommonsHit => Boolean(item))
+  const titles = categories
+    .map((page) => page.title)
+    .filter((title): title is string => Boolean(title?.startsWith('Category:')))
+  const groups = await Promise.all(
+    titles.map((title) =>
+      commonsQuery({
+        generator: 'categorymembers',
+        gcmtitle: title,
+        gcmtype: 'file',
+        gcmlimit: '8',
+      }),
+    ),
+  )
+  return groups
+    .flat()
+    .map(toHit)
+    .filter((item): item is CommonsHit => Boolean(item))
 }
 
 export function fallbackQueries(title: string) {
@@ -186,7 +199,7 @@ export function fallbackQueries(title: string) {
   return queries
 }
 
-export async function searchCommons(input: { lat?: number | null, lng?: number | null, title?: string | null }) {
+export async function searchCommons(input: { lat?: number | null; lng?: number | null; title?: string | null }) {
   const hits: CommonsHit[] = []
   if (input.lat != null && input.lng != null) {
     const pages = await commonsQuery({
@@ -204,7 +217,7 @@ export async function searchCommons(input: { lat?: number | null, lng?: number |
     const found = await Promise.all(queries.flatMap((query) => [searchFiles(query), searchCategoryFiles(query)]))
     hits.push(...found.flat())
   } else if (title) {
-    hits.push(...await searchFiles(title))
+    hits.push(...(await searchFiles(title)))
   }
   return uniqueHits(hits)
 }

@@ -7,13 +7,17 @@ import VenuePage from '../app/components/VenuePage.vue'
 import { scheduleDetails, scheduleRulesSchema } from '../shared/schedule'
 import { renderPage } from './helpers/render-page'
 
-const rules = scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00' }], unknownDays: [6, 0] }] })
+const rules = scheduleRulesSchema.parse({
+  seasons: [{ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00' }], unknownDays: [6, 0] }],
+})
 const schedule = { rules, sourceUrl: 'https://fixture.k39.test/hours', verifiedAt: '2026-10-14' }
 
 async function cardText(local: string, props: Record<string, unknown> = {}) {
   vi.useFakeTimers()
   vi.setSystemTime(new Date(`${local}:00+02:00`))
-  const wrapper = mount(OpeningLive, { props: { schedule, showUnknown: true, compact: true, hideRemaining: true, ...props } })
+  const wrapper = mount(OpeningLive, {
+    props: { schedule, showUnknown: true, compact: true, hideRemaining: true, ...props },
+  })
   await nextTick()
   const text = wrapper.text()
   wrapper.unmount()

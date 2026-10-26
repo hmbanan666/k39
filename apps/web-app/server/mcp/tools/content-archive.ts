@@ -8,7 +8,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'content_archive',
-  description: 'Delete a draft route or collection. A published or review row is archived instead: the row stays, it leaves the public site, and its URL returns 410. Writes an mcp_audits row. A draft that a quest or offer still links cannot be deleted.',
+  description:
+    'Delete a draft route or collection. A published or review row is archived instead: the row stays, it leaves the public site, and its URL returns 410. Writes an mcp_audits row. A draft that a quest or offer still links cannot be deleted.',
   annotations: { destructiveHint: true },
   inputSchema: {
     entity: z.enum(['route', 'collection']),
@@ -20,12 +21,8 @@ export default defineStrictMcpTool({
     if (!input.id && !input.slug) {
       throw createError({ statusCode: 400, statusMessage: 'Нужен id или slug' })
     }
-    const rows = input.entity === 'route'
-      ? await db.editor.listRoutes()
-      : await db.editor.listCollections()
-    const current = input.id
-      ? rows.find((item) => item.id === input.id)
-      : rows.find((item) => item.slug === input.slug)
+    const rows = input.entity === 'route' ? await db.editor.listRoutes() : await db.editor.listCollections()
+    const current = input.id ? rows.find((item) => item.id === input.id) : rows.find((item) => item.slug === input.slug)
     if (!current) {
       throw createError({
         statusCode: 404,
@@ -33,9 +30,10 @@ export default defineStrictMcpTool({
       })
     }
     try {
-      const result = input.entity === 'route'
-        ? await db.editor.archiveOrDeleteRoute(current.id)
-        : await db.editor.archiveOrDeleteCollection(current.id)
+      const result =
+        input.entity === 'route'
+          ? await db.editor.archiveOrDeleteRoute(current.id)
+          : await db.editor.archiveOrDeleteCollection(current.id)
       if (!result) {
         throw createError({
           statusCode: 404,

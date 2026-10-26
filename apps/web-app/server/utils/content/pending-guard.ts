@@ -19,15 +19,13 @@ export function liveWriteRow<T extends { id: string }>(row: T, writingWarnings: 
  * still the row the caller checked. One transaction, so a newer draft stays.
  */
 async function runWithCheckedDraft<T>(
-  stamp: { id: string, updatedAt: string } | null,
+  stamp: { id: string; updatedAt: string } | null,
   write: (tx: EditorTx) => Promise<T>,
   outer?: EditorTx,
 ) {
   const run = async (tx: EditorTx) => {
     const result = await write(tx)
-    const draftDropped = stamp
-      ? await db.editor.deleteContentDraftIfUnchanged(stamp.id, stamp.updatedAt, tx)
-      : false
+    const draftDropped = stamp ? await db.editor.deleteContentDraftIfUnchanged(stamp.id, stamp.updatedAt, tx) : false
     return { result, draftDropped }
   }
   return outer ? run(outer) : db.editor.transaction(run)

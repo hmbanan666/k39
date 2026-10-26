@@ -11,7 +11,12 @@ describe('persona coverage', () => {
   })
 
   it('counts module types and text roles', () => {
-    const blocks = pageBlocks({ ...base, pageType: 'collection', stops: 4, modules: [{ type: 'plans' }, { type: 'text', role: 'events' }, { type: 'month-stats' }] })
+    const blocks = pageBlocks({
+      ...base,
+      pageType: 'collection',
+      stops: 4,
+      modules: [{ type: 'plans' }, { type: 'text', role: 'events' }, { type: 'month-stats' }],
+    })
     expect(blocks.has('plans')).toBe(true)
     expect(blocks.has('events')).toBe(true)
     expect(blocks.has('places')).toBe(true)

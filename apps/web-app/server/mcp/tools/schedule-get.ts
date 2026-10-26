@@ -6,7 +6,8 @@ import { loadSchedule } from '../../utils/schedule'
 
 export default defineStrictMcpTool({
   name: 'schedule_get',
-  description: 'Load the schedule (opening rules, source, verification date) of a place or venue, with its human text and current status. No schedule means hours are unknown.',
+  description:
+    'Load the schedule (opening rules, source, verification date) of a place or venue, with its human text and current status. No schedule means hours are unknown.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     entityType: z.enum(['place', 'venue']).default('place'),

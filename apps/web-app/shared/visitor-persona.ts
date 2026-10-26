@@ -11,7 +11,7 @@ export const VISITOR_PERSONAS = [
   { code: 'weekend', label: 'Турист', hints: {} },
   { code: 'family', label: 'С детьми', hints: { company: ['deti'] } },
   { code: 'nocar', label: 'Без машины', hints: { transport: ['bez-mashiny'] } },
-] as const satisfies ReadonlyArray<{ code: string, label: string, hints: PickerState }>
+] as const satisfies ReadonlyArray<{ code: string; label: string; hints: PickerState }>
 
 export type VisitorPersona = (typeof VISITOR_PERSONAS)[number]['code']
 

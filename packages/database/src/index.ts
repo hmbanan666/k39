@@ -11,7 +11,12 @@ export type { ContentTx } from './repository/content'
 export type { FactExecutor, FactRefWrite, FactWrite, QueueWrite } from './repository/facts'
 export type { NoticeKind, NoticeRow, NoticeSubjectType, NoticeWrite } from './repository/notices'
 export { NOTICE_DRAFT_KEYS } from './repository/notices'
-export type { AdmissionRowWrite, AdmissionSubjectType, CalendarEventWrite, EventSubjectType } from './repository/practical'
+export type {
+  AdmissionRowWrite,
+  AdmissionSubjectType,
+  CalendarEventWrite,
+  EventSubjectType,
+} from './repository/practical'
 export { normalizePriceItemImage, PRICE_FRESH_DAYS } from './repository/prices'
 export type { PriceSourceKind, VenuePriceInput } from './repository/prices'
 export type { VenueListFilter, VenueWrite } from './repository/venues'

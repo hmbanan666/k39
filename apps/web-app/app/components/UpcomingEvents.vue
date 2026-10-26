@@ -48,13 +48,21 @@
 <script setup lang="ts">
 import type { EventLine } from '~~/shared/events'
 
-defineProps<{ items: EventLine[], title: string }>()
+defineProps<{ items: EventLine[]; title: string }>()
 </script>
 
 <style scoped>
-.upcoming { margin-top: 3rem; }
-.upcoming h2 { margin: 0 0 0.8rem; }
-ul { margin: 0; padding: 0; list-style: none; }
+.upcoming {
+  margin-top: 3rem;
+}
+.upcoming h2 {
+  margin: 0 0 0.8rem;
+}
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 li {
   display: grid;
   grid-template-columns: 3.4rem 1fr;
@@ -63,7 +71,9 @@ li {
   padding: 0.75rem 0;
   border-top: 1px solid var(--color-line);
 }
-li:last-child { border-bottom: 1px solid var(--color-line); }
+li:last-child {
+  border-bottom: 1px solid var(--color-line);
+}
 .date {
   display: flex;
   flex-direction: column;
@@ -74,10 +84,22 @@ li:last-child { border-bottom: 1px solid var(--color-line); }
   color: var(--color-brick);
   line-height: 1;
 }
-.day { font: 700 1.35rem/1 var(--font-body); font-variant-numeric: tabular-nums; }
-.month { margin-top: 0.2rem; font-family: var(--font-stamp); font-size: 0.72rem; }
-.what p { margin: 0; }
-.name { font-weight: 600; line-height: 1.35; }
+.day {
+  font: 700 1.35rem/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+.month {
+  margin-top: 0.2rem;
+  font-family: var(--font-stamp);
+  font-size: 0.72rem;
+}
+.what p {
+  margin: 0;
+}
+.name {
+  font-weight: 600;
+  line-height: 1.35;
+}
 .what .meta {
   display: flex;
   flex-wrap: wrap;
@@ -86,9 +108,18 @@ li:last-child { border-bottom: 1px solid var(--color-line); }
   color: var(--muted);
   font-size: 0.92rem;
 }
-.tickets { grid-column: 2; justify-self: start; font-size: 0.92rem; }
+.tickets {
+  grid-column: 2;
+  justify-self: start;
+  font-size: 0.92rem;
+}
 @media (min-width: 700px) {
-  li { grid-template-columns: 3.4rem 1fr auto; align-items: center; }
-  .tickets { grid-column: 3; }
+  li {
+    grid-template-columns: 3.4rem 1fr auto;
+    align-items: center;
+  }
+  .tickets {
+    grid-column: 3;
+  }
 }
 </style>

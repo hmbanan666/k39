@@ -21,10 +21,10 @@ describe('parseServiceAccountKey', () => {
   })
 
   it('throws a clear error without leaking the secret', () => {
-    expect(() => parseServiceAccountKey('{"private_key":"SECRET'))
-      .toThrow(/^GSC_SERVICE_ACCOUNT_JSON is not valid JSON$/)
-    expect(() => parseServiceAccountKey('{"private_key":"SECRET"}'))
-      .toThrow(/must contain client_email/)
+    expect(() => parseServiceAccountKey('{"private_key":"SECRET')).toThrow(
+      /^GSC_SERVICE_ACCOUNT_JSON is not valid JSON$/,
+    )
+    expect(() => parseServiceAccountKey('{"private_key":"SECRET"}')).toThrow(/must contain client_email/)
   })
 
   it('keeps escaped quotes intact', () => {

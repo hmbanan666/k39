@@ -26,19 +26,20 @@ describe('venues_list input', () => {
     // same `McpServer.registerTool` call.
     const server = new McpServer({ name: 'k39-test', version: '0.0.0' })
     let handlerRan = false
-    server.registerTool('venues_list', {
-      description: 'List venues',
-      inputSchema: mcpStrictInput(venuesListInput),
-    }, async () => {
-      handlerRan = true
-      return { content: [{ type: 'text', text: 'ok' }] }
-    })
+    server.registerTool(
+      'venues_list',
+      {
+        description: 'List venues',
+        inputSchema: mcpStrictInput(venuesListInput),
+      },
+      async () => {
+        handlerRan = true
+        return { content: [{ type: 'text', text: 'ok' }] }
+      },
+    )
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
     const client = new Client({ name: 'k39-test-client', version: '0.0.0' })
-    await Promise.all([
-      client.connect(clientTransport),
-      server.connect(serverTransport),
-    ])
+    await Promise.all([client.connect(clientTransport), server.connect(serverTransport)])
     try {
       const listed = await client.listTools()
       const tool = listed.tools.find((row) => row.name === 'venues_list')
@@ -46,7 +47,7 @@ describe('venues_list input', () => {
       const result = await client.callTool({ name: 'venues_list', arguments: { offset: 20 } })
       expect(result.isError).toBe(true)
       const text = Array.isArray(result.content)
-        ? result.content.map((part) => 'text' in part ? part.text : '').join('\n')
+        ? result.content.map((part) => ('text' in part ? part.text : '')).join('\n')
         : ''
       expect(text).toContain('Unrecognized key')
       expect(text).toContain('offset')

@@ -65,12 +65,14 @@ const props = defineProps<{
 }>()
 
 const headingId = useId()
-const lines = computed(() => (props.notices ?? []).map((notice, index) => ({
-  key: `${notice.kind}-${notice.from}-${index}`,
-  kind: notice.kind,
-  state: notice.state,
-  ...noticeLines(notice),
-})))
+const lines = computed(() =>
+  (props.notices ?? []).map((notice, index) => ({
+    key: `${notice.kind}-${notice.from}-${index}`,
+    kind: notice.kind,
+    state: notice.state,
+    ...noticeLines(notice),
+  })),
+)
 </script>
 
 <style scoped>
@@ -90,16 +92,30 @@ const lines = computed(() => (props.notices ?? []).map((notice, index) => ({
   font: 700 1rem/1.2 var(--font-body);
   letter-spacing: 0;
 }
-.notices-hero ul { margin: 0; padding: 0; list-style: none; }
+.notices-hero ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .notices-hero li + li {
   margin-top: 0.6rem;
   padding-top: 0.6rem;
   border-top: 1px dashed var(--color-sand);
 }
-.notices-hero p { margin: 0; line-height: 1.45; }
-.notices-hero .dates { color: var(--color-brick-dark); font-weight: 700; }
-.notices-hero .state-upcoming .dates { color: var(--color-muted); }
-.notices-hero .what { font-size: 0.97rem; }
+.notices-hero p {
+  margin: 0;
+  line-height: 1.45;
+}
+.notices-hero .dates {
+  color: var(--color-brick-dark);
+  font-weight: 700;
+}
+.notices-hero .state-upcoming .dates {
+  color: var(--color-muted);
+}
+.notices-hero .what {
+  font-size: 0.97rem;
+}
 .notices-hero .where {
   margin-top: 0.15rem;
   font-family: var(--font-display);
@@ -107,6 +123,11 @@ const lines = computed(() => (props.notices ?? []).map((notice, index) => ({
   font-style: italic;
 }
 
-.fact-where { font-weight: 600; }
-.fact-dates { color: var(--color-brick-dark); font-weight: 600; }
+.fact-where {
+  font-weight: 600;
+}
+.fact-dates {
+  color: var(--color-brick-dark);
+  font-weight: 600;
+}
 </style>

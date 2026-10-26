@@ -3,7 +3,8 @@
 
 // A bare opening status is a complete short form, not «Закрытую обувь».
 // Use a Unicode letter boundary: JavaScript's \b does not delimit Cyrillic.
-const CLOSED = /(?:закрыт\p{L}*|не работает)\s+(?:на|для|в связи с)\s+(?:реставрац|ремонт|реконструкц|консервац|посещени)|временно\s+(?:закрыт|не работает|не принимает)|(?:сейчас|пока)\s+(?:закрыт|не работает)|на реставрации|на реконструкции|посещение невозможно|не открыт\p{L}* для посещени|не приспособлен\p{L}* (?:для|к) посещени|свободного доступа нет|(?:осмотр\s+)?только\s+(?:осмотр\s+)?снаружи|внутрь\s+(?:\p{L}+\s+)?не пускают|^закрыт[аоы]?(?!\p{L})/imu
+const CLOSED =
+  /(?:закрыт\p{L}*|не работает)\s+(?:на|для|в связи с)\s+(?:реставрац|ремонт|реконструкц|консервац|посещени)|временно\s+(?:закрыт|не работает|не принимает)|(?:сейчас|пока)\s+(?:закрыт|не работает)|на реставрации|на реконструкции|посещение невозможно|не открыт\p{L}* для посещени|не приспособлен\p{L}* (?:для|к) посещени|свободного доступа нет|(?:осмотр\s+)?только\s+(?:осмотр\s+)?снаружи|внутрь\s+(?:\p{L}+\s+)?не пускают|^закрыт[аоы]?(?!\p{L})/imu
 const APPOINTMENT = /по\s+(?:предварительн\p{L}*\s+)?(?:записи|договор[её]нност|заявк)/iu
 
 // A tenant word names someone else. A «quoted name» does too only when it
@@ -58,7 +59,11 @@ function statusSentences(input: StatusCheckInput) {
 type ClosureKind = 'definite' | 'other' | 'ambiguous'
 
 function normalizeName(value: string) {
-  return value.replace(/[«»„“”"]/g, ' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase('ru')
+  return value
+    .replace(/[«»„“”"]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase('ru')
 }
 
 /** The quoted name is this page when the title contains it as its own words. */
@@ -85,7 +90,11 @@ function namesThisPage(text: string, title: string | null | undefined) {
  * `other` ignores the closure. `ambiguous` is a warning and costs nothing.
  * `null` means the quote is this page.
  */
-function quotedSubject(quote: string, beforeQuote: string, title: string | null | undefined): 'other' | 'ambiguous' | null {
+function quotedSubject(
+  quote: string,
+  beforeQuote: string,
+  title: string | null | undefined,
+): 'other' | 'ambiguous' | null {
   if (TENANT_THEN_QUOTE.test(beforeQuote)) {
     return 'other'
   }
@@ -133,7 +142,7 @@ function closureKind(sentence: string, title: string | null | undefined): Closur
     const index = match.index ?? 0
     const before = sentence.slice(scopeStart(sentence, index), index)
     // A tenant after a comma is another clause. It does not steal this closure.
-    const after = (sentence.slice(index + match[0].length).split(',')[0] ?? '')
+    const after = sentence.slice(index + match[0].length).split(',')[0] ?? ''
     const beforeKind = subjectKind(before, title)
     if (beforeKind === 'other') {
       other = true
@@ -177,9 +186,7 @@ export function statusChecks(input: StatusCheckInput): StatusCheckResult {
   }
   // A closed schedule already asks the editor to say so. The warning is for
   // an open schedule that might be describing someone else.
-  const warnings = ambiguous && !definite && input.mode !== 'closed'
-    ? [STATUS_SUBJECT_WARNING]
-    : []
+  const warnings = ambiguous && !definite && input.mode !== 'closed' ? [STATUS_SUBJECT_WARNING] : []
   if (input.mode === 'always' && appointmentText) {
     warnings.push(APPOINTMENT_CONTEXT_WARNING)
   }

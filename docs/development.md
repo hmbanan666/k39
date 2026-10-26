@@ -6,7 +6,7 @@ Use [AGENTS.md](../AGENTS.md) for the mandatory task entry point and code map. R
 
 The Node pin is `.nvmrc`; the pnpm pin is `package.json#packageManager`. Verify the commands your shell actually resolves with `node --version` and `pnpm --version`. Use Corepack for the pinned package manager. Do not change repository pins to match an unrelated host default or relax dependency trust policy to make an install pass.
 
-A portable preflight is `node scripts/env/check-toolchain.mjs` (or `pnpm run check:toolchain` once pnpm resolves). It checks the exact pins using the commands this shell runs and exits non-zero on a mismatch. It checks Node before invoking a pnpm shim. It does not install tools, rewrite profiles, inspect credentials, migrate a database or certify application readiness. The pnpm version probe can use Corepack's normal pin resolution; prepare the manager first if downloads must be avoided.
+A portable preflight is `node scripts/env/check-toolchain.mjs` (or `pnpm run check:toolchain` once pnpm resolves). It checks Node and the exact pnpm pin through `corepack pnpm` and exits non-zero on a mismatch. It checks Node before invoking a pnpm shim. It does not install tools, rewrite profiles, inspect credentials, migrate a database or certify application readiness. The pnpm version probe uses Corepack's normal pin resolution; prepare the manager first if downloads must be avoided.
 
 Select the Node in `.nvmrc` with your existing version manager. If you need Corepack shims without changing global tool links, use a directory for this shell:
 
@@ -16,6 +16,21 @@ corepack enable --install-directory "$k39_shims"
 export PATH="$k39_shims:$PATH"
 node scripts/env/check-toolchain.mjs
 ```
+
+Repository scripts and the quick/writer runners invoke nested package-manager commands
+through `corepack pnpm`. Thus `corepack pnpm run check:full` uses the repository pin
+end-to-end even when an unrelated host `pnpm` is earlier on PATH. The temporary shims
+above are only needed if you prefer the shorter bare `pnpm` command. Node must still
+match `.nvmrc`.
+
+Vite+ is project-local and pinned through the `dev` catalog. No global `vp` installer or
+runtime manager is needed. After the frozen install, `pnpm exec vp --version` reports
+the bundled tools. `pnpm peers check` verifies their peer edges. Keep the Vite core
+alias and narrow `peerDependencyRules.allowedVersions.vite` exception aligned with
+`vite-plus`: core uses the Vite+ release number while exporting the bundled Vite API.
+The exact `vitest` entry preserves existing test imports and a single runner identity;
+`@vitest/coverage-v8` stays in lockstep. Vue requires `vue-tsc` and the Nuxt-generated
+projects even though Vite+ also offers TypeScript checking.
 
 Then install and configure the local database as below. A successful toolchain preflight is separate from Postgres connectivity, migrations and a responding SSR page.
 
@@ -67,11 +82,33 @@ pnpm run check:full
 pnpm --filter @k39/web-app build
 ```
 
-`check:full` runs repository validation, read-only lint, every package typecheck and the full test suite. It does not autoformat source files. Run `pnpm run lint:fix` explicitly when needed and inspect the diff before the final gate. Typechecks still generate ignored Nuxt files; tests still write to the isolated test database. Individual lint, typecheck and test commands are useful for diagnosis; they are not extra steps to repeat after the full gate has passed.
+`check:full` runs repository validation, read-only format and lint checks, every package
+typecheck and the full test suite. Checks never fix source. `pnpm run format` writes
+formatting only; `pnpm run lint:fix` applies lint fixes, the Vue compatibility fixes,
+and formatting. Inspect the diff after either write command. Typechecks still generate ignored Nuxt files; tests still write to the isolated test database. Individual lint, typecheck and test commands are useful for diagnosis; they are not extra steps to repeat after the full gate has passed.
 
 Use `K39_CHECK_TIMINGS=1 pnpm run check:quick` to emit one JSON timing record after each executed stage, including a failed stage. Times use a monotonic clock; selection, order, commands and exit codes are unchanged. Timings are opt-in. The [A01 baseline](reviews/2026-10-23-agent-loop/README.md) records host/cache scope and a real feature-change workload; compare equivalent work and environments before claiming a speedup.
 
-`pnpm run check:quick` is the iterate loop. It runs `check:repo`, eslint on files changed against the merge-base of `origin/main` and `HEAD` (committed and uncommitted), typechecks for touched packages and their transitive workspace consumers, and vitest on those changed files plus tests related to the changed sources. A `*.writer.test.ts` file is typechecked with the web-app server project, because the database `tsc` project excludes that suffix. The dependency graph comes from workspace manifests, including dev, peer and optional dependencies and packages without a typecheck script. A change under `packages/types` checks `@k39/types`, `@k39/database` and `@k39/web-app`; a map change checks map and web. Consumers follow their selected dependencies. Root configuration changes and unknown removed workspace packages conservatively check all packages. A writer-test-only change retains the focused server-project check; other database changes include the full web typecheck. The final gate remains the full command above.
+`pnpm run check:quick` is the iterate loop. It runs `check:repo`, Vite+ format/lint and Vue-template checks on files changed against the merge-base of `origin/main` and `HEAD` (committed and uncommitted), typechecks for touched packages and their transitive workspace consumers, and Vite+ tests on those changed files plus tests related to the changed sources. A `*.writer.test.ts` file is typechecked with the web-app server project, because the database `tsc` project excludes that suffix. The dependency graph comes from workspace manifests, including dev, peer and optional dependencies and packages without a typecheck script. A change under `packages/types` checks `@k39/types`, `@k39/database` and `@k39/web-app`; a map change checks map and web. Consumers follow their selected dependencies. Root configuration changes and unknown removed workspace packages conservatively run format/lint, all package typechecks and the entire test suite. A writer-test-only change retains the focused server-project check; other database changes include the full web typecheck. The final gate remains the full command above.
+
+The root `vite.config.ts` is authoritative for Oxlint, Oxfmt and all three Vitest
+projects. Oxlint checks JS/TS and Vue scripts. `eslint.config.mjs` is a narrow Vue
+compatibility check: essential script/template semantics, template safety and the
+required template/script/style block order. Oxc currently has no template linting;
+removing ESLint would lose checks such as keyed lists, valid `v-model` and prop
+mutation. The broad Antfu preset and its unrelated plugins are no longer needed.
+The migration registry keeps its canonical table layout because `check:repo` parses its exact row form.
+Oxfmt owns formatting (single quotes, no semicolons, 120 columns, one Vue attribute
+per line). It leaves historical ADRs/review evidence, lockfiles and public assets
+alone. Editor recommendations include Oxc, Vue and the Vue-only ESLint check.
+
+Use `pnpm test -- <paths>` for focused tests, `pnpm test:watch` for watch mode, and
+`pnpm test:coverage` for the existing 80% coverage gate. `pnpm exec vp test` is the
+built-in runner; `pnpm exec vp run test` runs the package script. The same distinction
+applies to build/dev: keep `pnpm --filter @k39/web-app build` and `dev`, which run
+**Nuxt**. Built-in `vp build`/`vp dev` are plain Vite commands and do not build/serve
+the Nuxt SSR application. Scripts have no task cache; tests and database side effects
+must run every time. Do not add `--cache` to checks or tests.
 
 `pnpm test` runs the database suite and web-app checks for titles, canonicals, JSON-LD, redirects, robots.txt and orphan links. Set `DATABASE_URL_TEST` to a local database whose name ends with `_test`. If only `DATABASE_URL` is set and it is local, the suite creates and resets the sibling `<name>_test` database and does not drop the dev database. With no URL, tests start Postgres 18 in Testcontainers. A remote URL is refused. `pnpm run check:repo` checks ADR numbers, migration prefixes, journal `idx` and `when` order, tag prefixes, and `Co-authored-by` trailers.
 
@@ -81,7 +118,7 @@ Use the task-start commands in [AGENTS.md](../AGENTS.md#start-a-task). `scripts/
 
 ## Commit hooks
 
-Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). The pre-commit hook runs `check:repo` and lint-staged. commitlint rejects a body line over 100 characters and prints a wrap example. Do not add a `Co-authored-by` trailer. `pnpm install` runs `scripts/git/chain-hooks.mjs`, which keeps `core.hooksPath` on the cloud commit-msg dispatcher and points that dispatcher at `.husky`, so the secrets scanner still runs. The cloud hook set has no `post-commit` name, so the script adds one. The dispatcher appends the trailer after the repository `commit-msg` hook, and that `post-commit` runs `scripts/git/strip-coauthor.sh`. CI rejects a commit that still has the trailer.
+Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`). The pre-commit hook runs `check:repo` and lint-staged (Vite+ lint/fmt plus Vue-only ESLint on staged SFCs). commitlint rejects a body line over 100 characters and prints a wrap example. Do not add a `Co-authored-by` trailer. `pnpm install` runs `scripts/git/chain-hooks.mjs`, which keeps `core.hooksPath` on the cloud commit-msg dispatcher and points that dispatcher at `.husky`, so the secrets scanner still runs. The cloud hook set has no `post-commit` name, so the script adds one. The dispatcher appends the trailer after the repository `commit-msg` hook, and that `post-commit` runs `scripts/git/strip-coauthor.sh`. CI rejects a commit that still has the trailer.
 
 ## Deploy
 
@@ -89,7 +126,7 @@ Target: Dokploy.
 
 - Dockerfile: `docker/web-app/Dockerfile`. `nuxt build` copies `apps/web-app/public` into `.output/public`, and that directory is what the image serves. Brand URLs cache for a week. `site.webmanifest` caches for a day.
 - Build context: repository root
-- The image enables pnpm with Corepack at the version in `packageManager`. Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`. The builder copies `scripts/git/chain-hooks.mjs` before `pnpm install`, because `prepare` runs it and the image context has no `.git`.
+- The image enables pnpm with Corepack at the version in `packageManager`. Do not `npm install -g pnpm`: that installs a newer pnpm, which then re-execs the pin. Build with `pnpm --filter @k39/web-app build`. `pnpm build --filter ...` appends `--filter` to the root script and then to `nuxt build`. The builder copies `scripts/git/chain-hooks.mjs` before `pnpm install`, because `prepare` runs it and the image context has no `.git`. The audit bundler imports the same catalog-managed Vite core alias directly with `configFile: false`; the image does not need the root lint/test config or a global Vite+ installation.
 - The container runs as the image's `node` user (uid 1000). `node:24.21.0-alpine` already owns that uid, so the Dockerfile does not create another user. Mount a volume at `MEDIA_DIR` (`/app/media`) or uploads disappear on redeploy.
 - CI job `docker` in `.github/workflows/ci.yml` runs that image build on pull requests.
 - Port: 3000

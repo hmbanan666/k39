@@ -21,37 +21,54 @@ const HUBS = ['forty', 'zamki', 'plyazhi', 'kurorty', 'muzei', 'eda']
 /** Rendered prose for every page the fact layer can review. Archived rows stay out. */
 export async function loadPageSnapshots(): Promise<PageSnapshot[]> {
   const db = useDatabase()
-  const placeRows = await db.select({
-    id: places.id,
-    slug: places.slug,
-    summary: places.summary,
-    sections: places.sections,
-    faq: places.faq,
-    publicationStatus: places.publicationStatus,
-  }).from(places).where(ne(places.publicationStatus, 'archived'))
-  const routeRows = await db.select({
-    id: routes.id,
-    slug: routes.slug,
-    summary: routes.summary,
-    sections: routes.sections,
-    body: routes.body,
-    publicationStatus: routes.publicationStatus,
-  }).from(routes).where(ne(routes.publicationStatus, 'archived'))
+  const placeRows = await db
+    .select({
+      id: places.id,
+      slug: places.slug,
+      summary: places.summary,
+      sections: places.sections,
+      faq: places.faq,
+      publicationStatus: places.publicationStatus,
+    })
+    .from(places)
+    .where(ne(places.publicationStatus, 'archived'))
+  const routeRows = await db
+    .select({
+      id: routes.id,
+      slug: routes.slug,
+      summary: routes.summary,
+      sections: routes.sections,
+      body: routes.body,
+      publicationStatus: routes.publicationStatus,
+    })
+    .from(routes)
+    .where(ne(routes.publicationStatus, 'archived'))
   const collectionRows = await db.select().from(collections).where(ne(collections.publicationStatus, 'archived'))
   const questRows = await db.select().from(quests).where(ne(quests.publicationStatus, 'archived'))
   const stepRows = questRows.length
-    ? await db.select().from(questSteps).where(inArray(questSteps.questId, questRows.map((row) => row.id)))
+    ? await db
+        .select()
+        .from(questSteps)
+        .where(
+          inArray(
+            questSteps.questId,
+            questRows.map((row) => row.id),
+          ),
+        )
     : []
   const hubRows = await db.select().from(categories).where(inArray(categories.slug, HUBS))
-  const venueRows = await db.select({
-    id: venues.id,
-    slug: venues.slug,
-    description: venues.description,
-    modules: venues.modules,
-    status: venues.status,
-  }).from(venues).where(ne(venues.status, 'archived'))
+  const venueRows = await db
+    .select({
+      id: venues.id,
+      slug: venues.slug,
+      description: venues.description,
+      modules: venues.modules,
+      status: venues.status,
+    })
+    .from(venues)
+    .where(ne(venues.status, 'archived'))
 
-  const stepsByQuest = new Map<string, Array<{ title: string, prompt: string | null, position: number }>>()
+  const stepsByQuest = new Map<string, Array<{ title: string; prompt: string | null; position: number }>>()
   for (const step of stepRows) {
     const list = stepsByQuest.get(step.questId) ?? []
     list.push({ title: step.title, prompt: step.prompt, position: step.position })

@@ -19,7 +19,8 @@
     <a
       class="open"
       :href="href"
-    >Открыть на карте</a>
+      >Открыть на карте</a
+    >
   </figure>
 </template>
 
@@ -29,25 +30,28 @@ import { WALKING_RADIUS_KM } from '~~/shared/embed-map'
 import { mapFocusHref, pointsNear } from '~~/shared/map'
 import K39Map from '~/components/map/K39Map.vue'
 
-const props = withDefaults(defineProps<{
-  label: string
-  /** Place, venue, or route path, such as `/fort-1` or `/marshruty/pyat-fortov`. */
-  focusHref: string
-  latitude?: number | null
-  longitude?: number | null
-  /** When set, draw these paths instead of the walking radius. */
-  hrefs?: string[]
-  overlay?: RouteOverlay | null
-  fill?: boolean
-}>(), {
-  latitude: null,
-  longitude: null,
-  hrefs: () => [],
-  overlay: null,
-  fill: false,
-})
+const props = withDefaults(
+  defineProps<{
+    label: string
+    /** Place, venue, or route path, such as `/fort-1` or `/marshruty/pyat-fortov`. */
+    focusHref: string
+    latitude?: number | null
+    longitude?: number | null
+    /** When set, draw these paths instead of the walking radius. */
+    hrefs?: string[]
+    overlay?: RouteOverlay | null
+    fill?: boolean
+  }>(),
+  {
+    latitude: null,
+    longitude: null,
+    hrefs: () => [],
+    overlay: null,
+    fill: false,
+  },
+)
 
-const emit = defineEmits<{ ready: [], error: [] }>()
+const emit = defineEmits<{ ready: []; error: [] }>()
 
 const catalog = ref<MapPoint[]>([])
 const loaded = ref(false)
@@ -87,14 +91,16 @@ function loadCatalog() {
 }
 
 onMounted(() => {
-  void loadCatalog().then((points) => {
-    catalog.value = points
-    loaded.value = true
-  }).catch(() => {
-    failed.value = true
-    loaded.value = true
-    emit('error')
-  })
+  void loadCatalog()
+    .then((points) => {
+      catalog.value = points
+      loaded.value = true
+    })
+    .catch(() => {
+      failed.value = true
+      loaded.value = true
+      emit('error')
+    })
 })
 </script>
 
@@ -108,7 +114,9 @@ figure.embed {
   border-radius: 16px;
   background: var(--color-paper-2);
 }
-.canvas { height: 100%; }
+.canvas {
+  height: 100%;
+}
 .open {
   position: absolute;
   z-index: 4;
@@ -123,9 +131,16 @@ figure.embed {
   text-decoration: none;
   box-shadow: var(--shadow-card);
 }
-.open:hover { color: var(--color-brick); }
-figure.fill { height: 100%; margin: 0; }
+.open:hover {
+  color: var(--color-brick);
+}
+figure.fill {
+  height: 100%;
+  margin: 0;
+}
 @media (min-width: 900px) {
-  figure.embed:not(.fill) { height: 460px; }
+  figure.embed:not(.fill) {
+    height: 460px;
+  }
 }
 </style>

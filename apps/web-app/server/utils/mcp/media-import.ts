@@ -23,7 +23,10 @@ export async function importCommonsPhoto(input: {
   isCover?: boolean
 }) {
   if (input.license === 'permission') {
-    throw createError({ statusCode: 400, statusMessage: 'Лицензия permission только для загрузки владельца в кабинете' })
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Лицензия permission только для загрузки владельца в кабинете',
+    })
   }
   if (Boolean(input.placeId) === Boolean(input.collectionId)) {
     throw createError({ statusCode: 400, statusMessage: 'Нужен ровно один из placeId или collectionId' })
@@ -35,7 +38,13 @@ export async function importCommonsPhoto(input: {
     ? await db.editor.mediaForPlaceSource(input.placeId, urls)
     : await db.editor.mediaForCollectionSource(input.collectionId ?? '', urls)
   if (existing) {
-    return { id: existing.id, placeId: input.placeId ?? null, collectionId: input.collectionId ?? null, duplicate: true, warning: null }
+    return {
+      id: existing.id,
+      placeId: input.placeId ?? null,
+      collectionId: input.collectionId ?? null,
+      duplicate: true,
+      warning: null,
+    }
   }
   let file
   try {
@@ -61,7 +70,13 @@ export async function importCommonsPhoto(input: {
     throw createError({ statusCode: saved.statusCode, statusMessage: saved.error })
   }
   await auditMcp('commons_import', 'media', saved.row?.id)
-  return { id: saved.row?.id, placeId: input.placeId ?? null, collectionId: input.collectionId ?? null, duplicate: false, warning: saved.warning || null }
+  return {
+    id: saved.row?.id,
+    placeId: input.placeId ?? null,
+    collectionId: input.collectionId ?? null,
+    duplicate: false,
+    warning: saved.warning || null,
+  }
 }
 
 /** media_upload_from_url. The draft-token refusal runs before the download. */
@@ -77,7 +92,10 @@ export async function uploadMediaFromUrl(input: {
   isCover?: boolean
 }) {
   if (input.license === 'permission') {
-    throw createError({ statusCode: 400, statusMessage: 'Лицензия permission только для загрузки владельца в кабинете' })
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Лицензия permission только для загрузки владельца в кабинете',
+    })
   }
   rejectBannedSites({ url: input.url, sourceUrl: input.sourceUrl })
   await refuseIncomingPhoto(input.placeId, input.collectionId)

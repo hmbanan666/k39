@@ -13,7 +13,8 @@
       <span
         :id="`picker-${key}`"
         class="label"
-      >{{ QUESTIONS[key].label }}</span>
+        >{{ QUESTIONS[key].label }}</span
+      >
       <div class="chips">
         <button
           v-for="option in QUESTIONS[key].options"
@@ -35,7 +36,8 @@
       <span
         id="picker-persona"
         class="label"
-      >Кто вы в поездке?</span>
+        >Кто вы в поездке?</span
+      >
       <div class="chips">
         <button
           v-for="item in PERSONAS"
@@ -54,7 +56,9 @@
       aria-live="polite"
     >
       <template v-if="active && source === 'persona' && persona">
-        Подходит вам: {{ fitting }} из {{ total }}. Подняли выше, потому что вы выбрали «{{ visitorPersonaLabel(persona) }}».
+        Подходит вам: {{ fitting }} из {{ total }}. Подняли выше, потому что вы выбрали «{{
+          visitorPersonaLabel(persona)
+        }}».
         <button
           type="button"
           class="reset"
@@ -76,15 +80,13 @@
       <template v-else-if="persona">
         Вы выбрали «{{ visitorPersonaLabel(persona) }}». Отметьте, что интересно, и подходящее поднимется выше.
       </template>
-      <template v-else>
-        Выберите, что вам ближе, и подходящие идеи и места поднимутся выше.
-      </template>
+      <template v-else> Выберите, что вам ближе, и подходящие идеи и места поднимутся выше. </template>
     </p>
     <details class="why">
       <summary>Почему я это вижу</summary>
       <p>
-        Страница одна для всех, мы ничего не скрываем. Ваш выбор только меняет порядок карточек.
-        Ответы хранятся в адресе страницы, а «Кто вы в поездке?» только в этом браузере, на сервер не передаётся.
+        Страница одна для всех, мы ничего не скрываем. Ваш выбор только меняет порядок карточек. Ответы хранятся в
+        адресе страницы, а «Кто вы в поездке?» только в этом браузере, на сервер не передаётся.
       </p>
     </details>
   </section>
@@ -151,10 +153,14 @@ function selected(key: PickerQuestion, value: string) {
   font: inherit;
   font-size: 0.92rem;
   cursor: pointer;
-  transition: background-color var(--duration-fast), border-color var(--duration-fast);
+  transition:
+    background-color var(--duration-fast),
+    border-color var(--duration-fast);
 }
-.chip:hover { border-color: var(--color-brick); }
-.chip[aria-pressed="true"] {
+.chip:hover {
+  border-color: var(--color-brick);
+}
+.chip[aria-pressed='true'] {
   border-color: var(--color-brick);
   background: var(--color-brick);
   color: #fff;
@@ -188,12 +194,16 @@ function selected(key: PickerQuestion, value: string) {
   cursor: pointer;
   width: fit-content;
 }
-.why p { margin: 0.4rem 0 0; }
+.why p {
+  margin: 0.4rem 0 0;
+}
 @media (min-width: 900px) {
   .question {
     grid-template-columns: 11rem 1fr;
     align-items: start;
   }
-  .label { padding-top: 0.45rem; }
+  .label {
+    padding-top: 0.45rem;
+  }
 }
 </style>

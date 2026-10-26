@@ -26,12 +26,14 @@
         <span
           v-if="item.disputed"
           class="flag"
-        >Спор</span>
+          >Спор</span
+        >
         {{ kindLabel(item.kind) }}
         <a
           v-if="item.subjectPath"
           :href="item.subjectPath"
-        >{{ item.subjectTitle }}</a>
+          >{{ item.subjectTitle }}</a
+        >
         <template v-else>
           {{ item.subjectTitle }}
         </template>
@@ -61,7 +63,8 @@
         <a
           :href="item.sourceUrl"
           rel="nofollow noopener noreferrer"
-        >Ссылка для редакции</a>
+          >Ссылка для редакции</a
+        >
       </p>
       <p v-if="item.mediaId">
         <a href="/admin/media">Фото в медиатеке</a>
@@ -157,7 +160,7 @@ interface Signal {
   proposal: unknown
 }
 
-const { data, pending, refresh } = await useFetch<{ submissions: Submission[], signals: Signal[] }>('/api/admin/guests')
+const { data, pending, refresh } = await useFetch<{ submissions: Submission[]; signals: Signal[] }>('/api/admin/guests')
 const submissions = computed(() => data.value?.submissions ?? [])
 const signals = computed(() => data.value?.signals ?? [])
 const notes = reactive<Record<string, string>>({})
@@ -205,7 +208,7 @@ async function decide(id: string, decision: 'accept' | 'reject' | 'dispute') {
     })
     await refresh()
   } catch (reason) {
-    const item = reason as { data?: { statusMessage?: string, message?: string }, statusMessage?: string }
+    const item = reason as { data?: { statusMessage?: string; message?: string }; statusMessage?: string }
     errors[id] = item.data?.statusMessage || item.data?.message || item.statusMessage || 'Не вышло'
   }
 }
@@ -217,8 +220,14 @@ async function dismiss(id: string) {
 </script>
 
 <style scoped>
-.admin { max-width: 46rem; margin: 0 auto; padding: 1.5rem; }
-.muted { color: var(--muted); }
+.admin {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+.muted {
+  color: var(--muted);
+}
 .card {
   margin: 1rem 0;
   padding: 1rem;
@@ -226,15 +235,28 @@ async function dismiss(id: string) {
   border-radius: 12px;
   background: var(--surface);
 }
-.card.dispute { border-left: 4px solid var(--color-brick); }
-.meta, .who { margin: 0 0 0.35rem; }
+.card.dispute {
+  border-left: 4px solid var(--color-brick);
+}
+.meta,
+.who {
+  margin: 0 0 0.35rem;
+}
 .flag {
   margin-right: 0.4rem;
   color: var(--color-brick-dark);
   font-weight: 700;
 }
-.text { margin: 0.4rem 0; line-height: 1.5; white-space: pre-wrap; }
-.note { display: grid; gap: 0.3rem; margin: 0.6rem 0; }
+.text {
+  margin: 0.4rem 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.note {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.6rem 0;
+}
 .note textarea {
   width: 100%;
   padding: 0.45rem 0.55rem;
@@ -242,8 +264,14 @@ async function dismiss(id: string) {
   border-radius: 8px;
   font: inherit;
 }
-.error { color: var(--color-brick-dark); }
-.row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.error {
+  color: var(--color-brick-dark);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 button {
   padding: 0.4rem 0.7rem;
   border: 1px solid var(--color-line);

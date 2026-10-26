@@ -25,7 +25,7 @@ export interface EventTiming {
  * next local midnight after `endsOn`, or after `startsOn`. Returns a problem string
  * instead when the input does not fit.
  */
-export function eventInstants(input: EventTiming): { startsAt: Date, endsAt: Date | null } | string {
+export function eventInstants(input: EventTiming): { startsAt: Date; endsAt: Date | null } | string {
   if (input.allDay) {
     if (input.startsAt || input.endsAt) {
       return 'Событие на весь день: startsOn и endsOn (YYYY-MM-DD), без времени'
@@ -68,11 +68,19 @@ function validClock(value: string) {
 }
 
 /** The moment the event stops being upcoming: the end, or the start when there is no end. */
-export function eventEnd(row: { startsAt: Date | string, endsAt: Date | string | null }) {
+export function eventEnd(row: { startsAt: Date | string; endsAt: Date | string | null }) {
   return new Date(row.endsAt ?? row.startsAt)
 }
 
-export function eventUpcoming(row: { startsAt: Date | string, endsAt: Date | string | null, cancelledAt?: Date | string | null, expiredAt?: Date | string | null }, now = new Date()) {
+export function eventUpcoming(
+  row: {
+    startsAt: Date | string
+    endsAt: Date | string | null
+    cancelledAt?: Date | string | null
+    expiredAt?: Date | string | null
+  },
+  now = new Date(),
+) {
   return !row.cancelledAt && !row.expiredAt && eventEnd(row).getTime() > now.getTime()
 }
 
@@ -84,7 +92,11 @@ function localClock(at: Date) {
 }
 
 /** The form value for a stored row: local clock, or local dates for a date-only event. */
-export function eventFormTiming(row: { startsAt: Date | string, endsAt: Date | string | null, allDay: boolean }): EventTiming {
+export function eventFormTiming(row: {
+  startsAt: Date | string
+  endsAt: Date | string | null
+  allDay: boolean
+}): EventTiming {
   const start = localClock(new Date(row.startsAt))
   if (row.allDay) {
     const last = row.endsAt ? addDays(localClock(new Date(row.endsAt)).date, -1) : start.date
@@ -99,7 +111,7 @@ export function eventFormTiming(row: { startsAt: Date | string, endsAt: Date | s
 }
 
 /** «24 октября 2026, 19:00». A date-only event prints the date, or the date range. */
-export function eventWhen(row: { startsAt: Date | string, endsAt: Date | string | null, allDay: boolean }) {
+export function eventWhen(row: { startsAt: Date | string; endsAt: Date | string | null; allDay: boolean }) {
   const timing = eventFormTiming(row)
   if (timing.allDay) {
     const first = russianDay(timing.startsOn)
@@ -161,7 +173,7 @@ export interface EventLine {
   /** Local clock, or a date range for a multi-day date-only event. Null for one day without a clock. */
   detail: string | null
   ticketUrl: string | null
-  subject?: { title: string, href: string } | null
+  subject?: { title: string; href: string } | null
 }
 
 export function eventLine(row: EventNodeInput & { id: string }, subject?: EventLine['subject']): EventLine {

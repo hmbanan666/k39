@@ -7,7 +7,7 @@ import { analyzeWriting, bannedSiteHits, bannedSiteProblem, writingAdvisoryMessa
  * Uncertain style findings remain visible advisories on every save.
  * Stylistic rules read `prose` only. Banned sites read prose and names.
  */
-export function writingGate(input: { prose: string, names?: string, publishing: boolean, venue?: boolean }) {
+export function writingGate(input: { prose: string; names?: string; publishing: boolean; venue?: boolean }) {
   const style = analyzeWriting(input.prose, { venue: input.venue })
   const banned = bannedSiteHits([input.prose, input.names ?? ''].filter(Boolean).join('\n'))
   const seen = new Set<string>()

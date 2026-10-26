@@ -10,5 +10,8 @@ const { noteHtml } = useMetaNotice()
 
 // Synchronous so a later MetaFootnote in this render sees the hosts.
 noteHtml(props.html || '')
-watch(() => props.html, (html) => noteHtml(html || ''))
+watch(
+  () => props.html,
+  (html) => noteHtml(html || ''),
+)
 </script>

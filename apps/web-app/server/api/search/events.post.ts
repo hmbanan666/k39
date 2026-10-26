@@ -22,14 +22,16 @@ interface ClientSearchEvent {
 const SEARCH_EVENT_BODY_MAX = 16 * 1024
 
 export default defineEventHandler(async (event) => {
-  const body = await readCappedJson<{ events?: ClientSearchEvent[] }>(event, SEARCH_EVENT_BODY_MAX).catch((error: unknown) => {
-    if (isPayloadTooLarge(error)) {
-      throw error
-    }
-    return null
-  })
+  const body = await readCappedJson<{ events?: ClientSearchEvent[] }>(event, SEARCH_EVENT_BODY_MAX).catch(
+    (error: unknown) => {
+      if (isPayloadTooLarge(error)) {
+        throw error
+      }
+      return null
+    },
+  )
   const incoming = Array.isArray(body?.events) ? body.events.slice(0, 10) : []
-  if (!incoming.length || await editorRequest(event)) {
+  if (!incoming.length || (await editorRequest(event))) {
     return { ok: true, stored: 0 }
   }
   const ua = getHeader(event, 'user-agent') || ''
@@ -45,7 +47,9 @@ export default defineEventHandler(async (event) => {
       continue
     }
     if (item.type === 'search') {
-      const query = String(item.q ?? '').trim().slice(0, SEARCH_QUERY_MAX)
+      const query = String(item.q ?? '')
+        .trim()
+        .slice(0, SEARCH_QUERY_MAX)
       const normalized = normalizeSearchQuery(query)
       if (!normalized) {
         continue

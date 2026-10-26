@@ -1,8 +1,8 @@
 <template>
   <p class="who">
-    {{ title }}<br>
-    {{ operatorIdLine() }}<br>
-    {{ operator.address }}<br>
+    {{ title }}<br />
+    {{ operatorIdLine() }}<br />
+    {{ operator.address }}<br />
     Электронная почта: <a :href="operatorMailHref()">{{ operator.email }}</a>
   </p>
 </template>
@@ -14,5 +14,7 @@ const title = `${operator.form.charAt(0).toLocaleUpperCase('ru')}${operator.form
 </script>
 
 <style scoped>
-.who { line-height: 1.6; }
+.who {
+  line-height: 1.6;
+}
 </style>

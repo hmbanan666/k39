@@ -32,7 +32,13 @@ function drawPoints(layer: Extract<MapLayer, { type: 'points' }>, known: Set<str
 
 export function layerPaintIds(layer: Pick<MapLayer, 'id' | 'type'>) {
   if (layer.type === 'points') {
-    return [`${layer.id}-cluster-shadow`, `${layer.id}-clusters`, `${layer.id}-cluster-count`, `${layer.id}-halo`, `${layer.id}-pins`]
+    return [
+      `${layer.id}-cluster-shadow`,
+      `${layer.id}-clusters`,
+      `${layer.id}-cluster-count`,
+      `${layer.id}-halo`,
+      `${layer.id}-pins`,
+    ]
   }
   if (layer.type === 'line') {
     return [`${layer.id}-solid`, `${layer.id}-dashed`]
@@ -42,9 +48,7 @@ export function layerPaintIds(layer: Pick<MapLayer, 'id' | 'type'>) {
 
 export function interactivePaintIds(layer: MapLayer) {
   if (layer.type === 'points') {
-    return layer.cluster
-      ? [`${layer.id}-clusters`, `${layer.id}-pins`]
-      : [`${layer.id}-pins`]
+    return layer.cluster ? [`${layer.id}-clusters`, `${layer.id}-pins`] : [`${layer.id}-pins`]
   }
   if (layer.type === 'stops') {
     return [`${layer.id}-stops`]
@@ -136,12 +140,7 @@ export function paintMapLayer(map: MapLibreMap, layer: MapLayer, known: Set<stri
       source: layer.id,
       filter: ['!', ['has', 'point_count']],
       layout: {
-        'icon-image': [
-          'case',
-          ['==', ['get', 'sponsored'], 1],
-          ['concat', 's-', ['get', 'marker']],
-          ['get', 'marker'],
-        ],
+        'icon-image': ['case', ['==', ['get', 'sponsored'], 1], ['concat', 's-', ['get', 'marker']], ['get', 'marker']],
         'icon-anchor': 'center',
         'icon-allow-overlap': true,
         'icon-size': ['case', ['==', ['get', 'picked'], 1], 1.5, 1],

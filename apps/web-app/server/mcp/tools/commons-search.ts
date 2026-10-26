@@ -5,7 +5,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'commons_search',
-  description: 'Search Wikimedia Commons near a place. When geosearch returns nothing, also search file titles and Commons categories, including an English "Fort N Kaliningrad" query for numbered forts. Only CC0, public domain, CC BY, and CC BY-SA are returned.',
+  description:
+    'Search Wikimedia Commons near a place. When geosearch returns nothing, also search file titles and Commons categories, including an English "Fort N Kaliningrad" query for numbered forts. Only CC0, public domain, CC BY, and CC BY-SA are returned.',
   annotations: { readOnlyHint: true, openWorldHint: true },
   inputSchema: {
     placeId: z.string().optional(),

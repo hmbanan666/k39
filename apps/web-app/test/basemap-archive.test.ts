@@ -17,7 +17,11 @@ import {
   resolveBasemapConfig,
   resolveBasemapUrl,
 } from '../server/utils/basemap-archive'
-import { BASEMAP_PUBLIC_PATH, DEFAULT_BASEMAP_SHA256, DEFAULT_BASEMAP_SOURCE_URL } from '../server/utils/basemap-defaults'
+import {
+  BASEMAP_PUBLIC_PATH,
+  DEFAULT_BASEMAP_SHA256,
+  DEFAULT_BASEMAP_SOURCE_URL,
+} from '../server/utils/basemap-defaults'
 
 const quiet = { log() {} }
 
@@ -34,17 +38,23 @@ describe('basemap url choice', () => {
     expect(clientBasemapUrl(true)).toBe(BASEMAP_PUBLIC_PATH)
     expect(clientBasemapUrl(false)).toBe('')
     expect(clientBasemapUrl(false, '/basemap/kaliningrad.pmtiles')).toBe('')
-    expect(clientBasemapUrl(true, 'https://storage.example/k39/kaliningrad.pmtiles')).toBe('https://storage.example/k39/kaliningrad.pmtiles')
+    expect(clientBasemapUrl(true, 'https://storage.example/k39/kaliningrad.pmtiles')).toBe(
+      'https://storage.example/k39/kaliningrad.pmtiles',
+    )
   })
 
   it('keeps a failed lookup on OpenFreeMap', async () => {
     expect(acceptedBasemapUrl('/basemap/kaliningrad.pmtiles')).toBe('/basemap/kaliningrad.pmtiles')
     expect(acceptedBasemapUrl('//evil.example/map')).toBe('')
     expect(acceptedBasemapUrl('javascript:alert(1)')).toBe('')
-    await expect(fetchBasemapUrl(async () => {
-      throw new Error('offline')
-    })).resolves.toBe('')
-    await expect(fetchBasemapUrl(async () => ({ pmtilesUrl: '/basemap/kaliningrad.pmtiles' }))).resolves.toBe('/basemap/kaliningrad.pmtiles')
+    await expect(
+      fetchBasemapUrl(async () => {
+        throw new Error('offline')
+      }),
+    ).resolves.toBe('')
+    await expect(fetchBasemapUrl(async () => ({ pmtilesUrl: '/basemap/kaliningrad.pmtiles' }))).resolves.toBe(
+      '/basemap/kaliningrad.pmtiles',
+    )
     await expect(fetchBasemapUrl(async () => ({ pmtilesUrl: '' }))).resolves.toBe('')
   })
 
@@ -104,11 +114,22 @@ describe('basemap archive fetch', () => {
     const bytes = Buffer.from('kaliningrad-ok')
     const file = join(dir, 'kaliningrad.pmtiles')
     await writeFile(file, bytes)
-    const config = { file, sha256: sha256(bytes), sourceUrl: 'https://example.test/kaliningrad.pmtiles', configuredUrl: '' }
+    const config = {
+      file,
+      sha256: sha256(bytes),
+      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+      configuredUrl: '',
+    }
     await expect(resolveBasemapUrl(config)).resolves.toBe(BASEMAP_PUBLIC_PATH)
     await expect(resolveBasemapUrl({ ...config, sha256: sha256(Buffer.from('other')) })).resolves.toBe('')
     await expect(resolveBasemapUrl({ ...config, file: join(dir, 'missing.pmtiles') })).resolves.toBe('')
-    await expect(resolveBasemapUrl({ ...config, file: join(dir, 'missing.pmtiles'), configuredUrl: 'https://storage.example/map.pmtiles' })).resolves.toBe('https://storage.example/map.pmtiles')
+    await expect(
+      resolveBasemapUrl({
+        ...config,
+        file: join(dir, 'missing.pmtiles'),
+        configuredUrl: 'https://storage.example/map.pmtiles',
+      }),
+    ).resolves.toBe('https://storage.example/map.pmtiles')
   })
 
   it('leaves a matching file in place', async () => {
@@ -116,18 +137,21 @@ describe('basemap archive fetch', () => {
     const file = join(dir, 'kaliningrad.pmtiles')
     await writeFile(file, bytes)
     let calls = 0
-    const result = await ensureBasemapArchive({
-      file,
-      sha256: sha256(bytes),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: '',
-    }, {
-      ...quiet,
-      fetch: async () => {
-        calls += 1
-        return responseOf(bytes)
+    const result = await ensureBasemapArchive(
+      {
+        file,
+        sha256: sha256(bytes),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: '',
       },
-    })
+      {
+        ...quiet,
+        fetch: async () => {
+          calls += 1
+          return responseOf(bytes)
+        },
+      },
+    )
     expect(result.status).toBe('ready')
     expect(calls).toBe(0)
   })
@@ -135,52 +159,77 @@ describe('basemap archive fetch', () => {
   it('downloads a missing file, checks the hash, and renames it into place', async () => {
     const bytes = Buffer.from('fresh-archive')
     const file = join(dir, 'kaliningrad.pmtiles')
-    const result = await ensureBasemapArchive({
-      file,
-      sha256: sha256(bytes),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: '',
-    }, {
-      ...quiet,
-      delays: [0],
-      fetch: async () => responseOf(bytes),
-    })
+    const result = await ensureBasemapArchive(
+      {
+        file,
+        sha256: sha256(bytes),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: '',
+      },
+      {
+        ...quiet,
+        delays: [0],
+        fetch: async () => responseOf(bytes),
+      },
+    )
     expect(result).toEqual({ status: 'downloaded' })
     await expect(readFile(file)).resolves.toEqual(bytes)
-    await expect(stat(`${file}.partial`).then(() => true, () => false)).resolves.toBe(false)
-    await expect(stat(`${file}.lock`).then(() => true, () => false)).resolves.toBe(false)
-    await expect(resolveBasemapUrl({
-      file,
-      sha256: sha256(bytes),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: '',
-    })).resolves.toBe(BASEMAP_PUBLIC_PATH)
+    await expect(
+      stat(`${file}.partial`).then(
+        () => true,
+        () => false,
+      ),
+    ).resolves.toBe(false)
+    await expect(
+      stat(`${file}.lock`).then(
+        () => true,
+        () => false,
+      ),
+    ).resolves.toBe(false)
+    await expect(
+      resolveBasemapUrl({
+        file,
+        sha256: sha256(bytes),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: '',
+      }),
+    ).resolves.toBe(BASEMAP_PUBLIC_PATH)
   })
 
   it('does not publish a download whose hash does not match', async () => {
     const bytes = Buffer.from('keep-me')
     const file = join(dir, 'kaliningrad.pmtiles')
     await writeFile(file, bytes)
-    const result = await ensureBasemapArchive({
-      file,
-      sha256: sha256(Buffer.from('expected')),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: '',
-    }, {
-      ...quiet,
-      delays: [0],
-      fetch: async () => responseOf(Buffer.from('wrong')),
-    })
+    const result = await ensureBasemapArchive(
+      {
+        file,
+        sha256: sha256(Buffer.from('expected')),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: '',
+      },
+      {
+        ...quiet,
+        delays: [0],
+        fetch: async () => responseOf(Buffer.from('wrong')),
+      },
+    )
     expect(result.status).toBe('failed')
     expect(result.reason).toContain('hash mismatch')
     await expect(readFile(file)).resolves.toEqual(bytes)
-    await expect(stat(`${file}.partial`).then(() => true, () => false)).resolves.toBe(false)
-    await expect(resolveBasemapUrl({
-      file,
-      sha256: sha256(Buffer.from('expected')),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: '',
-    })).resolves.toBe('')
+    await expect(
+      stat(`${file}.partial`).then(
+        () => true,
+        () => false,
+      ),
+    ).resolves.toBe(false)
+    await expect(
+      resolveBasemapUrl({
+        file,
+        sha256: sha256(Buffer.from('expected')),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: '',
+      }),
+    ).resolves.toBe('')
   })
 
   it('retries then replaces a mismatched file', async () => {
@@ -190,25 +239,28 @@ describe('basemap archive fetch', () => {
     await writeFile(file, previous)
     const waits: number[] = []
     let calls = 0
-    const result = await ensureBasemapArchive({
-      file,
-      sha256: sha256(next),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: '',
-    }, {
-      ...quiet,
-      delays: [0, 25],
-      sleep: async (ms) => {
-        waits.push(ms)
+    const result = await ensureBasemapArchive(
+      {
+        file,
+        sha256: sha256(next),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: '',
       },
-      fetch: async () => {
-        calls += 1
-        if (calls === 1) {
-          return responseOf(new Uint8Array(), 500)
-        }
-        return responseOf(next)
+      {
+        ...quiet,
+        delays: [0, 25],
+        sleep: async (ms) => {
+          waits.push(ms)
+        },
+        fetch: async () => {
+          calls += 1
+          if (calls === 1) {
+            return responseOf(new Uint8Array(), 500)
+          }
+          return responseOf(next)
+        },
       },
-    })
+    )
     expect(result.status).toBe('downloaded')
     expect(calls).toBe(2)
     expect(waits).toEqual([25])
@@ -248,30 +300,41 @@ describe('basemap archive fetch', () => {
     const file = join(dir, 'kaliningrad.pmtiles')
     const lock = `${file}.lock`
     await writeFile(lock, 'holder')
-    const busy = await ensureBasemapArchive({
-      file,
-      sha256: sha256(bytes),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: '',
-    }, {
-      ...quiet,
-      fetch: async () => responseOf(bytes),
-    })
+    const busy = await ensureBasemapArchive(
+      {
+        file,
+        sha256: sha256(bytes),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: '',
+      },
+      {
+        ...quiet,
+        fetch: async () => responseOf(bytes),
+      },
+    )
     expect(busy).toEqual({ status: 'busy' })
-    await expect(stat(file).then(() => true, () => false)).resolves.toBe(false)
+    await expect(
+      stat(file).then(
+        () => true,
+        () => false,
+      ),
+    ).resolves.toBe(false)
 
     const stale = new Date(Date.now() - BASEMAP_LOCK_STALE_MS - 1000)
     await utimes(lock, stale, stale)
-    const result = await ensureBasemapArchive({
-      file,
-      sha256: sha256(bytes),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: '',
-    }, {
-      ...quiet,
-      delays: [0],
-      fetch: async () => responseOf(bytes),
-    })
+    const result = await ensureBasemapArchive(
+      {
+        file,
+        sha256: sha256(bytes),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: '',
+      },
+      {
+        ...quiet,
+        delays: [0],
+        fetch: async () => responseOf(bytes),
+      },
+    )
     expect(result.status).toBe('downloaded')
     await expect(readFile(file)).resolves.toEqual(bytes)
   })
@@ -283,18 +346,24 @@ describe('basemap archive fetch', () => {
       calls += 1
       return responseOf(Buffer.from('nope'))
     }
-    const external = await ensureBasemapArchive({
-      file,
-      sha256: 'c'.repeat(64),
-      sourceUrl: 'https://example.test/kaliningrad.pmtiles',
-      configuredUrl: 'https://storage.example/map.pmtiles',
-    }, { ...quiet, fetch: fetchImpl })
-    const missing = await ensureBasemapArchive({
-      file,
-      sha256: '',
-      sourceUrl: '',
-      configuredUrl: '',
-    }, { ...quiet, fetch: fetchImpl })
+    const external = await ensureBasemapArchive(
+      {
+        file,
+        sha256: 'c'.repeat(64),
+        sourceUrl: 'https://example.test/kaliningrad.pmtiles',
+        configuredUrl: 'https://storage.example/map.pmtiles',
+      },
+      { ...quiet, fetch: fetchImpl },
+    )
+    const missing = await ensureBasemapArchive(
+      {
+        file,
+        sha256: '',
+        sourceUrl: '',
+        configuredUrl: '',
+      },
+      { ...quiet, fetch: fetchImpl },
+    )
     expect(external).toEqual({ status: 'skipped', reason: 'external-url' })
     expect(missing).toEqual({ status: 'skipped', reason: 'missing-config' })
     expect(calls).toBe(0)

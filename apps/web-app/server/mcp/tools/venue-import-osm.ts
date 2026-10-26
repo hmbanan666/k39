@@ -21,7 +21,8 @@ const area = z.union([
 
 export default defineStrictMcpTool({
   name: 'venue_import_osm',
-  description: 'Import OpenStreetMap cafes, restaurants, bars, fast food, pubs, ice cream, and bakeries as drafts. Pass a point and radiusMeters, or a bbox (south, west, north, east). Dedupes by osmId and never publishes or updates an existing venue. Phone stays empty for explicit official-first source review and a later venue_update. OSM opening hours become an unverified schedule; hoursSkipped lists drafts whose hours could not be stored. Writes an mcp_audits row.',
+  description:
+    'Import OpenStreetMap cafes, restaurants, bars, fast food, pubs, ice cream, and bakeries as drafts. Pass a point and radiusMeters, or a bbox (south, west, north, east). Dedupes by osmId and never publishes or updates an existing venue. Phone stays empty for explicit official-first source review and a later venue_update. OSM opening hours become an unverified schedule; hoursSkipped lists drafts whose hours could not be stored. Writes an mcp_audits row.',
   inputSchema: {
     area,
     regionSlug: z.string().optional(),

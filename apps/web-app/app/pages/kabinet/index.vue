@@ -1,8 +1,6 @@
 <template>
   <main class="page frame cabinet">
-    <p class="kicker">
-      Кабинет
-    </p>
+    <p class="kicker"> Кабинет </p>
     <h1>Ваш K39</h1>
     <p
       v-if="pending"
@@ -30,9 +28,7 @@
             {{ profileError }}
           </p>
           <div class="row">
-            <UiButton type="submit">
-              Сохранить имя
-            </UiButton>
+            <UiButton type="submit"> Сохранить имя </UiButton>
             <UiButton
               href="/api/auth/logout"
               variant="line"
@@ -48,13 +44,9 @@
           <template v-else>
             Актуальная версия согласия: {{ me.consent.version }}. При следующем входе его нужно подтвердить снова.
           </template>
-          <UiLink href="/soglasie">
-            Текст согласия
-          </UiLink>
+          <UiLink href="/soglasie"> Текст согласия </UiLink>
           и
-          <UiLink href="/privacy">
-            политика
-          </UiLink>.
+          <UiLink href="/privacy"> политика </UiLink>.
         </p>
       </section>
 
@@ -100,7 +92,8 @@
               <a
                 v-if="item.subjectPath"
                 :href="item.subjectPath"
-              >{{ item.subjectTitle }}</a>
+                >{{ item.subjectTitle }}</a
+              >
               <template v-else>{{ item.subjectTitle }}</template>
               · {{ guestKind(item.kind) }} · {{ guestStatus(item.status) }}
             </span>
@@ -138,9 +131,7 @@
               placeholder="Кофейня у форта"
             />
           </UiField>
-          <UiButton type="submit">
-            Найти
-          </UiButton>
+          <UiButton type="submit"> Найти </UiButton>
         </form>
         <p
           v-if="searchError"
@@ -157,7 +148,9 @@
             :key="venue.id"
           >
             <a :href="venueClaimPath(venue.slug)">{{ venue.name }}</a>
-            <span class="muted">{{ venue.kindLabel }}<template v-if="venue.address">, {{ venue.address }}</template></span>
+            <span class="muted"
+              >{{ venue.kindLabel }}<template v-if="venue.address">, {{ venue.address }}</template></span
+            >
           </li>
         </ul>
       </section>
@@ -172,9 +165,9 @@ definePageMeta({ middleware: ['user-only'] })
 useSeoMeta({ title: 'Кабинет | K39', robots: 'noindex, nofollow' })
 
 interface Me {
-  user: { id: string, name: string, email: string }
-  consent: { version: string, consentedAt: string | null, current: boolean }
-  venues: Array<{ id: string, name: string, slug: string, role: string, status: string }>
+  user: { id: string; name: string; email: string }
+  consent: { version: string; consentedAt: string | null; current: boolean }
+  venues: Array<{ id: string; name: string; slug: string; role: string; status: string }>
 }
 
 const { data: me, pending } = await useFetch<Me>('/api/cabinet/me')
@@ -198,7 +191,7 @@ watch(me, (value) => {
 const profileError = ref('')
 const query = ref('')
 const searchError = ref('')
-const found = ref<Array<{ id: string, slug: string, name: string, address: string | null, kindLabel: string }>>([])
+const found = ref<Array<{ id: string; slug: string; name: string; address: string | null; kindLabel: string }>>([])
 
 const consentDate = computed(() => {
   const raw = me.value?.consent.consentedAt
@@ -209,7 +202,7 @@ const consentDate = computed(() => {
 })
 
 function problem(reason: unknown, fallback: string) {
-  const error = reason as { data?: { message?: string, statusMessage?: string }, statusMessage?: string }
+  const error = reason as { data?: { message?: string; statusMessage?: string }; statusMessage?: string }
   return error.data?.statusMessage || error.data?.message || error.statusMessage || fallback
 }
 
@@ -259,7 +252,9 @@ async function search() {
   searchError.value = ''
   found.value = []
   try {
-    const result = await $fetch<{ venues: typeof found.value }>(`/api/cabinet/venues/search?q=${encodeURIComponent(query.value)}`)
+    const result = await $fetch<{ venues: typeof found.value }>(
+      `/api/cabinet/venues/search?q=${encodeURIComponent(query.value)}`,
+    )
     found.value = result.venues
     if (!result.venues.length) {
       searchError.value = 'Ничего не нашли среди опубликованных страниц.'
@@ -271,7 +266,9 @@ async function search() {
 </script>
 
 <style scoped>
-.cabinet { padding-bottom: 3rem; }
+.cabinet {
+  padding-bottom: 3rem;
+}
 .kicker {
   margin: 0;
   color: var(--color-brick);
@@ -280,7 +277,10 @@ async function search() {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-h1 { margin: 0.3rem 0 1rem; font-size: clamp(2rem, 1.2rem + 2vw, 2.8rem); }
+h1 {
+  margin: 0.3rem 0 1rem;
+  font-size: clamp(2rem, 1.2rem + 2vw, 2.8rem);
+}
 .card {
   margin: 0 0 1rem;
   padding: 1rem 1rem 1.1rem;
@@ -288,12 +288,31 @@ h1 { margin: 0.3rem 0 1rem; font-size: clamp(2rem, 1.2rem + 2vw, 2.8rem); }
   border-radius: 14px;
   background: var(--color-surface);
 }
-.card h2 { margin: 0 0 0.8rem; font-size: 1.25rem; }
-.muted { color: var(--muted); }
-.error { color: var(--color-danger, var(--color-brick)); }
-.row, .search { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: end; }
-.search { margin-bottom: 0.6rem; }
-.list { margin: 0.6rem 0 0; padding: 0; list-style: none; }
+.card h2 {
+  margin: 0 0 0.8rem;
+  font-size: 1.25rem;
+}
+.muted {
+  color: var(--muted);
+}
+.error {
+  color: var(--color-danger, var(--color-brick));
+}
+.row,
+.search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+.search {
+  margin-bottom: 0.6rem;
+}
+.list {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
 .list li {
   display: flex;
   flex-wrap: wrap;
@@ -302,5 +321,10 @@ h1 { margin: 0.3rem 0 1rem; font-size: clamp(2rem, 1.2rem + 2vw, 2.8rem); }
   padding: 0.65rem 0;
   border-top: 1px dashed var(--color-line);
 }
-.consent { margin: 1rem 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
+.consent {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
 </style>

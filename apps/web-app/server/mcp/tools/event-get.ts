@@ -6,7 +6,8 @@ import { practicalTarget } from '../../utils/practical/target'
 
 export default defineStrictMcpTool({
   name: 'event_get',
-  description: 'Load one event by id, or every event of a place or venue (ADR 0046), including cancelled and expired rows kept for history. Each row carries the local Kaliningrad timing in the event_upsert input shape and whether the page shows it.',
+  description:
+    'Load one event by id, or every event of a place or venue (ADR 0046), including cancelled and expired rows kept for history. Each row carries the local Kaliningrad timing in the event_upsert input shape and whether the page shows it.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -16,7 +17,11 @@ export default defineStrictMcpTool({
   },
   handler: async ({ id, subjectType, subjectId, slug }) => {
     const now = new Date()
-    const view = (row: NonNullable<Awaited<ReturnType<typeof db.calendarEvents.byId>>>) => ({ ...row, local: eventFormTiming(row), shown: eventUpcoming(row, now) })
+    const view = (row: NonNullable<Awaited<ReturnType<typeof db.calendarEvents.byId>>>) => ({
+      ...row,
+      local: eventFormTiming(row),
+      shown: eventUpcoming(row, now),
+    })
     if (id) {
       const row = await db.calendarEvents.byId(id)
       if (!row) {

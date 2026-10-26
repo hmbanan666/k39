@@ -37,7 +37,12 @@ describe('public accuracy labels', () => {
       ])
       await wrapper.get('[role="radio"][value="pd"]').trigger('click')
       expect(wrapper.get('a.go').attributes('href')).toContain('rtt=pd')
-      expect(wrapper.findAll('a').find((item) => item.text() === 'В Google Maps')?.attributes('href')).toContain('travelmode=walking')
+      expect(
+        wrapper
+          .findAll('a')
+          .find((item) => item.text() === 'В Google Maps')
+          ?.attributes('href'),
+      ).toContain('travelmode=walking')
     } finally {
       wrapper.unmount()
     }
@@ -45,13 +50,33 @@ describe('public accuracy labels', () => {
 
   it.each([false, true])('server-renders straight-line map card distances (mobile: %s)', async (mobile) => {
     const html = await renderPage(MapPanel, {
-      points: [{
-        id: 'fixture', group: 'sight' as const, slug: 'fixture', title: 'Фикстура', href: '/fixture',
-        latitude: 54.704, longitude: 20.5, category: 'forty', marker: 'forty', church: false,
-        kindLabel: 'Форт', summary: '', photo: null, partner: false, stale: false,
-      }],
-      routes: [], state: parseMapQuery({}), selectedId: 'fixture', bounds: null,
-      origin: { latitude: 54.7, longitude: 20.5 }, collapsed: false, mobile, snap: 'half' as const,
+      points: [
+        {
+          id: 'fixture',
+          group: 'sight' as const,
+          slug: 'fixture',
+          title: 'Фикстура',
+          href: '/fixture',
+          latitude: 54.704,
+          longitude: 20.5,
+          category: 'forty',
+          marker: 'forty',
+          church: false,
+          kindLabel: 'Форт',
+          summary: '',
+          photo: null,
+          partner: false,
+          stale: false,
+        },
+      ],
+      routes: [],
+      state: parseMapQuery({}),
+      selectedId: 'fixture',
+      bounds: null,
+      origin: { latitude: 54.7, longitude: 20.5 },
+      collapsed: false,
+      mobile,
+      snap: 'half' as const,
     })
     expect(html).toContain('440 м по прямой')
   })

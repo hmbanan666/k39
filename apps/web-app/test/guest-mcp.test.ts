@@ -41,30 +41,40 @@ describe('guest moderation token scope', () => {
 
 describe('guest moderation parity', () => {
   it('sends a recognizable face to the same reject note the author sees', () => {
-    expect(routeGuestDecision({
-      kind: 'photo',
-      decision: 'accept',
-      recognizableFace: true,
-    })).toEqual({ decision: 'reject', note: GUEST_FACE_REJECT_NOTE })
-    expect(routeGuestDecision({
-      kind: 'photo',
-      decision: 'accept',
-      recognizableFace: false,
-    })).toEqual({ decision: 'accept', note: null })
-    expect(routeGuestDecision({
-      kind: 'review',
-      decision: 'accept',
-      recognizableFace: true,
-    })).toEqual({ decision: 'accept', note: null })
-    expect(routeGuestDecision({
-      kind: 'correction',
-      decision: 'reject',
-      note: 'Реклама',
-    })).toEqual({ decision: 'reject', note: 'Реклама' })
-    expect(routeGuestDecision({
-      kind: 'tip',
-      decision: 'dispute',
-    }).decision).toBe('dispute')
+    expect(
+      routeGuestDecision({
+        kind: 'photo',
+        decision: 'accept',
+        recognizableFace: true,
+      }),
+    ).toEqual({ decision: 'reject', note: GUEST_FACE_REJECT_NOTE })
+    expect(
+      routeGuestDecision({
+        kind: 'photo',
+        decision: 'accept',
+        recognizableFace: false,
+      }),
+    ).toEqual({ decision: 'accept', note: null })
+    expect(
+      routeGuestDecision({
+        kind: 'review',
+        decision: 'accept',
+        recognizableFace: true,
+      }),
+    ).toEqual({ decision: 'accept', note: null })
+    expect(
+      routeGuestDecision({
+        kind: 'correction',
+        decision: 'reject',
+        note: 'Реклама',
+      }),
+    ).toEqual({ decision: 'reject', note: 'Реклама' })
+    expect(
+      routeGuestDecision({
+        kind: 'tip',
+        decision: 'dispute',
+      }).decision,
+    ).toBe('dispute')
   })
 
   it('points the admin route and the MCP tools at moderateGuest', () => {

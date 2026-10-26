@@ -36,10 +36,11 @@ export const NOTICE_DRAFT_KEYS: readonly string[] = ['notices', 'noticesStagedAt
 
 export class Notices {
   static async forSubject(subjectType: NoticeSubjectType, subjectId: string, tx?: ContentTx) {
-    return (tx ?? useDatabase()).select().from(notices).where(and(
-      eq(notices.subjectType, subjectType),
-      eq(notices.subjectId, subjectId),
-    )).orderBy(...ORDER)
+    return (tx ?? useDatabase())
+      .select()
+      .from(notices)
+      .where(and(eq(notices.subjectType, subjectType), eq(notices.subjectId, subjectId)))
+      .orderBy(...ORDER)
   }
 
   /**
@@ -52,11 +53,17 @@ export class Notices {
     if (!ids.length) {
       return []
     }
-    return useDatabase().select().from(notices).where(and(
-      eq(notices.subjectType, subjectType),
-      inArray(notices.subjectId, ids),
-      or(isNull(notices.endsOn), gte(notices.endsOn, today)),
-    )).orderBy(...ORDER)
+    return useDatabase()
+      .select()
+      .from(notices)
+      .where(
+        and(
+          eq(notices.subjectType, subjectType),
+          inArray(notices.subjectId, ids),
+          or(isNull(notices.endsOn), gte(notices.endsOn, today)),
+        ),
+      )
+      .orderBy(...ORDER)
   }
 
   /** Every row with the subject slug and title, for `notices_list`. */
@@ -89,7 +96,7 @@ export class Notices {
     const write = async (run: ContentTx) => {
       const stored = await Notices.forSubject(subjectType, subjectId, run)
       const byId = new Map(stored.map((row) => [row.id, row]))
-      const kept = new Set(rows.flatMap((row) => row.id && byId.has(row.id) ? [row.id] : []))
+      const kept = new Set(rows.flatMap((row) => (row.id && byId.has(row.id) ? [row.id] : [])))
       const gone = stored.filter((row) => !kept.has(row.id)).map((row) => row.id)
       if (gone.length) {
         await run.delete(notices).where(inArray(notices.id, gone))
@@ -109,11 +116,14 @@ export class Notices {
         }
         const current = row.id ? byId.get(row.id) : undefined
         if (current) {
-          await run.update(notices).set({
-            ...values,
-            updatedAt: now,
-            expiredAt: current.endsOn === row.endsOn ? current.expiredAt : null,
-          }).where(eq(notices.id, current.id))
+          await run
+            .update(notices)
+            .set({
+              ...values,
+              updatedAt: now,
+              expiredAt: current.endsOn === row.endsOn ? current.expiredAt : null,
+            })
+            .where(eq(notices.id, current.id))
         } else {
           await run.insert(notices).values({ ...values, subjectType, subjectId })
         }
@@ -129,21 +139,36 @@ export class Notices {
    * have the id and `updated_at` that were read. A draft left with no other
    * key is deleted. Null when that draft changed or is gone.
    */
-  static async applyStaged(subjectType: NoticeSubjectType, subjectId: string, stamp: { id: string, updatedAt: string }, rows: NoticeWrite[]) {
+  static async applyStaged(
+    subjectType: NoticeSubjectType,
+    subjectId: string,
+    stamp: { id: string; updatedAt: string },
+    rows: NoticeWrite[],
+  ) {
     return useDatabase().transaction(async (tx) => {
-      const [draft] = await tx.select().from(contentDrafts).where(and(
-        eq(contentDrafts.id, stamp.id),
-        eq(contentDrafts.entityType, subjectType),
-        eq(contentDrafts.entityId, subjectId),
-        eq(contentDrafts.updatedAt, stamp.updatedAt),
-      )).limit(1).for('update')
+      const [draft] = await tx
+        .select()
+        .from(contentDrafts)
+        .where(
+          and(
+            eq(contentDrafts.id, stamp.id),
+            eq(contentDrafts.entityType, subjectType),
+            eq(contentDrafts.entityId, subjectId),
+            eq(contentDrafts.updatedAt, stamp.updatedAt),
+          ),
+        )
+        .limit(1)
+        .for('update')
       if (!draft) {
         return null
       }
       const saved = await Notices.replace(subjectType, subjectId, rows, tx)
       const rest = Object.fromEntries(Object.entries(draft.payload).filter(([key]) => !NOTICE_DRAFT_KEYS.includes(key)))
       if (Object.keys(rest).length) {
-        await tx.update(contentDrafts).set({ payload: rest, updatedAt: new Date().toISOString() }).where(eq(contentDrafts.id, draft.id))
+        await tx
+          .update(contentDrafts)
+          .set({ payload: rest, updatedAt: new Date().toISOString() })
+          .where(eq(contentDrafts.id, draft.id))
       } else {
         await tx.delete(contentDrafts).where(eq(contentDrafts.id, draft.id))
       }
@@ -153,18 +178,17 @@ export class Notices {
 
   /** Flags rows whose last day is before `today`. Does not delete. */
   static async flagExpired(today: string) {
-    const rows = await useDatabase().update(notices).set({ expiredAt: new Date().toISOString() }).where(and(
-      isNull(notices.expiredAt),
-      isNotNull(notices.endsOn),
-      lt(notices.endsOn, today),
-    )).returning({ id: notices.id })
+    const rows = await useDatabase()
+      .update(notices)
+      .set({ expiredAt: new Date().toISOString() })
+      .where(and(isNull(notices.expiredAt), isNotNull(notices.endsOn), lt(notices.endsOn, today)))
+      .returning({ id: notices.id })
     return rows.length
   }
 
   static async removeForSubject(subjectType: NoticeSubjectType, subjectId: string, tx?: ContentTx) {
-    await (tx ?? useDatabase()).delete(notices).where(and(
-      eq(notices.subjectType, subjectType),
-      eq(notices.subjectId, subjectId),
-    ))
+    await (tx ?? useDatabase())
+      .delete(notices)
+      .where(and(eq(notices.subjectType, subjectType), eq(notices.subjectId, subjectId)))
   }
 }

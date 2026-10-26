@@ -26,15 +26,29 @@ afterEach(async () => {
 
 async function fixture(suffix: string, needsCheck: boolean, verifiedAt = now()) {
   const place = await Editor.savePlace({
-    slug: `fixture-score-freshness-${suffix}`, title: `Локальная проверка ${suffix}`,
-    summary: 'Локальная фикстура, не статья.', body: 'Локальная проверка сигнала.',
-    publicationStatus: 'published', lastVerifiedAt: now(), price: 'Вход бесплатный',
+    slug: `fixture-score-freshness-${suffix}`,
+    title: `Локальная проверка ${suffix}`,
+    summary: 'Локальная фикстура, не статья.',
+    body: 'Локальная проверка сигнала.',
+    publicationStatus: 'published',
+    lastVerifiedAt: now(),
+    price: 'Вход бесплатный',
   })
   ids.push(place.id)
-  await saveSchedule('place', place.id, {
-    rules: scheduleRulesSchema.parse({ mode: 'hours', seasons: [{ week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '10:00', closes: '18:00' }] }], needsCheck }),
-    sourceUrl: 'https://example.org/hours', verifiedAt,
-  }, { actor: 'editor', pageStatus: 'published' })
+  await saveSchedule(
+    'place',
+    place.id,
+    {
+      rules: scheduleRulesSchema.parse({
+        mode: 'hours',
+        seasons: [{ week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '10:00', closes: '18:00' }] }],
+        needsCheck,
+      }),
+      sourceUrl: 'https://example.org/hours',
+      verifiedAt,
+    },
+    { actor: 'editor', pageStatus: 'published' },
+  )
   return place
 }
 
@@ -85,12 +99,24 @@ describe('schedule uncertainty and fact ages through real readers and writers', 
     const uncertain = await fixture('both', true)
     const sibling = await fixture('both-control', false)
     const before = await preview(uncertain)
-    await Facts.upsert({
-      kind: 'phone', subjectType: 'place', subjectId: uncertain.id, slot: 'phone',
-      value: { text: '+7 4012 000000' }, valueHash: 'b'.repeat(64), sourceKind: 'official',
-      sourceUrl: 'https://example.org/phone', sourceTitle: null,
-      checkedAt: daysAgo(181), ttlDays: 180, confidence: 'stated', actor: 'editor',
-    }, [{ consumerType: 'place', consumerId: uncertain.id, path: 'short.phone' }])
+    await Facts.upsert(
+      {
+        kind: 'phone',
+        subjectType: 'place',
+        subjectId: uncertain.id,
+        slot: 'phone',
+        value: { text: '+7 4012 000000' },
+        valueHash: 'b'.repeat(64),
+        sourceKind: 'official',
+        sourceUrl: 'https://example.org/phone',
+        sourceTitle: null,
+        checkedAt: daysAgo(181),
+        ttlDays: 180,
+        confidence: 'stated',
+        actor: 'editor',
+      },
+      [{ consumerType: 'place', consumerId: uncertain.id, path: 'short.phone' }],
+    )
     const score = await preview(uncertain)
     expect(score.checks.quality).toContain('schedule needs check')
     expect(score.checks.quality).toContain('stale facts')
@@ -100,12 +126,24 @@ describe('schedule uncertainty and fact ages through real readers and writers', 
 
   it('keeps a missing check date explicit without treating it as age expiry', async () => {
     const place = await fixture('unchecked', false)
-    await Facts.upsert({
-      kind: 'phone', subjectType: 'place', subjectId: place.id, slot: 'phone',
-      value: { text: '+7 4012 000000' }, valueHash: 'c'.repeat(64), sourceKind: 'official',
-      sourceUrl: 'https://example.org/phone', sourceTitle: null,
-      checkedAt: null, ttlDays: 180, confidence: 'stated', actor: 'editor',
-    }, [{ consumerType: 'place', consumerId: place.id, path: 'short.phone' }])
+    await Facts.upsert(
+      {
+        kind: 'phone',
+        subjectType: 'place',
+        subjectId: place.id,
+        slot: 'phone',
+        value: { text: '+7 4012 000000' },
+        valueHash: 'c'.repeat(64),
+        sourceKind: 'official',
+        sourceUrl: 'https://example.org/phone',
+        sourceTitle: null,
+        checkedAt: null,
+        ttlDays: 180,
+        confidence: 'stated',
+        actor: 'editor',
+      },
+      [{ consumerType: 'place', consumerId: place.id, path: 'short.phone' }],
+    )
     const score = await preview(place)
     expect(score.checks.quality).toContain('facts not checked')
     expect(score.checks.quality).not.toContain('stale facts')
@@ -113,15 +151,25 @@ describe('schedule uncertainty and fact ages through real readers and writers', 
     expect((await Facts.freshnessByConsumer(now())).find((row) => row.consumer_id === place.id)?.stale).toBe(1)
   })
 
-  it.each(['source_changed', 'owner_conflict', 'source_gone'])('keeps an unresolved %s explicit without calling fresh evidence old', async (reason) => {
-    const place = await fixture(reason, false)
-    const fact = await Facts.liveSlot('place', place.id, 'hours')
-    await Facts.enqueue({ target: 'fact', factId: fact!.id, reason, pageType: 'place', entityId: place.id, path: 'short.hours' })
-    const score = await preview(place)
-    expect(score.checks.quality).toContain('facts need review')
-    expect(score.checks.quality).not.toContain('stale facts')
-    expect(score.signals.factsAgeDays).toBe(0)
-    const freshness = (await Facts.freshnessByConsumer(now())).find((row) => row.consumer_id === place.id)
-    expect(freshness?.stale).toBe(1)
-  })
+  it.each(['source_changed', 'owner_conflict', 'source_gone'])(
+    'keeps an unresolved %s explicit without calling fresh evidence old',
+    async (reason) => {
+      const place = await fixture(reason, false)
+      const fact = await Facts.liveSlot('place', place.id, 'hours')
+      await Facts.enqueue({
+        target: 'fact',
+        factId: fact!.id,
+        reason,
+        pageType: 'place',
+        entityId: place.id,
+        path: 'short.hours',
+      })
+      const score = await preview(place)
+      expect(score.checks.quality).toContain('facts need review')
+      expect(score.checks.quality).not.toContain('stale facts')
+      expect(score.signals.factsAgeDays).toBe(0)
+      const freshness = (await Facts.freshnessByConsumer(now())).find((row) => row.consumer_id === place.id)
+      expect(freshness?.stale).toBe(1)
+    },
+  )
 })

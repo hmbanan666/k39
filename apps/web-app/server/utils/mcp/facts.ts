@@ -1,6 +1,7 @@
 import { createError } from 'h3'
 
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/
+const ISO_DATE =
+  /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/
 
 function calendarDay(year: number, month: number, day: number) {
   const probe = new Date(Date.UTC(year, month - 1, day))
@@ -36,9 +37,10 @@ export function parseFactsCheckedAt(value: unknown): string | null | undefined {
   if (hour > 23 || minute > 59 || second > 59) {
     throw createError({ statusCode: 400, statusMessage: 'factsCheckedAt: нужна дата ISO' })
   }
-  const date = match[4] == null
-    ? new Date(Date.UTC(year, month - 1, day))
-    : new Date(trimmed.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'))
+  const date =
+    match[4] == null
+      ? new Date(Date.UTC(year, month - 1, day))
+      : new Date(trimmed.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'))
   if (Number.isNaN(date.getTime())) {
     throw createError({ statusCode: 400, statusMessage: 'factsCheckedAt: нужна дата ISO' })
   }

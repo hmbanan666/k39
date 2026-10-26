@@ -9,7 +9,16 @@ import { categoryTags, collectionArticle, toPublicModules } from '../../shared/p
 import { questRoutePath, questStepCards } from '../../shared/quest-page'
 import { regionLabel } from '../../shared/region'
 import { routeStopViews } from '../../shared/route-nav'
-import { absoluteUrl, collectionDocument, homeDocument, isoDay, placeDocument, socialImage, splitDirections, stripRepeatedLead } from '../../shared/seo'
+import {
+  absoluteUrl,
+  collectionDocument,
+  homeDocument,
+  isoDay,
+  placeDocument,
+  socialImage,
+  splitDirections,
+  stripRepeatedLead,
+} from '../../shared/seo'
 import { omitFactGap, readShownFacts } from './facts/read'
 import { attachGuestReviews, loadGuestItems } from './guests/moderate'
 import { loadPublicNotices, sourcesWithNotices } from './notices/read'
@@ -24,7 +33,7 @@ function visitStatus(value: string | null, fallback: 'open' | 'ruins' | 'closed'
   return fallback
 }
 
-function mediaImage(file: { filename: string, alt: string, width: number | null, height: number | null }) {
+function mediaImage(file: { filename: string; alt: string; width: number | null; height: number | null }) {
   return {
     src: `/media/${file.filename}`,
     url: absoluteUrl(`/media/${file.filename}`),
@@ -148,13 +157,17 @@ export async function loadPlace(slug: string, page = 1) {
   const admission = await loadAdmission('place', loaded.place.id)
   const upcoming = await loadSubjectEvents('place', loaded.place.id)
   const notices = (await loadPublicNotices('place', [loaded.place.id])).get(loaded.place.id) ?? []
-  const shown = (await readShownFacts('place', [{
-    id: loaded.place.id,
-    latitude: loaded.place.latitude,
-    longitude: loaded.place.longitude,
-    status: loaded.place.status,
-    phone: loaded.place.phone,
-  }])).get(loaded.place.id)!
+  const shown = (
+    await readShownFacts('place', [
+      {
+        id: loaded.place.id,
+        latitude: loaded.place.latitude,
+        longitude: loaded.place.longitude,
+        status: loaded.place.status,
+        phone: loaded.place.phone,
+      },
+    ])
+  ).get(loaded.place.id)!
   const latitude = shown.latitude
   const longitude = shown.longitude
   const status = visitStatus(shown.status, loaded.place.status)
@@ -225,19 +238,34 @@ export async function loadPlace(slug: string, page = 1) {
   const nearCovers = await db.content.coversFor(loaded.nearest.map((item) => item.place_id))
   const groups = [
     { title: loaded.category.title, links: [{ href: `/${loaded.category.slug}`, text: loaded.category.title }] },
-    { title: 'Рядом', links: loaded.nearest.slice(0, 6).map((item) => ({
-      href: `/${item.slug}`,
-      text: item.title,
-      distanceKm: Number(item.distance_km),
-      kind: item.category_slug,
-      media: nearCovers.get(item.place_id) ? toPublicMedia(nearCovers.get(item.place_id)!) : null,
-    })) },
+    {
+      title: 'Рядом',
+      links: loaded.nearest.slice(0, 6).map((item) => ({
+        href: `/${item.slug}`,
+        text: item.title,
+        distanceKm: Number(item.distance_km),
+        kind: item.category_slug,
+        media: nearCovers.get(item.place_id) ? toPublicMedia(nearCovers.get(item.place_id)!) : null,
+      })),
+    },
     loaded.region
-      ? { title: `Ещё: ${regionLabel(loaded.region)}`, links: loaded.sameRegion.map((item) => ({ href: `/${item.slug}`, text: item.title })) }
+      ? {
+          title: `Ещё: ${regionLabel(loaded.region)}`,
+          links: loaded.sameRegion.map((item) => ({ href: `/${item.slug}`, text: item.title })),
+        }
       : null,
-    { title: 'Маршруты', links: loaded.routeRows.map((item) => ({ href: `/marshruty/${item.slug}`, text: item.title })) },
-    { title: 'Подборки', links: loaded.collectionRows.map((item) => ({ href: `/podborki/${item.slug}`, text: item.title })) },
-    { title: 'Ещё по теме', links: loaded.related.map((item) => ({ href: `/${item.slug}`, text: item.anchor || item.title })) },
+    {
+      title: 'Маршруты',
+      links: loaded.routeRows.map((item) => ({ href: `/marshruty/${item.slug}`, text: item.title })),
+    },
+    {
+      title: 'Подборки',
+      links: loaded.collectionRows.map((item) => ({ href: `/podborki/${item.slug}`, text: item.title })),
+    },
+    {
+      title: 'Ещё по теме',
+      links: loaded.related.map((item) => ({ href: `/${item.slug}`, text: item.anchor || item.title })),
+    },
   ].flatMap((group) => (group && group.links.length ? [group] : []))
   const primary = loaded.routeRows[0] ? await db.content.publishedRoute(loaded.routeRows[0].slug) : null
   const stepIndex = primary ? primary.points.findIndex((point) => point.slug === loaded.place.slug) : -1
@@ -285,10 +313,9 @@ export async function loadPlace(slug: string, page = 1) {
     sources: sourcesWithNotices(loaded.place.sources ?? [], notices),
     guests,
     // A town page lists more of its venues, so each one gets a link from it.
-    eatNearby: await eatNearby(
-      [{ latitude, longitude }],
-      { limit: loaded.region?.slug === loaded.place.slug ? TOWN_EAT_LIMIT : undefined },
-    ),
+    eatNearby: await eatNearby([{ latitude, longitude }], {
+      limit: loaded.region?.slug === loaded.place.slug ? TOWN_EAT_LIMIT : undefined,
+    }),
   }
 }
 
@@ -311,13 +338,15 @@ export async function loadRoute(slug: string) {
     return null
   }
   const admission = await loadAdmission('route', loaded.route.id)
-  const stops = routeStopViews(loaded.points.map((point) => ({
-    href: `/${point.slug}`,
-    text: point.title,
-    note: point.note,
-    latitude: point.latitude,
-    longitude: point.longitude,
-  })))
+  const stops = routeStopViews(
+    loaded.points.map((point) => ({
+      href: `/${point.slug}`,
+      text: point.title,
+      note: point.note,
+      latitude: point.latitude,
+      longitude: point.longitude,
+    })),
+  )
   const doc = collectionDocument({
     path: `/marshruty/${loaded.route.slug}`,
     h1: loaded.route.title,
@@ -348,10 +377,12 @@ export async function loadRoute(slug: string) {
     path: normalizeRoutePath(loaded.route.path),
     stops,
     items: stops.map((stop) => ({ href: stop.href, text: stop.text, note: stop.note })),
-    eatNearby: await eatNearby(loaded.points.map((point) => ({
-      latitude: point.latitude,
-      longitude: point.longitude,
-    }))),
+    eatNearby: await eatNearby(
+      loaded.points.map((point) => ({
+        latitude: point.latitude,
+        longitude: point.longitude,
+      })),
+    ),
   }
 }
 
@@ -367,7 +398,7 @@ export async function loadCollectionIndex() {
     items: ordered.map((row) => ({ name: row.title, url: `/podborki/${row.slug}` })),
     kind: 'CollectionPage',
   })
-  const link = (row: { slug: string, title: string }) => ({ href: `/podborki/${row.slug}`, text: row.title })
+  const link = (row: { slug: string; title: string }) => ({ href: `/podborki/${row.slug}`, text: row.title })
   return { doc, items: themes.map(link), months: months.map(link) }
 }
 
@@ -377,7 +408,10 @@ export async function loadCollection(slug: string) {
     return null
   }
   const isMonth = loaded.collection.kind === 'month'
-  const gallery = (await db.content.collectionGallery(loaded.collection.id)).map((item) => ({ ...toPublicMedia(item.media), isCover: item.isCover }))
+  const gallery = (await db.content.collectionGallery(loaded.collection.id)).map((item) => ({
+    ...toPublicMedia(item.media),
+    isCover: item.isCover,
+  }))
   const cover = gallery.find((item) => item.isCover) ?? gallery[0] ?? null
   const coverImage = cover ? socialImage(cover, cover.alt || loaded.collection.title) : undefined
   const doc = collectionDocument({
@@ -407,8 +441,14 @@ export async function loadCollection(slug: string) {
     body: collectionArticle(loaded.collection),
   })
   const monthRows = isMonth ? splitCollections(await db.content.listPublishedCollections()).months : []
-  const months = monthRows.filter((row) => row.slug !== loaded.collection.slug).map((row) => ({ href: `/podborki/${row.slug}`, text: row.title }))
-  const monthNav = monthRows.map((row) => ({ href: `/podborki/${row.slug}`, text: monthName(row.month), current: row.slug === loaded.collection.slug }))
+  const months = monthRows
+    .filter((row) => row.slug !== loaded.collection.slug)
+    .map((row) => ({ href: `/podborki/${row.slug}`, text: row.title }))
+  const monthNav = monthRows.map((row) => ({
+    href: `/podborki/${row.slug}`,
+    text: monthName(row.month),
+    current: row.slug === loaded.collection.slug,
+  }))
   const covers = await db.content.coversFor(loaded.items.map((item) => item.id))
   const places = collectionPlaceCards(loaded.items).map((card, index) => {
     const source = loaded.items[index]

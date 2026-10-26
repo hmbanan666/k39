@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { basemapFromUrl, cardFor, layerCollection, layerId, lineLayer, lonePoint, mapScene, mapStyle, pointsLayer, stopsLayer } from '../src/index'
+import {
+  basemapFromUrl,
+  cardFor,
+  layerCollection,
+  layerId,
+  lineLayer,
+  lonePoint,
+  mapScene,
+  mapStyle,
+  pointsLayer,
+  stopsLayer,
+} from '../src/index'
 
 const card = {
   id: 'a',
@@ -15,22 +26,33 @@ const card = {
 
 describe('map layers', () => {
   it('builds points, a dashed line, numbered stops, and a sponsored pin', () => {
-    const points = pointsLayer('places', [{
-      id: 'a',
-      coordinates: [20.5, 54.7],
-      marker: 'forty',
-      title: 'Форт',
-      sponsored: true,
-      card,
-    }])
-    const line = lineLayer('route', [[20.5, 54.7], [20.6, 54.8]], { dashed: true })
-    const stops = stopsLayer('route-stops', [{
-      id: 'stop:a',
-      n: 1,
-      coordinates: [20.5, 54.7],
-      title: 'Форт',
-      card: { ...card, id: 'stop:a', kindLabel: 'Остановка 1' },
-    }])
+    const points = pointsLayer('places', [
+      {
+        id: 'a',
+        coordinates: [20.5, 54.7],
+        marker: 'forty',
+        title: 'Форт',
+        sponsored: true,
+        card,
+      },
+    ])
+    const line = lineLayer(
+      'route',
+      [
+        [20.5, 54.7],
+        [20.6, 54.8],
+      ],
+      { dashed: true },
+    )
+    const stops = stopsLayer('route-stops', [
+      {
+        id: 'stop:a',
+        n: 1,
+        coordinates: [20.5, 54.7],
+        title: 'Форт',
+        card: { ...card, id: 'stop:a', kindLabel: 'Остановка 1' },
+      },
+    ])
     const scene = mapScene({ variant: 'paper', basemap: basemapFromUrl(''), layers: [line, points, stops] })
     expect(scene.layers.map((layer) => layer.id)).toEqual(['route', 'places', 'route-stops'])
     expect(layerCollection(points).features[0]?.properties.sponsored).toBe(1)
@@ -45,11 +67,13 @@ describe('map layers', () => {
 
   it('rejects a bad or repeated layer id', () => {
     expect(() => layerId('Places')).toThrow(/layer id/)
-    expect(() => mapScene({
-      variant: 'paper',
-      basemap: {},
-      layers: [pointsLayer('places', []), pointsLayer('places', [])],
-    })).toThrow(/Duplicate/)
+    expect(() =>
+      mapScene({
+        variant: 'paper',
+        basemap: {},
+        layers: [pointsLayer('places', []), pointsLayer('places', [])],
+      }),
+    ).toThrow(/Duplicate/)
   })
 
   it('keeps the paper style on OpenFreeMap until an archive URL is set', () => {

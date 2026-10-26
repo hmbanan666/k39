@@ -8,11 +8,14 @@ export default defineNitroPlugin(() => {
     if (!isDatabaseReady()) {
       return
     }
-    db.editor.deleteFailedUploads().then(async (rows) => {
-      await Promise.all(rows.map((row) => removeStoredMedia(row.id)))
-    }).catch((error: unknown) => {
-      console.error('failed media purge', error)
-    })
+    db.editor
+      .deleteFailedUploads()
+      .then(async (rows) => {
+        await Promise.all(rows.map((row) => removeStoredMedia(row.id)))
+      })
+      .catch((error: unknown) => {
+        console.error('failed media purge', error)
+      })
   }
   const start = setTimeout(run, 75_000)
   const timer = setInterval(run, 24 * 60 * 60 * 1000)

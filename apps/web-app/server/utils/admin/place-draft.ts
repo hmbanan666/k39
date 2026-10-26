@@ -113,11 +113,13 @@ export async function applyAdminPlaceDraft(id: string) {
   if (!pending) {
     throw createError({ statusCode: 409, statusMessage: 'Черновика нет' })
   }
-  return withContentScope('editor', () => setPublication({
-    entity: 'place',
-    id,
-    publicationStatus: 'published',
-  }))
+  return withContentScope('editor', () =>
+    setPublication({
+      entity: 'place',
+      id,
+      publicationStatus: 'published',
+    }),
+  )
 }
 
 /** Deletes the pending draft and leaves the live row as it is. */
@@ -187,44 +189,53 @@ export async function saveAdminPlace(id: string, body: AdminPlaceWrite, userId: 
       checkedAt: phoneCheckedAt(null),
       tx,
     })
-    const { row, writingWarnings } = await savePlaceContent({
-      id,
-      slug,
-      title: String(body.title ?? current.title),
-      summary: String(body.summary ?? current.summary),
-      body: String(body.body ?? current.body),
-      status: (visit.skipped || body.status == null ? current.status : body.status) as VisitStatus,
-      hours: body.hours ?? current.hours,
-      price: body.price ?? current.price,
-      phone: phone.skipped ? current.phone : contact.phone,
-      website: contact.website,
-      schemaType: contact.schemaType,
-      howToGet: body.howToGet ?? current.howToGet,
-      latitude: point.skipped || body.latitude == null ? current.latitude : body.latitude,
-      longitude: point.skipped || body.longitude == null ? current.longitude : body.longitude,
-      categoryId: category?.id ?? current.categoryId,
-      regionId: body.regionId ?? current.regionId,
-      sources: Array.isArray(body.sources) ? body.sources as typeof current.sources : current.sources,
-      seoTitle: body.seoTitle ?? current.seoTitle,
-      seoDescription: body.seoDescription ?? current.seoDescription,
-      ogImage: body.ogImage ?? current.ogImage,
-      publicationStatus,
-      noindex: body.noindex ?? current.noindex,
-      authorKind: asAuthor(body.authorKind, current.authorKind),
-    }, userId, contentGate('place', {
-      title: body.title ?? current.title,
-      summary: body.summary ?? current.summary,
-      body: body.body ?? current.body,
-      hours: body.hours ?? current.hours,
-      price: body.price ?? current.price,
-      howToGet: body.howToGet ?? current.howToGet,
-      seoTitle: body.seoTitle ?? current.seoTitle,
-      seoDescription: body.seoDescription ?? current.seoDescription,
-      sources: Array.isArray(body.sources) ? body.sources : current.sources,
-      phone: contact.phone,
-      phoneSourceUrl: contact.phoneSourceUrl,
-      website: contact.website,
-    }, publicationStatus === 'published'), tx)
+    const { row, writingWarnings } = await savePlaceContent(
+      {
+        id,
+        slug,
+        title: String(body.title ?? current.title),
+        summary: String(body.summary ?? current.summary),
+        body: String(body.body ?? current.body),
+        status: (visit.skipped || body.status == null ? current.status : body.status) as VisitStatus,
+        hours: body.hours ?? current.hours,
+        price: body.price ?? current.price,
+        phone: phone.skipped ? current.phone : contact.phone,
+        website: contact.website,
+        schemaType: contact.schemaType,
+        howToGet: body.howToGet ?? current.howToGet,
+        latitude: point.skipped || body.latitude == null ? current.latitude : body.latitude,
+        longitude: point.skipped || body.longitude == null ? current.longitude : body.longitude,
+        categoryId: category?.id ?? current.categoryId,
+        regionId: body.regionId ?? current.regionId,
+        sources: Array.isArray(body.sources) ? (body.sources as typeof current.sources) : current.sources,
+        seoTitle: body.seoTitle ?? current.seoTitle,
+        seoDescription: body.seoDescription ?? current.seoDescription,
+        ogImage: body.ogImage ?? current.ogImage,
+        publicationStatus,
+        noindex: body.noindex ?? current.noindex,
+        authorKind: asAuthor(body.authorKind, current.authorKind),
+      },
+      userId,
+      contentGate(
+        'place',
+        {
+          title: body.title ?? current.title,
+          summary: body.summary ?? current.summary,
+          body: body.body ?? current.body,
+          hours: body.hours ?? current.hours,
+          price: body.price ?? current.price,
+          howToGet: body.howToGet ?? current.howToGet,
+          seoTitle: body.seoTitle ?? current.seoTitle,
+          seoDescription: body.seoDescription ?? current.seoDescription,
+          sources: Array.isArray(body.sources) ? body.sources : current.sources,
+          phone: contact.phone,
+          phoneSourceUrl: contact.phoneSourceUrl,
+          website: contact.website,
+        },
+        publicationStatus === 'published',
+      ),
+      tx,
+    )
     return { ...row, phoneSourceUrl: contact.phoneSourceUrl, writingWarnings }
   })
 }

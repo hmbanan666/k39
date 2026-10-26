@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import sharp from 'sharp'
 import { afterEach, describe, expect, it } from 'vitest'
-import { bumpBrandIconVersion, maskableSafeSide, renderBrandIcons, writeIco } from '../../../scripts/brand/render-icons.mjs'
+import {
+  bumpBrandIconVersion,
+  maskableSafeSide,
+  renderBrandIcons,
+  writeIco,
+} from '../../../scripts/brand/render-icons.mjs'
 
 const dirs: string[] = []
 
@@ -22,8 +27,8 @@ afterEach(() => {
 
 describe('ico writer', () => {
   it('packs png frames with a real icon directory', () => {
-    const png16 = Buffer.from([0x89, 0x50, 0x4E, 0x47, 1])
-    const png32 = Buffer.from([0x89, 0x50, 0x4E, 0x47, 2, 2])
+    const png16 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1])
+    const png32 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 2, 2])
     const ico = writeIco([
       { size: 16, png: png16 },
       { size: 32, png: png32 },
@@ -45,20 +50,24 @@ describe('ico writer', () => {
 
 describe('brand icon version', () => {
   it('writes one version into seo.ts and every manifest icon', () => {
-    const seo = 'export const OTHER = 1\nexport const BRAND_ICON_VERSION = \'20261017\'\n'
-    const manifest = `${JSON.stringify({
-      name: 'К39',
-      icons: [
-        { src: '/icon-192.png?v=20261017', sizes: '192x192', type: 'image/png' },
-        { src: '/icon-maskable-512.png', sizes: '512x512', purpose: 'maskable' },
-      ],
-      theme_color: '#A3402A',
-    }, null, 2)}\n`
+    const seo = "export const OTHER = 1\nexport const BRAND_ICON_VERSION = '20261017'\n"
+    const manifest = `${JSON.stringify(
+      {
+        name: 'К39',
+        icons: [
+          { src: '/icon-192.png?v=20261017', sizes: '192x192', type: 'image/png' },
+          { src: '/icon-maskable-512.png', sizes: '512x512', purpose: 'maskable' },
+        ],
+        theme_color: '#A3402A',
+      },
+      null,
+      2,
+    )}\n`
     const next = bumpBrandIconVersion(seo, manifest, '20261021')
     expect(next.seo).toContain('export const OTHER = 1')
-    expect(next.seo).toContain('export const BRAND_ICON_VERSION = \'20261021\'')
+    expect(next.seo).toContain("export const BRAND_ICON_VERSION = '20261021'")
     expect(next.seo).not.toContain('20261017')
-    const parsed = JSON.parse(next.manifest) as { icons: Array<{ src: string, purpose?: string }>, theme_color: string }
+    const parsed = JSON.parse(next.manifest) as { icons: Array<{ src: string; purpose?: string }>; theme_color: string }
     expect(parsed.theme_color).toBe('#A3402A')
     expect(parsed.icons.map((icon) => icon.src)).toEqual([
       '/icon-192.png?v=20261021',
@@ -74,10 +83,15 @@ describe('render brand icons', () => {
     const master = join(root, 'master.png')
     const inner = await sharp({
       create: { width: 32, height: 32, channels: 4, background: { r: 200, g: 30, b: 30, alpha: 1 } },
-    }).png().toBuffer()
+    })
+      .png()
+      .toBuffer()
     await sharp({
       create: { width: 64, height: 64, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-    }).composite([{ input: inner, gravity: 'centre' }]).png().toFile(master)
+    })
+      .composite([{ input: inner, gravity: 'centre' }])
+      .png()
+      .toFile(master)
 
     const out = join(root, 'out')
     const files = await renderBrandIcons(master, out)
@@ -114,10 +128,13 @@ describe('render brand icons', () => {
 
     const seoPath = join(root, 'seo.ts')
     const manifestPath = join(root, 'site.webmanifest')
-    writeFileSync(seoPath, 'export const BRAND_ICON_VERSION = \'20261017\'\n')
-    writeFileSync(manifestPath, `${JSON.stringify({ icons: [{ src: '/icon-192.png?v=20261017', sizes: '192x192' }] })}\n`)
+    writeFileSync(seoPath, "export const BRAND_ICON_VERSION = '20261017'\n")
+    writeFileSync(
+      manifestPath,
+      `${JSON.stringify({ icons: [{ src: '/icon-192.png?v=20261017', sizes: '192x192' }] })}\n`,
+    )
     const bumped = bumpBrandIconVersion(readFileSync(seoPath, 'utf8'), readFileSync(manifestPath, 'utf8'), '20261021')
-    expect(bumped.seo).toContain('\'20261021\'')
+    expect(bumped.seo).toContain("'20261021'")
     expect(bumped.manifest).toContain('/icon-192.png?v=20261021')
   })
 })

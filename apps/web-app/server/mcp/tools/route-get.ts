@@ -4,7 +4,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'route_get',
-  description: 'Load one route by id or slug, including drafts and ordered stops. pendingReview is the stored draft payload when a draft-token write is waiting, or null.',
+  description:
+    'Load one route by id or slug, including drafts and ordered stops. pendingReview is the stored draft payload when a draft-token write is waiting, or null.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),

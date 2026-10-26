@@ -18,7 +18,7 @@ async function readBasemapPayload(path: string) {
   if (!response.ok) {
     throw new Error(String(response.status))
   }
-  return await response.json() as { pmtilesUrl?: unknown }
+  return (await response.json()) as { pmtilesUrl?: unknown }
 }
 
 export async function fetchBasemapUrl(get: (path: string) => Promise<{ pmtilesUrl?: unknown }> = readBasemapPayload) {

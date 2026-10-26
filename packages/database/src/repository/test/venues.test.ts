@@ -93,7 +93,12 @@ describe('venue policy', () => {
       { id: 'far-partner', distanceKm: 3, sponsored: true },
       { id: 'mid', distanceKm: 2, sponsored: false },
     ]
-    expect(rankNearby(rows, { sponsoredSlot: false }).map((row) => row.id)).toEqual(['near', 'partner', 'mid', 'far-partner'])
+    expect(rankNearby(rows, { sponsoredSlot: false }).map((row) => row.id)).toEqual([
+      'near',
+      'partner',
+      'mid',
+      'far-partner',
+    ])
     const ranked = rankNearby(rows, { sponsoredSlot: true })
     expect(ranked.map((row) => row.id)).toEqual(['partner', 'near', 'mid', 'far-partner'])
     expect(ranked[0]?.partner).toBe(true)
@@ -130,20 +135,24 @@ describe('venue policy', () => {
     expect(draft?.contactEmail).toBeNull()
     const phones = '+7 4012 30-30-40; +7 4012 38-94-66; +7 911 851-68-55'
     expect(phones.length).toBeGreaterThan(40)
-    expect(osmElementToDraft({
-      type: 'node',
-      id: 44,
-      lat: FORT.latitude,
-      lon: FORT.longitude,
-      tags: { amenity: 'cafe', name: 'Порто', phone: phones },
-    })?.phone).toBeNull()
-    expect(osmElementToDraft({
-      type: 'node',
-      id: 43,
-      lat: FORT.latitude,
-      lon: FORT.longitude,
-      tags: { amenity: 'cafe', name: 'Почта', email: 'Desk@Cafe.Test' },
-    })?.contactEmail).toBe('desk@cafe.test')
+    expect(
+      osmElementToDraft({
+        type: 'node',
+        id: 44,
+        lat: FORT.latitude,
+        lon: FORT.longitude,
+        tags: { amenity: 'cafe', name: 'Порто', phone: phones },
+      })?.phone,
+    ).toBeNull()
+    expect(
+      osmElementToDraft({
+        type: 'node',
+        id: 43,
+        lat: FORT.latitude,
+        lon: FORT.longitude,
+        tags: { amenity: 'cafe', name: 'Почта', email: 'Desk@Cafe.Test' },
+      })?.contactEmail,
+    ).toBe('desk@cafe.test')
     expect(draft?.hours.days.find((day) => day.weekday === 'mon')?.opens).toBe('09:00')
     const vkSite = osmElementToDraft({
       type: 'node',
@@ -154,7 +163,14 @@ describe('venue policy', () => {
     })
     expect(vkSite?.website).toBeNull()
     expect(vkSite?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/leto' }])
-    const osmSite = (website: string) => osmElementToDraft({ type: 'node', id: 46, lat: FORT.latitude, lon: FORT.longitude, tags: { amenity: 'cafe', name: 'Лето', website } })?.website
+    const osmSite = (website: string) =>
+      osmElementToDraft({
+        type: 'node',
+        id: 46,
+        lat: FORT.latitude,
+        lon: FORT.longitude,
+        tags: { amenity: 'cafe', name: 'Лето', website },
+      })?.website
     expect(osmSite('leto.example')).toBe('https://leto.example')
     expect(osmSite('https://www.tripadvisor.ru/Restaurant_Review-g1-d2.html')).toBeNull()
     expect(osmSite('https://yandex.ru/maps/org/1')).toBeNull()
@@ -168,9 +184,18 @@ describe('venue policy', () => {
     expect(formatHoursLines(emptyHours('по записи'))).toEqual(['по записи'])
     expect(pickVenueSlug('Кафе', new Set(), new Set())).toBe('kafe-2')
     expect(pickVenueSlug('Кафе', new Set(), new Set(), { town: 'Светлогорск' })).toBe('kafe-svetlogorsk')
-    expect(pickVenueSlug('Кафе Уют', new Set(['kafe-uyut']), new Set(), { town: 'Светлогорск', district: 'Центр' })).toBe('kafe-uyut-svetlogorsk')
-    expect(pickVenueSlug('Кафе Уют', new Set(['kafe-uyut', 'kafe-uyut-svetlogorsk']), new Set(), { town: 'Светлогорск' })).toBe('kafe-uyut-svetlogorsk-2')
-    expect(pickVenueSlug('Кафе Уют', new Set(['kafe-uyut', 'kafe-uyut-svetlogorsk']), new Set(), { town: 'Светлогорск', district: 'Центр' })).toBe('kafe-uyut-tsentr')
+    expect(
+      pickVenueSlug('Кафе Уют', new Set(['kafe-uyut']), new Set(), { town: 'Светлогорск', district: 'Центр' }),
+    ).toBe('kafe-uyut-svetlogorsk')
+    expect(
+      pickVenueSlug('Кафе Уют', new Set(['kafe-uyut', 'kafe-uyut-svetlogorsk']), new Set(), { town: 'Светлогорск' }),
+    ).toBe('kafe-uyut-svetlogorsk-2')
+    expect(
+      pickVenueSlug('Кафе Уют', new Set(['kafe-uyut', 'kafe-uyut-svetlogorsk']), new Set(), {
+        town: 'Светлогорск',
+        district: 'Центр',
+      }),
+    ).toBe('kafe-uyut-tsentr')
     expect(pickVenueSlug('Светлогорск', new Set(), new Set(['svetlogorsk']))).toBe('svetlogorsk-2')
     expect(resolveVenuePath(['svetlogorsk', 'kofe'], new Set(['svetlogorsk']))).toEqual({
       type: 'listing',
@@ -213,7 +238,9 @@ describe('venue repository', () => {
     expect(row?.status).toBe('draft')
     expect(row?.firstPublishedAt).toBeNull()
     expect(row?.osmId).toBe('way/7')
-    await expect(Venues.update(row!.id, { status: 'published', description: 'Коротко' })).rejects.toBeInstanceOf(VenueInputError)
+    await expect(Venues.update(row!.id, { status: 'published', description: 'Коротко' })).rejects.toBeInstanceOf(
+      VenueInputError,
+    )
   })
 
   it('keeps a legacy import payload phone out of the draft and later publication', async () => {
@@ -236,36 +263,43 @@ describe('venue repository', () => {
       longitude: draft.longitude,
       sources: draft.sources,
     })
-    await Venues.update(id, { description: description(), sources: [{ title: 'Сайт', url: 'https://cafe.example' }], status: 'published' })
+    await Venues.update(id, {
+      description: description(),
+      sources: [{ title: 'Сайт', url: 'https://cafe.example' }],
+      status: 'published',
+    })
     expect((await Venues.byId(id))?.phone).toBeNull()
     await Venues.update(id, { phone: '+7 000 111-22-33', sources: draft.sources })
     expect((await Venues.byId(id))?.phone).toBe('+7 000 111-22-33')
   })
 
-  it.each(['draft', 'published', 'closed', 'archived'] as const)('preserves reviewed contacts and coordinates when reimport skips an existing %s venue', async (status) => {
-    const draft = osmElementToDraft({
-      type: 'node',
-      id: 299003,
-      lat: FORT.latitude,
-      lon: FORT.longitude,
-      tags: { amenity: 'cafe', name: 'Повторный импорт', phone: '+7 000 111-22-33' },
-    })!
-    const row = await Venues.create({
-      name: draft.name,
-      kind: draft.kind,
-      osmId: draft.osmId,
-      phone: '+7 4012 12-34-56',
-      latitude: 54.7,
-      longitude: 20.5,
-      description: description(),
-      sources: [{ title: 'Сайт', url: 'https://cafe.example' }],
-      status,
-    })
-    const result = await Venues.importDrafts([{ ...draft, phone: '+7 000 111-22-33' }], null)
-    expect(result.created).toEqual([])
-    expect(result.existing).toEqual([row.id])
-    expect(await Venues.byId(row.id)).toEqual(row)
-  })
+  it.each(['draft', 'published', 'closed', 'archived'] as const)(
+    'preserves reviewed contacts and coordinates when reimport skips an existing %s venue',
+    async (status) => {
+      const draft = osmElementToDraft({
+        type: 'node',
+        id: 299003,
+        lat: FORT.latitude,
+        lon: FORT.longitude,
+        tags: { amenity: 'cafe', name: 'Повторный импорт', phone: '+7 000 111-22-33' },
+      })!
+      const row = await Venues.create({
+        name: draft.name,
+        kind: draft.kind,
+        osmId: draft.osmId,
+        phone: '+7 4012 12-34-56',
+        latitude: 54.7,
+        longitude: 20.5,
+        description: description(),
+        sources: [{ title: 'Сайт', url: 'https://cafe.example' }],
+        status,
+      })
+      const result = await Venues.importDrafts([{ ...draft, phone: '+7 000 111-22-33' }], null)
+      expect(result.created).toEqual([])
+      expect(result.existing).toEqual([row.id])
+      expect(await Venues.byId(row.id)).toEqual(row)
+    },
+  )
 
   it('keeps three phone numbers that used to be cut at 40 characters', async () => {
     const phones = '+7 4012 30-30-40; +7 4012 38-94-66; +7 911 851-68-55'
@@ -290,11 +324,13 @@ describe('venue repository', () => {
     expect(isSocialWebsite('https://ok.ru/group')).toBe(true)
     expect(isSocialWebsite('https://cafe.example')).toBe(false)
     const socialWebsite = ownWebsiteMessage('social')
-    await expect(Venues.create({
-      name: 'ВК как сайт',
-      kind: 'cafe',
-      website: 'https://vk.com/cafe',
-    })).rejects.toThrow(socialWebsite)
+    await expect(
+      Venues.create({
+        name: 'ВК как сайт',
+        kind: 'cafe',
+        website: 'https://vk.com/cafe',
+      }),
+    ).rejects.toThrow(socialWebsite)
     const created = await Venues.create({
       name: 'Собственный сайт',
       kind: 'cafe',
@@ -304,8 +340,12 @@ describe('venue repository', () => {
     await expect(Venues.update(created.id, { website: 'https://instagram.com/cafe' })).rejects.toThrow(socialWebsite)
     await expect(Venues.update(created.id, { website: 'https://ok.ru/group' })).rejects.toThrow(socialWebsite)
     await expect(Venues.update(created.id, { website: 'https://vk.ru/cafe' })).rejects.toThrow(socialWebsite)
-    await expect(Venues.update(created.id, { website: 'https://www.tripadvisor.ru/Restaurant_Review-g1-d2.html' })).rejects.toThrow(ownWebsiteMessage('aggregator'))
-    await expect(Venues.update(created.id, { website: 'https://yandex.ru/profile/1234567890' })).rejects.toThrow(ownWebsiteMessage('map'))
+    await expect(
+      Venues.update(created.id, { website: 'https://www.tripadvisor.ru/Restaurant_Review-g1-d2.html' }),
+    ).rejects.toThrow(ownWebsiteMessage('aggregator'))
+    await expect(Venues.update(created.id, { website: 'https://yandex.ru/profile/1234567890' })).rejects.toThrow(
+      ownWebsiteMessage('map'),
+    )
     await expect(Venues.update(created.id, { website: 'cafe.example' })).rejects.toThrow(ownWebsiteMessage('invalid'))
     const moved = await Venues.update(created.id, {
       website: null,
@@ -321,13 +361,13 @@ describe('venue repository', () => {
 
   it('stores a VK community id only beside a VK link and clears it when socials stop supporting it', async () => {
     const vk = [{ network: 'vk', url: 'https://vk.com/lugowen_gastro' }]
-    await expect(Venues.create({ name: 'Без ВК', kind: 'cafe', vkCommunityId: 236300695 }))
-      .rejects
-      .toThrow('ID сообщества ВКонтакте задаётся вместе со ссылкой на это сообщество в «Соцсети»')
+    await expect(Venues.create({ name: 'Без ВК', kind: 'cafe', vkCommunityId: 236300695 })).rejects.toThrow(
+      'ID сообщества ВКонтакте задаётся вместе со ссылкой на это сообщество в «Соцсети»',
+    )
     for (const bad of [0, -1, 1.5, 'club236300695']) {
-      await expect(Venues.create({ name: 'Неверный ID', kind: 'cafe', socials: vk, vkCommunityId: bad }))
-        .rejects
-        .toThrow('ID сообщества ВКонтакте: целое положительное число, например 236300695')
+      await expect(
+        Venues.create({ name: 'Неверный ID', kind: 'cafe', socials: vk, vkCommunityId: bad }),
+      ).rejects.toThrow('ID сообщества ВКонтакте: целое положительное число, например 236300695')
     }
     const created = await Venues.create({ name: 'Луговень', kind: 'cafe', socials: vk, vkCommunityId: '236300695' })
     expect(created.vkCommunityId).toBe(236300695)
@@ -335,9 +375,9 @@ describe('venue repository', () => {
 
     const kept = await Venues.update(created.id, { socials: [{ network: 'vk', url: 'https://vk.com/lugowen' }] })
     expect(kept?.vkCommunityId).toBe(236300695)
-    await expect(Venues.update(created.id, { socials: [{ network: 'vk', url: 'https://vk.com/club10' }], vkCommunityId: 11 }))
-      .rejects
-      .toThrow('ID сообщества ВКонтакте не совпадает со ссылкой в «Соцсети»')
+    await expect(
+      Venues.update(created.id, { socials: [{ network: 'vk', url: 'https://vk.com/club10' }], vkCommunityId: 11 }),
+    ).rejects.toThrow('ID сообщества ВКонтакте не совпадает со ссылкой в «Соцсети»')
     const cleared = await Venues.update(created.id, { socials: [{ network: 'telegram', url: 'https://t.me/lugowen' }] })
     expect(cleared?.vkCommunityId).toBeNull()
     const restored = await Venues.update(created.id, { socials: vk, vkCommunityId: 236300695 })
@@ -352,9 +392,9 @@ describe('venue repository', () => {
     expect(owner?.socials).toEqual([{ network: 'vk', url: 'https://vk.com/club10' }])
     const next = await Venues.update(created.id, { phone: '+7 4012 00-00-01' })
     expect(next?.vkCommunityId).toBeNull()
-    await expect(useDatabase().update(venues).set({ vkCommunityId: -5 }).where(eq(venues.id, created.id)))
-      .rejects
-      .toThrow()
+    await expect(
+      useDatabase().update(venues).set({ vkCommunityId: -5 }).where(eq(venues.id, created.id)),
+    ).rejects.toThrow()
   })
 
   it('orders nearby food venues and hides rows older than a year', async () => {
@@ -406,7 +446,10 @@ describe('venue repository', () => {
       status: 'draft',
       lastVerifiedAt: fresh,
     })
-    const [business] = await useDatabase().insert(businesses).values({ slug: 'stolovaya', name: 'Столовая' }).returning()
+    const [business] = await useDatabase()
+      .insert(businesses)
+      .values({ slug: 'stolovaya', name: 'Столовая' })
+      .returning()
     await useDatabase().insert(offers).values({
       businessId: business!.id,
       venueId: partner.id,
@@ -441,27 +484,30 @@ describe('venue repository', () => {
     })
     const subject = await Analytics.resolvePath('/zavedeniya/bar-u-vorot')
     expect(subject.venueId).toBe(venue.id)
-    await Analytics.insertHits([{
-      visitorKey: 'visitor',
-      visitorMode: 'daily',
-      sessionKey: 'session',
-      consented: false,
-      isBot: false,
-      eventType: 'impression',
-      path: '/fort-11-denhoff',
-      venueId: venue.id,
-      channel: 'direct',
-    }, {
-      visitorKey: 'visitor',
-      visitorMode: 'daily',
-      sessionKey: 'session',
-      consented: false,
-      isBot: false,
-      eventType: 'pageview',
-      path: '/zavedeniya/bar-u-vorot',
-      venueId: venue.id,
-      channel: 'direct',
-    }])
+    await Analytics.insertHits([
+      {
+        visitorKey: 'visitor',
+        visitorMode: 'daily',
+        sessionKey: 'session',
+        consented: false,
+        isBot: false,
+        eventType: 'impression',
+        path: '/fort-11-denhoff',
+        venueId: venue.id,
+        channel: 'direct',
+      },
+      {
+        visitorKey: 'visitor',
+        visitorMode: 'daily',
+        sessionKey: 'session',
+        consented: false,
+        isBot: false,
+        eventType: 'pageview',
+        path: '/zavedeniya/bar-u-vorot',
+        venueId: venue.id,
+        channel: 'direct',
+      },
+    ])
     const stats = await Analytics.venueStats(venue.id, new Date('2020-01-01'), new Date('2030-01-01'))
     expect(stats).toEqual([{ venueId: venue.id, impressions: 1, pageviews: 1 }])
   })
@@ -490,18 +536,22 @@ describe('venue repository', () => {
       locality: { town: 'Светлогорск', district: 'Центр' },
     })
     expect(district.slug).toBe('kafe-uyut-tsentr')
-    await expect(Venues.create({
-      name: 'Другое кафе',
-      slug: 'kafe-uyut',
-      kind: 'cafe',
-      osmId: 'node/5',
-    })).rejects.toThrow('Такой адрес уже есть')
-    await expect(Venues.create({
-      name: 'Другое кафе',
-      slug: 'drugoe-kafe',
-      kind: 'cafe',
-      osmId: 'node/1',
-    })).rejects.toThrow('Такой osmId уже есть')
+    await expect(
+      Venues.create({
+        name: 'Другое кафе',
+        slug: 'kafe-uyut',
+        kind: 'cafe',
+        osmId: 'node/5',
+      }),
+    ).rejects.toThrow('Такой адрес уже есть')
+    await expect(
+      Venues.create({
+        name: 'Другое кафе',
+        slug: 'drugoe-kafe',
+        kind: 'cafe',
+        osmId: 'node/1',
+      }),
+    ).rejects.toThrow('Такой osmId уже есть')
     await expect(Venues.update(numbered.id, { slug: first.slug })).rejects.toThrow('Такой адрес уже есть')
     await expect(Venues.update(numbered.id, { osmId: 'node/1' })).rejects.toThrow('Такой osmId уже есть')
     const region = await Venues.regionBySlug('svetlogorsk')
@@ -553,7 +603,10 @@ describe('venue repository', () => {
     const archived = await Venues.create({ name: 'Архивная булочная', kind: 'bakery', status: 'archived' })
     expect((await Venues.remove(archived.id))?.action).toBe('deleted')
     expect(await Venues.bySlug(archived.slug)).toBeNull()
-    const [gone] = await useDatabase().select().from(slugRedirects).where(eq(slugRedirects.fromPath, `/zavedeniya/${archived.slug}`))
+    const [gone] = await useDatabase()
+      .select()
+      .from(slugRedirects)
+      .where(eq(slugRedirects.fromPath, `/zavedeniya/${archived.slug}`))
     expect(gone?.statusCode).toBe(410)
     const published = await Venues.create({
       name: 'Живая булочная у набережной',
@@ -575,14 +628,16 @@ describe('venue repository', () => {
       kind: 'bar',
       status: 'published',
       description: text,
-      modules: [{
-        type: 'dishes',
-        note: 'Цены из меню на сайте паба.',
-        items: [
-          { name: 'Дегустационный набор пива', priceRub: 700, note: 'Удобно, чтобы сравнить свои и привозные сорта' },
-          { name: 'Смёрреброд с копчёной форелью', priceRub: 540 },
-        ],
-      }],
+      modules: [
+        {
+          type: 'dishes',
+          note: 'Цены из меню на сайте паба.',
+          items: [
+            { name: 'Дегустационный набор пива', priceRub: 700, note: 'Удобно, чтобы сравнить свои и привозные сорта' },
+            { name: 'Смёрреброд с копчёной форелью', priceRub: 540 },
+          ],
+        },
+      ],
     })
     const skovorodka = await Venues.create({
       name: 'Сковородка',
@@ -596,10 +651,10 @@ describe('venue repository', () => {
     const update = sqlText.split('--> statement-breakpoint')[0] ?? ''
     await useDatabase().$client.query(update)
     const once = await Venues.byId(bochka.id)
-    const firstId = ((once?.modules as Array<{ items?: Array<{ id?: string }> }>)[0]?.items?.[0]?.id)
+    const firstId = (once!.modules as Array<{ items?: Array<{ id?: string }> }>)[0]?.items?.[0]?.id
     await useDatabase().$client.query(update)
     const again = await Venues.byId(bochka.id)
-    const modules = again?.modules as Array<{ type: string, note?: string, items: Array<Record<string, unknown>> }>
+    const modules = again?.modules as Array<{ type: string; note?: string; items: Array<Record<string, unknown>> }>
     const showcase = modules.find((module) => module.type === 'dishes')
     const items = showcase?.items ?? []
     expect(items).toHaveLength(2)
@@ -639,7 +694,13 @@ describe('venue repository', () => {
 
   it('pages every venue once and matches a name with ё folded', async () => {
     await Venues.create({ name: 'Гамма', slug: 'page-gamma', kind: 'bar', status: 'draft' })
-    await Venues.create({ name: 'Альфа', slug: 'page-alpha', kind: 'cafe', status: 'published', description: description() })
+    await Venues.create({
+      name: 'Альфа',
+      slug: 'page-alpha',
+      kind: 'cafe',
+      status: 'published',
+      description: description(),
+    })
     await Venues.create({ name: 'Бета', slug: 'page-beta', kind: 'cafe', status: 'closed' })
     await Venues.create({ name: 'Кафе «Ёлка»', slug: 'page-yolka', kind: 'cafe', status: 'archived' })
     const first = await Venues.listPage({ page: 1, pageSize: 2 })
@@ -662,9 +723,30 @@ describe('venue repository', () => {
   })
 
   it('pages a nearby filter without dropping or repeating a row', async () => {
-    await Venues.create({ name: 'Рядом А', slug: 'near-a', kind: 'cafe', latitude: FORT.latitude, longitude: FORT.longitude, status: 'draft' })
-    await Venues.create({ name: 'Рядом Б', slug: 'near-b', kind: 'cafe', latitude: FORT.latitude + 0.001, longitude: FORT.longitude, status: 'draft' })
-    await Venues.create({ name: 'Далеко', slug: 'near-far', kind: 'cafe', latitude: FORT.latitude + 0.05, longitude: FORT.longitude, status: 'draft' })
+    await Venues.create({
+      name: 'Рядом А',
+      slug: 'near-a',
+      kind: 'cafe',
+      latitude: FORT.latitude,
+      longitude: FORT.longitude,
+      status: 'draft',
+    })
+    await Venues.create({
+      name: 'Рядом Б',
+      slug: 'near-b',
+      kind: 'cafe',
+      latitude: FORT.latitude + 0.001,
+      longitude: FORT.longitude,
+      status: 'draft',
+    })
+    await Venues.create({
+      name: 'Далеко',
+      slug: 'near-far',
+      kind: 'cafe',
+      latitude: FORT.latitude + 0.05,
+      longitude: FORT.longitude,
+      status: 'draft',
+    })
     const filter = { near: { latitude: FORT.latitude, longitude: FORT.longitude, radiusKm: 1 }, pageSize: 1 }
     const first = await Venues.listPage({ ...filter, page: 1 })
     const second = await Venues.listPage({ ...filter, page: 2 })
@@ -750,32 +832,38 @@ describe('venue repository', () => {
       { title: 'Сайт', url: 'https://www.Example.com/menu/' },
       { title: 'Карта', url: 'https://example.com/map' },
     ])
-    await expect(Venues.create({
-      name: 'Пустая подпись',
-      slug: 'source-blank',
-      kind: 'cafe',
-      sources: [
-        { title: 'Сайт', url: 'https://example.com' },
-        { title: '  ', url: 'https://example.com/x' },
-      ],
-    })).rejects.toThrow(/Источник 2/)
+    await expect(
+      Venues.create({
+        name: 'Пустая подпись',
+        slug: 'source-blank',
+        kind: 'cafe',
+        sources: [
+          { title: 'Сайт', url: 'https://example.com' },
+          { title: '  ', url: 'https://example.com/x' },
+        ],
+      }),
+    ).rejects.toThrow(/Источник 2/)
     expect(await Venues.bySlug('source-blank')).toBeNull()
-    await expect(Venues.create({
-      name: 'Чужая схема',
-      slug: 'source-ftp',
-      kind: 'cafe',
-      sources: [{ title: 'Меню', url: 'ftp://example.com/a' }],
-    })).rejects.toThrow(/Источник 1/)
+    await expect(
+      Venues.create({
+        name: 'Чужая схема',
+        slug: 'source-ftp',
+        kind: 'cafe',
+        sources: [{ title: 'Меню', url: 'ftp://example.com/a' }],
+      }),
+    ).rejects.toThrow(/Источник 1/)
     const tooMany = Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
       title: `Источник ${index + 1}`,
       url: `https://example.com/p/${index}`,
     }))
-    await expect(Venues.create({
-      name: 'Много источников',
-      slug: 'source-cap',
-      kind: 'cafe',
-      sources: tooMany,
-    })).rejects.toThrow(/Не больше/)
+    await expect(
+      Venues.create({
+        name: 'Много источников',
+        slug: 'source-cap',
+        kind: 'cafe',
+        sources: tooMany,
+      }),
+    ).rejects.toThrow(/Не больше/)
     const atCap = tooMany.slice(0, SOURCE_LINK_LIMIT)
     const kept = await Venues.create({
       name: 'Ровно лимит',
@@ -787,18 +875,22 @@ describe('venue repository', () => {
   })
 
   it('rejects a price written into a dish name', async () => {
-    await expect(Venues.create({
-      name: 'Цена в названии',
-      slug: 'price-in-name',
-      kind: 'cafe',
-      signatureDishes: [{ name: 'Борщ 350 ₽', priceRub: 350 }],
-    })).rejects.toThrow(/Цену пишите/)
-    await expect(Venues.create({
-      name: 'Латинская цена',
-      slug: 'price-in-name-rub',
-      kind: 'cafe',
-      signatureDishes: [{ name: 'Борщ 350 rub.', priceRub: 350 }],
-    })).rejects.toThrow(/Цену пишите/)
+    await expect(
+      Venues.create({
+        name: 'Цена в названии',
+        slug: 'price-in-name',
+        kind: 'cafe',
+        signatureDishes: [{ name: 'Борщ 350 ₽', priceRub: 350 }],
+      }),
+    ).rejects.toThrow(/Цену пишите/)
+    await expect(
+      Venues.create({
+        name: 'Латинская цена',
+        slug: 'price-in-name-rub',
+        kind: 'cafe',
+        signatureDishes: [{ name: 'Борщ 350 rub.', priceRub: 350 }],
+      }),
+    ).rejects.toThrow(/Цену пишите/)
     expect(await Venues.bySlug('price-in-name-rub')).toBeNull()
     expect(await Venues.bySlug('price-in-name')).toBeNull()
     const kept = await Venues.create({

@@ -87,7 +87,12 @@ export function resolveBasemapConfig(input: BasemapConfigInput = {}): BasemapCon
   return {
     file: firstDefined(env.NUXT_BASEMAP_FILE, input.file, DEFAULT_BASEMAP_FILE),
     sha256: firstDefined(env.BASEMAP_SHA256, env.NUXT_BASEMAP_SHA256, input.sha256, DEFAULT_BASEMAP_SHA256),
-    sourceUrl: firstDefined(env.BASEMAP_SOURCE_URL, env.NUXT_BASEMAP_SOURCE_URL, input.sourceUrl, DEFAULT_BASEMAP_SOURCE_URL),
+    sourceUrl: firstDefined(
+      env.BASEMAP_SOURCE_URL,
+      env.NUXT_BASEMAP_SOURCE_URL,
+      input.sourceUrl,
+      DEFAULT_BASEMAP_SOURCE_URL,
+    ),
     configuredUrl: input.configuredUrl?.trim() || '',
   }
 }
@@ -172,7 +177,12 @@ async function runEnsure(config: BasemapConfig, options: BasemapEnsureOptions): 
   }
 }
 
-async function downloadWithRetries(config: BasemapConfig, expected: string, options: BasemapEnsureOptions, lockPath: string): Promise<BasemapEnsureResult> {
+async function downloadWithRetries(
+  config: BasemapConfig,
+  expected: string,
+  options: BasemapEnsureOptions,
+  lockPath: string,
+): Promise<BasemapEnsureResult> {
   const delays = options.delays ?? BASEMAP_DOWNLOAD_DELAYS_MS
   let last = 'download failed'
   for (let attempt = 0; attempt < delays.length; attempt++) {
@@ -274,7 +284,7 @@ async function archiveMatches(file: string, expectedRaw: string) {
 }
 
 async function archiveMatchesOnce(file: string, expected: string) {
-  let info: { size: number, mtimeMs: number, isFile: () => boolean }
+  let info: { size: number; mtimeMs: number; isFile: () => boolean }
   try {
     info = await stat(file)
   } catch {

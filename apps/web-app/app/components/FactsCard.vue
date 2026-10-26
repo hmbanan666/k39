@@ -6,7 +6,10 @@
       v-if="checked"
       class="checked"
     >
-      <Icon :name="tablerIcon('checked')" size="16" />
+      <Icon
+        :name="tablerIcon('checked')"
+        size="16"
+      />
       Проверено {{ checked }}
     </p>
   </section>
@@ -15,7 +18,7 @@
 <script setup lang="ts">
 import { tablerIcon } from '~~/shared/icons'
 
-withDefaults(defineProps<{ title?: string, checked?: string | null }>(), { title: 'Коротко', checked: null })
+withDefaults(defineProps<{ title?: string; checked?: string | null }>(), { title: 'Коротко', checked: null })
 </script>
 
 <style scoped>
@@ -28,15 +31,24 @@ withDefaults(defineProps<{ title?: string, checked?: string | null }>(), { title
   background: var(--surface);
 }
 .facts::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0;
   right: 0;
   left: 0;
   height: 6px;
-  background: repeating-linear-gradient(90deg, var(--color-brick) 0 18px, transparent 18px 26px, var(--color-sea) 26px 44px, transparent 44px 52px);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-brick) 0 18px,
+    transparent 18px 26px,
+    var(--color-sea) 26px 44px,
+    transparent 44px 52px
+  );
 }
-.facts h2 { margin: 0.35rem 0 0.3rem; font-size: 1.35rem; }
+.facts h2 {
+  margin: 0.35rem 0 0.3rem;
+  font-size: 1.35rem;
+}
 .checked {
   display: flex;
   gap: 0.4rem;
@@ -47,5 +59,7 @@ withDefaults(defineProps<{ title?: string, checked?: string | null }>(), { title
   color: var(--color-pine, var(--muted));
   font: 600 0.8rem/1.2 var(--font-body);
 }
-.checked svg { flex: none; }
+.checked svg {
+  flex: none;
+}
 </style>

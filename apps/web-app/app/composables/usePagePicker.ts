@@ -20,7 +20,7 @@ export function usePagePicker(questions: readonly PickerQuestion[]) {
     }
     return pickerActive(hinted.value) ? 'persona' : null
   })
-  const state = computed<PickerState>(() => source.value === 'persona' ? hinted.value : answers.value)
+  const state = computed<PickerState>(() => (source.value === 'persona' ? hinted.value : answers.value))
 
   function write(next: PickerState) {
     const query: Record<string, string | null | (string | null)[]> = {}
@@ -36,8 +36,12 @@ export function usePagePicker(questions: readonly PickerQuestion[]) {
     const current = state.value[question] ?? []
     const selected = current.includes(value)
     const values = PICKER_QUESTIONS[question].multiple
-      ? (selected ? current.filter((item) => item !== value) : [...current, value])
-      : (selected ? [] : [value])
+      ? selected
+        ? current.filter((item) => item !== value)
+        : [...current, value]
+      : selected
+        ? []
+        : [value]
     const next = { ...state.value, [question]: values }
     visitor.infer(inferPersona(next))
     write(next)

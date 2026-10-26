@@ -43,21 +43,23 @@ export function useFetch(url?: string) {
   if (path.includes('/api/admin/guests')) {
     return {
       data: ref({
-        submissions: [{
-          id: 'fixture-guest',
-          createdAt: '2026-10-16T09:00:00.000Z',
-          kind: 'review',
-          body: 'Фикстура: отзыв гостя для проверки очереди модерации.',
-          alt: '',
-          correctionKind: null,
-          correctionValue: '',
-          sourceUrl: null,
-          disputed: true,
-          mediaId: null,
-          byline: 'Анна К.',
-          subjectTitle: 'Фикстура: кафе с фото',
-          subjectPath: '/zavedeniya/fixture-cafe-photo',
-        }],
+        submissions: [
+          {
+            id: 'fixture-guest',
+            createdAt: '2026-10-16T09:00:00.000Z',
+            kind: 'review',
+            body: 'Фикстура: отзыв гостя для проверки очереди модерации.',
+            alt: '',
+            correctionKind: null,
+            correctionValue: '',
+            sourceUrl: null,
+            disputed: true,
+            mediaId: null,
+            byline: 'Анна К.',
+            subjectTitle: 'Фикстура: кафе с фото',
+            subjectPath: '/zavedeniya/fixture-cafe-photo',
+          },
+        ],
         signals: [],
       }),
       pending: ref(false),
@@ -66,14 +68,16 @@ export function useFetch(url?: string) {
   }
   return {
     data: ref({
-      consents: [{
-        id: 'fixture-consent',
-        email: 'guest@example.com',
-        version: '2026-10-12',
-        consentedAt: '2026-10-16T09:00:00.000Z',
-        method: 'sign-in-button',
-        withdrawnAt: null,
-      }],
+      consents: [
+        {
+          id: 'fixture-consent',
+          email: 'guest@example.com',
+          version: '2026-10-12',
+          consentedAt: '2026-10-16T09:00:00.000Z',
+          method: 'sign-in-button',
+          withdrawnAt: null,
+        },
+      ],
     }),
     pending: ref(false),
     refresh: async () => {},

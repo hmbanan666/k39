@@ -12,35 +12,44 @@ import { writingSplit } from '../shared/writing-split'
 const EM = '\u2014'
 
 describe('writing split', () => {
-  const dishes = [{
-    type: 'dishes',
-    items: [
-      { name: 'Пельмени по-домашнему', description: 'Бульон и сметана.' },
-      { name: 'Лучший бургер' },
-    ],
-  }]
+  const dishes = [
+    {
+      type: 'dishes',
+      items: [{ name: 'Пельмени по-домашнему', description: 'Бульон и сметана.' }, { name: 'Лучший бургер' }],
+    },
+  ]
   const source = [{ title: `Меню на любой вкус ${EM} официальный сайт`, url: 'https://x.ru' }]
 
   it('lets official names publish and still blocks the same words in prose', () => {
-    const clean = contentGate('venue', {
-      name: 'Лучший бургер',
-      description: 'Зал на втором этаже, обед до 16:00.',
-      signatureDishes: [{ name: 'Пельмени по-домашнему', note: 'Порция с бульоном.' }],
-      modules: dishes,
-      sources: source,
-      prices: [{ title: 'Лучший бургер', sourceTitle: `Меню на любой вкус ${EM} сайт`, sourceUrl: 'https://menu.example/b' }],
-    }, true)
+    const clean = contentGate(
+      'venue',
+      {
+        name: 'Лучший бургер',
+        description: 'Зал на втором этаже, обед до 16:00.',
+        signatureDishes: [{ name: 'Пельмени по-домашнему', note: 'Порция с бульоном.' }],
+        modules: dishes,
+        sources: source,
+        prices: [
+          { title: 'Лучший бургер', sourceTitle: `Меню на любой вкус ${EM} сайт`, sourceUrl: 'https://menu.example/b' },
+        ],
+      },
+      true,
+    )
     expect(clean.names.join('\n')).toContain('Пельмени по-домашнему')
     expect(clean.names.join('\n')).toContain('Лучший бургер')
     expect(clean.names.join('\n')).toContain('на любой вкус')
     expect(clean.prose.join('\n')).not.toContain('по-домашнему')
     expect(contentWarnings(clean)).toEqual([])
 
-    const dirty = contentGate('venue', {
-      description: `Описание на любой вкус ${EM} и по-домашнему. Лучший зал.`,
-      modules: dishes,
-      sources: source,
-    }, true)
+    const dirty = contentGate(
+      'venue',
+      {
+        description: `Описание на любой вкус ${EM} и по-домашнему. Лучший зал.`,
+        modules: dishes,
+        sources: source,
+      },
+      true,
+    )
     expect(() => contentWarnings(dirty)).toThrow(/Нельзя опубликовать/)
     expect(contentWarnings({ ...dirty, publishing: false }).join(' ')).toMatch(/на любой вкус/)
     expect(contentWarnings({ ...dirty, publishing: false }).join(' ')).toMatch(/по-домашнему/)
@@ -49,23 +58,38 @@ describe('writing split', () => {
   })
 
   it('does not let a name finish a stop-list phrase that starts in prose', () => {
-    const gate = contentGate('venue', {
-      description: 'Текст на любой',
-      name: 'вкус',
-    }, true)
+    const gate = contentGate(
+      'venue',
+      {
+        description: 'Текст на любой',
+        name: 'вкус',
+      },
+      true,
+    )
     expect(contentWarnings(gate)).toEqual([])
   })
 
-  it.each(['collection', 'venue'] as const)('keeps uncertainty visible on successful %s module publication', (entity) => {
-    const input = { modules: [{ type: 'text', text: 'Дом стоит у самой Куршской косы.' }] }
-    const warnings = contentWarnings(contentGate(entity, input, true))
-    expect(warnings).toHaveLength(1)
-    expect(warnings[0]).toMatch(/Неопределённость.*0 баллов/u)
-    expect(contentWarnings(contentGate(entity, input, false))).toEqual(warnings)
-    expect(() => contentWarnings(contentGate(entity, {
-      modules: [{ type: 'text', text: 'Самый высокий дом.' }],
-    }, true))).toThrow(/Нельзя опубликовать/)
-  })
+  it.each(['collection', 'venue'] as const)(
+    'keeps uncertainty visible on successful %s module publication',
+    (entity) => {
+      const input = { modules: [{ type: 'text', text: 'Дом стоит у самой Куршской косы.' }] }
+      const warnings = contentWarnings(contentGate(entity, input, true))
+      expect(warnings).toHaveLength(1)
+      expect(warnings[0]).toMatch(/Неопределённость.*0 баллов/u)
+      expect(contentWarnings(contentGate(entity, input, false))).toEqual(warnings)
+      expect(() =>
+        contentWarnings(
+          contentGate(
+            entity,
+            {
+              modules: [{ type: 'text', text: 'Самый высокий дом.' }],
+            },
+            true,
+          ),
+        ),
+      ).toThrow(/Нельзя опубликовать/)
+    },
+  )
 
   it('blocks a banned site in prose, names, and URLs', () => {
     for (const input of [
@@ -80,53 +104,83 @@ describe('writing split', () => {
   })
 
   it('keeps venue price rules on prose and off dish names', () => {
-    const named = contentGate('venue', {
-      description: 'Обед в зале.',
-      signatureDishes: [{ name: 'Обед 250 ₽ и ужин 320 ₽' }],
-    }, true)
+    const named = contentGate(
+      'venue',
+      {
+        description: 'Обед в зале.',
+        signatureDishes: [{ name: 'Обед 250 ₽ и ужин 320 ₽' }],
+      },
+      true,
+    )
     expect(contentWarnings(named)).toEqual([])
-    const told = contentGate('venue', {
-      description: 'Обед 250 ₽ и ужин 320 ₽. Цены могли измениться.',
-    }, true)
+    const told = contentGate(
+      'venue',
+      {
+        description: 'Обед 250 ₽ и ужин 320 ₽. Цены могли измениться.',
+      },
+      true,
+    )
     expect(() => contentWarnings(told)).toThrow(/price retelling/)
   })
 
   it('splits place, collection, and route the same way', () => {
-    const place = contentGate('place', {
-      title: 'Форт у дороги',
-      body: 'Форт у дороги.',
-      sources: [{ title: `Страница ${EM} на любой вкус`, url: 'https://fort.example' }],
-    }, true)
+    const place = contentGate(
+      'place',
+      {
+        title: 'Форт у дороги',
+        body: 'Форт у дороги.',
+        sources: [{ title: `Страница ${EM} на любой вкус`, url: 'https://fort.example' }],
+      },
+      true,
+    )
     expect(contentWarnings(place)).toEqual([])
     expect(() => contentWarnings(contentGate('place', { body: `Форт ${EM} музей` }, true))).toThrow(/em dash/)
 
-    const collection = contentGate('collection', {
-      title: 'Октябрь',
-      copy: 'В октябре открыты форты.',
-      modules: [{ type: 'text', text: 'В октябре открыты форты.' }],
-      sources: [{ title: 'Калининградстат — сводка', url: 'https://example.com/oct' }],
-      items: [{ placeSlug: 'fort-11', note: 'Короткий заход.' }],
-    }, true)
+    const collection = contentGate(
+      'collection',
+      {
+        title: 'Октябрь',
+        copy: 'В октябре открыты форты.',
+        modules: [{ type: 'text', text: 'В октябре открыты форты.' }],
+        sources: [{ title: 'Калининградстат — сводка', url: 'https://example.com/oct' }],
+        items: [{ placeSlug: 'fort-11', note: 'Короткий заход.' }],
+      },
+      true,
+    )
     expect(collection.names.join('\n')).toContain('Калининградстат')
     expect(collection.prose.join('\n')).toContain('Короткий заход')
     expect(contentWarnings(collection)).toEqual([])
-    expect(() => contentWarnings(contentGate('collection', { copy: 'уютная атмосфера' }, true))).toThrow(/уютная атмосфера/)
+    expect(() => contentWarnings(contentGate('collection', { copy: 'уютная атмосфера' }, true))).toThrow(
+      /уютная атмосфера/,
+    )
 
-    const route = contentGate('route', {
-      title: 'По фортам',
-      sections: [{ kind: 'text', text: 'Сначала вал, потом ров.' }],
-      points: [{ placeSlug: 'fort-11', note: 'Смотровая площадка.' }],
-      sources: [{ title: `Нить ${EM} маршрута`, url: 'https://example.com/route' }],
-    }, true)
+    const route = contentGate(
+      'route',
+      {
+        title: 'По фортам',
+        sections: [{ kind: 'text', text: 'Сначала вал, потом ров.' }],
+        points: [{ placeSlug: 'fort-11', note: 'Смотровая площадка.' }],
+        sources: [{ title: `Нить ${EM} маршрута`, url: 'https://example.com/route' }],
+      },
+      true,
+    )
     expect(contentWarnings(route)).toEqual([])
-    expect(() => contentWarnings(contentGate('route', {
-      sections: [{ kind: 'text', text: 'уютная атмосфера' }],
-    }, true))).toThrow(/уютная атмосфера/)
+    expect(() =>
+      contentWarnings(
+        contentGate(
+          'route',
+          {
+            sections: [{ kind: 'text', text: 'уютная атмосфера' }],
+          },
+          true,
+        ),
+      ),
+    ).toThrow(/уютная атмосфера/)
   })
 
   it('is the split the venue writer calls', () => {
     const source = readFileSync(resolve(import.meta.dirname, '../server/utils/venues/write.ts'), 'utf8')
-    expect(source).toContain('contentGate(\'venue\'')
+    expect(source).toContain("contentGate('venue'")
     const split = writingSplit('venue', { name: 'Лучший', description: 'Зал.' })
     expect(split.names).toEqual(['Лучший'])
     expect(split.prose).toEqual(['Зал.'])

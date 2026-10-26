@@ -26,20 +26,25 @@
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
 
-withDefaults(defineProps<{
-  media: PublicMedia
-  priority?: boolean
-  sizes?: string
-}>(), {
-  priority: false,
-  sizes: '(min-width: 900px) 640px, 100vw',
-})
+withDefaults(
+  defineProps<{
+    media: PublicMedia
+    priority?: boolean
+    sizes?: string
+  }>(),
+  {
+    priority: false,
+    sizes: '(min-width: 900px) 640px, 100vw',
+  },
+)
 
 defineEmits<{ open: [] }>()
 </script>
 
 <style scoped>
-.shot { position: relative; }
+.shot {
+  position: relative;
+}
 .open {
   position: absolute;
   inset: 0;

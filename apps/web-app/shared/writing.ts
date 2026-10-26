@@ -112,16 +112,7 @@ const SIBILANT_ADJECTIVE_ENDINGS = [
 /**
  * Degree forms outside the ambiguous oblique-form advisory below.
  */
-const SAM_ENDINGS = [
-  'ыми',
-  'ый',
-  'ая',
-  'ое',
-  'ые',
-  'ую',
-  'ых',
-  'ым',
-] as const
+const SAM_ENDINGS = ['ыми', 'ый', 'ая', 'ое', 'ые', 'ую', 'ых', 'ым'] as const
 
 function endingsGroup(endings: readonly string[], bare = false) {
   const group = `(?:${endings.map((ending) => escapeRegExp(ending)).join('|')})`
@@ -140,71 +131,106 @@ function wordPattern(phrase: string) {
 const hard = endingsGroup(HARD_ADJECTIVE_ENDINGS)
 const hardBare = endingsGroup(HARD_ADJECTIVE_ENDINGS, true)
 
-const EMPTY_SUPERLATIVE = bounded([
-  `идеальн${hard}`,
-  'идеален',
-  `уникальн${hard}`,
-  'уникален',
-  `неповторим${hardBare}`,
-  `незабываем${hardBare}`,
-  `лучш${endingsGroup(SIBILANT_ADJECTIVE_ENDINGS)}`,
-  `сам${endingsGroup(SAM_ENDINGS)}`,
-].join('|'))
+const EMPTY_SUPERLATIVE = bounded(
+  [
+    `идеальн${hard}`,
+    'идеален',
+    `уникальн${hard}`,
+    'уникален',
+    `неповторим${hardBare}`,
+    `незабываем${hardBare}`,
+    `лучш${endingsGroup(SIBILANT_ADJECTIVE_ENDINGS)}`,
+    `сам${endingsGroup(SAM_ENDINGS)}`,
+  ].join('|'),
+)
 
-const DIP_VERB = bounded(`окун${endingsGroup([
-  'увшись',
-  'ёшься',
-  'ешься',
-  'ётесь',
-  'етесь',
-  'ёмся',
-  'емся',
-  'ётся',
-  'ется',
-  'уться',
-  'улась',
-  'улось',
-  'улись',
-  'улся',
-  'утся',
-  'усь',
-])}`)
+const DIP_VERB = bounded(
+  `окун${endingsGroup([
+    'увшись',
+    'ёшься',
+    'ешься',
+    'ётесь',
+    'етесь',
+    'ёмся',
+    'емся',
+    'ётся',
+    'ется',
+    'уться',
+    'улась',
+    'улось',
+    'улись',
+    'улся',
+    'утся',
+    'усь',
+  ])}`,
+)
 
-const PLEASE_VERB = bounded(`порад${endingsGroup([
-  'уйтесь',
-  'овала',
-  'овало',
-  'овали',
-  'уется',
-  'уются',
-  'овать',
-  'уешь',
-  'уете',
-  'уйся',
-  'овал',
-  'ует',
-  'уют',
-  'ую',
-  'уем',
-])}`)
+const PLEASE_VERB = bounded(
+  `порад${endingsGroup([
+    'уйтесь',
+    'овала',
+    'овало',
+    'овали',
+    'уется',
+    'уются',
+    'овать',
+    'уешь',
+    'уете',
+    'уйся',
+    'овал',
+    'ует',
+    'уют',
+    'ую',
+    'уем',
+  ])}`,
+)
 
 export const WRITING_STOP_LIST = [
   { phrase: 'уютная атмосфера', note: 'Names a mood. Name the room, the hour, or the dish.' },
   { phrase: 'идеальное место', note: 'A slogan. Say who stops and for what.' },
   { phrase: 'каждый найдёт', note: 'The spelling with ё.' },
   { phrase: 'каждый найдет', note: 'The same slogan without ё.' },
-  { phrase: 'гастрономическое путешествие', note: 'Menu-speak. Name the dish and the price in the price block, not in prose.' },
+  {
+    phrase: 'гастрономическое путешествие',
+    note: 'Menu-speak. Name the dish and the price in the price block, not in prose.',
+  },
   { phrase: 'в самом сердце', note: 'A location slogan. Name the street or the district.' },
-  { phrase: 'порадует', note: 'A promise. State the fact. Also порадуют, порадовать, and the other forms.', pattern: PLEASE_VERB },
-  { phrase: 'приятно удивит', note: 'A promise. State the fact. Also удивят and the other forms.', pattern: bounded(`приятно\\s+удив${endingsGroup(['ить', 'ишь', 'ите', 'ила', 'ило', 'или', 'ит', 'ят', 'ил', 'лю', 'им'])}`) },
+  {
+    phrase: 'порадует',
+    note: 'A promise. State the fact. Also порадуют, порадовать, and the other forms.',
+    pattern: PLEASE_VERB,
+  },
+  {
+    phrase: 'приятно удивит',
+    note: 'A promise. State the fact. Also удивят and the other forms.',
+    pattern: bounded(
+      `приятно\\s+удив${endingsGroup(['ить', 'ишь', 'ите', 'ила', 'ило', 'или', 'ит', 'ят', 'ил', 'лю', 'им'])}`,
+    ),
+  },
   { phrase: 'на любой вкус', note: 'Empty range. Name who it is for only from a source.' },
   { phrase: 'по-домашнему', note: 'A mood. Name the dish or the room.' },
-  { phrase: 'атмосферн', note: 'Stem: атмосферный, атмосферно, and the rest. Not the noun атмосфера.', pattern: bounded(`(?:атмосферн${hardBare}|атмосферен)`) },
-  { phrase: 'гостеприимн', note: 'Stem: гостеприимный and the rest. Not гостеприимство.', pattern: bounded(`(?:гостеприимн${hardBare}|гостеприимен)`) },
+  {
+    phrase: 'атмосферн',
+    note: 'Stem: атмосферный, атмосферно, and the rest. Not the noun атмосфера.',
+    pattern: bounded(`(?:атмосферн${hardBare}|атмосферен)`),
+  },
+  {
+    phrase: 'гостеприимн',
+    note: 'Stem: гостеприимный and the rest. Not гостеприимство.',
+    pattern: bounded(`(?:гостеприимн${hardBare}|гостеприимен)`),
+  },
   { phrase: 'отличный выбор', note: 'A verdict with no fact.' },
   { phrase: 'стоит посетить', note: 'A slogan. Say what the visitor does there.' },
-  { phrase: 'не оставит равнодушн', note: 'Stem: равнодушным, равнодушными. The verb may be оставит or оставят.', pattern: bounded(`не\\s+оста(?:вит|вят)\\s+равнодушн${hardBare}`) },
-  { phrase: 'окунуться', note: 'Brochure verb. Name the action. Also окунулся and the other forms. Not the fish окунь.', pattern: DIP_VERB },
+  {
+    phrase: 'не оставит равнодушн',
+    note: 'Stem: равнодушным, равнодушными. The verb may be оставит or оставят.',
+    pattern: bounded(`не\\s+оста(?:вит|вят)\\s+равнодушн${hardBare}`),
+  },
+  {
+    phrase: 'окунуться',
+    note: 'Brochure verb. Name the action. Also окунулся and the other forms. Not the fish окунь.',
+    pattern: DIP_VERB,
+  },
   { phrase: 'для ценителей', note: 'A fake audience.' },
   { phrase: 'вкусно и недорого', note: 'A slogan. The price block carries the prices.' },
 ] as const satisfies readonly WritingStop[]
@@ -224,12 +250,16 @@ export const WRITING_STOP_PATTERNS = [
   {
     phrase: 'настоящий',
     note: 'Intensifier only: настоящий, настоящая, настоящее, настоящие before a noun. Not «в настоящее время», «настоящий адрес», «настоящее имя», «настоящий номер», «настоящий документ».',
-    pattern: /(?<!\p{L})настоящ(?:ий|ая|ее|ие)(?=\s+(?!(?:время|имя|адрес|номер|документ|размер|вес|состав)(?!\p{L}))\p{L})/iu,
+    pattern:
+      /(?<!\p{L})настоящ(?:ий|ая|ее|ие)(?=\s+(?!(?:время|имя|адрес|номер|документ|размер|вес|состав)(?!\p{L}))\p{L})/iu,
   },
   {
     phrase: 'triads',
     note: 'Three evaluative adjectives, such as «вкусно, душевно и атмосферно». A neutral list («хлеб, молоко и сыр», «форт, замок и пляж») is allowed.',
-    pattern: new RegExp(`${EVALUATIVE_WORD}(?:\\s*,\\s*${EVALUATIVE_WORD})+\\s+и\\s+${EVALUATIVE_WORD}|${EVALUATIVE_WORD}(?:\\s*,\\s*${EVALUATIVE_WORD}){2,}`, 'iu'),
+    pattern: new RegExp(
+      `${EVALUATIVE_WORD}(?:\\s*,\\s*${EVALUATIVE_WORD})+\\s+и\\s+${EVALUATIVE_WORD}|${EVALUATIVE_WORD}(?:\\s*,\\s*${EVALUATIVE_WORD}){2,}`,
+      'iu',
+    ),
   },
   {
     phrase: 'не просто X, а Y',
@@ -256,7 +286,8 @@ export const VENUE_COPY_RULES = [
   {
     phrase: 'price disclaimer',
     note: 'No disclaimer about price anchors or packaged juice. Do not write «Цены могли измениться», «ориентиры цен», or «сок из пакета» in the description.',
-    pattern: /цены\s+могли\s+измениться|ориентир\p{L}*\s+цен|не\s+явля\p{L}*\s+(?:полным\s+)?меню|сок\s+из\s+пакет|из\s+бутылк|упакованн\p{L}*\s+сок|не\s+из\s+пакет/iu,
+    pattern:
+      /цены\s+могли\s+измениться|ориентир\p{L}*\s+цен|не\s+явля\p{L}*\s+(?:полным\s+)?меню|сок\s+из\s+пакет|из\s+бутылк|упакованн\p{L}*\s+сок|не\s+из\s+пакет/iu,
   },
 ] as const satisfies readonly WritingStop[]
 
@@ -336,7 +367,9 @@ export function writingCopy(parts: unknown[]) {
 
 export function writingGuideSection() {
   const phrases = WRITING_STOP_LIST.map((item) => `- «${item.phrase}»: ${item.note}`).join('\n')
-  const patterns = WRITING_STOP_PATTERNS.map((item) => `- ${item.phrase} (${item.pattern?.source}): ${item.note}`).join('\n')
+  const patterns = WRITING_STOP_PATTERNS.map((item) => `- ${item.phrase} (${item.pattern?.source}): ${item.note}`).join(
+    '\n',
+  )
   const venue = VENUE_COPY_RULES.map((item) => `- ${item.phrase}: ${item.note}`).join('\n')
   const sites = WRITING_BANNED_SITES.join(', ')
   return [

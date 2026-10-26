@@ -96,7 +96,10 @@ function shift(day: string, days: number) {
 }
 
 async function rejects(promise: Promise<unknown>, status: number, message?: RegExp) {
-  const error = await promise.then(() => null, (caught: { statusCode?: number, statusMessage?: string }) => caught)
+  const error = await promise.then(
+    () => null,
+    (caught: { statusCode?: number; statusMessage?: string }) => caught,
+  )
   expect(error, 'expected a rejection').not.toBeNull()
   expect(error?.statusCode).toBe(status)
   if (message) {
@@ -110,21 +113,38 @@ function stagedText(draft: { payload: Record<string, unknown> } | null) {
 }
 
 describe('notices writer', () => {
-  it.each((['place', 'venue'] as const).flatMap((subjectType) => [false, true].map((mixed) => ({ subjectType, mixed }))))(
-    'retains notice advisories through authorized pending publication ($subjectType, mixed=$mixed)', async ({ subjectType, mixed }) => {
+  it.each(
+    (['place', 'venue'] as const).flatMap((subjectType) => [false, true].map((mixed) => ({ subjectType, mixed }))),
+  )(
+    'retains notice advisories through authorized pending publication ($subjectType, mixed=$mixed)',
+    async ({ subjectType, mixed }) => {
       const live = subjectType === 'place' ? await place('notice-advisory-apply') : await venue('notice-advisory-apply')
       enterContentScope('draft')
       if (mixed) {
         if (subjectType === 'place') {
           await updatePlaceDraft({ id: live.id, summary: 'Дом у самой площади.' }, 'place_update')
         } else {
-          await updateVenue({ id: live.id, description: `${'description' in live ? live.description : ''} Дом у самой площади.` })
+          await updateVenue({
+            id: live.id,
+            description: `${'description' in live ? live.description : ''} Дом у самой площади.`,
+          })
         }
       }
       const sourceUrl = subjectType === 'venue' ? VK_POST : SITE
-      await setNotices({ subjectType, id: live.id, notices: [row({
-        kind: 'renovation', text: 'Ремонт в самом сердце здания.', sourceUrl,
-      })] }, 'mcp')
+      await setNotices(
+        {
+          subjectType,
+          id: live.id,
+          notices: [
+            row({
+              kind: 'renovation',
+              text: 'Ремонт в самом сердце здания.',
+              sourceUrl,
+            }),
+          ],
+        },
+        'mcp',
+      )
       const database = useDatabase()
       const state = async () => ({
         live: subjectType === 'place' ? await Editor.placeById(live.id) : await Venues.byId(live.id),
@@ -132,16 +152,34 @@ describe('notices writer', () => {
         notices: await Notices.forSubject(subjectType, live.id),
         audits: await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id)),
         revisions: await database.select().from(revisions).where(eq(revisions.entityId, live.id)),
-        venueAudits: subjectType === 'venue' ? await database.select().from(venueAudits).where(eq(venueAudits.venueId, live.id)) : [],
+        venueAudits:
+          subjectType === 'venue'
+            ? await database.select().from(venueAudits).where(eq(venueAudits.venueId, live.id))
+            : [],
       })
       const beforeRefusal = await state()
       enterContentScope('editor')
-      await rejects(setPublication({ entity: subjectType, id: live.id, publicationStatus: 'published' }), 400, /в самом сердце/u)
+      await rejects(
+        setPublication({ entity: subjectType, id: live.id, publicationStatus: 'published' }),
+        400,
+        /в самом сердце/u,
+      )
       expect(await state()).toEqual(beforeRefusal)
       enterContentScope('draft')
-      const staged = await setNotices({ subjectType, id: live.id, notices: [row({
-        kind: 'renovation', text: 'Ремонт у самого входа.', sourceUrl,
-      })] }, 'mcp')
+      const staged = await setNotices(
+        {
+          subjectType,
+          id: live.id,
+          notices: [
+            row({
+              kind: 'renovation',
+              text: 'Ремонт у самого входа.',
+              sourceUrl,
+            }),
+          ],
+        },
+        'mcp',
+      )
       expect(staged.writingWarnings).toHaveLength(1)
       const warning = staged.writingWarnings[0]!
       expect(warning).toMatch(/Неопределённость.*«самого».*0 баллов/u)
@@ -151,15 +189,19 @@ describe('notices writer', () => {
       expect(await Editor.contentDraft(subjectType, live.id)).toEqual(pending)
       enterContentScope('editor')
       const applied = await setPublication({ entity: subjectType, id: live.id, publicationStatus: 'published' })
-      expect(applied).toMatchObject({ writingWarnings: mixed
-        ? expect.arrayContaining([warning, expect.stringContaining('«самой»')])
-        : [warning] })
+      expect(applied).toMatchObject({
+        writingWarnings: mixed ? expect.arrayContaining([warning, expect.stringContaining('«самой»')]) : [warning],
+      })
       expect((await Notices.forSubject(subjectType, live.id))[0]?.text).toBe('Ремонт у самого входа.')
       expect(await Editor.contentDraft(subjectType, live.id)).toBeNull()
       const saved = subjectType === 'place' ? await Editor.placeById(live.id) : await Venues.byId(live.id)
-      expect(saved).toMatchObject(mixed
-        ? subjectType === 'place' ? { summary: 'Дом у самой площади.' } : { description: expect.stringContaining('Дом у самой площади.') }
-        : live)
+      expect(saved).toMatchObject(
+        mixed
+          ? subjectType === 'place'
+            ? { summary: 'Дом у самой площади.' }
+            : { description: expect.stringContaining('Дом у самой площади.') }
+          : live,
+      )
     },
   )
 
@@ -182,13 +224,31 @@ describe('notices writer', () => {
     await rejects(set([row({ text: 'Музей закрыт на днях.' })]), 400, /на днях/)
     await rejects(set([row({ sourceUrl: VK_POST })]), 400, /официальный сайт места/)
     await rejects(set([row({ sourceUrl: 'https://yandex.ru/maps/org/123' })]), 400, /официальный сайт/)
-    await rejects(set([row(), row({ kind: 'renovation', from: shift(today, 2), to: shift(today, 9) })]), 400, /не могут пересекаться/)
+    await rejects(
+      set([row(), row({ kind: 'renovation', from: shift(today, 2), to: shift(today, 9) })]),
+      400,
+      /не могут пересекаться/,
+    )
     await rejects(set([row(), row({ from: shift(today, 3), to: shift(today, 8) })]), 400, /пересекаются/)
-    await rejects(set([row(), row({ kind: 'other', from: shift(today, 10), to: shift(today, 11) }), row({ kind: 'other', from: shift(today, 12), to: shift(today, 13) }), row({ kind: 'other', from: shift(today, 14), to: shift(today, 15) }), row({ kind: 'other', from: shift(today, 16), to: shift(today, 17) })]), 400, /Не больше 4/)
+    await rejects(
+      set([
+        row(),
+        row({ kind: 'other', from: shift(today, 10), to: shift(today, 11) }),
+        row({ kind: 'other', from: shift(today, 12), to: shift(today, 13) }),
+        row({ kind: 'other', from: shift(today, 14), to: shift(today, 15) }),
+        row({ kind: 'other', from: shift(today, 16), to: shift(today, 17) }),
+      ]),
+      400,
+      /Не больше 4/,
+    )
     await rejects(set([row({ id: 'not-a-stored-id' })]), 400, /не найдено/)
 
     const saved = await set([
-      row({ to: null, openEndedReason: 'На странице музея нет даты окончания', text: 'Год 2026 и дата 1 мая в тексте можно.' }),
+      row({
+        to: null,
+        openEndedReason: 'На странице музея нет даты окончания',
+        text: 'Год 2026 и дата 1 мая в тексте можно.',
+      }),
       row({ kind: 'renovation', from: shift(today, -20), to: shift(today, -2), text: 'Шла реконструкция.' }),
     ])
     if (saved.pendingReview) {
@@ -197,16 +257,29 @@ describe('notices writer', () => {
     expect(saved.notices.map((item) => item.kind).sort()).toEqual(['closed', 'renovation'])
     expect(saved.notices.find((item) => item.kind === 'renovation')?.state).toBe('expired')
     expect(await Editor.placeById(live.id)).toMatchObject({ publicationStatus: 'published' })
-    const audits = await useDatabase().select().from(mcpAudits).where(and(eq(mcpAudits.entityId, live.id), eq(mcpAudits.tool, 'notices_set')))
+    const audits = await useDatabase()
+      .select()
+      .from(mcpAudits)
+      .where(and(eq(mcpAudits.entityId, live.id), eq(mcpAudits.tool, 'notices_set')))
     expect(audits).toHaveLength(1)
   })
 
   it('replaces the list: an id updates, a missing id deletes, an empty list clears', async () => {
     const live = await place('notice-replace')
     enterContentScope('editor')
-    const first = await setNotices({ subjectType: 'place', id: live.id, notices: [row(), row({ kind: 'other', text: 'Вход со двора.' })] }, 'admin')
+    const first = await setNotices(
+      { subjectType: 'place', id: live.id, notices: [row(), row({ kind: 'other', text: 'Вход со двора.' })] },
+      'admin',
+    )
     const closed = first.notices.find((item) => item.kind === 'closed')!
-    const second = await setNotices({ subjectType: 'place', id: live.id, notices: [{ ...row({ text: 'Музей закрыт, выставка переезжает.' }), id: closed.id }] }, 'admin')
+    const second = await setNotices(
+      {
+        subjectType: 'place',
+        id: live.id,
+        notices: [{ ...row({ text: 'Музей закрыт, выставка переезжает.' }), id: closed.id }],
+      },
+      'admin',
+    )
     expect(second.notices).toHaveLength(1)
     expect(second.notices[0]?.id).toBe(closed.id)
     expect(second.notices[0]?.text).toBe('Музей закрыт, выставка переезжает.')
@@ -214,13 +287,26 @@ describe('notices writer', () => {
     expect(await Notices.forSubject('place', live.id)).toHaveLength(0)
   })
 
-  it('takes a venue\'s own VK community and refuses another one', async () => {
+  it("takes a venue's own VK community and refuses another one", async () => {
     const cafe = await venue('notice-vk')
     enterContentScope('editor')
-    const relocation = row({ kind: 'relocation', address: 'ул. Ленина, 5А', text: 'Кафе работает по этому адресу.', sourceUrl: VK_POST, sourceTitle: 'Пост сообщества' })
+    const relocation = row({
+      kind: 'relocation',
+      address: 'ул. Ленина, 5А',
+      text: 'Кафе работает по этому адресу.',
+      sourceUrl: VK_POST,
+      sourceTitle: 'Пост сообщества',
+    })
     const saved = await setNotices({ subjectType: 'venue', id: cafe.id, notices: [relocation] }, 'mcp')
     expect(saved.notices[0]?.address).toBe('ул. Ленина, 5А')
-    await rejects(setNotices({ subjectType: 'venue', id: cafe.id, notices: [{ ...relocation, sourceUrl: 'https://vk.com/wall-999_1' }] }, 'mcp'), 400, /сообщество/)
+    await rejects(
+      setNotices(
+        { subjectType: 'venue', id: cafe.id, notices: [{ ...relocation, sourceUrl: 'https://vk.com/wall-999_1' }] },
+        'mcp',
+      ),
+      400,
+      /сообщество/,
+    )
     const stored = await Venues.byId(cafe.id)
     expect(stored?.address).toBe('ул. Вокзальная, 1')
     expect(stored?.latitude).toBe(54.7)
@@ -279,12 +365,22 @@ describe('notices writer', () => {
     const cafe = await venue('notice-stage-venue')
     const gone = await venue('notice-archived-venue', 'archived')
     enterContentScope('draft')
-    await rejects(setNotices({ subjectType: 'venue', id: gone.id, notices: [row()] }, 'mcp'), 409, /live page was not changed/)
+    await rejects(
+      setNotices({ subjectType: 'venue', id: gone.id, notices: [row()] }, 'mcp'),
+      409,
+      /live page was not changed/,
+    )
     expect(await Editor.contentDraft('venue', gone.id)).toBeNull()
 
-    const staged = await setNotices({ subjectType: 'venue', id: cafe.id, notices: [row({ text: 'Кафе не работает.' })] }, 'mcp')
+    const staged = await setNotices(
+      { subjectType: 'venue', id: cafe.id, notices: [row({ text: 'Кафе не работает.' })] },
+      'mcp',
+    )
     expect(staged.pendingReview).toBe(true)
-    const again = await setNotices({ subjectType: 'venue', id: cafe.id, notices: [row({ text: 'Кафе не принимает гостей.' })] }, 'mcp')
+    const again = await setNotices(
+      { subjectType: 'venue', id: cafe.id, notices: [row({ text: 'Кафе не принимает гостей.' })] },
+      'mcp',
+    )
     expect(again.notices[0]?.text).toBe('Кафе не принимает гостей.')
     expect(await Notices.forSubject('venue', cafe.id)).toHaveLength(0)
     await rejects(setPublication({ entity: 'venue', id: cafe.id, publicationStatus: 'published' }), 403)
@@ -298,7 +394,11 @@ describe('notices writer', () => {
     expect(live.map((item) => item.text)).toEqual(['Кафе не принимает гостей.'])
     expect((await Venues.byId(cafe.id))?.status).toBe('published')
     expect(await Editor.contentDraft('venue', cafe.id)).toBeNull()
-    await rejects(setPublication({ entity: 'venue', id: cafe.id, publicationStatus: 'published' }), 409, /Черновика нет/)
+    await rejects(
+      setPublication({ entity: 'venue', id: cafe.id, publicationStatus: 'published' }),
+      409,
+      /Черновика нет/,
+    )
   })
 
   it('discards or applies only the venue draft the editor saw', async () => {
@@ -312,7 +412,10 @@ describe('notices writer', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 5))
     enterContentScope('draft')
-    await setNotices({ subjectType: 'venue', id: cafe.id, notices: [row({ text: 'Кафе не принимает гостей.' })] }, 'mcp')
+    await setNotices(
+      { subjectType: 'venue', id: cafe.id, notices: [row({ text: 'Кафе не принимает гостей.' })] },
+      'mcp',
+    )
     enterContentScope('editor')
 
     await rejects(decideVenueNoticeDraft(target, 'discard', seen), 409, /изменился/)
@@ -335,7 +438,10 @@ describe('notices writer', () => {
     enterContentScope('editor')
     await rejects(setNotices({ subjectType: 'place', id: live.id, notices: [row()] }, 'admin'), 409, /черновик/)
     expect(await Editor.contentDraft('place', live.id)).not.toBeNull()
-    const discarded = await setNotices({ subjectType: 'place', id: live.id, notices: [row()], pendingDraft: 'discard' }, 'admin')
+    const discarded = await setNotices(
+      { subjectType: 'place', id: live.id, notices: [row()], pendingDraft: 'discard' },
+      'admin',
+    )
     expect(discarded).toMatchObject({ pendingReview: false, draftDropped: true })
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
 
@@ -345,7 +451,9 @@ describe('notices writer', () => {
     const cleared = await setNotices({ subjectType: 'place', id: live.id, notices: [] }, 'mcp')
     expect(cleared).toMatchObject({ pendingReview: false, draftDropped: true })
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
-    expect(await setNotices({ subjectType: 'place', id: live.id, notices: [] }, 'mcp')).toMatchObject({ draftDropped: false })
+    expect(await setNotices({ subjectType: 'place', id: live.id, notices: [] }, 'mcp')).toMatchObject({
+      draftDropped: false,
+    })
     expect((await Editor.placeById(live.id))?.summary).toBe('Музей в старом доме у реки.')
   })
 })
@@ -354,13 +462,36 @@ describe('notices public read', () => {
   it('shows upcoming and current rows and hides a row the day after it ends, in Kaliningrad time', async () => {
     const live = await place('notice-window')
     await Notices.replace('place', live.id, [
-      { kind: 'relocation', startsOn: '2026-11-01', endsOn: '2026-11-13', openEndedReason: null, text: 'Кафе работает по этому адресу.', address: 'ул. Ленина, 5А', sourceUrl: SITE, sourceTitle: 'Новости', checkedAt: '2026-10-20' },
-      { kind: 'closed', startsOn: '2026-11-20', endsOn: '2026-11-21', openEndedReason: null, text: 'Закрыто на учёт.', address: null, sourceUrl: 'https://museum-notice.example.ru/news/2', sourceTitle: 'Новости 2', checkedAt: '2026-10-20' },
+      {
+        kind: 'relocation',
+        startsOn: '2026-11-01',
+        endsOn: '2026-11-13',
+        openEndedReason: null,
+        text: 'Кафе работает по этому адресу.',
+        address: 'ул. Ленина, 5А',
+        sourceUrl: SITE,
+        sourceTitle: 'Новости',
+        checkedAt: '2026-10-20',
+      },
+      {
+        kind: 'closed',
+        startsOn: '2026-11-20',
+        endsOn: '2026-11-21',
+        openEndedReason: null,
+        text: 'Закрыто на учёт.',
+        address: null,
+        sourceUrl: 'https://museum-notice.example.ru/news/2',
+        sourceTitle: 'Новости 2',
+        checkedAt: '2026-10-20',
+      },
     ])
     const read = async (at: string) => (await loadPublicNotices('place', [live.id], new Date(at))).get(live.id) ?? []
 
     const before = await read('2026-10-31T12:00:00Z')
-    expect(before.map((item) => [item.kind, item.state])).toEqual([['closed', 'upcoming'], ['relocation', 'upcoming']])
+    expect(before.map((item) => [item.kind, item.state])).toEqual([
+      ['closed', 'upcoming'],
+      ['relocation', 'upcoming'],
+    ])
     // 22:30 UTC on 31 October is already 1 November in Kaliningrad.
     expect((await read('2026-10-31T22:30:00Z'))[0]).toMatchObject({ kind: 'relocation', state: 'current' })
     expect((await read('2026-11-13T21:30:00Z'))[0]).toMatchObject({ kind: 'relocation', state: 'current' })
@@ -369,13 +500,26 @@ describe('notices public read', () => {
 
     const shown = await read('2026-11-05T10:00:00Z')
     const sources = sourcesWithNotices([{ title: 'Сайт', url: SITE }], shown)
-    expect(sources).toEqual([{ title: 'Сайт', url: SITE }, { title: 'Новости 2', url: 'https://museum-notice.example.ru/news/2' }])
+    expect(sources).toEqual([
+      { title: 'Сайт', url: SITE },
+      { title: 'Новости 2', url: 'https://museum-notice.example.ru/news/2' },
+    ])
   })
 
   it('flags expired rows without deleting them', async () => {
     const live = await place('notice-expire')
     await Notices.replace('place', live.id, [
-      { kind: 'other', startsOn: '2020-01-01', endsOn: '2020-01-02', openEndedReason: null, text: 'Старое объявление.', address: null, sourceUrl: SITE, sourceTitle: 'Новости', checkedAt: '2020-01-01' },
+      {
+        kind: 'other',
+        startsOn: '2020-01-01',
+        endsOn: '2020-01-02',
+        openEndedReason: null,
+        text: 'Старое объявление.',
+        address: null,
+        sourceUrl: SITE,
+        sourceTitle: 'Новости',
+        checkedAt: '2020-01-01',
+      },
     ])
     expect(await Notices.flagExpired('2026-10-22')).toBeGreaterThanOrEqual(1)
     const [stored] = await Notices.forSubject('place', live.id)
@@ -389,9 +533,30 @@ describe('closed notice status', () => {
   it('makes the availability answer closed without writing hours, only inside the window', async () => {
     const cafe = await venue('notice-availability')
     const noHours = await venue('notice-availability-nohours')
-    const always = { mode: 'always', seasons: [], closures: [], holidays: 'as-usual', exceptions: [], occurrences: [], needsCheck: false }
-    await Schedules.save({ entityType: 'venue', entityId: cafe.id, rules: always, sourceUrl: SITE, verifiedAt: '2026-10-20' }, [])
-    const write = { kind: 'closed' as const, startsOn: '2026-11-01', endsOn: '2026-11-13', openEndedReason: null, text: 'Кафе не работает.', address: null, sourceUrl: SITE, sourceTitle: 'Новости', checkedAt: '2026-10-20' }
+    const always = {
+      mode: 'always',
+      seasons: [],
+      closures: [],
+      holidays: 'as-usual',
+      exceptions: [],
+      occurrences: [],
+      needsCheck: false,
+    }
+    await Schedules.save(
+      { entityType: 'venue', entityId: cafe.id, rules: always, sourceUrl: SITE, verifiedAt: '2026-10-20' },
+      [],
+    )
+    const write = {
+      kind: 'closed' as const,
+      startsOn: '2026-11-01',
+      endsOn: '2026-11-13',
+      openEndedReason: null,
+      text: 'Кафе не работает.',
+      address: null,
+      sourceUrl: SITE,
+      sourceTitle: 'Новости',
+      checkedAt: '2026-10-20',
+    }
     await Notices.replace('venue', cafe.id, [write])
     await Notices.replace('venue', noHours.id, [write])
 
@@ -400,7 +565,11 @@ describe('closed notice status', () => {
     const own = rows.find((item) => item.entityId === cafe.id)
     expect(own?.closedNotices).toEqual([{ kind: 'closed', from: '2026-11-01', to: '2026-11-13' }])
     expect(rows.find((item) => item.entityId === noHours.id)?.closedNotices).toHaveLength(1)
-    const value = withNoticeStatus({ status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null }, own?.closedNotices, inside)
+    const value = withNoticeStatus(
+      { status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null },
+      own?.closedNotices,
+      inside,
+    )
     expect(value.status).toBe('closed')
     expect(value.opensAt).toBeNull()
     expect(liveStatusText(value, inside)).toBe('Закрыто с 1 ноября 2026 по 13 ноября 2026')

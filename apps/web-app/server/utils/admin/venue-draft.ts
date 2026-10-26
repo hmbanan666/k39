@@ -11,12 +11,29 @@ import { loadSchedule } from '../schedule'
 import { applyPendingVenue, pendingVenueWrite } from '../venues/pending'
 
 const LABELS: Record<string, string> = {
-  name: 'Название', kind: 'Тип', cuisineTags: 'Кухня', regionSlug: 'Регион',
-  address: 'Адрес', phone: 'Телефон', latitude: 'Широта', longitude: 'Долгота',
-  priceLevel: 'Уровень цен', avgCheck: 'Средний чек', website: 'Сайт',
-  bookingUrl: 'Бронирование', orderUrl: 'Заказ', deliveryUrl: 'Доставка', menuUrl: 'Меню',
-  reservation: 'Бронь столика', takeaway: 'Навынос', delivery: 'Есть доставка',
-  signatureDishes: 'Блюда', modules: 'Модули', description: 'Описание', sources: 'Источники', lastVerifiedAt: 'Проверено',
+  name: 'Название',
+  kind: 'Тип',
+  cuisineTags: 'Кухня',
+  regionSlug: 'Регион',
+  address: 'Адрес',
+  phone: 'Телефон',
+  latitude: 'Широта',
+  longitude: 'Долгота',
+  priceLevel: 'Уровень цен',
+  avgCheck: 'Средний чек',
+  website: 'Сайт',
+  bookingUrl: 'Бронирование',
+  orderUrl: 'Заказ',
+  deliveryUrl: 'Доставка',
+  menuUrl: 'Меню',
+  reservation: 'Бронь столика',
+  takeaway: 'Навынос',
+  delivery: 'Есть доставка',
+  signatureDishes: 'Блюда',
+  modules: 'Модули',
+  description: 'Описание',
+  sources: 'Источники',
+  lastVerifiedAt: 'Проверено',
 }
 
 function text(value: unknown): string {
@@ -52,12 +69,35 @@ export async function venueDraftNotice(id: string): Promise<PlaceDraftNotice | n
   }
   if (Object.hasOwn(payload, 'schedule')) {
     const live = await loadSchedule('venue', id)
-    const lines = (record: typeof live) => record ? [...describeSchedule(record.rules), `Источник: ${record.sourceUrl || 'не указан'}`, `Проверено: ${record.verifiedAt || 'не проверено'}`].join('\n') : 'пусто'
+    const lines = (record: typeof live) =>
+      record
+        ? [
+            ...describeSchedule(record.rules),
+            `Источник: ${record.sourceUrl || 'не указан'}`,
+            `Проверено: ${record.verifiedAt || 'не проверено'}`,
+          ].join('\n')
+        : 'пусто'
     add('schedule', 'Часы', lines(live), lines(payload.schedule ?? null))
   }
   if (payload.prices) {
     const live = await db.prices.forVenue(id)
-    const lines = (rows: Array<{ item: string, variant?: string | null, priceRub: number, checkedAt: string, sourceKind: string, sourceTitle: string, sourceUrl?: string | null }>) => rows.map((row) => `${row.item}${row.variant ? ` (${row.variant})` : ''}: ${row.priceRub} ₽; ${row.checkedAt}; ${row.sourceKind}; ${row.sourceTitle}; ${row.sourceUrl || ''}`).join('\n')
+    const lines = (
+      rows: Array<{
+        item: string
+        variant?: string | null
+        priceRub: number
+        checkedAt: string
+        sourceKind: string
+        sourceTitle: string
+        sourceUrl?: string | null
+      }>,
+    ) =>
+      rows
+        .map(
+          (row) =>
+            `${row.item}${row.variant ? ` (${row.variant})` : ''}: ${row.priceRub} ₽; ${row.checkedAt}; ${row.sourceKind}; ${row.sourceTitle}; ${row.sourceUrl || ''}`,
+        )
+        .join('\n')
     add('prices', 'Ориентиры цен', lines(live), lines(payload.prices))
   }
   const notices = stagedNotices(payload)
@@ -65,7 +105,12 @@ export async function venueDraftNotice(id: string): Promise<PlaceDraftNotice | n
     const live = await db.notices.forSubject('venue', id)
     add('notices', 'На эти даты', noticeSummary(live.map(toNoticeValue)), noticeSummary(notices))
   }
-  return { updatedAt: draft.updatedAt, updatedLabel: formatDraftUpdated(draft.updatedAt), publicationStatus: 'review', changes }
+  return {
+    updatedAt: draft.updatedAt,
+    updatedLabel: formatDraftUpdated(draft.updatedAt),
+    publicationStatus: 'review',
+    changes,
+  }
 }
 
 export async function decideVenueDraft(id: string, action: 'apply' | 'discard', updatedAt: unknown) {

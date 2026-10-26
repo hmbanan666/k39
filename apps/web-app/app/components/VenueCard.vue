@@ -21,29 +21,33 @@
         width="400"
         height="260"
         loading="lazy"
-      >
+      />
       <span class="kind">{{ kindLabel }}</span>
       <span
         v-if="distanceLabel"
         class="dist"
-      >{{ distanceLabel }}</span>
+        >{{ distanceLabel }}</span
+      >
       <slot name="overlay" />
     </span>
     <span class="body">
       <span
         v-if="partner"
         class="partner"
-      >Партнёр</span>
+        >Партнёр</span
+      >
       <slot name="kicker" />
       <span class="name">{{ name }}</span>
       <span
         v-if="line"
         class="meta"
-      >{{ line }}</span>
+        >{{ line }}</span
+      >
       <span
         v-if="phoneLabel"
         class="phone"
-      >{{ phoneLabel }}</span>
+        >{{ phoneLabel }}</span
+      >
       <slot name="meta" />
       <OpeningLive
         :schedule="schedule ?? null"
@@ -55,7 +59,8 @@
       <span
         v-if="stale"
         class="stale"
-      >Давно не проверяли</span>
+        >Давно не проверяли</span
+      >
       <slot />
     </span>
   </a>
@@ -69,51 +74,54 @@ import { computed } from 'vue'
 import { illustrationFor } from '~~/shared/illustrations'
 import { formatPhoneDisplay, parsePhones } from '~~/shared/phone'
 
-const props = withDefaults(defineProps<{
-  href: string
-  name: string
-  kindLabel: string
-  media?: PublicMedia | null
-  distance?: string
-  walk?: string
-  cuisine?: string[]
-  price?: string
-  check?: string
-  /** Replaces the cuisine, price and check line when set. */
-  meta?: string
-  partner?: boolean
-  stale?: boolean
-  schedule?: ScheduleRecord | null
-  /** Notice windows (ADR 0049). The card has no banner; a current `closed` one replaces the open chip. */
-  notices?: NoticeWindow[] | null
-  /** Resting tilt. «none» keeps a single card still. */
-  lean?: 'left' | 'right' | 'none'
-  sizes?: string
-  priority?: boolean
-  /** Cookieless click beacon used by the nearby block. */
-  track?: boolean
-  /** Stored phone. The card prints the display grouping. The card itself is the link. */
-  phone?: string | null
-}>(), {
-  media: null,
-  distance: '',
-  walk: '',
-  cuisine: () => [],
-  price: '',
-  check: '',
-  meta: '',
-  partner: false,
-  stale: false,
-  schedule: null,
-  notices: null,
-  lean: 'none',
-  sizes: '(min-width: 900px) 240px, 70vw',
-  priority: false,
-  track: false,
-  phone: '',
-})
+const props = withDefaults(
+  defineProps<{
+    href: string
+    name: string
+    kindLabel: string
+    media?: PublicMedia | null
+    distance?: string
+    walk?: string
+    cuisine?: string[]
+    price?: string
+    check?: string
+    /** Replaces the cuisine, price and check line when set. */
+    meta?: string
+    partner?: boolean
+    stale?: boolean
+    schedule?: ScheduleRecord | null
+    /** Notice windows (ADR 0049). The card has no banner; a current `closed` one replaces the open chip. */
+    notices?: NoticeWindow[] | null
+    /** Resting tilt. «none» keeps a single card still. */
+    lean?: 'left' | 'right' | 'none'
+    sizes?: string
+    priority?: boolean
+    /** Cookieless click beacon used by the nearby block. */
+    track?: boolean
+    /** Stored phone. The card prints the display grouping. The card itself is the link. */
+    phone?: string | null
+  }>(),
+  {
+    media: null,
+    distance: '',
+    walk: '',
+    cuisine: () => [],
+    price: '',
+    check: '',
+    meta: '',
+    partner: false,
+    stale: false,
+    schedule: null,
+    notices: null,
+    lean: 'none',
+    sizes: '(min-width: 900px) 240px, 70vw',
+    priority: false,
+    track: false,
+    phone: '',
+  },
+)
 
-const leanClass = computed(() => props.lean === 'none' ? undefined : `lean-${props.lean}`)
+const leanClass = computed(() => (props.lean === 'none' ? undefined : `lean-${props.lean}`))
 
 const phoneLabel = computed(() => {
   if (!parsePhones(props.phone).some((item) => item.e164)) {
@@ -140,9 +148,7 @@ const distanceLabel = computed(() => {
   return `${props.distance} · ${props.walk.replace(' пешком', '')}`
 })
 
-const trackAttrs = computed(() => props.track
-  ? { 'data-track': 'outbound', 'data-track-name': 'venue' }
-  : {})
+const trackAttrs = computed(() => (props.track ? { 'data-track': 'outbound', 'data-track-name': 'venue' } : {}))
 </script>
 
 <style scoped>
@@ -158,11 +164,20 @@ const trackAttrs = computed(() => props.track
   box-shadow: var(--shadow-card);
   color: inherit;
   text-decoration: none;
-  transition: box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease);
+  transition:
+    box-shadow var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
 }
-.card.lean-left { transform: rotate(-0.5deg); }
-.card.lean-right { transform: rotate(0.4deg); }
-.card:hover { box-shadow: var(--shadow-pop); transform: rotate(0deg) translateY(-2px); }
+.card.lean-left {
+  transform: rotate(-0.5deg);
+}
+.card.lean-right {
+  transform: rotate(0.4deg);
+}
+.card:hover {
+  box-shadow: var(--shadow-pop);
+  transform: rotate(0deg) translateY(-2px);
+}
 .pic {
   position: relative;
   display: block;
@@ -235,7 +250,9 @@ const trackAttrs = computed(() => props.track
   font-size: var(--step--1);
   font-variant-numeric: tabular-nums;
 }
-.body :deep(.live) { margin: 0.2rem 0 0; }
+.body :deep(.live) {
+  margin: 0.2rem 0 0;
+}
 .partner {
   align-self: flex-start;
   padding: 0.05rem 0.4rem;
@@ -251,6 +268,8 @@ const trackAttrs = computed(() => props.track
 }
 @media (prefers-reduced-motion: reduce) {
   .card,
-  .card:hover { transform: none; }
+  .card:hover {
+    transform: none;
+  }
 }
 </style>

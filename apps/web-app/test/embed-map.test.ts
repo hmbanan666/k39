@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  mapDistanceLabel,
-  parseMapQuery,
-  pinOffer,
-  WALKING_RADIUS_KM,
-  yandexDestinationUrl,
-} from '../shared/embed-map'
+import { mapDistanceLabel, parseMapQuery, pinOffer, WALKING_RADIUS_KM, yandexDestinationUrl } from '../shared/embed-map'
 
 describe('k39 map', () => {
   it('opens Yandex with the point as the destination', () => {

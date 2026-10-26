@@ -1,11 +1,39 @@
 import type { PageKind, PrimaryAction, SourceLink, StoredPageModule } from '../types/entities'
-import type { CatalogArticle, CatalogHub, CatalogPassport, CatalogStop, CatalogVenue, ContentCatalog, PageMetric, PassportWrite, ScorePlace, StoredScore } from '../types/scoring'
+import type {
+  CatalogArticle,
+  CatalogHub,
+  CatalogPassport,
+  CatalogStop,
+  CatalogVenue,
+  ContentCatalog,
+  PageMetric,
+  PassportWrite,
+  ScorePlace,
+  StoredScore,
+} from '../types/scoring'
 import { priceFreshCutoff } from '@k39/types/freshness'
 import { createId } from '@paralleldrive/cuid2'
 import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { useDatabase } from '../database'
-import { categories, collectionItems, collections, contentScoreDays, contentScores, pagePassports, pagePersonas, places, quests, questSteps, regions, relatedLinks, routePoints, routes, schedules, venues } from '../tables'
+import {
+  categories,
+  collectionItems,
+  collections,
+  contentScoreDays,
+  contentScores,
+  pagePassports,
+  pagePersonas,
+  places,
+  quests,
+  questSteps,
+  regions,
+  relatedLinks,
+  routePoints,
+  routes,
+  schedules,
+  venues,
+} from '../tables'
 
 const HUB_SLUGS = ['forty', 'zamki', 'plyazhi', 'kurorty', 'muzei', 'eda']
 
@@ -41,69 +69,92 @@ function statusOf(value: string): CatalogArticle['publicationStatus'] | null {
 export class Scoring {
   static async loadCatalog(): Promise<ContentCatalog> {
     const db = useDatabase()
-    const placeRows = await db.select({
-      id: places.id,
-      slug: places.slug,
-      title: places.title,
-      summary: places.summary,
-      body: places.body,
-      howToGet: places.howToGet,
-      hours: places.hours,
-      price: places.price,
-      latitude: places.latitude,
-      longitude: places.longitude,
-      publicationStatus: places.publicationStatus,
-      noindex: places.noindex,
-      seoTitle: places.seoTitle,
-      seoDescription: places.seoDescription,
-      lastVerifiedAt: places.lastVerifiedAt,
-      sources: places.sources,
-      faq: places.faq,
-      categorySlug: categories.slug,
-      categoryTitle: categories.title,
-      schemaType: places.schemaType,
-      regionId: places.regionId,
-      regionTitle: regions.title,
-      updatedAt: places.updatedAt,
-      firstPublishedAt: places.firstPublishedAt,
-      scheduleMode: sql<string | null>`${schedules.rules}->>'mode'`,
-      scheduleRules: schedules.rules,
-      scheduleVerifiedAt: schedules.verifiedAt,
-    }).from(places).leftJoin(schedules, and(eq(schedules.entityType, 'place'), eq(schedules.entityId, places.id))).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(ne(places.publicationStatus, 'archived'))
+    const placeRows = await db
+      .select({
+        id: places.id,
+        slug: places.slug,
+        title: places.title,
+        summary: places.summary,
+        body: places.body,
+        howToGet: places.howToGet,
+        hours: places.hours,
+        price: places.price,
+        latitude: places.latitude,
+        longitude: places.longitude,
+        publicationStatus: places.publicationStatus,
+        noindex: places.noindex,
+        seoTitle: places.seoTitle,
+        seoDescription: places.seoDescription,
+        lastVerifiedAt: places.lastVerifiedAt,
+        sources: places.sources,
+        faq: places.faq,
+        categorySlug: categories.slug,
+        categoryTitle: categories.title,
+        schemaType: places.schemaType,
+        regionId: places.regionId,
+        regionTitle: regions.title,
+        updatedAt: places.updatedAt,
+        firstPublishedAt: places.firstPublishedAt,
+        scheduleMode: sql<string | null>`${schedules.rules}->>'mode'`,
+        scheduleRules: schedules.rules,
+        scheduleVerifiedAt: schedules.verifiedAt,
+      })
+      .from(places)
+      .leftJoin(schedules, and(eq(schedules.entityType, 'place'), eq(schedules.entityId, places.id)))
+      .leftJoin(categories, eq(places.categoryId, categories.id))
+      .leftJoin(regions, eq(places.regionId, regions.id))
+      .where(ne(places.publicationStatus, 'archived'))
 
     const routeRows = await db.select().from(routes).where(ne(routes.publicationStatus, 'archived'))
     const collectionRows = await db.select().from(collections).where(ne(collections.publicationStatus, 'archived'))
-    const questRows = await db.select({
-      quest: quests,
-      routeSlug: routes.slug,
-    }).from(quests).leftJoin(routes, eq(quests.routeId, routes.id)).where(ne(quests.publicationStatus, 'archived'))
+    const questRows = await db
+      .select({
+        quest: quests,
+        routeSlug: routes.slug,
+      })
+      .from(quests)
+      .leftJoin(routes, eq(quests.routeId, routes.id))
+      .where(ne(quests.publicationStatus, 'archived'))
 
-    const routeStopRows = await db.select({
-      parentId: routePoints.routeId,
-      placeSlug: places.slug,
-      placePublished: places.publicationStatus,
-    }).from(routePoints).innerJoin(places, eq(routePoints.placeId, places.id))
-    const collectionStopRows = await db.select({
-      parentId: collectionItems.collectionId,
-      placeSlug: places.slug,
-      placePublished: places.publicationStatus,
-      regionId: places.regionId,
-      note: collectionItems.note,
-      howToGet: places.howToGet,
-    }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id))
-    const questStopRows = await db.select({
-      parentId: questSteps.questId,
-      placeSlug: places.slug,
-      placePublished: places.publicationStatus,
-    }).from(questSteps).innerJoin(places, eq(questSteps.placeId, places.id))
+    const routeStopRows = await db
+      .select({
+        parentId: routePoints.routeId,
+        placeSlug: places.slug,
+        placePublished: places.publicationStatus,
+      })
+      .from(routePoints)
+      .innerJoin(places, eq(routePoints.placeId, places.id))
+    const collectionStopRows = await db
+      .select({
+        parentId: collectionItems.collectionId,
+        placeSlug: places.slug,
+        placePublished: places.publicationStatus,
+        regionId: places.regionId,
+        note: collectionItems.note,
+        howToGet: places.howToGet,
+      })
+      .from(collectionItems)
+      .innerJoin(places, eq(collectionItems.placeId, places.id))
+    const questStopRows = await db
+      .select({
+        parentId: questSteps.questId,
+        placeSlug: places.slug,
+        placePublished: places.publicationStatus,
+      })
+      .from(questSteps)
+      .innerJoin(places, eq(questSteps.placeId, places.id))
 
     const hubRows = await db.select().from(categories).where(inArray(categories.slug, HUB_SLUGS))
     const fromPlace = alias(places, 'from_place')
     const toPlace = alias(places, 'to_place')
-    const relatedRows = await db.select({
-      fromSlug: fromPlace.slug,
-      toSlug: toPlace.slug,
-    }).from(relatedLinks).innerJoin(fromPlace, eq(relatedLinks.fromPlaceId, fromPlace.id)).innerJoin(toPlace, eq(relatedLinks.toPlaceId, toPlace.id))
+    const relatedRows = await db
+      .select({
+        fromSlug: fromPlace.slug,
+        toSlug: toPlace.slug,
+      })
+      .from(relatedLinks)
+      .innerJoin(fromPlace, eq(relatedLinks.fromPlaceId, fromPlace.id))
+      .innerJoin(toPlace, eq(relatedLinks.toPlaceId, toPlace.id))
 
     const photoResult = await db.execute(sql`
       select place_id, count(*)::int as photos
@@ -117,13 +168,18 @@ export class Scoring {
       group by place_id
     `)
     const passports = await db.select().from(pagePassports)
-    const venueRows = await db.select({
-      venue: venues,
-      regionSlug: regions.slug,
-      regionTitle: regions.title,
-      scheduleRules: schedules.rules,
-      scheduleVerifiedAt: schedules.verifiedAt,
-    }).from(venues).leftJoin(regions, eq(venues.regionId, regions.id)).leftJoin(schedules, and(eq(schedules.entityType, 'venue'), eq(schedules.entityId, venues.id))).where(sql`${venues.status} in ('draft', 'published')`)
+    const venueRows = await db
+      .select({
+        venue: venues,
+        regionSlug: regions.slug,
+        regionTitle: regions.title,
+        scheduleRules: schedules.rules,
+        scheduleVerifiedAt: schedules.verifiedAt,
+      })
+      .from(venues)
+      .leftJoin(regions, eq(venues.regionId, regions.id))
+      .leftJoin(schedules, and(eq(schedules.entityType, 'venue'), eq(schedules.entityId, venues.id)))
+      .where(sql`${venues.status} in ('draft', 'published')`)
     const venuePhotoResult = await db.execute(sql`
       select venue_id, count(*)::int as photos
       from venue_media
@@ -144,7 +200,24 @@ export class Scoring {
       group by subject_type, subject_id
     `)
 
-    const article = (row: { id: string, slug: string, title: string, summary: string | null, body: string, publicationStatus: string, noindex: boolean, seoTitle: string | null, seoDescription: string | null, updatedAt: string, firstPublishedAt?: string | null, modules?: StoredPageModule[], sources?: SourceLink[] }, routeSlug: string | null = null): CatalogArticle | null => {
+    const article = (
+      row: {
+        id: string
+        slug: string
+        title: string
+        summary: string | null
+        body: string
+        publicationStatus: string
+        noindex: boolean
+        seoTitle: string | null
+        seoDescription: string | null
+        updatedAt: string
+        firstPublishedAt?: string | null
+        modules?: StoredPageModule[]
+        sources?: SourceLink[]
+      },
+      routeSlug: string | null = null,
+    ): CatalogArticle | null => {
       const publicationStatus = statusOf(row.publicationStatus)
       if (!publicationStatus) {
         return null
@@ -166,23 +239,29 @@ export class Scoring {
         sourcesCount: row.sources?.length ?? 0,
       }
     }
-    const stops = (rows: Array<{
-      parentId: string
-      placeSlug: string
-      placePublished: string
-      regionId?: string | null
-      note?: string | null
-      howToGet?: string | null
-    }>): CatalogStop[] => rows.map((row) => {
-      const access = [row.note, row.howToGet].map((item) => item?.trim()).filter((item): item is string => Boolean(item)).join('\n')
-      return {
-        parentId: row.parentId,
-        placeSlug: row.placeSlug,
-        placePublished: row.placePublished === 'published',
-        regionId: row.regionId ?? null,
-        access: access || null,
-      }
-    })
+    const stops = (
+      rows: Array<{
+        parentId: string
+        placeSlug: string
+        placePublished: string
+        regionId?: string | null
+        note?: string | null
+        howToGet?: string | null
+      }>,
+    ): CatalogStop[] =>
+      rows.map((row) => {
+        const access = [row.note, row.howToGet]
+          .map((item) => item?.trim())
+          .filter((item): item is string => Boolean(item))
+          .join('\n')
+        return {
+          parentId: row.parentId,
+          placeSlug: row.placeSlug,
+          placePublished: row.placePublished === 'published',
+          regionId: row.regionId ?? null,
+          access: access || null,
+        }
+      })
 
     return {
       places: placeRows.flatMap((row): ScorePlace[] => {
@@ -190,39 +269,41 @@ export class Scoring {
         if (!publicationStatus) {
           return []
         }
-        return [{
-          id: row.id,
-          slug: row.slug,
-          title: row.title,
-          summary: row.summary,
-          body: row.body,
-          howToGet: row.howToGet,
-          hours: row.hours,
-          price: row.price,
-          latitude: row.latitude,
-          longitude: row.longitude,
-          publicationStatus,
-          noindex: row.noindex,
-          seoTitle: row.seoTitle,
-          seoDescription: row.seoDescription,
-          factsCheckedAt: row.lastVerifiedAt,
-          sources: row.sources ?? [],
-          faq: (row.faq ?? []).flatMap((item) => {
-            const question = item.question?.trim()
-            const answer = item.answer?.trim()
-            return question && answer ? [{ question, answer }] : []
-          }),
-          faqCount: (row.faq ?? []).filter((item) => item.question?.trim() && item.answer?.trim()).length,
-          categorySlug: row.categorySlug,
-          categoryTitle: row.categoryTitle,
-          schemaType: row.schemaType ?? null,
-          regionId: row.regionId,
-          regionTitle: row.regionTitle,
-          updatedAt: row.updatedAt,
-          firstPublishedAt: row.firstPublishedAt ?? null,
-          scheduleMode: row.scheduleMode ?? null,
-          schedule: row.scheduleRules ? { rules: row.scheduleRules, verifiedAt: row.scheduleVerifiedAt } : null,
-        }]
+        return [
+          {
+            id: row.id,
+            slug: row.slug,
+            title: row.title,
+            summary: row.summary,
+            body: row.body,
+            howToGet: row.howToGet,
+            hours: row.hours,
+            price: row.price,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            publicationStatus,
+            noindex: row.noindex,
+            seoTitle: row.seoTitle,
+            seoDescription: row.seoDescription,
+            factsCheckedAt: row.lastVerifiedAt,
+            sources: row.sources ?? [],
+            faq: (row.faq ?? []).flatMap((item) => {
+              const question = item.question?.trim()
+              const answer = item.answer?.trim()
+              return question && answer ? [{ question, answer }] : []
+            }),
+            faqCount: (row.faq ?? []).filter((item) => item.question?.trim() && item.answer?.trim()).length,
+            categorySlug: row.categorySlug,
+            categoryTitle: row.categoryTitle,
+            schemaType: row.schemaType ?? null,
+            regionId: row.regionId,
+            regionTitle: row.regionTitle,
+            updatedAt: row.updatedAt,
+            firstPublishedAt: row.firstPublishedAt ?? null,
+            scheduleMode: row.scheduleMode ?? null,
+            schedule: row.scheduleRules ? { rules: row.scheduleRules, verifiedAt: row.scheduleVerifiedAt } : null,
+          },
+        ]
       }),
       routes: routeRows.flatMap((row) => {
         const mapped = article(row)
@@ -252,41 +333,50 @@ export class Scoring {
         firstPublishedAt: row.firstPublishedAt,
       })),
       venues: venueRows.flatMap((row): CatalogVenue[] => {
-        const publicationStatus = row.venue.status === 'published' ? 'published' as const : row.venue.status === 'draft' ? 'draft' as const : null
+        const publicationStatus =
+          row.venue.status === 'published'
+            ? ('published' as const)
+            : row.venue.status === 'draft'
+              ? ('draft' as const)
+              : null
         if (!publicationStatus) {
           return []
         }
         const description = row.venue.description.trim()
-        return [{
-          id: row.venue.id,
-          slug: row.venue.slug,
-          name: row.venue.name,
-          kind: row.venue.kind,
-          description,
-          schedule: row.scheduleRules ? { rules: row.scheduleRules, verifiedAt: row.scheduleVerifiedAt } : null,
-          latitude: row.venue.latitude,
-          longitude: row.venue.longitude,
-          publicationStatus,
-          noindex: row.venue.noindex || description.length === 0,
-          seoTitle: row.venue.seoTitle,
-          seoDescription: row.venue.seoDescription,
-          factsCheckedAt: row.venue.lastVerifiedAt,
-          regionSlug: row.regionSlug,
-          regionTitle: row.regionTitle,
-          updatedAt: row.venue.updatedAt,
-          firstPublishedAt: row.venue.firstPublishedAt,
-        }]
+        return [
+          {
+            id: row.venue.id,
+            slug: row.venue.slug,
+            name: row.venue.name,
+            kind: row.venue.kind,
+            description,
+            schedule: row.scheduleRules ? { rules: row.scheduleRules, verifiedAt: row.scheduleVerifiedAt } : null,
+            latitude: row.venue.latitude,
+            longitude: row.venue.longitude,
+            publicationStatus,
+            noindex: row.venue.noindex || description.length === 0,
+            seoTitle: row.venue.seoTitle,
+            seoDescription: row.venue.seoDescription,
+            factsCheckedAt: row.venue.lastVerifiedAt,
+            regionSlug: row.regionSlug,
+            regionTitle: row.regionTitle,
+            updatedAt: row.venue.updatedAt,
+            firstPublishedAt: row.venue.firstPublishedAt,
+          },
+        ]
       }),
       related: relatedRows,
-      photos: rowsOf<{ place_id: string, photos: number }>(photoResult).map((row) => ({
+      photos: rowsOf<{ place_id: string; photos: number }>(photoResult).map((row) => ({
         placeId: row.place_id,
         count: num(row.photos),
       })),
-      venuePhotos: rowsOf<{ venue_id: string, photos: number }>(venuePhotoResult).map((row) => ({
+      venuePhotos: rowsOf<{ venue_id: string; photos: number }>(venuePhotoResult).map((row) => ({
         venueId: row.venue_id,
         count: num(row.photos),
       })),
-      practical: rowsOf<{ subject_type: string, subject_id: string, rows: number, fresh: number, upcoming: number }>(practicalResult).map((row) => ({
+      practical: rowsOf<{ subject_type: string; subject_id: string; rows: number; fresh: number; upcoming: number }>(
+        practicalResult,
+      ).map((row) => ({
         subjectType: row.subject_type,
         subjectId: row.subject_id,
         admissionRows: num(row.rows),
@@ -350,7 +440,9 @@ export class Scoring {
         and a.occurred_at >= ${d30}
       group by a.path
     `)
-    const continuations = new Map(rowsOf<{ path: string, continuations: number }>(next).map((row) => [row.path, num(row.continuations)]))
+    const continuations = new Map(
+      rowsOf<{ path: string; continuations: number }>(next).map((row) => [row.path, num(row.continuations)]),
+    )
     return rowsOf<Record<string, unknown>>(hits).map((row) => ({
       path: String(row.path),
       organic7d: num(row.organic_7d),
@@ -380,7 +472,7 @@ export class Scoring {
       where day >= ${day}::date
       group by page, query
     `)
-    return rowsOf<{ page: string, query: string, impressions: number, clicks: number }>(result).map((row) => ({
+    return rowsOf<{ page: string; query: string; impressions: number; clicks: number }>(result).map((row) => ({
       page: row.page,
       query: row.query,
       impressions: num(row.impressions),
@@ -389,46 +481,55 @@ export class Scoring {
   }
 
   static async findPassport(pageType: PageKind, entityId: string) {
-    const [row] = await useDatabase().select().from(pagePassports).where(and(
-      eq(pagePassports.pageType, pageType),
-      eq(pagePassports.entityId, entityId),
-    )).limit(1)
+    const [row] = await useDatabase()
+      .select()
+      .from(pagePassports)
+      .where(and(eq(pagePassports.pageType, pageType), eq(pagePassports.entityId, entityId)))
+      .limit(1)
     return row ?? null
   }
 
   static async upsertPassport(input: PassportWrite) {
     const db = useDatabase()
-    const [existing] = await db.select().from(pagePassports).where(and(
-      eq(pagePassports.pageType, input.pageType),
-      eq(pagePassports.entityId, input.entityId),
-    )).limit(1)
+    const [existing] = await db
+      .select()
+      .from(pagePassports)
+      .where(and(eq(pagePassports.pageType, input.pageType), eq(pagePassports.entityId, input.entityId)))
+      .limit(1)
     if (!existing) {
-      const [row] = await db.insert(pagePassports).values({
-        id: createId(),
-        pageType: input.pageType,
-        entityId: input.entityId,
-        path: input.path,
-        targetQueries: input.targetQueries ?? [],
-        audience: blank(input.audience),
-        primaryAction: input.primaryAction ?? null,
-        goal30d: input.goal30d ?? null,
-        goal90d: input.goal90d ?? null,
-        notes: blank(input.notes),
-        lengthOverride: input.lengthOverride ?? null,
-      }).returning()
+      const [row] = await db
+        .insert(pagePassports)
+        .values({
+          id: createId(),
+          pageType: input.pageType,
+          entityId: input.entityId,
+          path: input.path,
+          targetQueries: input.targetQueries ?? [],
+          audience: blank(input.audience),
+          primaryAction: input.primaryAction ?? null,
+          goal30d: input.goal30d ?? null,
+          goal90d: input.goal90d ?? null,
+          notes: blank(input.notes),
+          lengthOverride: input.lengthOverride ?? null,
+        })
+        .returning()
       return row!
     }
-    const [row] = await db.update(pagePassports).set({
-      path: input.path,
-      targetQueries: input.targetQueries === undefined ? existing.targetQueries : input.targetQueries,
-      audience: input.audience === undefined ? existing.audience : blank(input.audience),
-      primaryAction: input.primaryAction === undefined ? existing.primaryAction : input.primaryAction,
-      goal30d: input.goal30d === undefined ? existing.goal30d : input.goal30d,
-      goal90d: input.goal90d === undefined ? existing.goal90d : input.goal90d,
-      notes: input.notes === undefined ? existing.notes : blank(input.notes),
-      lengthOverride: input.lengthOverride === undefined ? existing.lengthOverride : input.lengthOverride,
-      updatedAt: sql`now()`,
-    }).where(eq(pagePassports.id, existing.id)).returning()
+    const [row] = await db
+      .update(pagePassports)
+      .set({
+        path: input.path,
+        targetQueries: input.targetQueries === undefined ? existing.targetQueries : input.targetQueries,
+        audience: input.audience === undefined ? existing.audience : blank(input.audience),
+        primaryAction: input.primaryAction === undefined ? existing.primaryAction : input.primaryAction,
+        goal30d: input.goal30d === undefined ? existing.goal30d : input.goal30d,
+        goal90d: input.goal90d === undefined ? existing.goal90d : input.goal90d,
+        notes: input.notes === undefined ? existing.notes : blank(input.notes),
+        lengthOverride: input.lengthOverride === undefined ? existing.lengthOverride : input.lengthOverride,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(pagePassports.id, existing.id))
+      .returning()
     return row!
   }
 
@@ -437,41 +538,60 @@ export class Scoring {
   }
 
   static async pagePersonas(pageType: PageKind, entityId: string) {
-    return useDatabase().select().from(pagePersonas).where(and(eq(pagePersonas.pageType, pageType), eq(pagePersonas.entityId, entityId)))
+    return useDatabase()
+      .select()
+      .from(pagePersonas)
+      .where(and(eq(pagePersonas.pageType, pageType), eq(pagePersonas.entityId, entityId)))
   }
 
   /** Replaces the persona list of one page. The caller validates codes and the single primary. */
-  static async setPagePersonas(pageType: PageKind, entityId: string, rows: Array<{ code: string, weight: number, primary: boolean }>) {
+  static async setPagePersonas(
+    pageType: PageKind,
+    entityId: string,
+    rows: Array<{ code: string; weight: number; primary: boolean }>,
+  ) {
     return useDatabase().transaction(async (tx) => {
       await tx.delete(pagePersonas).where(and(eq(pagePersonas.pageType, pageType), eq(pagePersonas.entityId, entityId)))
       if (!rows.length) {
         return []
       }
-      return tx.insert(pagePersonas).values(rows.map((row) => ({
-        id: createId(),
-        pageType,
-        entityId,
-        personaCode: row.code,
-        weight: row.weight,
-        primary: row.primary,
-      }))).returning()
+      return tx
+        .insert(pagePersonas)
+        .values(
+          rows.map((row) => ({
+            id: createId(),
+            pageType,
+            entityId,
+            personaCode: row.code,
+            weight: row.weight,
+            primary: row.primary,
+          })),
+        )
+        .returning()
     })
   }
 
-  static async syncPassportPaths(pages: Array<{ pageType: PageKind, entityId: string, path: string }>) {
+  static async syncPassportPaths(pages: Array<{ pageType: PageKind; entityId: string; path: string }>) {
     const db = useDatabase()
     for (const page of pages) {
-      await db.update(pagePassports).set({ path: page.path, updatedAt: sql`now()` }).where(and(
-        eq(pagePassports.pageType, page.pageType),
-        eq(pagePassports.entityId, page.entityId),
-        ne(pagePassports.path, page.path),
-      ))
+      await db
+        .update(pagePassports)
+        .set({ path: page.path, updatedAt: sql`now()` })
+        .where(
+          and(
+            eq(pagePassports.pageType, page.pageType),
+            eq(pagePassports.entityId, page.entityId),
+            ne(pagePassports.path, page.path),
+          ),
+        )
     }
   }
 
-  static async deleteStalePassports(pages: Array<{ pageType: PageKind, entityId: string }>) {
+  static async deleteStalePassports(pages: Array<{ pageType: PageKind; entityId: string }>) {
     const live = new Set(pages.map((page) => `${page.pageType}:${page.entityId}`))
-    const rows = await useDatabase().select({ id: pagePassports.id, pageType: pagePassports.pageType, entityId: pagePassports.entityId }).from(pagePassports)
+    const rows = await useDatabase()
+      .select({ id: pagePassports.id, pageType: pagePassports.pageType, entityId: pagePassports.entityId })
+      .from(pagePassports)
     const stale = rows.filter((row) => !live.has(`${row.pageType}:${row.entityId}`)).map((row) => row.id)
     if (stale.length) {
       await useDatabase().delete(pagePassports).where(inArray(pagePassports.id, stale))
@@ -485,21 +605,23 @@ export class Scoring {
       if (!rows.length) {
         return
       }
-      await tx.insert(contentScores).values(rows.map((row) => ({
-        id: createId(),
-        computedAt,
-        pageType: row.pageType,
-        entityId: row.entityId,
-        path: row.path,
-        title: row.title,
-        total: row.total,
-        quality: row.quality,
-        linking: row.linking,
-        indexing: row.indexing,
-        results: row.results,
-        checks: row.checks,
-        signals: row.signals,
-      })))
+      await tx.insert(contentScores).values(
+        rows.map((row) => ({
+          id: createId(),
+          computedAt,
+          pageType: row.pageType,
+          entityId: row.entityId,
+          path: row.path,
+          title: row.title,
+          total: row.total,
+          quality: row.quality,
+          linking: row.linking,
+          indexing: row.indexing,
+          results: row.results,
+          checks: row.checks,
+          signals: row.signals,
+        })),
+      )
     })
   }
 
@@ -507,37 +629,42 @@ export class Scoring {
     if (!rows.length) {
       return
     }
-    await useDatabase().insert(contentScoreDays).values(rows.map((row) => ({
-      day,
-      pageType: row.pageType,
-      entityId: row.entityId,
-      path: row.path,
-      title: row.title,
-      total: row.total,
-      quality: row.quality,
-      linking: row.linking,
-      indexing: row.indexing,
-      results: row.results,
-      organic30d: row.organic30d,
-      organic90d: row.organic90d,
-      goal30d: row.goal30d,
-      goal90d: row.goal90d,
-    }))).onConflictDoUpdate({
-      target: [contentScoreDays.day, contentScoreDays.pageType, contentScoreDays.entityId],
-      set: {
-        path: sql`excluded.path`,
-        title: sql`excluded.title`,
-        total: sql`excluded.total`,
-        quality: sql`excluded.quality`,
-        linking: sql`excluded.linking`,
-        indexing: sql`excluded.indexing`,
-        results: sql`excluded.results`,
-        organic30d: sql`excluded.organic_30d`,
-        organic90d: sql`excluded.organic_90d`,
-        goal30d: sql`excluded.goal_30d`,
-        goal90d: sql`excluded.goal_90d`,
-      },
-    })
+    await useDatabase()
+      .insert(contentScoreDays)
+      .values(
+        rows.map((row) => ({
+          day,
+          pageType: row.pageType,
+          entityId: row.entityId,
+          path: row.path,
+          title: row.title,
+          total: row.total,
+          quality: row.quality,
+          linking: row.linking,
+          indexing: row.indexing,
+          results: row.results,
+          organic30d: row.organic30d,
+          organic90d: row.organic90d,
+          goal30d: row.goal30d,
+          goal90d: row.goal90d,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [contentScoreDays.day, contentScoreDays.pageType, contentScoreDays.entityId],
+        set: {
+          path: sql`excluded.path`,
+          title: sql`excluded.title`,
+          total: sql`excluded.total`,
+          quality: sql`excluded.quality`,
+          linking: sql`excluded.linking`,
+          indexing: sql`excluded.indexing`,
+          results: sql`excluded.results`,
+          organic30d: sql`excluded.organic_30d`,
+          organic90d: sql`excluded.organic_90d`,
+          goal30d: sql`excluded.goal_30d`,
+          goal90d: sql`excluded.goal_90d`,
+        },
+      })
   }
 
   static async listScores(): Promise<StoredScore[]> {

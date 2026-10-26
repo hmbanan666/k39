@@ -7,9 +7,7 @@
         @keydown.left.prevent="step(-1)"
         @keydown.right.prevent="step(1)"
       >
-        <DialogTitle class="sr">
-          Фотографии
-        </DialogTitle>
+        <DialogTitle class="sr"> Фотографии </DialogTitle>
         <DialogDescription class="sr">
           {{ photo ? alt : 'Просмотр фотографий места' }}
         </DialogDescription>
@@ -40,13 +38,13 @@
               v-if="avif"
               type="image/avif"
               :srcset="avif"
-            >
+            />
             <img
               :src="webp || photo.src"
               :alt="alt"
               :width="photo.width || 1600"
               :height="photo.height || 1000"
-            >
+            />
           </picture>
           <button
             class="nav next"
@@ -62,9 +60,7 @@
               v-if="author"
               :author="author"
             />
-            <p class="count">
-              {{ index + 1 }} / {{ photos.length }}
-            </p>
+            <p class="count"> {{ index + 1 }} / {{ photos.length }} </p>
           </div>
         </div>
       </DialogContent>
@@ -74,7 +70,15 @@
 
 <script setup lang="ts">
 import type { PublicMedia } from '~~/shared/media'
-import { DialogClose, DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+} from 'reka-ui'
 import { authorFromMedia, describedAlt, largestVariantUrl } from '~~/shared/media'
 
 const props = defineProps<{ photos: PublicMedia[] }>()
@@ -82,10 +86,10 @@ const open = defineModel<boolean>('open', { default: false })
 const index = defineModel<number>('index', { default: 0 })
 
 const photo = computed(() => props.photos[index.value] ?? null)
-const author = computed(() => photo.value ? authorFromMedia(photo.value) : null)
-const alt = computed(() => photo.value ? describedAlt(photo.value.alt, photo.value.author, photo.value.license) : '')
-const avif = computed(() => photo.value ? largestVariantUrl(photo.value, 'avif') : '')
-const webp = computed(() => photo.value ? largestVariantUrl(photo.value, 'webp') : '')
+const author = computed(() => (photo.value ? authorFromMedia(photo.value) : null))
+const alt = computed(() => (photo.value ? describedAlt(photo.value.alt, photo.value.author, photo.value.license) : ''))
+const avif = computed(() => (photo.value ? largestVariantUrl(photo.value, 'avif') : ''))
+const webp = computed(() => (photo.value ? largestVariantUrl(photo.value, 'webp') : ''))
 
 function step(delta: number) {
   const next = index.value + delta
@@ -222,11 +226,22 @@ function touchEnd(event: TouchEvent) {
   font: 600 1.7rem/1 var(--font-body);
   cursor: pointer;
 }
-.photo-viewer .nav:disabled { opacity: 0.35; cursor: default; }
-.photo-viewer .prev { left: -3rem; }
-.photo-viewer .next { right: -3rem; }
+.photo-viewer .nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.photo-viewer .prev {
+  left: -3rem;
+}
+.photo-viewer .next {
+  right: -3rem;
+}
 @media (max-width: 719px) {
-  .photo-viewer .nav { display: none; }
-  .photo-viewer img { max-height: calc(100vh - 11rem); }
+  .photo-viewer .nav {
+    display: none;
+  }
+  .photo-viewer img {
+    max-height: calc(100vh - 11rem);
+  }
 }
 </style>

@@ -48,8 +48,8 @@ export interface ScorePlace {
   seoTitle: string | null
   seoDescription: string | null
   factsCheckedAt: string | null
-  sources: Array<{ title: string, url: string }>
-  faq: Array<{ question: string, answer: string }>
+  sources: Array<{ title: string; url: string }>
+  faq: Array<{ question: string; answer: string }>
   faqCount: number
   categorySlug: string | null
   categoryTitle: string | null
@@ -104,8 +104,8 @@ export interface CatalogHub {
 export interface LengthOverride {
   ceiling: number
   queries: string[]
-  search: { impressions: number, position: number } | null
-  competitors: Array<{ query: string, chars: number }>
+  search: { impressions: number; position: number } | null
+  competitors: Array<{ query: string; chars: number }>
   sections: string[]
   setAt: string
 }
@@ -155,9 +155,9 @@ export interface ContentCatalog {
   questStops: CatalogStop[]
   hubs: CatalogHub[]
   venues: CatalogVenue[]
-  related: Array<{ fromSlug: string, toSlug: string }>
-  photos: Array<{ placeId: string, count: number }>
-  venuePhotos: Array<{ venueId: string, count: number }>
+  related: Array<{ fromSlug: string; toSlug: string }>
+  photos: Array<{ placeId: string; count: number }>
+  venuePhotos: Array<{ venueId: string; count: number }>
   passports: CatalogPassport[]
   /** Admission rows and upcoming events per subject (ADR 0046). */
   practical?: CatalogPractical[]

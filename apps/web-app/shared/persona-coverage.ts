@@ -10,7 +10,7 @@ export type CoverageBlock = string
 export interface CoveragePage {
   pageType: 'place' | 'route' | 'collection' | 'quest' | 'hub' | 'venue'
   hasBody: boolean
-  modules: Array<{ type: string, role?: unknown }>
+  modules: Array<{ type: string; role?: unknown }>
   stops: number
   sources: number
   faq: number
@@ -67,7 +67,7 @@ export function personaCoverage(code: PersonaCode, blocks: ReadonlySet<CoverageB
   const persona = PERSONAS.find((item) => item.code === code)
   const wanted: readonly string[] = persona?.modules ?? []
   const missing = wanted.filter((block) => !blocks.has(block))
-  const score = wanted.length ? Math.round(100 * (wanted.length - missing.length) / wanted.length) : 100
+  const score = wanted.length ? Math.round((100 * (wanted.length - missing.length)) / wanted.length) : 100
   return { code, score, missing }
 }
 

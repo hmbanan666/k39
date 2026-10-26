@@ -18,11 +18,23 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
 const requestFetch = useRequestFetch()
-const venues = await requestFetch<Array<{ id: string, name: string, kind: string, status: string, slug: string, pending: boolean }>>('/api/admin/venues')
+const venues =
+  await requestFetch<Array<{ id: string; name: string; kind: string; status: string; slug: string; pending: boolean }>>(
+    '/api/admin/venues',
+  )
 useHead({ title: 'Заведения | Админка' })
 </script>
 
 <style scoped>
-.admin { max-width: 46rem; margin: 0 auto; padding: 1.5rem; }
-li { display: flex; justify-content: space-between; gap: 1rem; margin: 0.4rem 0; }
+.admin {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.4rem 0;
+}
 </style>

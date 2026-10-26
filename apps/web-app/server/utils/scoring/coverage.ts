@@ -14,17 +14,35 @@ interface StoredPersona {
 }
 
 function emptyPage(pageType: CoveragePage['pageType']): CoveragePage {
-  return { pageType, hasBody: false, modules: [], stops: 0, sources: 0, faq: 0, hours: false, price: false, howToGet: false }
+  return {
+    pageType,
+    hasBody: false,
+    modules: [],
+    stops: 0,
+    sources: 0,
+    faq: 0,
+    hours: false,
+    price: false,
+    howToGet: false,
+  }
 }
 
 /** What each catalog page provides, keyed by `type:id`. */
 export function coveragePages(catalog: ContentCatalog) {
-  const pages = new Map<string, { title: string, page: CoveragePage }>()
+  const pages = new Map<string, { title: string; page: CoveragePage }>()
   const count = (stops: Array<{ parentId: string }>, id: string) => stops.filter((stop) => stop.parentId === id).length
   for (const row of catalog.places) {
     pages.set(`place:${row.id}`, {
       title: row.title,
-      page: { ...emptyPage('place'), hasBody: Boolean(row.body.trim()), sources: row.sources.length, faq: row.faqCount, hours: catalogHoursKnown(row.schedule) || Boolean(row.hours), price: Boolean(row.price), howToGet: Boolean(row.howToGet) },
+      page: {
+        ...emptyPage('place'),
+        hasBody: Boolean(row.body.trim()),
+        sources: row.sources.length,
+        faq: row.faqCount,
+        hours: catalogHoursKnown(row.schedule) || Boolean(row.hours),
+        price: Boolean(row.price),
+        howToGet: Boolean(row.howToGet),
+      },
     })
   }
   const articles = [
@@ -36,16 +54,30 @@ export function coveragePages(catalog: ContentCatalog) {
     for (const row of rows) {
       pages.set(`${pageType}:${row.id}`, {
         title: row.title,
-        page: { ...emptyPage(pageType), hasBody: Boolean(row.body.trim()), modules: row.modules as CoveragePage['modules'], stops: count(stops, row.id), sources: row.sourcesCount },
+        page: {
+          ...emptyPage(pageType),
+          hasBody: Boolean(row.body.trim()),
+          modules: row.modules as CoveragePage['modules'],
+          stops: count(stops, row.id),
+          sources: row.sourcesCount,
+        },
       })
     }
   }
   for (const row of catalog.hubs) {
-    const stops = catalog.places.filter((place) => place.categorySlug === row.slug && place.publicationStatus === 'published').length
-    pages.set(`hub:${row.id}`, { title: row.title, page: { ...emptyPage('hub'), hasBody: Boolean(row.body.trim()), stops } })
+    const stops = catalog.places.filter(
+      (place) => place.categorySlug === row.slug && place.publicationStatus === 'published',
+    ).length
+    pages.set(`hub:${row.id}`, {
+      title: row.title,
+      page: { ...emptyPage('hub'), hasBody: Boolean(row.body.trim()), stops },
+    })
   }
   for (const row of catalog.venues) {
-    pages.set(`venue:${row.id}`, { title: row.name, page: { ...emptyPage('venue'), hasBody: Boolean(row.description.trim()), hours: catalogHoursKnown(row.schedule) } })
+    pages.set(`venue:${row.id}`, {
+      title: row.name,
+      page: { ...emptyPage('venue'), hasBody: Boolean(row.description.trim()), hours: catalogHoursKnown(row.schedule) },
+    })
   }
   return pages
 }
@@ -56,7 +88,14 @@ export interface CoverageRow {
   path: string
   title: string
   /** Coverage for every persona; targets carry weight and primary. */
-  cells: Array<{ code: PersonaCode, score: number, missing: string[], weight: number | null, primary: boolean, gap: boolean }>
+  cells: Array<{
+    code: PersonaCode
+    score: number
+    missing: string[]
+    weight: number | null
+    primary: boolean
+    gap: boolean
+  }>
 }
 
 /** Page × persona coverage for pages with assigned personas. */
@@ -87,7 +126,12 @@ export function personaCoverageReport(catalog: ContentCatalog, stored: StoredPer
       cells: PERSONA_CODES.map((code) => {
         const target = targets.find((item) => item.personaCode === code)
         const coverage = personaCoverage(code, blocks)
-        return { ...coverage, weight: target?.weight ?? null, primary: target?.primary ?? false, gap: Boolean(target) && coverage.score < COVERAGE_GAP }
+        return {
+          ...coverage,
+          weight: target?.weight ?? null,
+          primary: target?.primary ?? false,
+          gap: Boolean(target) && coverage.score < COVERAGE_GAP,
+        }
       }),
     })
   }

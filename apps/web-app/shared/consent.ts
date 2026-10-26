@@ -27,7 +27,7 @@ export function consentParamAccepted(consent: unknown, version: unknown) {
   return consent === '1' && version === CONSENT_VERSION
 }
 
-export function oauthStartAllowed(input: { consent: unknown, version: unknown, cookie: string | undefined }) {
+export function oauthStartAllowed(input: { consent: unknown; version: unknown; cookie: string | undefined }) {
   return consentParamAccepted(input.consent, input.version) || input.cookie === CONSENT_VERSION
 }
 

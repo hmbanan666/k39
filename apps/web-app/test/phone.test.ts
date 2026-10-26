@@ -25,7 +25,11 @@ describe('russian phone display', () => {
     expect(formatPhoneDisplay(raw)).toBe('+7 4012 30-30-40; +7 4012 38-94-66')
     expect(phoneE164List(raw)).toEqual(['+74012303040', '+74012389466'])
     expect(telHref(raw)).toBe('tel:+74012303040')
-    expect(parsePhones('+7 401 2303040;+7 401 2926426;+7 963 350').map((item) => item.e164)).toEqual(['+74012303040', '+74012926426', ''])
+    expect(parsePhones('+7 401 2303040;+7 401 2926426;+7 963 350').map((item) => item.e164)).toEqual([
+      '+74012303040',
+      '+74012926426',
+      '',
+    ])
     expect(formatPhoneDisplay('+7 4012 312-312 p6')).toBe('+7 4012 31-23-12 p6')
     expect(telHref('+7 4012 312-312 p6')).toBe('tel:+74012312312')
     expect(telHref('нет')).toBe('')
@@ -186,7 +190,11 @@ describe('russian phone display', () => {
       },
     })
     const links = page.findAll('a[href^="tel:"]')
-    expect(links.map((link) => link.attributes('href'))).toEqual(['tel:+74012303040', 'tel:+74012303040', 'tel:+74012389466'])
+    expect(links.map((link) => link.attributes('href'))).toEqual([
+      'tel:+74012303040',
+      'tel:+74012303040',
+      'tel:+74012389466',
+    ])
     expect(page.text()).toContain('+7 4012 30-30-40')
     expect(page.text()).toContain('+7 4012 38-94-66')
     expect(page.text()).not.toContain('+7 401 2303040')

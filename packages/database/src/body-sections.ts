@@ -17,9 +17,7 @@ const HEADING_KIND: Record<string, StandardSectionKind> = {
   'как добраться': 'directions',
 }
 
-export type BodySection
-  = | { kind: 'text', title?: string, text: string }
-    | { kind: StandardSectionKind, text: string }
+export type BodySection = { kind: 'text'; title?: string; text: string } | { kind: StandardSectionKind; text: string }
 
 function headingKind(title: string): StandardSectionKind | null {
   return HEADING_KIND[title.trim().toLowerCase()] ?? null
@@ -86,14 +84,18 @@ export function readSections(value: unknown): BodySection[] {
       return []
     }
     if (item.kind === 'text') {
-      return [typeof item.title === 'string' && item.title.trim() ? { kind: 'text', title: item.title.trim(), text: item.text } : { kind: 'text', text: item.text }]
+      return [
+        typeof item.title === 'string' && item.title.trim()
+          ? { kind: 'text', title: item.title.trim(), text: item.text }
+          : { kind: 'text', text: item.text },
+      ]
     }
     return item.kind in STANDARD_SECTION_TITLES ? [{ kind: item.kind as StandardSectionKind, text: item.text }] : []
   })
 }
 
 /** The body a page renders: composed from sections when it has them. */
-export function bodyOf(row: { body: string, sections?: unknown }) {
+export function bodyOf(row: { body: string; sections?: unknown }) {
   const sections = readSections(row.sections)
   return sections.length ? composeBody(sections) : row.body
 }

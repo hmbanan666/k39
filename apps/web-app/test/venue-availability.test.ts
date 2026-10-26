@@ -7,10 +7,15 @@ import ListingPage from '../app/pages/zavedeniya/[[...path]].vue'
 import { venueAvailabilityFixture } from './fixtures/venue-availability'
 
 const { availability, loadPage } = vi.hoisted(() => ({ availability: vi.fn(), loadPage: vi.fn() }))
-const route = reactive({ path: '/zavedeniya/fixture-town', query: {}, params: {}, fullPath: '/zavedeniya/fixture-town' })
+const route = reactive({
+  path: '/zavedeniya/fixture-town',
+  query: {},
+  params: {},
+  fullPath: '/zavedeniya/fixture-town',
+})
 vi.mock('../app/composables/fetchPublic', () => ({ fetchPublic: loadPage }))
 vi.mock('../app/composables/usePublicHead', () => ({ usePublicHead: vi.fn() }))
-vi.mock('./nuxt-stubs', async (original) => ({ ...await original<object>(), useRoute: () => route }))
+vi.mock('./nuxt-stubs', async (original) => ({ ...(await original<object>()), useRoute: () => route }))
 
 const mapStub = defineComponent({ name: 'MapEmbed', props: ['hrefs'], render: () => h('div') })
 let wrapper: VueWrapper | undefined
@@ -68,11 +73,16 @@ describe('venue listing availability', () => {
     expect(wrapper!.find('.empty').exists()).toBe(false)
     expect(wrapper!.getComponent(mapStub).props('hrefs')).toHaveLength(2)
     expect(availability).toHaveBeenLastCalledWith('/api/public/availability', {
-      query: { type: 'venue', status: 'open,closing_soon' }, retry: 0, timeout: 10_000,
+      query: { type: 'venue', status: 'open,closing_soon' },
+      retry: 0,
+      timeout: 10_000,
     })
 
     availability.mockResolvedValueOnce({ items: [{ slug: 'fixture-cafe-photo' }] })
-    await wrapper!.findAll('button').find((button) => button.text() === 'Повторить')!.trigger('click')
+    await wrapper!
+      .findAll('button')
+      .find((button) => button.text() === 'Повторить')!
+      .trigger('click')
     await flushPromises()
     expect(openButton().attributes('aria-pressed')).toBe('true')
     expect(wrapper!.find('[role="alert"]').exists()).toBe(false)

@@ -1,5 +1,13 @@
 import type { SourceLink } from '../types/entities'
-import type { OsmDraft, VenueDish, VenueLocality, VenuePhotoOrigin, VenueReservation, VenueSocial, VenueStatus } from '../venues'
+import type {
+  OsmDraft,
+  VenueDish,
+  VenueLocality,
+  VenuePhotoOrigin,
+  VenueReservation,
+  VenueSocial,
+  VenueStatus,
+} from '../venues'
 import type { ContentTx } from './content'
 import { ownWebsiteMessage, ownWebsiteProblem } from '@k39/types/official-url'
 import { parseVkCommunityId, vkCommunityIdProblem } from '@k39/types/vk-community'
@@ -9,7 +17,21 @@ import { firstPublishedStamp } from '../first-published'
 import { PHONE_TEXT_MAX } from '../phone'
 import { priceInName, priceInNameMessage } from '../price-label'
 import { prepareSourceLinks, SourceInputError } from '../sources'
-import { admissionPrices, calendarEvents, factRevisions, facts, media, offers, regions, revisions, slugRedirects, venueAudits, venueListingIntros, venueMedia, venues } from '../tables'
+import {
+  admissionPrices,
+  calendarEvents,
+  factRevisions,
+  facts,
+  media,
+  offers,
+  regions,
+  revisions,
+  slugRedirects,
+  venueAudits,
+  venueListingIntros,
+  venueMedia,
+  venues,
+} from '../tables'
 import {
   assertKind,
   assertVenueSlug,
@@ -74,7 +96,7 @@ export interface VenueListFilter {
   kind?: string
   status?: VenueStatus
   stale?: boolean
-  near?: { latitude: number, longitude: number, radiusKm: number }
+  near?: { latitude: number; longitude: number; radiusKm: number }
   foodOnly?: boolean
   limit?: number
   /** Name or slug contains this text. Lower case, ё folded to е. */
@@ -93,7 +115,9 @@ function cleanTags(tags: string[] | undefined) {
   if (!tags) {
     return undefined
   }
-  return [...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter((tag) => tag.length > 0 && tag.length <= 40))].slice(0, 12)
+  return [
+    ...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter((tag) => tag.length > 0 && tag.length <= 40)),
+  ].slice(0, 12)
 }
 
 function cleanSocials(rows: VenueSocial[] | undefined) {
@@ -177,7 +201,8 @@ function cleanDishes(rows: VenueDish[] | undefined) {
       return {
         name,
         note: row.note?.trim().slice(0, 160) || null,
-        priceRub: row.priceRub != null && Number.isFinite(row.priceRub) && row.priceRub >= 0 ? Math.round(row.priceRub) : null,
+        priceRub:
+          row.priceRub != null && Number.isFinite(row.priceRub) && row.priceRub >= 0 ? Math.round(row.priceRub) : null,
       }
     })
     .filter((row) => row.name)
@@ -228,18 +253,21 @@ function uniqueKind(error: unknown): 'slug' | 'osm' | 'unknown' | null {
   if (!rows.some((row) => row.code === '23505')) {
     return null
   }
-  const blob = rows.map((row) => {
-    const parts: string[] = []
-    for (const key of ['constraint', 'constraint_name', 'detail']) {
-      if (typeof row[key] === 'string') {
-        parts.push(row[key])
+  const blob = rows
+    .map((row) => {
+      const parts: string[] = []
+      for (const key of ['constraint', 'constraint_name', 'detail']) {
+        if (typeof row[key] === 'string') {
+          parts.push(row[key])
+        }
       }
-    }
-    if (typeof row.message === 'string' && /duplicate key|unique constraint/i.test(row.message)) {
-      parts.push(row.message)
-    }
-    return parts.join(' ')
-  }).join(' ').toLowerCase()
+      if (typeof row.message === 'string' && /duplicate key|unique constraint/i.test(row.message)) {
+        parts.push(row.message)
+      }
+      return parts.join(' ')
+    })
+    .join(' ')
+    .toLowerCase()
   if (/venues_osm_id_unique|\(osm_id\)/.test(blob)) {
     return 'osm'
   }
@@ -261,7 +289,7 @@ async function uniqueError(error: unknown, slug: string, osmId: string | null) {
     return new VenueInputError('Такой адрес уже есть')
   }
   const slugTaken = Boolean(await Venues.bySlug(slug))
-  const osmTaken = Boolean(osmId && await Venues.byOsmId(osmId))
+  const osmTaken = Boolean(osmId && (await Venues.byOsmId(osmId)))
   if (osmTaken && !slugTaken) {
     return new VenueInputError('Такой osmId уже есть')
   }
@@ -280,7 +308,11 @@ async function localityFor(input: VenueWrite) {
   if (!input.regionId) {
     return null
   }
-  const [region] = await useDatabase().select({ slug: regions.slug }).from(regions).where(eq(regions.id, input.regionId)).limit(1)
+  const [region] = await useDatabase()
+    .select({ slug: regions.slug })
+    .from(regions)
+    .where(eq(regions.id, input.regionId))
+    .limit(1)
   return region ? { town: region.slug } : null
 }
 
@@ -313,7 +345,9 @@ async function markGone(fromPath: string, tx?: ContentTx) {
 }
 
 async function clearGone(fromPath: string, tx?: ContentTx) {
-  await (tx ?? useDatabase()).delete(slugRedirects).where(and(eq(slugRedirects.fromPath, fromPath), eq(slugRedirects.statusCode, 410)))
+  await (tx ?? useDatabase())
+    .delete(slugRedirects)
+    .where(and(eq(slugRedirects.fromPath, fromPath), eq(slugRedirects.statusCode, 410)))
 }
 
 async function rememberSlug(fromSlug: string, toSlug: string, tx?: ContentTx) {
@@ -336,7 +370,10 @@ function rowsOf<T>(result: unknown): T[] {
 }
 
 function numArray(values: number[]) {
-  return sql`array[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::float8[]`
+  return sql`array[${sql.join(
+    values.map((value) => sql`${value}`),
+    sql`, `,
+  )}]::float8[]`
 }
 
 export class Venues {
@@ -348,7 +385,10 @@ export class Venues {
         changes.set(key, at)
       }
     }
-    const audits = await tx.select().from(venueAudits).where(and(eq(venueAudits.venueId, id), eq(venueAudits.action, 'owner_update')))
+    const audits = await tx
+      .select()
+      .from(venueAudits)
+      .where(and(eq(venueAudits.venueId, id), eq(venueAudits.action, 'owner_update')))
     for (const row of audits) {
       const fields = Array.isArray(row.summary.fields) ? row.summary.fields : []
       for (const field of fields) {
@@ -364,7 +404,8 @@ export class Venues {
         }
       }
     }
-    const revisions = await tx.select({ slot: facts.slot, at: factRevisions.recordedAt })
+    const revisions = await tx
+      .select({ slot: facts.slot, at: factRevisions.recordedAt })
       .from(factRevisions)
       .innerJoin(facts, eq(facts.id, factRevisions.factId))
       .where(and(eq(facts.subjectType, 'venue'), eq(facts.subjectId, id), eq(factRevisions.actor, 'owner')))
@@ -452,43 +493,46 @@ export class Venues {
     const socials = cleanSocials(input.socials) ?? []
     const vkCommunityId = nextVkCommunityId(input.vkCommunityId, null, socials)
     try {
-      const [created] = await useDatabase().insert(venues).values({
-        slug,
-        name: name.slice(0, 160),
-        kind: input.kind,
-        cuisineTags: cleanTags(input.cuisineTags) ?? [],
-        regionId: input.regionId ?? null,
-        address: cleanText(input.address, 300),
-        latitude: input.latitude ?? null,
-        longitude: input.longitude ?? null,
-        priceLevel: input.priceLevel ?? null,
-        avgCheck: input.avgCheck ?? null,
-        hours,
-        phone: cleanText(input.phone, PHONE_TEXT_MAX),
-        website: cleanWebsite(input.website),
-        socials,
-        vkCommunityId,
-        bookingUrl: cleanUrl(input.bookingUrl),
-        orderUrl: cleanUrl(input.orderUrl),
-        deliveryUrl: cleanUrl(input.deliveryUrl),
-        menuUrl: cleanUrl(input.menuUrl),
-        reservation: input.reservation ?? null,
-        takeaway: input.takeaway ?? null,
-        delivery: input.delivery ?? null,
-        signatureDishes: cleanDishes(input.signatureDishes) ?? [],
-        modules: input.modules ?? [],
-        contactEmail: cleanEmail(input.contactEmail),
-        description,
-        sources: cleanSources(input.sources) ?? [],
-        status,
-        firstPublishedAt: firstPublishedStamp(null, status),
-        lastVerifiedAt: input.lastVerifiedAt ?? null,
-        osmId: cleanText(input.osmId, 80),
-        seoTitle: cleanText(input.seoTitle, 180),
-        seoDescription: cleanText(input.seoDescription, 300),
-        noindex: input.noindex ?? false,
-        updatedBy: userId ?? null,
-      }).returning()
+      const [created] = await useDatabase()
+        .insert(venues)
+        .values({
+          slug,
+          name: name.slice(0, 160),
+          kind: input.kind,
+          cuisineTags: cleanTags(input.cuisineTags) ?? [],
+          regionId: input.regionId ?? null,
+          address: cleanText(input.address, 300),
+          latitude: input.latitude ?? null,
+          longitude: input.longitude ?? null,
+          priceLevel: input.priceLevel ?? null,
+          avgCheck: input.avgCheck ?? null,
+          hours,
+          phone: cleanText(input.phone, PHONE_TEXT_MAX),
+          website: cleanWebsite(input.website),
+          socials,
+          vkCommunityId,
+          bookingUrl: cleanUrl(input.bookingUrl),
+          orderUrl: cleanUrl(input.orderUrl),
+          deliveryUrl: cleanUrl(input.deliveryUrl),
+          menuUrl: cleanUrl(input.menuUrl),
+          reservation: input.reservation ?? null,
+          takeaway: input.takeaway ?? null,
+          delivery: input.delivery ?? null,
+          signatureDishes: cleanDishes(input.signatureDishes) ?? [],
+          modules: input.modules ?? [],
+          contactEmail: cleanEmail(input.contactEmail),
+          description,
+          sources: cleanSources(input.sources) ?? [],
+          status,
+          firstPublishedAt: firstPublishedStamp(null, status),
+          lastVerifiedAt: input.lastVerifiedAt ?? null,
+          osmId: cleanText(input.osmId, 80),
+          seoTitle: cleanText(input.seoTitle, 180),
+          seoDescription: cleanText(input.seoDescription, 300),
+          noindex: input.noindex ?? false,
+          updatedBy: userId ?? null,
+        })
+        .returning()
       if (!created) {
         throw new VenueInputError('Не удалось сохранить заведение')
       }
@@ -560,7 +604,8 @@ export class Venues {
       lastVerifiedAt: input.lastVerifiedAt === undefined ? current.lastVerifiedAt : input.lastVerifiedAt,
       osmId: input.osmId === undefined ? current.osmId : cleanText(input.osmId, 80),
       seoTitle: input.seoTitle === undefined ? current.seoTitle : cleanText(input.seoTitle, 180),
-      seoDescription: input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
+      seoDescription:
+        input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
       noindex: input.noindex ?? current.noindex,
     }
     return next
@@ -590,11 +635,15 @@ export class Venues {
       await rememberSlug(current.slug, nextSlug, tx)
     }
     try {
-      const [updated] = await db.update(venues).set({
-        ...next,
-        updatedBy: userId ?? null,
-        updatedAt: new Date().toISOString(),
-      }).where(eq(venues.id, current.id)).returning()
+      const [updated] = await db
+        .update(venues)
+        .set({
+          ...next,
+          updatedBy: userId ?? null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(venues.id, current.id))
+        .returning()
       const saved = updated ?? current
       const path = `/zavedeniya/${saved.slug}`
       if (nextStatus === 'archived') {
@@ -622,8 +671,12 @@ export class Venues {
       throw new VenueInputError('Удалить можно только черновик или архив')
     }
     await useDatabase().transaction(async (tx) => {
-      await tx.delete(admissionPrices).where(and(eq(admissionPrices.subjectType, 'venue'), eq(admissionPrices.subjectId, current.id)))
-      await tx.delete(calendarEvents).where(and(eq(calendarEvents.subjectType, 'venue'), eq(calendarEvents.subjectId, current.id)))
+      await tx
+        .delete(admissionPrices)
+        .where(and(eq(admissionPrices.subjectType, 'venue'), eq(admissionPrices.subjectId, current.id)))
+      await tx
+        .delete(calendarEvents)
+        .where(and(eq(calendarEvents.subjectType, 'venue'), eq(calendarEvents.subjectId, current.id)))
       await Notices.removeForSubject('venue', current.id, tx)
       await tx.delete(venues).where(eq(venues.id, current.id))
     })
@@ -636,52 +689,70 @@ export class Venues {
     if (!unique.length) {
       return []
     }
-    return useDatabase().select({
-      id: venues.id,
-      website: venues.website,
-      socials: venues.socials,
-      vkCommunityId: venues.vkCommunityId,
-    }).from(venues).where(inArray(venues.id, unique))
+    return useDatabase()
+      .select({
+        id: venues.id,
+        website: venues.website,
+        socials: venues.socials,
+        vkCommunityId: venues.vkCommunityId,
+      })
+      .from(venues)
+      .where(inArray(venues.id, unique))
   }
 
   /** Every venue in a town, including drafts. A null region is its own group. */
   static async inRegion(regionId: string | null) {
     const where = regionId == null ? isNull(venues.regionId) : eq(venues.regionId, regionId)
-    return useDatabase().select({
-      id: venues.id,
-      slug: venues.slug,
-      regionId: venues.regionId,
-      status: venues.status,
-    }).from(venues).where(where)
+    return useDatabase()
+      .select({
+        id: venues.id,
+        slug: venues.slug,
+        regionId: venues.regionId,
+        status: venues.status,
+      })
+      .from(venues)
+      .where(where)
   }
 
   /** Stores the computed comparison without a revision and without touching updatedAt. */
-  static async setPriceBand(id: string, value: { level: 'low' | 'mid' | 'high' | null, basis: number, computedAt: string }) {
-    await useDatabase().update(venues).set({
-      priceBand: value.level,
-      priceBandBasis: value.basis,
-      priceBandComputedAt: value.computedAt,
-    }).where(eq(venues.id, id))
+  static async setPriceBand(
+    id: string,
+    value: { level: 'low' | 'mid' | 'high' | null; basis: number; computedAt: string },
+  ) {
+    await useDatabase()
+      .update(venues)
+      .set({
+        priceBand: value.level,
+        priceBandBasis: value.basis,
+        priceBandComputedAt: value.computedAt,
+      })
+      .where(eq(venues.id, id))
   }
 
   static async list(filter: VenueListFilter = {}) {
     const where = venueListWhere(filter)
-    const base = useDatabase().select().from(venues).where(where.length ? and(...where) : undefined).orderBy(asc(venues.name), asc(venues.id))
+    const base = useDatabase()
+      .select()
+      .from(venues)
+      .where(where.length ? and(...where) : undefined)
+      .orderBy(asc(venues.name), asc(venues.id))
     const rows = filter.limit ? await base.limit(filter.limit) : await base
     if (!filter.near) {
       return rows.map((row) => ({ ...row, distanceKm: null as number | null }))
     }
     const { latitude, longitude, radiusKm } = filter.near
-    return rows.flatMap((row) => {
-      if (row.latitude == null || row.longitude == null) {
-        return []
-      }
-      const distanceKm = haversineKm(latitude, longitude, row.latitude, row.longitude)
-      if (distanceKm > radiusKm) {
-        return []
-      }
-      return [{ ...row, distanceKm }]
-    }).sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0) || a.id.localeCompare(b.id))
+    return rows
+      .flatMap((row) => {
+        if (row.latitude == null || row.longitude == null) {
+          return []
+        }
+        const distanceKm = haversineKm(latitude, longitude, row.latitude, row.longitude)
+        if (distanceKm > radiusKm) {
+          return []
+        }
+        return [{ ...row, distanceKm }]
+      })
+      .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0) || a.id.localeCompare(b.id))
   }
 
   /**
@@ -689,7 +760,7 @@ export class Venues {
    * `near` is applied before the slice so `total` counts only rows inside the radius.
    * pageSize stops at 50, the same cap as `places_list`.
    */
-  static async listPage(filter: VenueListFilter & { page?: number, pageSize?: number } = {}) {
+  static async listPage(filter: VenueListFilter & { page?: number; pageSize?: number } = {}) {
     const page = Math.max(1, Math.floor(filter.page ?? 1))
     const pageSize = Math.min(50, Math.max(1, Math.floor(filter.pageSize ?? 20)))
     const where = venueListWhere(filter)
@@ -712,8 +783,13 @@ export class Venues {
       return { items: matched.slice(start, start + pageSize), total: matched.length, page, pageSize }
     }
     const [rows, countRows] = await Promise.all([
-      ordered().limit(pageSize).offset((page - 1) * pageSize),
-      useDatabase().select({ value: sql<number>`count(*)::int` }).from(venues).where(clause),
+      ordered()
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      useDatabase()
+        .select({ value: sql<number>`count(*)::int` })
+        .from(venues)
+        .where(clause),
     ])
     return {
       items: rows.map((row) => ({ ...row, distanceKm: null as number | null })),
@@ -740,17 +816,21 @@ export class Venues {
     const hasPoint = latitude != null && longitude != null
     const radiusM = Math.min(2000, Math.max(1, Math.floor(input.radiusM ?? 150)))
     const where = input.regionId ? eq(venues.regionId, input.regionId) : undefined
-    const rows = await useDatabase().select({
-      id: venues.id,
-      slug: venues.slug,
-      name: venues.name,
-      kind: venues.kind,
-      status: venues.status,
-      latitude: venues.latitude,
-      longitude: venues.longitude,
-      regionSlug: regions.slug,
-      regionTitle: regions.title,
-    }).from(venues).leftJoin(regions, eq(venues.regionId, regions.id)).where(where)
+    const rows = await useDatabase()
+      .select({
+        id: venues.id,
+        slug: venues.slug,
+        name: venues.name,
+        kind: venues.kind,
+        status: venues.status,
+        latitude: venues.latitude,
+        longitude: venues.longitude,
+        regionSlug: regions.slug,
+        regionTitle: regions.title,
+      })
+      .from(venues)
+      .leftJoin(regions, eq(venues.regionId, regions.id))
+      .where(where)
     const items = rows.flatMap((row) => {
       const matched: Array<'name' | 'coordinates'> = []
       if (key && venueNameKey(row.name) === key) {
@@ -766,16 +846,18 @@ export class Venues {
       if (!matched.length) {
         return []
       }
-      return [{
-        id: row.id,
-        slug: row.slug,
-        name: row.name,
-        kind: row.kind,
-        status: row.status,
-        region: row.regionSlug ? { slug: row.regionSlug, title: row.regionTitle ?? row.regionSlug } : null,
-        distanceM,
-        matched,
-      }]
+      return [
+        {
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          kind: row.kind,
+          status: row.status,
+          region: row.regionSlug ? { slug: row.regionSlug, title: row.regionTitle ?? row.regionSlug } : null,
+          distanceM,
+          matched,
+        },
+      ]
     })
     items.sort((a, b) => {
       const left = a.distanceM ?? Number.POSITIVE_INFINITY
@@ -785,7 +867,7 @@ export class Venues {
     return items
   }
 
-  static async nearby(origins: Array<{ latitude: number, longitude: number }>, now = new Date()) {
+  static async nearby(origins: Array<{ latitude: number; longitude: number }>, now = new Date()) {
     const points = origins.filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude))
     if (!points.length) {
       return []
@@ -804,7 +886,10 @@ export class Venues {
         from unnest(${numArray(points.map((point) => point.latitude))}, ${numArray(points.map((point) => point.longitude))}) as o(lat, lng)
       ) d
       where v.status = 'published'
-        and v.kind = any(${sql`array[${sql.join(FOOD_KINDS.map((kind) => sql`${kind}`), sql`, `)}]::varchar[]`})
+        and v.kind = any(${sql`array[${sql.join(
+          FOOD_KINDS.map((kind) => sql`${kind}`),
+          sql`, `,
+        )}]::varchar[]`})
         and v.latitude is not null
         and v.longitude is not null
         and v.last_verified_at is not null
@@ -856,17 +941,17 @@ export class Venues {
     if (!ids.length) {
       return new Set<string>()
     }
-    const rows = await useDatabase().select({ venueId: offers.venueId }).from(offers).where(and(
-      inArray(offers.venueId, ids),
-      eq(offers.status, 'active'),
-    ))
+    const rows = await useDatabase()
+      .select({ venueId: offers.venueId })
+      .from(offers)
+      .where(and(inArray(offers.venueId, ids), eq(offers.status, 'active')))
     return new Set(rows.map((row) => row.venueId).filter((id): id is string => Boolean(id)))
   }
 
   /** `createdDrafts` pairs each new row with the draft it came from. */
   static async importDrafts(drafts: OsmDraft[], regionId: string | null) {
     const created: string[] = []
-    const createdDrafts: Array<{ id: string, draft: OsmDraft }> = []
+    const createdDrafts: Array<{ id: string; draft: OsmDraft }> = []
     const existing: string[] = []
     const skipped: string[] = []
     for (const draft of drafts) {
@@ -919,13 +1004,18 @@ export class Venues {
   }
 
   static async gallery(venueId: string) {
-    return useDatabase().select({
-      linkId: venueMedia.id,
-      sortOrder: venueMedia.sortOrder,
-      isCover: venueMedia.isCover,
-      origin: venueMedia.origin,
-      media,
-    }).from(venueMedia).innerJoin(media, eq(venueMedia.mediaId, media.id)).where(eq(venueMedia.venueId, venueId)).orderBy(asc(venueMedia.sortOrder))
+    return useDatabase()
+      .select({
+        linkId: venueMedia.id,
+        sortOrder: venueMedia.sortOrder,
+        isCover: venueMedia.isCover,
+        origin: venueMedia.origin,
+        media,
+      })
+      .from(venueMedia)
+      .innerJoin(media, eq(venueMedia.mediaId, media.id))
+      .where(eq(venueMedia.venueId, venueId))
+      .orderBy(asc(venueMedia.sortOrder))
   }
 
   static async coversFor(venueIds: string[]) {
@@ -933,8 +1023,12 @@ export class Venues {
     if (!unique.length) {
       return new Map<string, typeof media.$inferSelect>()
     }
-    const links = await useDatabase().select().from(venueMedia).where(inArray(venueMedia.venueId, unique)).orderBy(asc(venueMedia.sortOrder))
-    const coverLink = new Map<string, { mediaId: string, rank: number }>()
+    const links = await useDatabase()
+      .select()
+      .from(venueMedia)
+      .where(inArray(venueMedia.venueId, unique))
+      .orderBy(asc(venueMedia.sortOrder))
+    const coverLink = new Map<string, { mediaId: string; rank: number }>()
     for (const link of links) {
       const rank = link.isCover ? -1 : link.sortOrder
       const current = coverLink.get(link.venueId)
@@ -958,37 +1052,49 @@ export class Venues {
     return result
   }
 
-  static async attachMedia(venueId: string, mediaId: string, options?: { isCover?: boolean, origin?: VenuePhotoOrigin | null, sortOrder?: number, promoteIfEmpty?: boolean }) {
+  static async attachMedia(
+    venueId: string,
+    mediaId: string,
+    options?: { isCover?: boolean; origin?: VenuePhotoOrigin | null; sortOrder?: number; promoteIfEmpty?: boolean },
+  ) {
     const db = useDatabase()
     const existing = await db.select().from(venueMedia).where(eq(venueMedia.venueId, venueId))
     const found = existing.find((row) => row.mediaId === mediaId)
     // A dish photo passes promoteIfEmpty: false so it does not become the cover.
-    const cover = options?.promoteIfEmpty === false
-      ? options?.isCover === true
-      : options?.isCover === true || existing.length === 0
+    const cover =
+      options?.promoteIfEmpty === false ? options?.isCover === true : options?.isCover === true || existing.length === 0
     if (cover) {
       await db.update(venueMedia).set({ isCover: false }).where(eq(venueMedia.venueId, venueId))
     }
     if (found) {
-      const [updated] = await db.update(venueMedia).set({
-        isCover: cover || found.isCover,
-        sortOrder: options?.sortOrder ?? found.sortOrder,
-        origin: options?.origin === undefined ? found.origin : options.origin,
-      }).where(eq(venueMedia.id, found.id)).returning()
+      const [updated] = await db
+        .update(venueMedia)
+        .set({
+          isCover: cover || found.isCover,
+          sortOrder: options?.sortOrder ?? found.sortOrder,
+          origin: options?.origin === undefined ? found.origin : options.origin,
+        })
+        .where(eq(venueMedia.id, found.id))
+        .returning()
       return updated ?? found
     }
-    const [created] = await db.insert(venueMedia).values({
-      venueId,
-      mediaId,
-      sortOrder: options?.sortOrder ?? existing.length,
-      isCover: cover,
-      origin: options?.origin ?? null,
-    }).returning()
+    const [created] = await db
+      .insert(venueMedia)
+      .values({
+        venueId,
+        mediaId,
+        sortOrder: options?.sortOrder ?? existing.length,
+        isCover: cover,
+        origin: options?.origin ?? null,
+      })
+      .returning()
     return created
   }
 
   static async listingIntro(regionId: string | null, kind: string | null) {
-    const regionClause = regionId ? eq(venueListingIntros.regionId, regionId) : sql`${venueListingIntros.regionId} is null`
+    const regionClause = regionId
+      ? eq(venueListingIntros.regionId, regionId)
+      : sql`${venueListingIntros.regionId} is null`
     const kindClause = kind ? eq(venueListingIntros.kind, kind) : sql`${venueListingIntros.kind} is null`
     const [row] = await useDatabase().select().from(venueListingIntros).where(and(regionClause, kindClause)).limit(1)
     return row ?? null
@@ -1007,21 +1113,29 @@ export class Venues {
     const current = await this.listingIntro(input.regionId, input.kind)
     const body = input.body.trim()
     if (current) {
-      const [updated] = await useDatabase().update(venueListingIntros).set({
-        body,
-        seoTitle: input.seoTitle === undefined ? current.seoTitle : cleanText(input.seoTitle, 180),
-        seoDescription: input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
-        updatedAt: new Date().toISOString(),
-      }).where(eq(venueListingIntros.id, current.id)).returning()
+      const [updated] = await useDatabase()
+        .update(venueListingIntros)
+        .set({
+          body,
+          seoTitle: input.seoTitle === undefined ? current.seoTitle : cleanText(input.seoTitle, 180),
+          seoDescription:
+            input.seoDescription === undefined ? current.seoDescription : cleanText(input.seoDescription, 300),
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(venueListingIntros.id, current.id))
+        .returning()
       return updated ?? current
     }
-    const [created] = await useDatabase().insert(venueListingIntros).values({
-      regionId: input.regionId,
-      kind: input.kind,
-      body,
-      seoTitle: cleanText(input.seoTitle, 180),
-      seoDescription: cleanText(input.seoDescription, 300),
-    }).returning()
+    const [created] = await useDatabase()
+      .insert(venueListingIntros)
+      .values({
+        regionId: input.regionId,
+        kind: input.kind,
+        body,
+        seoTitle: cleanText(input.seoTitle, 180),
+        seoDescription: cleanText(input.seoDescription, 300),
+      })
+      .returning()
     if (!created) {
       throw new VenueInputError('Не удалось сохранить вступление')
     }
@@ -1029,24 +1143,31 @@ export class Venues {
   }
 
   /** Replaces modules on a listing. Creates the row with an empty intro when none exists. */
-  static async setListingModules(input: { regionId: string | null, kind: string | null, modules: unknown[] }) {
+  static async setListingModules(input: { regionId: string | null; kind: string | null; modules: unknown[] }) {
     if (input.kind && !isFoodKind(input.kind)) {
       assertKind(input.kind)
     }
     const current = await this.listingIntro(input.regionId, input.kind)
     if (current) {
-      const [updated] = await useDatabase().update(venueListingIntros).set({
-        modules: input.modules,
-        updatedAt: new Date().toISOString(),
-      }).where(eq(venueListingIntros.id, current.id)).returning()
+      const [updated] = await useDatabase()
+        .update(venueListingIntros)
+        .set({
+          modules: input.modules,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(venueListingIntros.id, current.id))
+        .returning()
       return updated ?? current
     }
-    const [created] = await useDatabase().insert(venueListingIntros).values({
-      regionId: input.regionId,
-      kind: input.kind,
-      body: '',
-      modules: input.modules,
-    }).returning()
+    const [created] = await useDatabase()
+      .insert(venueListingIntros)
+      .values({
+        regionId: input.regionId,
+        kind: input.kind,
+        body: '',
+        modules: input.modules,
+      })
+      .returning()
     if (!created) {
       throw new VenueInputError('Не удалось сохранить модули')
     }
@@ -1059,7 +1180,11 @@ export class Venues {
 
   /** Published and closed cards only. Drafts stay out of the cabinet search. */
   static async searchPublic(query: string, limit = 20) {
-    const q = query.trim().toLowerCase().replace(/[%_\\]/g, '').slice(0, 60)
+    const q = query
+      .trim()
+      .toLowerCase()
+      .replace(/[%_\\]/g, '')
+      .slice(0, 60)
     if (q.length < 2) {
       return []
     }
@@ -1073,10 +1198,7 @@ export class Venues {
         status: venues.status,
       })
       .from(venues)
-      .where(and(
-        inArray(venues.status, ['published', 'closed']),
-        sql`lower(${venues.name}) like ${`%${q}%`}`,
-      ))
+      .where(and(inArray(venues.status, ['published', 'closed']), sql`lower(${venues.name}) like ${`%${q}%`}`))
       .orderBy(asc(venues.name))
       .limit(limit)
   }
@@ -1106,11 +1228,39 @@ export class Venues {
 }
 
 const RESTORE_KEYS = [
-  'slug', 'name', 'kind', 'cuisineTags', 'regionId', 'address', 'latitude', 'longitude',
-  'priceLevel', 'avgCheck', 'hours', 'phone', 'website', 'socials', 'vkCommunityId', 'bookingUrl', 'orderUrl',
-  'deliveryUrl', 'menuUrl', 'reservation', 'takeaway', 'delivery', 'signatureDishes',
-  'modules', 'contactEmail', 'description', 'sources', 'status', 'lastVerifiedAt',
-  'osmId', 'seoTitle', 'seoDescription', 'noindex',
+  'slug',
+  'name',
+  'kind',
+  'cuisineTags',
+  'regionId',
+  'address',
+  'latitude',
+  'longitude',
+  'priceLevel',
+  'avgCheck',
+  'hours',
+  'phone',
+  'website',
+  'socials',
+  'vkCommunityId',
+  'bookingUrl',
+  'orderUrl',
+  'deliveryUrl',
+  'menuUrl',
+  'reservation',
+  'takeaway',
+  'delivery',
+  'signatureDishes',
+  'modules',
+  'contactEmail',
+  'description',
+  'sources',
+  'status',
+  'lastVerifiedAt',
+  'osmId',
+  'seoTitle',
+  'seoDescription',
+  'noindex',
 ] as const
 
 function sameVenueWrite(current: object, next: Record<string, unknown>) {
@@ -1150,7 +1300,11 @@ function writeFromSnapshot(row: Record<string, unknown>): VenueWrite {
 }
 
 function likePattern(query: string) {
-  const needle = query.trim().toLowerCase().replace(/ё/g, 'е').replace(/[\\%_]/g, '\\$&')
+  const needle = query
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[\\%_]/g, '\\$&')
   return `%${needle}%`
 }
 
@@ -1169,7 +1323,9 @@ function venueListWhere(filter: VenueListFilter) {
     where.push(inArray(venues.kind, [...FOOD_KINDS]))
   }
   if (filter.stale === true) {
-    where.push(sql`(${venues.lastVerifiedAt} is null or ${venues.lastVerifiedAt} < now() - (${STALE_DAYS} || ' days')::interval)`)
+    where.push(
+      sql`(${venues.lastVerifiedAt} is null or ${venues.lastVerifiedAt} < now() - (${STALE_DAYS} || ' days')::interval)`,
+    )
   }
   if (filter.stale === false) {
     where.push(sql`${venues.lastVerifiedAt} >= now() - (${STALE_DAYS} || ' days')::interval`)
@@ -1177,7 +1333,9 @@ function venueListWhere(filter: VenueListFilter) {
   const query = filter.query?.trim()
   if (query) {
     const pattern = likePattern(query)
-    where.push(sql`(lower(translate(${venues.name}, 'ёЁ', 'еЕ')) like ${pattern} or lower(${venues.slug}) like ${pattern})`)
+    where.push(
+      sql`(lower(translate(${venues.name}, 'ёЁ', 'еЕ')) like ${pattern} or lower(${venues.slug}) like ${pattern})`,
+    )
   }
   return where
 }

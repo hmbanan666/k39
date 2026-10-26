@@ -24,7 +24,11 @@ export function vkCommunityField(input: string, socials: ReadonlyArray<{ url: st
   }
   const parsed = parseVkCommunityId(input)
   if (parsed === 'invalid') {
-    return { ...base, error: 'Только цифры, без club и минуса: из vk.com/album-236300695_1 нужно 236300695', value: undefined }
+    return {
+      ...base,
+      error: 'Только цифры, без club и минуса: из vk.com/album-236300695_1 нужно 236300695',
+      value: undefined,
+    }
   }
   const problem = vkCommunityIdProblem(parsed, socials)
   if (problem === 'no_vk_link') {

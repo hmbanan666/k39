@@ -15,7 +15,9 @@ useSeoMeta({ title: 'Редактор заведения | K39', robots: 'noinde
 </script>
 
 <style scoped>
-.cabinet { padding-bottom: 3rem; }
+.cabinet {
+  padding-bottom: 3rem;
+}
 .kicker {
   margin: 0;
   font-family: var(--font-stamp);
@@ -23,6 +25,12 @@ useSeoMeta({ title: 'Редактор заведения | K39', robots: 'noinde
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.kicker a { color: var(--color-brick); text-decoration: none; }
-h1 { margin: 0.3rem 0 1rem; font-size: clamp(2rem, 1.2rem + 2vw, 2.6rem); }
+.kicker a {
+  color: var(--color-brick);
+  text-decoration: none;
+}
+h1 {
+  margin: 0.3rem 0 1rem;
+  font-size: clamp(2rem, 1.2rem + 2vw, 2.6rem);
+}
 </style>

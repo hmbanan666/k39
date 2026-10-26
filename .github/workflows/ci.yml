@@ -3,9 +3,9 @@ name: CI
 on:
   push:
     paths-ignore:
-      - "*.md"
-      - ".github/**"
-      - "!.github/workflows/ci.yml"
+      - '*.md'
+      - '.github/**'
+      - '!.github/workflows/ci.yml'
     branches:
       - main
   # No path filter on pull requests: every PR head gets build and docker,
@@ -57,7 +57,10 @@ jobs:
           git fetch origin main
           pnpm run check:repo
 
-      - name: ESLint
+      - name: Format (read-only)
+        run: pnpm run format:check
+
+      - name: Lint (Oxlint and Vue templates)
         run: pnpm run lint
 
       - name: Typecheck

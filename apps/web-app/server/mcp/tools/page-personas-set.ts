@@ -8,7 +8,8 @@ import { pageKindSchema } from '../../utils/scoring/schemas'
 
 export default defineStrictMcpTool({
   name: 'page_personas_set',
-  description: 'Replace the target personas of a page (path, or pageType and slug). personas is [{code, weight 1..3, primary}] with codes from personas_list and exactly one primary. An empty array clears the list. Does not change what the page shows.',
+  description:
+    'Replace the target personas of a page (path, or pageType and slug). personas is [{code, weight 1..3, primary}] with codes from personas_list and exactly one primary. An empty array clears the list. Does not change what the page shows.',
   inputSchema: {
     path: z.string().optional(),
     pageType: pageKindSchema.optional(),
@@ -25,7 +26,11 @@ export default defineStrictMcpTool({
     return {
       path: page.path,
       pageType: page.pageType,
-      personas: orderPagePersonas(rows).map((row) => ({ code: row.personaCode, weight: row.weight, primary: row.primary })),
+      personas: orderPagePersonas(rows).map((row) => ({
+        code: row.personaCode,
+        weight: row.weight,
+        primary: row.primary,
+      })),
     }
   },
 })

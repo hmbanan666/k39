@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const pending = new Set(await db.editor.contentDraftEntityIds('venue'))
   return rows.map((row) => ({
     ...row,
-    regionTitle: row.regionId ? names.get(row.regionId) ?? '' : '',
+    regionTitle: row.regionId ? (names.get(row.regionId) ?? '') : '',
     pending: pending.has(row.id),
   }))
 })

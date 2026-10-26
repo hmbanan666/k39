@@ -11,12 +11,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
   }
   const gallery = await db.venues.gallery(venue.id)
-  const shown = (await readShownFacts('venue', [{
-    id: venue.id,
-    phone: venue.phone,
-    address: venue.address,
-    status: venue.status,
-  }])).get(venue.id)
+  const shown = (
+    await readShownFacts('venue', [
+      {
+        id: venue.id,
+        phone: venue.phone,
+        address: venue.address,
+        status: venue.status,
+      },
+    ])
+  ).get(venue.id)
   // Hours come from the schedule only; the legacy `venues.hours` column is not sent.
   const { hours: _legacyHours, ...row } = venue
   return {

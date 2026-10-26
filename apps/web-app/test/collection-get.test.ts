@@ -24,25 +24,29 @@ describe('collection_get', () => {
       sources: [{ title: 'Калининградстат', url: 'https://example.com/october' }],
     } satisfies Collection
 
-    const view = collectionView(row, [{
-      placeSlug: 'fort-11-denhoff',
-      title: 'Форт № 11 Дёнхофф',
-      note: 'Сначала сюда',
-      position: 0,
-    }])
+    const view = collectionView(row, [
+      {
+        placeSlug: 'fort-11-denhoff',
+        title: 'Форт № 11 Дёнхофф',
+        note: 'Сначала сюда',
+        position: 0,
+      },
+    ])
 
     for (const key of Object.keys(row) as Array<keyof Collection>) {
       expect(view[key]).toEqual(row[key])
     }
     expect(view.kind).toBe('month')
     expect(view.sources).toEqual(row.sources)
-    expect(view.items).toEqual([{
-      placeSlug: 'fort-11-denhoff',
-      slug: 'fort-11-denhoff',
-      title: 'Форт № 11 Дёнхофф',
-      note: 'Сначала сюда',
-      position: 0,
-    }])
+    expect(view.items).toEqual([
+      {
+        placeSlug: 'fort-11-denhoff',
+        slug: 'fort-11-denhoff',
+        title: 'Форт № 11 Дёнхофф',
+        note: 'Сначала сюда',
+        position: 0,
+      },
+    ])
     expect(view.article).toBe('body')
     expect(view.renderedFields).toContain('body')
 

@@ -71,7 +71,8 @@
               <a
                 class="name"
                 :href="stop.href"
-              >{{ stop.text }}</a>
+                >{{ stop.text }}</a
+              >
               <p
                 v-if="stop.note"
                 class="note"
@@ -117,30 +118,36 @@ const mode = ref<RouteTravelMode>('auto')
 const ready = ref(false)
 const points = computed(() => locatedStops(props.stops))
 const links = computed(() => routeLinks(points.value, mode.value))
-const overlay = computed(() => routeOverlay({
-  slug: 'page',
-  title: '',
-  href: '',
-  path: props.path || null,
-  stops: props.stops.flatMap((stop, index) => {
-    if (stop.latitude == null || stop.longitude == null) {
-      return []
-    }
-    return [{
-      position: index + 1,
-      title: stop.text,
-      href: stop.href,
-      latitude: stop.latitude,
-      longitude: stop.longitude,
-      summary: stop.note || '',
-      photo: null,
-    }]
-  }),
-} satisfies MapRoute))
+const overlay = computed(() =>
+  routeOverlay({
+    slug: 'page',
+    title: '',
+    href: '',
+    path: props.path || null,
+    stops: props.stops.flatMap((stop, index) => {
+      if (stop.latitude == null || stop.longitude == null) {
+        return []
+      }
+      return [
+        {
+          position: index + 1,
+          title: stop.text,
+          href: stop.href,
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+          summary: stop.note || '',
+          photo: null,
+        },
+      ]
+    }),
+  } satisfies MapRoute),
+)
 </script>
 
 <style scoped>
-.guide { margin: 0 0 var(--space-6); }
+.guide {
+  margin: 0 0 var(--space-6);
+}
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -148,7 +155,11 @@ const overlay = computed(() => routeOverlay({
   align-items: center;
   margin-bottom: 0.9rem;
 }
-.modes { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
 .mode {
   min-height: 2.4rem;
   padding: 0.35rem 0.8rem;
@@ -159,12 +170,16 @@ const overlay = computed(() => routeOverlay({
   font: 700 0.88rem/1 var(--font-body);
   cursor: pointer;
 }
-.mode[data-state="checked"] {
+.mode[data-state='checked'] {
   border-color: var(--color-sea);
   background: var(--color-sea);
   color: var(--color-paper);
 }
-.split { display: grid; gap: 1rem; align-items: start; }
+.split {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
 .frame {
   position: relative;
   z-index: 0;
@@ -187,7 +202,9 @@ const overlay = computed(() => routeOverlay({
   list-style: none;
   background: var(--color-paper);
 }
-.fallback li { margin: 0.4rem 0; }
+.fallback li {
+  margin: 0.4rem 0;
+}
 .fallback a {
   color: var(--color-sea);
   font-family: var(--font-display);
@@ -196,8 +213,17 @@ const overlay = computed(() => routeOverlay({
   text-decoration: none;
   overflow-wrap: break-word;
 }
-.stops-title { margin: 0 0 var(--space-3); font-size: var(--step-1); }
-.cards { display: grid; gap: 0.7rem; margin: 0; padding: 0; list-style: none; }
+.stops-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--step-1);
+}
+.cards {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .cards li {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -220,7 +246,9 @@ const overlay = computed(() => routeOverlay({
   font-family: var(--font-display);
   font-weight: 700;
 }
-.body { min-width: 0; }
+.body {
+  min-width: 0;
+}
 .name {
   display: block;
   color: var(--color-sea);
@@ -238,14 +266,29 @@ const overlay = computed(() => routeOverlay({
   line-height: 1.4;
   overflow-wrap: break-word;
 }
-.leg { margin: 0.35rem 0 0; color: var(--color-pine); font-size: 0.92rem; font-weight: 700; }
-.stop-go { margin-top: 0.45rem; }
+.leg {
+  margin: 0.35rem 0 0;
+  color: var(--color-pine);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.stop-go {
+  margin-top: 0.45rem;
+}
 @media (max-width: 720px) {
-  .go { flex: 1 1 100%; }
-  .modes { flex: 1 1 100%; }
+  .go {
+    flex: 1 1 100%;
+  }
+  .modes {
+    flex: 1 1 100%;
+  }
 }
 @media (min-width: 900px) {
-  .split { grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.75fr); }
-  .frame { height: 460px; }
+  .split {
+    grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.75fr);
+  }
+  .frame {
+    height: 460px;
+  }
 }
 </style>

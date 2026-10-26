@@ -58,7 +58,8 @@
           <span
             v-for="(part, index) in kickerParts"
             :key="index"
-          >{{ part }}</span>
+            >{{ part }}</span
+          >
         </p>
         <h1>{{ page.doc.h1 }}</h1>
         <p
@@ -242,11 +243,13 @@
               <span
                 v-if="dish.priceRub"
                 class="dish-price"
-              >{{ rub(dish.priceRub) }}</span>
+                >{{ rub(dish.priceRub) }}</span
+              >
               <span
                 v-if="dish.note"
                 class="dish-note"
-              >{{ dish.note }}</span>
+                >{{ dish.note }}</span
+              >
             </li>
           </ul>
           <p v-if="venue.menuUrl">
@@ -351,7 +354,8 @@
               :href="errorHref"
               data-track="outbound"
               data-track-name="venue-error"
-            >Сообщить об ошибке</a>
+              >Сообщить об ошибке</a
+            >
           </p>
           <ul>
             <li
@@ -431,9 +435,9 @@ export interface VenuePageData {
     staleNote: string
     closed: boolean
     closedNote: string
-    sources: Array<{ title: string, url: string }>
+    sources: Array<{ title: string; url: string }>
     cuisine: string[]
-    socials: Array<{ network: string, url: string }>
+    socials: Array<{ network: string; url: string }>
     bookingUrl: string | null
     orderUrl: string | null
     deliveryUrl: string | null
@@ -441,7 +445,7 @@ export interface VenuePageData {
     reservation: string | null
     takeaway: boolean | null
     delivery: boolean | null
-    dishes: Array<{ name: string, note?: string | null, priceRub?: number | null }>
+    dishes: Array<{ name: string; note?: string | null; priceRub?: number | null }>
     summary: string
     checkedAt: string | null
     regionTitle: string | null
@@ -453,8 +457,8 @@ export interface VenuePageData {
   }
   photos: PublicMedia[]
   cover: PublicMedia | null
-  places: Array<{ href: string, text: string, distanceKm: number, kind: string | null, media: PublicMedia | null }>
-  farPlaces: Array<{ href: string, text: string, distanceKm: number }>
+  places: Array<{ href: string; text: string; distanceKm: number; kind: string | null; media: PublicMedia | null }>
+  farPlaces: Array<{ href: string; text: string; distanceKm: number }>
 }
 
 const props = defineProps<{ page: VenuePageData }>()
@@ -463,9 +467,7 @@ const noticeWindows = statusWindows(venue.notices)
 const cover = props.page.cover
 const photos = props.page.photos
 // Hero takes the cover plus up to two more; «Как внутри» shows the rest.
-const heroPhotos = cover
-  ? [cover, ...photos.filter((photo) => photo.id !== cover.id).slice(0, 2)]
-  : []
+const heroPhotos = cover ? [cover, ...photos.filter((photo) => photo.id !== cover.id).slice(0, 2)] : []
 const interior = photos.filter((photo) => !heroPhotos.some((shown) => shown.id === photo.id)).slice(0, 6)
 
 const ABOUT = { id: 'o-meste', title: 'О месте' }
@@ -528,7 +530,7 @@ function heroStickerFor(): StickerSlug {
 const heroSticker = heroStickerFor()
 
 const errorHref = `mailto:${operator.email}?subject=${encodeURIComponent(`Ошибка на странице: ${venue.name}`)}`
-const formatKm = (km: number) => km < 10 ? `${km.toFixed(1).replace('.', ',')} км` : `${Math.round(km)} км`
+const formatKm = (km: number) => (km < 10 ? `${km.toFixed(1).replace('.', ',')} км` : `${Math.round(km)} км`)
 
 const heroSizes = '(min-width: 1000px) 720px, 100vw'
 const heroPreload = cover ? lcpPreload(cover, heroSizes) : null
@@ -552,7 +554,9 @@ function openPhoto(id: string) {
   align-items: start;
   padding-top: 0.35rem;
 }
-.hero-card { margin: 0.85rem 0.85rem 0.15rem 0.1rem; }
+.hero-card {
+  margin: 0.85rem 0.85rem 0.15rem 0.1rem;
+}
 .hero-copy {
   display: flex;
   flex-direction: column;
@@ -565,13 +569,29 @@ function openPhoto(id: string) {
   width: 100%;
   aspect-ratio: 16 / 10;
 }
-.bento-2 { grid-template-columns: 1.6fr 1fr; }
-.bento-3 { grid-template-columns: 1.6fr 1fr; grid-template-rows: 1fr 1fr; }
-.bento-3 .bento-main { grid-row: 1 / 3; }
-.bento :deep(.shot) { min-width: 0; min-height: 0; overflow: hidden; }
+.bento-2 {
+  grid-template-columns: 1.6fr 1fr;
+}
+.bento-3 {
+  grid-template-columns: 1.6fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.bento-3 .bento-main {
+  grid-row: 1 / 3;
+}
+.bento :deep(.shot) {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
 .bento :deep(.frame),
-.bento :deep(picture) { height: 100%; }
-.bento :deep(img) { height: 100%; aspect-ratio: auto; }
+.bento :deep(picture) {
+  height: 100%;
+}
+.bento :deep(img) {
+  height: 100%;
+  aspect-ratio: auto;
+}
 .sticker-art {
   display: flex;
   align-items: center;
@@ -581,8 +601,13 @@ function openPhoto(id: string) {
   padding: 1.15rem 1.75rem 0.45rem 0.55rem;
   background: linear-gradient(165deg, var(--color-sea-light), var(--color-amber-soft));
 }
-.sticker-art :deep(.sticker) { width: min(220px, 72%); }
-.sticker-art :deep(img) { width: 100%; height: auto; }
+.sticker-art :deep(.sticker) {
+  width: min(220px, 72%);
+}
+.sticker-art :deep(img) {
+  width: 100%;
+  height: auto;
+}
 .kicker {
   display: flex;
   flex-wrap: wrap;
@@ -599,15 +624,28 @@ function openPhoto(id: string) {
   line-height: 1.02;
   letter-spacing: -0.02em;
 }
-.hero-where { display: none; }
+.hero-where {
+  display: none;
+}
 .lede {
   max-width: 38ch;
   color: var(--color-ink);
   font-size: 1.12rem;
   line-height: 1.55;
 }
-.closed-note { margin: 1rem 0 0; color: var(--color-brick-dark); font-weight: 700; }
-.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.closed-note {
+  margin: 1rem 0 0;
+  color: var(--color-brick-dark);
+  font-weight: 700;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
 .chips li {
   padding: 0.28rem 0.75rem;
   border-radius: 999px;
@@ -615,12 +653,31 @@ function openPhoto(id: string) {
   color: var(--color-partner);
   font-size: 0.92rem;
 }
-.venue-body { margin-top: 2.4rem; }
-.stale-note { color: var(--color-warn); }
-.acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.9rem 0 0.4rem; }
-.acts > * { flex: 1 1 calc(50% - 0.5rem); justify-content: center; text-align: center; }
-.acts .act-main { flex-basis: 100%; }
-.socials { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; }
+.venue-body {
+  margin-top: 2.4rem;
+}
+.stale-note {
+  color: var(--color-warn);
+}
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.9rem 0 0.4rem;
+}
+.acts > * {
+  flex: 1 1 calc(50% - 0.5rem);
+  justify-content: center;
+  text-align: center;
+}
+.acts .act-main {
+  flex-basis: 100%;
+}
+.socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+}
 .owner {
   display: flex;
   gap: 0.8rem;
@@ -634,13 +691,34 @@ function openPhoto(id: string) {
   font-size: 0.88rem;
   line-height: 1.45;
 }
-.owner p { margin: 0; }
-.owner a { font-weight: 600; }
-.block { margin-top: 3rem; }
-.block h2 { margin-bottom: 0.9rem; }
-.block h2.with-sticker { display: flex; gap: 0.6rem; align-items: center; }
-.block h2.with-sticker :deep(.sticker) { flex: none; width: 56px; margin: -0.6rem 0; transform: rotate(-6deg); }
-.dishes { margin: 0 0 1rem; padding: 0; list-style: none; }
+.owner p {
+  margin: 0;
+}
+.owner a {
+  font-weight: 600;
+}
+.block {
+  margin-top: 3rem;
+}
+.block h2 {
+  margin-bottom: 0.9rem;
+}
+.block h2.with-sticker {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.block h2.with-sticker :deep(.sticker) {
+  flex: none;
+  width: 56px;
+  margin: -0.6rem 0;
+  transform: rotate(-6deg);
+}
+.dishes {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
 .dishes li {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -648,11 +726,26 @@ function openPhoto(id: string) {
   padding: 0.7rem 0;
   border-top: 1px solid var(--color-line);
 }
-.dish-name { font-weight: 700; }
-.dish-price { color: var(--muted); white-space: nowrap; }
-.dish-note { grid-column: 1 / -1; color: var(--muted); font-size: 0.92rem; }
-.inside { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.8rem; }
-.venue-map { margin-top: 0.8rem; }
+.dish-name {
+  font-weight: 700;
+}
+.dish-price {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.dish-note {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.inside {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.8rem;
+}
+.venue-map {
+  margin-top: 0.8rem;
+}
 .near {
   display: flex;
   gap: 0.8rem;
@@ -660,9 +753,16 @@ function openPhoto(id: string) {
   scroll-snap-type: x mandatory;
   padding-bottom: 0.3rem;
 }
-.near > * { flex: 0 0 min(78%, 16rem); scroll-snap-align: start; }
-.venue-tail { margin-top: 2.6rem; }
-.venue-tail :deep(figure.embed) { height: 22rem; }
+.near > * {
+  flex: 0 0 min(78%, 16rem);
+  scroll-snap-align: start;
+}
+.venue-tail {
+  margin-top: 2.6rem;
+}
+.venue-tail :deep(figure.embed) {
+  height: 22rem;
+}
 .sources {
   max-width: 65ch;
   margin-top: 2.8rem;
@@ -670,15 +770,42 @@ function openPhoto(id: string) {
   color: var(--muted);
   font-size: 0.92rem;
 }
-.sources summary { width: fit-content; padding: 0.75rem 0; color: var(--color-ink); font-weight: 600; cursor: pointer; }
-.sources a { font-weight: 600; }
-.far { margin-top: 0.9rem; color: var(--muted); font-size: 0.92rem; }
-.sources ul { margin: 0 0 0.4rem; padding: 0; list-style: none; }
+.sources summary {
+  width: fit-content;
+  padding: 0.75rem 0;
+  color: var(--color-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sources a {
+  font-weight: 600;
+}
+.far {
+  margin-top: 0.9rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.sources ul {
+  margin: 0 0 0.4rem;
+  padding: 0;
+  list-style: none;
+}
 @media (min-width: 1000px) {
-  .hero { grid-template-columns: 1.15fr 0.9fr; gap: 2.75rem; align-items: stretch; }
-  .hero-copy { padding-top: 0.35rem; }
-  .hero-sticker { grid-template-columns: minmax(16rem, 24rem) minmax(0, 1fr); gap: 2.5rem; }
-  .hero-sticker .sticker-art :deep(.sticker) { width: min(220px, 68%); }
+  .hero {
+    grid-template-columns: 1.15fr 0.9fr;
+    gap: 2.75rem;
+    align-items: stretch;
+  }
+  .hero-copy {
+    padding-top: 0.35rem;
+  }
+  .hero-sticker {
+    grid-template-columns: minmax(16rem, 24rem) minmax(0, 1fr);
+    gap: 2.5rem;
+  }
+  .hero-sticker .sticker-art :deep(.sticker) {
+    width: min(220px, 68%);
+  }
   .hero-where {
     display: block;
     margin: 1.15rem 0 0;
@@ -689,10 +816,23 @@ function openPhoto(id: string) {
     font-weight: 500;
     line-height: 1.3;
   }
-  .hero-sticker .hero-where { margin-top: auto; padding-top: 1.15rem; }
-  .venue-body { margin-top: 3rem; }
-  .venue-tail :deep(figure.embed) { height: 26rem; }
-  .near { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
-  .near > * { flex: none; }
+  .hero-sticker .hero-where {
+    margin-top: auto;
+    padding-top: 1.15rem;
+  }
+  .venue-body {
+    margin-top: 3rem;
+  }
+  .venue-tail :deep(figure.embed) {
+    height: 26rem;
+  }
+  .near {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .near > * {
+    flex: none;
+  }
 }
 </style>

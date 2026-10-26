@@ -12,7 +12,7 @@ async function tablerCollection() {
   if (!response.ok) {
     throw new Error('Tabler icons did not load')
   }
-  return await response.json() as IconifyJSON
+  return (await response.json()) as IconifyJSON
 }
 
 function tablerSvg(icons: IconifyJSON, name: string, px: number) {
@@ -105,11 +105,13 @@ function stopCanvas() {
 export async function loadMapImages() {
   const icons = await tablerCollection()
   const images: Record<string, ImageData> = { stop: stopCanvas() }
-  await Promise.all(Object.keys(COLORS).map(async (id) => {
-    const color = COLORS[id] || MAP_COLORS.brick
-    const name = tablerName(id)
-    images[id] = await pinCanvas(icons, color, name, false)
-    images[`s-${id}`] = await pinCanvas(icons, color, name, true)
-  }))
+  await Promise.all(
+    Object.keys(COLORS).map(async (id) => {
+      const color = COLORS[id] || MAP_COLORS.brick
+      const name = tablerName(id)
+      images[id] = await pinCanvas(icons, color, name, false)
+      images[`s-${id}`] = await pinCanvas(icons, color, name, true)
+    }),
+  )
   return images
 }

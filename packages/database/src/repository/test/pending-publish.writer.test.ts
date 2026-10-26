@@ -5,7 +5,12 @@ import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import placeGet from '../../../../../apps/web-app/server/mcp/tools/place-get'
 import { enterContentScope } from '../../../../../apps/web-app/server/utils/access'
-import { adminPlaceDraftView, applyAdminPlaceDraft, discardAdminPlaceDraft, saveAdminPlace } from '../../../../../apps/web-app/server/utils/admin/place-draft'
+import {
+  adminPlaceDraftView,
+  applyAdminPlaceDraft,
+  discardAdminPlaceDraft,
+  saveAdminPlace,
+} from '../../../../../apps/web-app/server/utils/admin/place-draft'
 import { placeWriteFromBody, updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/places'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { useDatabase } from '../../database'
@@ -59,8 +64,10 @@ function withDraftLengths(value: object) {
 
 describe('pending place publish', () => {
   it.each([
-    'Что посмотреть в самом Нестерове?', 'Как дойти к самому берегу?',
-    'Что находится у самого моря?', 'Где вход в самом центре?',
+    'Что посмотреть в самом Нестерове?',
+    'Как дойти к самому берегу?',
+    'Что находится у самого моря?',
+    'Где вход в самом центре?',
   ])('stages and publishes neutral pronoun wording in a FAQ: %s', async (question) => {
     const live = await publishedPlace('pending-pronoun')
     const faq = [{ question, answer: 'Вход со стороны площади.' }]
@@ -70,7 +77,9 @@ describe('pending place publish', () => {
     expect((await Editor.placeById(live.id))?.faq).toEqual([])
     const pending = await Editor.contentDraft('place', live.id)
     expect(pending?.payload.faq).toEqual(faq)
-    await expect(setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })).rejects.toMatchObject({ statusCode: 403 })
+    await expect(
+      setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' }),
+    ).rejects.toMatchObject({ statusCode: 403 })
     expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
     enterContentScope('editor')
     const applied = await setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })
@@ -79,9 +88,11 @@ describe('pending place publish', () => {
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
   })
 
-  it.each(['Дом стоит у самой Куршской косы.', 'Дом стоит у самого Балтийского моря.'].flatMap((prose) =>
-    [false, true].map((inFaq) => ({ prose, inFaq })),
-  ))('publishes geographic ambiguity from body/FAQ with visible advice ($inFaq): $prose', async ({ prose, inFaq }) => {
+  it.each(
+    ['Дом стоит у самой Куршской косы.', 'Дом стоит у самого Балтийского моря.'].flatMap((prose) =>
+      [false, true].map((inFaq) => ({ prose, inFaq })),
+    ),
+  )('publishes geographic ambiguity from body/FAQ with visible advice ($inFaq): $prose', async ({ prose, inFaq }) => {
     const live = await publishedPlace('pending-geographic-advisory')
     const patch = inFaq ? { faq: [{ question: 'Где находится?', answer: prose }] } : { body: prose }
     enterContentScope('draft')
@@ -90,7 +101,9 @@ describe('pending place publish', () => {
     expect(staged.writingWarnings[0]).toMatch(/Неопределённость.*0 баллов/u)
     expect(await Editor.placeById(live.id)).toEqual(live)
     const pending = await Editor.contentDraft('place', live.id)
-    await expect(setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })).rejects.toMatchObject({ statusCode: 403 })
+    await expect(
+      setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' }),
+    ).rejects.toMatchObject({ statusCode: 403 })
     expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
     enterContentScope('editor')
     const applied = await setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })
@@ -103,45 +116,72 @@ describe('pending place publish', () => {
     { answer: 'Дом имеет самый высокий фасад.', phrase: 'empty superlatives', match: 'самый' },
     { answer: 'Город гордится лучшей улицей.', phrase: 'empty superlatives', match: 'лучшей' },
     { answer: 'Дом стоит в самом сердце города.', phrase: 'в самом сердце', match: 'в самом сердце' },
-  ])('keeps hard style blockers and refuses editor application without changing stored state: $answer', async ({ answer, phrase, match }) => {
-    const live = await publishedPlace('pending-superlative')
-    enterContentScope('draft')
-    const staged = await updatePlaceDraft({
-      id: live.id, faq: [{ question: 'Что посмотреть в самом Нестерове?', answer }],
-    }, 'place_update')
-    expect(staged.writingWarnings).toContain(`${phrase}: ${match}`)
-    const pending = await Editor.contentDraft('place', live.id)
-    const database = useDatabase()
-    const auditBefore = await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id))
-    const revisionsBefore = await database.select().from(revisions).where(eq(revisions.entityId, live.id))
-    enterContentScope('editor')
-    await expect(setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' })).rejects.toMatchObject({
-      statusCode: 400, statusMessage: expect.stringContaining(phrase),
-    })
-    expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
-    expect(await Editor.placeById(live.id)).toEqual(live)
-    expect(await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id))).toEqual(auditBefore)
-    expect(await database.select().from(revisions).where(eq(revisions.entityId, live.id))).toEqual(revisionsBefore)
-  })
+  ])(
+    'keeps hard style blockers and refuses editor application without changing stored state: $answer',
+    async ({ answer, phrase, match }) => {
+      const live = await publishedPlace('pending-superlative')
+      enterContentScope('draft')
+      const staged = await updatePlaceDraft(
+        {
+          id: live.id,
+          faq: [{ question: 'Что посмотреть в самом Нестерове?', answer }],
+        },
+        'place_update',
+      )
+      expect(staged.writingWarnings).toContain(`${phrase}: ${match}`)
+      const pending = await Editor.contentDraft('place', live.id)
+      const database = useDatabase()
+      const auditBefore = await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id))
+      const revisionsBefore = await database.select().from(revisions).where(eq(revisions.entityId, live.id))
+      enterContentScope('editor')
+      await expect(
+        setPublication({ entity: 'place', id: live.id, publicationStatus: 'published' }),
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        statusMessage: expect.stringContaining(phrase),
+      })
+      expect(await Editor.contentDraft('place', live.id)).toEqual(pending)
+      expect(await Editor.placeById(live.id)).toEqual(live)
+      expect(await database.select().from(mcpAudits).where(eq(mcpAudits.entityId, live.id))).toEqual(auditBefore)
+      expect(await database.select().from(revisions).where(eq(revisions.entityId, live.id))).toEqual(revisionsBefore)
+    },
+  )
 
   it('re-saves a checked place and round-trips the actual place_get date without touching live content', async () => {
     const live = await publishedPlace('pending-date-round-trip')
-    await useDatabase().update(places).set({ lastVerifiedAt: '2026-10-12T00:00:00.123456Z' }).where(eq(places.id, live.id))
+    await useDatabase()
+      .update(places)
+      .set({ lastVerifiedAt: '2026-10-12T00:00:00.123456Z' })
+      .where(eq(places.id, live.id))
     enterContentScope('draft')
-    const fetched = await placeGet.handler({ id: live.id, slug: undefined }, {} as Parameters<typeof placeGet.handler>[1])
-    if (!fetched || typeof fetched !== 'object' || !('factsCheckedAt' in fetched) || typeof fetched.factsCheckedAt !== 'string') {
+    const fetched = await placeGet.handler(
+      { id: live.id, slug: undefined },
+      {} as Parameters<typeof placeGet.handler>[1],
+    )
+    if (
+      !fetched ||
+      typeof fetched !== 'object' ||
+      !('factsCheckedAt' in fetched) ||
+      typeof fetched.factsCheckedAt !== 'string'
+    ) {
       throw new Error('place_get omitted its factsCheckedAt timestamp')
     }
     const liveDate = fetched.factsCheckedAt
     await updatePlaceDraft({ id: live.id, title: 'Первый черновик даты', body: draftBody }, 'place_update')
-    await updatePlaceDraft({ id: live.id, faq: [{ question: 'Где вход?', answer: 'У площади.' }] }, 'place_draft_update')
+    await updatePlaceDraft(
+      { id: live.id, faq: [{ question: 'Где вход?', answer: 'У площади.' }] },
+      'place_draft_update',
+    )
     expect((await Editor.contentDraft('place', live.id))?.payload.lastVerifiedAt).toBe(liveDate)
     await updatePlaceDraft({ id: live.id, bestTime: 'Утром', factsCheckedAt: liveDate }, 'place_update')
     await updatePlaceDraft({ id: live.id, visitDuration: 'два часа' }, 'place_update')
 
     const pending = await Editor.contentDraft('place', live.id)
     expect(pending?.payload).toMatchObject({
-      title: 'Первый черновик даты', body: draftBody, bestTime: 'Утром', visitDuration: 'два часа',
+      title: 'Первый черновик даты',
+      body: draftBody,
+      bestTime: 'Утром',
+      visitDuration: 'два часа',
       faq: [{ question: 'Где вход?', answer: 'У площади.' }],
       lastVerifiedAt: '2026-10-12T00:00:00.123Z',
     })
@@ -186,14 +226,19 @@ describe('pending place publish', () => {
   it('stores a draft-token write, then an editor publish applies it', async () => {
     const live = await publishedPlace('pending-mcp')
     enterContentScope('draft')
-    const written = withDraftLengths(await updatePlaceDraft({
-      slug: live.slug,
-      title: 'Новый заголовок',
-      summary: 'Новое описание',
-      body: draftBody,
-      faq: [{ question: 'Где вокзал?', answer: 'У площади, в двух минутах от реки.' }],
-      visitDuration: '1–2 часа',
-    }, 'place_update'))
+    const written = withDraftLengths(
+      await updatePlaceDraft(
+        {
+          slug: live.slug,
+          title: 'Новый заголовок',
+          summary: 'Новое описание',
+          body: draftBody,
+          faq: [{ question: 'Где вокзал?', answer: 'У площади, в двух минутах от реки.' }],
+          visitDuration: '1–2 часа',
+        },
+        'place_update',
+      ),
+    )
 
     expect(written.pendingReview).toBe(true)
     expect(written.bodyLength).toBe(draftBody.length)
@@ -205,11 +250,13 @@ describe('pending place publish', () => {
     expect(still?.title).toBe('Старый заголовок')
 
     enterContentScope('editor')
-    const published = withDraftLengths(await setPublication({
-      entity: 'place',
-      slug: live.slug,
-      publicationStatus: 'published',
-    }))
+    const published = withDraftLengths(
+      await setPublication({
+        entity: 'place',
+        slug: live.slug,
+        publicationStatus: 'published',
+      }),
+    )
     const row = await Editor.placeById(live.id)
     expect(row?.title).toBe('Новый заголовок')
     expect(row?.summary).toBe('Новое описание')
@@ -225,19 +272,33 @@ describe('pending place publish', () => {
   it('applies the same pending payload through the REST place writer', async () => {
     const live = await publishedPlace('pending-rest')
     enterContentScope('draft')
-    const written = withDraftLengths(await updatePlaceDraft(placeWriteFromBody({
-      body: draftBody,
-      title: 'Заголовок из REST',
-      summary: 'Описание из REST',
-    }, { id: live.id, slug: live.slug }), 'place_update'))
+    const written = withDraftLengths(
+      await updatePlaceDraft(
+        placeWriteFromBody(
+          {
+            body: draftBody,
+            title: 'Заголовок из REST',
+            summary: 'Описание из REST',
+          },
+          { id: live.id, slug: live.slug },
+        ),
+        'place_update',
+      ),
+    )
     expect(written.pendingReview).toBe(true)
     expect(written.bodyLength).toBe(draftBody.length)
     expect(written.renderedFields).toContain('body')
 
     enterContentScope('editor')
-    await updatePlaceDraft(placeWriteFromBody({
-      publicationStatus: 'published',
-    }, { id: live.id, slug: live.slug }), 'place_update')
+    await updatePlaceDraft(
+      placeWriteFromBody(
+        {
+          publicationStatus: 'published',
+        },
+        { id: live.id, slug: live.slug },
+      ),
+      'place_update',
+    )
     const row = await Editor.placeById(live.id)
     expect(row?.title).toBe('Заголовок из REST')
     expect(row?.summary).toBe('Описание из REST')
@@ -261,11 +322,14 @@ describe('pending place publish', () => {
   it('shows a pending draft as field changes and refuses an admin save until the editor chooses', async () => {
     const live = await publishedPlace('admin-choice')
     enterContentScope('draft')
-    await updatePlaceDraft({
-      id: live.id,
-      title: 'Новый заголовок',
-      body: draftBody,
-    }, 'place_update')
+    await updatePlaceDraft(
+      {
+        id: live.id,
+        title: 'Новый заголовок',
+        body: draftBody,
+      },
+      'place_update',
+    )
     enterContentScope('editor')
 
     const view = await adminPlaceDraftView(live.id)
@@ -273,11 +337,17 @@ describe('pending place publish', () => {
     expect(view.pending?.changes[0]).toMatchObject({ live: 'Старый заголовок', draft: 'Новый заголовок' })
     expect(view.pending?.publicationStatus).toBe('review')
 
-    await expect(saveAdminPlace(live.id, {
-      title: 'Правка редактора',
-      body: 'Текст формы редактора на живой странице.',
-      publicationStatus: 'published',
-    }, null)).rejects.toMatchObject({ statusCode: 409 })
+    await expect(
+      saveAdminPlace(
+        live.id,
+        {
+          title: 'Правка редактора',
+          body: 'Текст формы редактора на живой странице.',
+          publicationStatus: 'published',
+        },
+        null,
+      ),
+    ).rejects.toMatchObject({ statusCode: 409 })
 
     const row = await Editor.placeById(live.id)
     expect(row?.title).toBe('Старый заголовок')
@@ -291,11 +361,15 @@ describe('pending place publish', () => {
     await updatePlaceDraft({ id: live.id, body: draftBody }, 'place_update')
     enterContentScope('editor')
     const editorBody = 'Текст формы редактора на живой странице.'
-    await saveAdminPlace(live.id, {
-      body: editorBody,
-      publicationStatus: 'published',
-      pendingDraft: 'discard',
-    }, null)
+    await saveAdminPlace(
+      live.id,
+      {
+        body: editorBody,
+        publicationStatus: 'published',
+        pendingDraft: 'discard',
+      },
+      null,
+    )
     const row = await Editor.placeById(live.id)
     expect(row?.body).toBe(editorBody)
     expect(row?.title).toBe('Старый заголовок')
@@ -307,11 +381,17 @@ describe('pending place publish', () => {
     enterContentScope('draft')
     await updatePlaceDraft({ id: live.id, body: draftBody }, 'place_update')
     enterContentScope('editor')
-    await expect(saveAdminPlace(live.id, {
-      body: 'Это уютная атмосфера у вокзала.',
-      publicationStatus: 'published',
-      pendingDraft: 'discard',
-    }, null)).rejects.toMatchObject({ statusCode: 400 })
+    await expect(
+      saveAdminPlace(
+        live.id,
+        {
+          body: 'Это уютная атмосфера у вокзала.',
+          publicationStatus: 'published',
+          pendingDraft: 'discard',
+        },
+        null,
+      ),
+    ).rejects.toMatchObject({ statusCode: 400 })
     expect((await Editor.placeById(live.id))?.body).toBe('Старый текст страницы.')
     expect(await Editor.contentDraft('place', live.id)).not.toBeNull()
   })
@@ -332,12 +412,15 @@ describe('pending place publish', () => {
   it('applies a pending draft from the admin action through the publication writer', async () => {
     const live = await publishedPlace('admin-apply')
     enterContentScope('draft')
-    await updatePlaceDraft({
-      id: live.id,
-      title: 'Новый заголовок',
-      summary: 'Новое описание',
-      body: draftBody,
-    }, 'place_update')
+    await updatePlaceDraft(
+      {
+        id: live.id,
+        title: 'Новый заголовок',
+        summary: 'Новое описание',
+        body: draftBody,
+      },
+      'place_update',
+    )
     enterContentScope('draft')
     const published = withDraftLengths(await applyAdminPlaceDraft(live.id))
     const row = await Editor.placeById(live.id)

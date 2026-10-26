@@ -12,14 +12,11 @@ const config = JSON.parse(readFileSync(source, 'utf8'))
 // Keep this file beside the generated server config so its relative paths
 // still resolve. A project one directory up points #auth-utils at the wrong place.
 const include = Array.isArray(config.include) ? config.include : []
-config.include = [
-  ...include,
-  ...writerTestIncludes(dirname(source)),
-]
+config.include = [...include, ...writerTestIncludes(dirname(source))]
 const target = join(dirname(source), 'tsconfig.writer-test.json')
 writeFileSync(target, JSON.stringify(config))
 
-const result = spawnSync('pnpm', ['exec', 'vue-tsc', '--noEmit', '-p', target], {
+const result = spawnSync('corepack', ['pnpm', 'exec', 'vue-tsc', '--noEmit', '-p', target], {
   cwd: app,
   stdio: 'inherit',
 })

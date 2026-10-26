@@ -10,7 +10,7 @@
           v-if="author.avatarUrl"
           :src="author.avatarUrl"
           alt=""
-        >
+        />
         <span v-else>{{ initials }}</span>
       </span>
       <span class="name">{{ author.name }}</span>
@@ -24,7 +24,7 @@
           v-if="author.avatarUrl"
           :src="author.avatarUrl"
           alt=""
-        >
+        />
         <span v-else>{{ initials }}</span>
       </span>
       <span class="name">{{ author.name }}</span>
@@ -39,7 +39,8 @@
     <span
       v-else-if="label"
       class="license"
-    >{{ label }}</span>
+      >{{ label }}</span
+    >
     <MetaLink
       v-if="author.sourceUrl"
       class="source"
@@ -115,5 +116,7 @@ const profileHref = computed(() => props.author.profileUrl || '')
 }
 .license:hover,
 .source:hover,
-.who:hover { color: var(--color-brick); }
+.who:hover {
+  color: var(--color-brick);
+}
 </style>

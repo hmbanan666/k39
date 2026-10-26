@@ -3,7 +3,14 @@ import type { ScheduleRules } from '../../../shared/schedule'
 import type { PageSnapshot } from './pages'
 import { db } from '@k39/database'
 import { repeatedKinds } from '../../../shared/fact-prose'
-import { pageTraffic, pastTtl, priorityFor, queueMayOpen, seasonBoundaryWithin, unreviewedSections } from '../../../shared/facts'
+import {
+  pageTraffic,
+  pastTtl,
+  priorityFor,
+  queueMayOpen,
+  seasonBoundaryWithin,
+  unreviewedSections,
+} from '../../../shared/facts'
 import { readRules, scheduleDetails } from '../../../shared/schedule'
 import { loadPageSnapshots } from './pages'
 
@@ -68,7 +75,9 @@ export async function syncVerificationQueue(now = new Date()) {
 
   for (const fact of live) {
     const consumers = refsByFact.get(fact.id) ?? []
-    const shown = consumers.map((ref) => byConsumer.get(`${ref.consumerType}:${ref.consumerId}`)).filter((page): page is NonNullable<typeof page> => Boolean(page))
+    const shown = consumers
+      .map((ref) => byConsumer.get(`${ref.consumerType}:${ref.consumerId}`))
+      .filter((page): page is NonNullable<typeof page> => Boolean(page))
     const queueable = shown.some((page) => queueMayOpen(page.status, 'ttl_expired'))
     const home = shown[0]
     const traffic = shown.reduce((sum, page) => sum + pageLoad(page.path, page.status), 0)
@@ -89,10 +98,18 @@ export async function syncVerificationQueue(now = new Date()) {
       path: consumers[0]?.path ?? fact.slot,
     }
     if (!fact.checkedAt || fact.sourceKind === 'none') {
-      await db.facts.enqueue({ ...target, reason: 'unseeded', priority: priorityFor(fact.kind, 'unseeded', traffic || 1) })
+      await db.facts.enqueue({
+        ...target,
+        reason: 'unseeded',
+        priority: priorityFor(fact.kind, 'unseeded', traffic || 1),
+      })
     }
     if (fact.checkedAt && pastTtl(fact.checkedAt, fact.ttlDays, now)) {
-      await db.facts.enqueue({ ...target, reason: 'ttl_expired', priority: priorityFor(fact.kind, 'ttl_expired', traffic || 1) })
+      await db.facts.enqueue({
+        ...target,
+        reason: 'ttl_expired',
+        priority: priorityFor(fact.kind, 'ttl_expired', traffic || 1),
+      })
     }
     if (fact.kind === 'hours' && readRules(fact.value) && seasonBoundaryWithin(readRules(fact.value)!, now)) {
       await db.facts.enqueue({
@@ -110,7 +127,9 @@ export async function syncVerificationQueue(now = new Date()) {
   for (const page of pages) {
     const review = await db.facts.review(page.pageType, page.entityId)
     const missing = unreviewedSections(page.sections, review?.sections ?? [])
-    const reviewed = new Set(page.sections.filter((section) => !missing.includes(section)).map((section) => section.path))
+    const reviewed = new Set(
+      page.sections.filter((section) => !missing.includes(section)).map((section) => section.path),
+    )
     for (const path of reviewed) {
       await db.facts.closeSection(page.pageType, page.entityId, path)
     }
@@ -134,10 +153,14 @@ export async function syncVerificationQueue(now = new Date()) {
   const priorities = open.map((row) => {
     const page = row.pageType && row.entityId ? byConsumer.get(`${row.pageType}:${row.entityId}`) : undefined
     const factRefs = row.factId ? (refsByFact.get(row.factId) ?? []) : []
-    const related = factRefs.map((ref) => byConsumer.get(`${ref.consumerType}:${ref.consumerId}`)).filter((item): item is NonNullable<typeof item> => Boolean(item))
+    const related = factRefs
+      .map((ref) => byConsumer.get(`${ref.consumerType}:${ref.consumerId}`))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item))
     const traffic = related.length
       ? related.reduce((sum, item) => sum + pageLoad(item.path, item.status), 0)
-      : page ? pageLoad(page.path, page.status) : 1
+      : page
+        ? pageLoad(page.path, page.status)
+        : 1
     const weightKind = row.reason === 'guest_report' ? 'prose' : (row.kind ?? 'prose')
     return { id: row.id, priority: priorityFor(weightKind, row.reason, traffic || 1) }
   })
@@ -190,7 +213,11 @@ export async function syncPageSections(pageType: string, entityId: string) {
   if (!page) {
     return
   }
-  await db.facts.retainReviewSections(page.pageType, page.entityId, page.sections.map((section) => section.hash))
+  await db.facts.retainReviewSections(
+    page.pageType,
+    page.entityId,
+    page.sections.map((section) => section.hash),
+  )
   const review = await db.facts.review(page.pageType, page.entityId)
   const missing = unreviewedSections(page.sections, review?.sections ?? [])
   for (const section of page.sections) {

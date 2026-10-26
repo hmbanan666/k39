@@ -8,7 +8,8 @@ import { saveSchedule } from '../../utils/schedule'
 
 export default defineStrictMcpTool({
   name: 'schedules_migrate',
-  description: 'One-off: turn place hours text and imported venue hours into schedules. Recognised place text keeps the place facts-check date; text it cannot read is stored with needsCheck and the text as note. Venue hours keep the venue facts-check date; OSM-only venues stay unverified. Existing schedules are never overwritten. dryRun (default true) only reports.',
+  description:
+    'One-off: turn place hours text and imported venue hours into schedules. Recognised place text keeps the place facts-check date; text it cannot read is stored with needsCheck and the text as note. Venue hours keep the venue facts-check date; OSM-only venues stay unverified. Existing schedules are never overwritten. dryRun (default true) only reports.',
   inputSchema: {
     dryRun: z.boolean().default(true),
   },
@@ -29,7 +30,12 @@ export default defineStrictMcpTool({
       }
       report.places += 1
       if (!dryRun) {
-        await saveSchedule('place', place.id, { rules, sourceUrl: null, verifiedAt: parsed && place.verifiedAt ? place.verifiedAt.slice(0, 10) : null }, { actor: 'migration' })
+        await saveSchedule(
+          'place',
+          place.id,
+          { rules, sourceUrl: null, verifiedAt: parsed && place.verifiedAt ? place.verifiedAt.slice(0, 10) : null },
+          { actor: 'migration' },
+        )
       }
     }
     for (const venue of venueRows) {
@@ -43,7 +49,12 @@ export default defineStrictMcpTool({
       }
       report.venues += 1
       if (!dryRun) {
-        await saveSchedule('venue', venue.id, { rules, sourceUrl: null, verifiedAt: verifiedDate(venue.verifiedAt) }, { actor: 'migration' })
+        await saveSchedule(
+          'venue',
+          venue.id,
+          { rules, sourceUrl: null, verifiedAt: verifiedDate(venue.verifiedAt) },
+          { actor: 'migration' },
+        )
       }
     }
     if (!dryRun) {

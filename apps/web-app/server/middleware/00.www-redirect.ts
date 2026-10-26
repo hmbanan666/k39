@@ -3,12 +3,15 @@ import { decideRedirect, rewritePath } from '../../shared/redirects'
 
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_nuxt') || url.pathname.startsWith('/media/') || url.pathname.includes('.')) {
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/_nuxt') ||
+    url.pathname.startsWith('/media/') ||
+    url.pathname.includes('.')
+  ) {
     return
   }
-  const stored = isDatabaseReady()
-    ? await db.content.redirectChain(rewritePath(url.pathname), REDIRECT_HOP_LIMIT)
-    : []
+  const stored = isDatabaseReady() ? await db.content.redirectChain(rewritePath(url.pathname), REDIRECT_HOP_LIMIT) : []
   const decision = decideRedirect({
     hostHeader: getRequestHeader(event, 'x-forwarded-host') ?? getRequestHeader(event, 'host'),
     protoHeader: getRequestHeader(event, 'x-forwarded-proto'),

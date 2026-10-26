@@ -157,7 +157,10 @@ function vkUrl(url: string | null | undefined) {
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     return null
   }
-  const host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  const host = parsed.hostname
+    .toLowerCase()
+    .replace(/\.$/, '')
+    .replace(/^www\./, '')
   if (host !== 'vk.com' && !host.endsWith('.vk.com') && host !== 'vk.ru' && !host.endsWith('.vk.ru')) {
     return null
   }
@@ -259,7 +262,10 @@ export function vkSocialLinks(socials: ReadonlyArray<{ url: string }>) {
  * a numeric community, the id has to be one of them: a different number is
  * a typo, not a second community.
  */
-export function vkCommunityIdProblem(id: number | null, socials: ReadonlyArray<{ url: string }>): 'no_vk_link' | 'mismatch' | null {
+export function vkCommunityIdProblem(
+  id: number | null,
+  socials: ReadonlyArray<{ url: string }>,
+): 'no_vk_link' | 'mismatch' | null {
   if (id == null) {
     return null
   }

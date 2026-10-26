@@ -80,13 +80,16 @@ describe('publication status', () => {
 
 describe('place patch body', () => {
   it('forwards faq, sections, best time, visit duration, and region', () => {
-    const input = placeWriteFromBody({
-      faq: [{ question: 'Можно ли войти?', answer: 'Да, по билету музея.' }],
-      sections: [{ kind: 'directions', text: 'Автобус 40.' }],
-      bestTime: 'май–сентябрь, утром',
-      visitDuration: '1–2 часа',
-      regionSlug: 'svetlogorsk',
-    }, { id: 'place-1', slug: 'fort-a' })
+    const input = placeWriteFromBody(
+      {
+        faq: [{ question: 'Можно ли войти?', answer: 'Да, по билету музея.' }],
+        sections: [{ kind: 'directions', text: 'Автобус 40.' }],
+        bestTime: 'май–сентябрь, утром',
+        visitDuration: '1–2 часа',
+        regionSlug: 'svetlogorsk',
+      },
+      { id: 'place-1', slug: 'fort-a' },
+    )
     expect(input).toMatchObject({
       id: 'place-1',
       slug: 'fort-a',
@@ -108,26 +111,32 @@ describe('region center', () => {
       longitude: 20.48,
     })
     expect(resolveCenter({ coordinates: null })).toEqual({ latitude: null, longitude: null })
-    expect(resolveCenter({
-      coordinates: { latitude: 54.96, longitude: 20.48 },
-      center: { latitude: 54.96, longitude: 20.48 },
-    })).toEqual({ latitude: 54.96, longitude: 20.48 })
-    expect(() => resolveCenter({
-      coordinates: { latitude: 1, longitude: 2 },
-      center: { latitude: 3, longitude: 4 },
-    })).toThrowError()
+    expect(
+      resolveCenter({
+        coordinates: { latitude: 54.96, longitude: 20.48 },
+        center: { latitude: 54.96, longitude: 20.48 },
+      }),
+    ).toEqual({ latitude: 54.96, longitude: 20.48 })
+    expect(() =>
+      resolveCenter({
+        coordinates: { latitude: 1, longitude: 2 },
+        center: { latitude: 3, longitude: 4 },
+      }),
+    ).toThrowError()
     expect(() => resolveCenter({ center: { latitude: 91, longitude: 0 } })).toThrowError()
   })
 
   it('hides a half-filled center', () => {
-    expect(regionView({
-      id: 'region-1',
-      slug: 'zelenogradsk',
-      title: 'Зеленоградский муниципальный округ',
-      description: null,
-      latitude: 54.96,
-      longitude: null,
-    }).center).toBeNull()
+    expect(
+      regionView({
+        id: 'region-1',
+        slug: 'zelenogradsk',
+        title: 'Зеленоградский муниципальный округ',
+        description: null,
+        latitude: 54.96,
+        longitude: null,
+      }).center,
+    ).toBeNull()
   })
 })
 
@@ -145,10 +154,14 @@ describe('factsCheckedAt', () => {
   })
 
   it.each([
-    '2026-02-31 00:00:00+00', '2026-10-12 24:00:00+00',
-    '2026-10-12 00:60:00+00', '2026-10-12 00:00:60+00',
-    '2026-10-12 00:00:00+24', '2026-10-12 00:00:00+02:60',
-    '2026-10-12 00:00:00+0', '2026-10-12 00:00:00+000',
+    '2026-02-31 00:00:00+00',
+    '2026-10-12 24:00:00+00',
+    '2026-10-12 00:60:00+00',
+    '2026-10-12 00:00:60+00',
+    '2026-10-12 00:00:00+24',
+    '2026-10-12 00:00:00+02:60',
+    '2026-10-12 00:00:00+0',
+    '2026-10-12 00:00:00+000',
     '2026-10-12junk',
   ])('still rejects an invalid timestamp %s', (input) => {
     expect(() => parseFactsCheckedAt(input)).toThrowError()

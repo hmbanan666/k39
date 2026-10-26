@@ -22,28 +22,40 @@
         aria-label="Приблизить"
         @click="zoomIn"
       >
-        <Icon :name="tablerIcon('zoomIn')" size="16" />
+        <Icon
+          :name="tablerIcon('zoomIn')"
+          size="16"
+        />
       </button>
       <button
         type="button"
         aria-label="Отдалить"
         @click="zoomOut"
       >
-        <Icon :name="tablerIcon('zoomOut')" size="16" />
+        <Icon
+          :name="tablerIcon('zoomOut')"
+          size="16"
+        />
       </button>
       <button
         type="button"
         aria-label="Я здесь"
         @click="locate"
       >
-        <Icon :name="tablerIcon('locate')" size="16" />
+        <Icon
+          :name="tablerIcon('locate')"
+          size="16"
+        />
       </button>
       <button
         type="button"
         aria-label="Показать всё"
         @click="fit"
       >
-        <Icon :name="tablerIcon('fit')" size="16" />
+        <Icon
+          :name="tablerIcon('fit')"
+          size="16"
+        />
       </button>
       <button
         v-if="fullscreen"
@@ -51,7 +63,10 @@
         :aria-label="expanded ? 'Выйти из полного экрана' : 'На весь экран'"
         @click="toggleFullscreen"
       >
-        <Icon :name="tablerIcon('fullscreen')" size="16" />
+        <Icon
+          :name="tablerIcon('fullscreen')"
+          size="16"
+        />
       </button>
     </div>
     <MapCard
@@ -72,30 +87,33 @@ import { visitorLayers } from '~~/shared/map'
 import MapCard from '~/components/map/MapCard.vue'
 import { fetchBasemapUrl } from '~/lib/basemap-url'
 
-const props = withDefaults(defineProps<{
-  points: MapPoint[]
-  overlay: RouteOverlay | null
-  mapLabel: string
-  lazy?: boolean
-  fullscreen?: boolean
-  fitKey?: string
-  cardVisible?: boolean
-  padding?: MapFramePadding
-  controlsBottom?: string
-}>(), {
-  lazy: true,
-  fullscreen: false,
-  fitKey: '',
-  cardVisible: true,
-  padding: undefined,
-  controlsBottom: '0.6rem',
-})
+const props = withDefaults(
+  defineProps<{
+    points: MapPoint[]
+    overlay: RouteOverlay | null
+    mapLabel: string
+    lazy?: boolean
+    fullscreen?: boolean
+    fitKey?: string
+    cardVisible?: boolean
+    padding?: MapFramePadding
+    controlsBottom?: string
+  }>(),
+  {
+    lazy: true,
+    fullscreen: false,
+    fitKey: '',
+    cardVisible: true,
+    padding: undefined,
+    controlsBottom: '0.6rem',
+  },
+)
 
 const emit = defineEmits<{
   ready: []
   error: []
   bounds: [bounds: MapBounds]
-  located: [point: { latitude: number, longitude: number }]
+  located: [point: { latitude: number; longitude: number }]
 }>()
 const selectedId = defineModel<string | null>('selected', { default: null })
 
@@ -141,7 +159,7 @@ async function boot() {
       onBounds: (bounds: MapBounds) => {
         emit('bounds', bounds)
       },
-      onLocate: (point: { latitude: number, longitude: number }) => {
+      onLocate: (point: { latitude: number; longitude: number }) => {
         emit('located', point)
       },
     }
@@ -212,15 +230,22 @@ watch(layers, (next) => {
   }
 })
 
-watch(() => props.fitKey, () => {
-  handle?.fit()
-})
+watch(
+  () => props.fitKey,
+  () => {
+    handle?.fit()
+  },
+)
 
-watch(() => props.padding, (padding) => {
-  if (padding) {
-    handle?.setPadding(padding)
-  }
-}, { deep: true })
+watch(
+  () => props.padding,
+  (padding) => {
+    if (padding) {
+      handle?.setPadding(padding)
+    }
+  },
+  { deep: true },
+)
 
 watch(selectedId, (id) => {
   handle?.setSelected(id)
@@ -232,9 +257,11 @@ watch(selectedId, (id) => {
     return
   }
   impressed.add(point.id)
-  window.dispatchEvent(new CustomEvent('k39-track', {
-    detail: { type: 'impression', target: point.href },
-  }))
+  window.dispatchEvent(
+    new CustomEvent('k39-track', {
+      detail: { type: 'impression', target: point.href },
+    }),
+  )
 })
 
 onMounted(() => {
@@ -252,13 +279,16 @@ onMounted(() => {
       return
     }
     const arm = () => {
-      observer = new IntersectionObserver((entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) {
-          return
-        }
-        observer?.disconnect()
-        void boot()
-      }, { rootMargin: '120px 0px' })
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) {
+            return
+          }
+          observer?.disconnect()
+          void boot()
+        },
+        { rootMargin: '120px 0px' },
+      )
       observer.observe(host)
     }
     const idle = window.requestIdleCallback
@@ -294,7 +324,10 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: var(--color-paper-2);
 }
-.canvas { position: absolute; inset: 0; }
+.canvas {
+  position: absolute;
+  inset: 0;
+}
 .fail {
   position: relative;
   z-index: 1;
@@ -326,17 +359,34 @@ onBeforeUnmount(() => {
   color: var(--color-ink);
   cursor: pointer;
 }
-.tools button:last-child { border-bottom: 0; }
-.tools button:hover { background: var(--color-brick-wash); color: var(--color-brick); }
-.tools svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.tools button:last-child {
+  border-bottom: 0;
+}
+.tools button:hover {
+  background: var(--color-brick-wash);
+  color: var(--color-brick);
+}
+.tools svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 :deep(.maplibregl-ctrl-attrib) {
   background: transparent;
   font-family: var(--font-body);
   font-size: 11px;
 }
 :deep(.maplibregl-ctrl-bottom-right),
-:deep(.maplibregl-ctrl-bottom-left) { bottom: var(--map-ui-bottom, 0.6rem); }
-:deep(.maplibregl-ctrl-attrib.maplibregl-compact) { margin: 0 4px 4px 0; }
+:deep(.maplibregl-ctrl-bottom-left) {
+  bottom: var(--map-ui-bottom, 0.6rem);
+}
+:deep(.maplibregl-ctrl-attrib.maplibregl-compact) {
+  margin: 0 4px 4px 0;
+}
 :deep(.maplibregl-ctrl-attrib-button) {
   background-color: var(--color-surface-translucent) !important;
   border-radius: 99px;
@@ -347,8 +397,12 @@ onBeforeUnmount(() => {
   background: var(--color-surface-translucent);
   color: var(--color-ink);
 }
-:deep(.maplibregl-ctrl-attrib a) { color: var(--color-sea); }
-:deep(.maplibregl-ctrl-logo) { display: none !important; }
+:deep(.maplibregl-ctrl-attrib a) {
+  color: var(--color-sea);
+}
+:deep(.maplibregl-ctrl-logo) {
+  display: none !important;
+}
 :deep(.maplibregl-cooperative-gesture-screen) {
   align-items: center;
   justify-content: center;

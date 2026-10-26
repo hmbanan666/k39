@@ -1,14 +1,13 @@
 <template>
   <aside class="offer">
-    <p class="label">
-      партнёр K39
-    </p>
+    <p class="label"> партнёр K39 </p>
     <h2>{{ title }}</h2>
     <p>{{ terms }}</p>
     <a
       v-if="href"
       :href="href"
-    >{{ anchor || title }}</a>
+      >{{ anchor || title }}</a
+    >
   </aside>
 </template>
 
@@ -37,5 +36,8 @@ defineProps<{
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-h2 { margin-top: 0; font-size: var(--step-1); }
+h2 {
+  margin-top: 0;
+  font-size: var(--step-1);
+}
 </style>

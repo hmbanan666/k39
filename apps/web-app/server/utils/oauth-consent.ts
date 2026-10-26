@@ -1,7 +1,16 @@
 import type { H3Event } from 'h3'
 import { db } from '@k39/database'
 import { safeInternalPath } from '../../shared/cabinet'
-import { CONSENT_COOKIE, CONSENT_METHOD, CONSENT_VERSION, consentDeniedLocation, consentParamAccepted, isOAuthCallback, oauthCallbackAllowed, oauthStartAllowed } from '../../shared/consent'
+import {
+  CONSENT_COOKIE,
+  CONSENT_METHOD,
+  CONSENT_VERSION,
+  consentDeniedLocation,
+  consentParamAccepted,
+  isOAuthCallback,
+  oauthCallbackAllowed,
+  oauthStartAllowed,
+} from '../../shared/consent'
 
 const cookieOptions = {
   path: '/',
@@ -46,7 +55,10 @@ export function guardOAuthProvider(event: H3Event) {
   return null
 }
 
-export async function completeConsentedSession(event: H3Event, user: { id: string, email: string, role: 'user' | 'editor' | 'admin' }) {
+export async function completeConsentedSession(
+  event: H3Event,
+  user: { id: string; email: string; role: 'user' | 'editor' | 'admin' },
+) {
   if (!oauthCallbackAllowed(getCookie(event, CONSENT_COOKIE))) {
     return deny(event, getCookie(event, 'redirectTo'))
   }

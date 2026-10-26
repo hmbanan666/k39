@@ -1,8 +1,29 @@
 import { stripRepeatedLead } from './seo'
 
 const ABBREVIATIONS = new Set([
-  'ул', 'д', 'г', 'пр', 'пер', 'пл', 'наб', 'корп', 'стр', 'им', 'т',
-  'к', 'о', 'обл', 'пос', 'ш', 'б-р', 'пр-т', 'пгт', 'мкр', 'кв', 'лит', 'эт',
+  'ул',
+  'д',
+  'г',
+  'пр',
+  'пер',
+  'пл',
+  'наб',
+  'корп',
+  'стр',
+  'им',
+  'т',
+  'к',
+  'о',
+  'обл',
+  'пос',
+  'ш',
+  'б-р',
+  'пр-т',
+  'пгт',
+  'мкр',
+  'кв',
+  'лит',
+  'эт',
 ])
 
 function isLetter(char: string) {
@@ -43,7 +64,10 @@ export function htmlContainsAddress(html: string | null | undefined, address: st
   if (!html || !full) {
     return false
   }
-  const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').toLowerCase()
+  const text = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
   if (text.includes(full)) {
     return true
   }

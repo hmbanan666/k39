@@ -11,13 +11,16 @@ describe('hub body', () => {
 
   it('stores markdown body and leaves omitted SEO fields in place', async () => {
     const db = useDatabase()
-    const [created] = await db.insert(categories).values({
-      slug: 'hub-body',
-      title: 'Форты',
-      description: 'Коротко о фортах.',
-      seoTitle: 'Форты Калининграда',
-      seoDescription: 'Описание для поиска, длиннее пятидесяти знаков.',
-    }).returning()
+    const [created] = await db
+      .insert(categories)
+      .values({
+        slug: 'hub-body',
+        title: 'Форты',
+        description: 'Коротко о фортах.',
+        seoTitle: 'Форты Калининграда',
+        seoDescription: 'Описание для поиска, длиннее пятидесяти знаков.',
+      })
+      .returning()
     if (!created) {
       throw new Error('category insert failed')
     }

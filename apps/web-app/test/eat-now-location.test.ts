@@ -41,7 +41,11 @@ async function acceptLocation() {
 }
 
 describe('eat-now geolocation', () => {
-  it.each([[1, 'запрещён'], [2, 'Попробуйте ещё раз'], [3, '10 секунд']] as const)('keeps centre results after error %s and retries successfully', async (code, text) => {
+  it.each([
+    [1, 'запрещён'],
+    [2, 'Попробуйте ещё раз'],
+    [3, '10 секунд'],
+  ] as const)('keeps centre results after error %s and retries successfully', async (code, text) => {
     await renderTown()
     const initialNames = names()
     const initialDistances = distances()
@@ -65,7 +69,13 @@ describe('eat-now geolocation', () => {
     expect(wrapper!.get('.tools .note').text()).toContain('от вас')
     expect(names()[0]).toBe('Фикстура: кафе на площади')
     expect(wrapper!.get('.dist').text()).toContain('10 м')
-    expect(wrapper!.findAll('.card').find((card) => card.text().includes('без координат'))!.find('.dist').exists()).toBe(false)
+    expect(
+      wrapper!
+        .findAll('.card')
+        .find((card) => card.text().includes('без координат'))!
+        .find('.dist')
+        .exists(),
+    ).toBe(false)
     expect(button().text()).toBe('Обновить моё место')
   })
 
@@ -106,7 +116,13 @@ describe('eat-now geolocation', () => {
   it('does not claim centre distances when the town has no centre or venue coordinates', async () => {
     const page = eatNowLocationFixture()
     page.centre = null
-    page.items = page.items.map((item) => ({ ...item, latitude: null, longitude: null, distanceKm: null, distance: '' }))
+    page.items = page.items.map((item) => ({
+      ...item,
+      latitude: null,
+      longitude: null,
+      distanceKm: null,
+      distance: '',
+    }))
     await renderTown(page)
     expect(wrapper!.get('.tools .note').text()).toBe('Расстояния пока не определены.')
     expect(distances()).toEqual([])

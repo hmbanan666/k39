@@ -4,7 +4,31 @@ import { describe, expect, it } from 'vitest'
 import { extractPdfText } from '../server/utils/facts/fetch'
 import { FACT_UNKNOWN, omitFactGap, projectShownFacts, shownText } from '../server/utils/facts/read'
 import { phoneNumbers, publicProse, publicVenueModules, repeatedKinds } from '../shared/fact-prose'
-import { classifySourceUrl, decideWatch, defaultTtl, isBlockedAddress, isBlockedHostname, isUnwatchedUrl, mapSourceAllowed, normalizeSourceText, ownerBlocksToken, pageTraffic, pastTtl, PHONE_TEXT_MAX, phoneValueSchema, priorityFor, proseHash, reviewUpdate, seasonBoundaryWithin, seedFactDisposition, shouldWriteContact, trustOf, trustText, valueHash, watchableSource } from '../shared/facts'
+import {
+  classifySourceUrl,
+  decideWatch,
+  defaultTtl,
+  isBlockedAddress,
+  isBlockedHostname,
+  isUnwatchedUrl,
+  mapSourceAllowed,
+  normalizeSourceText,
+  ownerBlocksToken,
+  pageTraffic,
+  pastTtl,
+  PHONE_TEXT_MAX,
+  phoneValueSchema,
+  priorityFor,
+  proseHash,
+  reviewUpdate,
+  seasonBoundaryWithin,
+  seedFactDisposition,
+  shouldWriteContact,
+  trustOf,
+  trustText,
+  valueHash,
+  watchableSource,
+} from '../shared/facts'
 
 describe('fact values', () => {
   it('stores three phone numbers in the fact and the column copy', () => {
@@ -47,7 +71,12 @@ describe('fact values', () => {
     expect(classifySourceUrl('https://yandex.ru/profile/123')).toBe('none')
     expect(classifySourceUrl('https://www.openstreetmap.org/node/1')).toBe('osm')
     expect(classifySourceUrl('https://fake-openstreetmap.example/node/1')).not.toBe('osm')
-    for (const url of ['https://zoon.ru/cafe', 'https://afisha.ru/museum', 'https://yandex.ru/eda', 'https://drive.google.com/file/d/menu']) {
+    for (const url of [
+      'https://zoon.ru/cafe',
+      'https://afisha.ru/museum',
+      'https://yandex.ru/eda',
+      'https://drive.google.com/file/d/menu',
+    ]) {
       expect(classifySourceUrl(url)).not.toBe('official')
       expect(classifySourceUrl(url)).not.toBe('osm')
     }
@@ -75,11 +104,21 @@ describe('fact values', () => {
   })
 
   it('renews an unchanged hash and backs off a failure', () => {
-    expect(decideWatch({ status: 200, error: false, previousHash: 'abc', nextHash: 'abc', failCount: 0 }).type).toBe('renew')
-    expect(decideWatch({ status: 304, error: false, previousHash: 'abc', nextHash: null, failCount: 0 }).type).toBe('renew')
-    expect(decideWatch({ status: 200, error: false, previousHash: 'abc', nextHash: 'def', failCount: 0 }).type).toBe('changed')
-    expect(decideWatch({ status: 200, error: false, previousHash: null, nextHash: 'def', failCount: 0 }).type).toBe('record')
-    expect(decideWatch({ status: 404, error: false, previousHash: 'abc', nextHash: null, failCount: 0 }).type).toBe('gone')
+    expect(decideWatch({ status: 200, error: false, previousHash: 'abc', nextHash: 'abc', failCount: 0 }).type).toBe(
+      'renew',
+    )
+    expect(decideWatch({ status: 304, error: false, previousHash: 'abc', nextHash: null, failCount: 0 }).type).toBe(
+      'renew',
+    )
+    expect(decideWatch({ status: 200, error: false, previousHash: 'abc', nextHash: 'def', failCount: 0 }).type).toBe(
+      'changed',
+    )
+    expect(decideWatch({ status: 200, error: false, previousHash: null, nextHash: 'def', failCount: 0 }).type).toBe(
+      'record',
+    )
+    expect(decideWatch({ status: 404, error: false, previousHash: 'abc', nextHash: null, failCount: 0 }).type).toBe(
+      'gone',
+    )
     const third = decideWatch({ status: 500, error: false, previousHash: 'abc', nextHash: null, failCount: 2 })
     expect(third.type).toBe('backoff')
     if (third.type === 'backoff') {
@@ -92,7 +131,9 @@ describe('fact values', () => {
   it('treats a past-TTL official match as a renew, not a new read', () => {
     const checked = new Date(Date.now() - 40 * 86_400_000).toISOString()
     expect(pastTtl(checked, 30)).toBe(true)
-    expect(decideWatch({ status: 200, error: false, previousHash: 'same', nextHash: 'same', failCount: 0 }).type).toBe('renew')
+    expect(decideWatch({ status: 200, error: false, previousHash: 'same', nextHash: 'same', failCount: 0 }).type).toBe(
+      'renew',
+    )
   })
 
   it('does not let the content token overwrite an owner fact', () => {
@@ -126,8 +167,23 @@ trailer <<>>
       { path: 'sections[0]', text: 'Второй абзац', hash: second },
       { path: 'sections[1]', text: 'Первый абзац', hash: first },
     ]
-    expect(reviewUpdate(current, [{ path: 'sections[0]', hash: first }, { path: 'sections[1]', hash: second }], current.map((item) => ({ path: item.path, hash: item.hash })), true).ok).toBe(true)
-    const changed = reviewUpdate(current, [{ path: 'sections[0]', hash: first }], [{ path: 'sections[0]', hash: 'nope' }], false)
+    expect(
+      reviewUpdate(
+        current,
+        [
+          { path: 'sections[0]', hash: first },
+          { path: 'sections[1]', hash: second },
+        ],
+        current.map((item) => ({ path: item.path, hash: item.hash })),
+        true,
+      ).ok,
+    ).toBe(true)
+    const changed = reviewUpdate(
+      current,
+      [{ path: 'sections[0]', hash: first }],
+      [{ path: 'sections[0]', hash: 'nope' }],
+      false,
+    )
     expect(changed.ok).toBe(false)
     expect(changed.rejected).toContain('sections[0]')
   })
@@ -151,7 +207,8 @@ trailer <<>>
   })
 })
 
-const BRIKAS = 'Ресторан литовской кухни «Брикас» на Театральной улице, 30, в центре Калининграда. Зал оформлен как старая таверна. В меню цеппелины. Открыт ежедневно с 10:00 до 22:00. Телефоны для брони +7 (4012) 61-64-12 и +7 (4012) 53-16-28.'
+const BRIKAS =
+  'Ресторан литовской кухни «Брикас» на Театральной улице, 30, в центре Калининграда. Зал оформлен как старая таверна. В меню цеппелины. Открыт ежедневно с 10:00 до 22:00. Телефоны для брони +7 (4012) 61-64-12 и +7 (4012) 53-16-28.'
 
 describe('public fact reader', () => {
   const columns = {
@@ -163,15 +220,17 @@ describe('public fact reader', () => {
   }
 
   it('reads a stated fact and ignores the column', () => {
-    const shown = projectShownFacts('venue', 'v1', columns, [{
-      path: 'short.phone',
-      kind: 'phone',
-      slot: 'phone',
-      value: { text: '+7 4012 61-64-12' },
-      confidence: 'stated',
-      subjectType: 'venue',
-      subjectId: 'v1',
-    }])
+    const shown = projectShownFacts('venue', 'v1', columns, [
+      {
+        path: 'short.phone',
+        kind: 'phone',
+        slot: 'phone',
+        value: { text: '+7 4012 61-64-12' },
+        confidence: 'stated',
+        subjectType: 'venue',
+        subjectId: 'v1',
+      },
+    ])
     expect(shown.phone).toBe('+7 4012 61-64-12')
     expect(shown.address).toBe(columns.address)
     expect(omitFactGap(shown.phone)).toBe('+7 4012 61-64-12')
@@ -179,10 +238,42 @@ describe('public fact reader', () => {
 
   it('renders a gap as уточняйте and does not fall back to the column', () => {
     const shown = projectShownFacts('venue', 'v1', columns, [
-      { path: 'short.phone', kind: 'phone', slot: 'phone', value: { text: columns.phone }, confidence: 'gap', subjectType: 'venue', subjectId: 'v1' },
-      { path: 'short.address', kind: 'address', slot: 'address', value: { text: columns.address }, confidence: 'gap', subjectType: 'venue', subjectId: 'v1' },
-      { path: 'short.coordinates', kind: 'coordinates', slot: 'coordinates', value: { latitude: columns.latitude, longitude: columns.longitude }, confidence: 'gap', subjectType: 'venue', subjectId: 'v1' },
-      { path: 'short.status', kind: 'status', slot: 'status', value: { scope: 'venue', status: 'closed' }, confidence: 'gap', subjectType: 'venue', subjectId: 'v1' },
+      {
+        path: 'short.phone',
+        kind: 'phone',
+        slot: 'phone',
+        value: { text: columns.phone },
+        confidence: 'gap',
+        subjectType: 'venue',
+        subjectId: 'v1',
+      },
+      {
+        path: 'short.address',
+        kind: 'address',
+        slot: 'address',
+        value: { text: columns.address },
+        confidence: 'gap',
+        subjectType: 'venue',
+        subjectId: 'v1',
+      },
+      {
+        path: 'short.coordinates',
+        kind: 'coordinates',
+        slot: 'coordinates',
+        value: { latitude: columns.latitude, longitude: columns.longitude },
+        confidence: 'gap',
+        subjectType: 'venue',
+        subjectId: 'v1',
+      },
+      {
+        path: 'short.status',
+        kind: 'status',
+        slot: 'status',
+        value: { scope: 'venue', status: 'closed' },
+        confidence: 'gap',
+        subjectType: 'venue',
+        subjectId: 'v1',
+      },
     ])
     expect(shown.phone).toBe(FACT_UNKNOWN)
     expect(shown.address).toBe(FACT_UNKNOWN)
@@ -202,7 +293,15 @@ describe('public fact reader', () => {
     const place = projectShownFacts('place', 'p1', { status: 'closed', latitude: 54.65, longitude: 20.5 }, [])
     expect(place.status).toBe('closed')
     const gap = projectShownFacts('place', 'p1', { status: 'closed', latitude: 54.65, longitude: 20.5 }, [
-      { path: 'short.status', kind: 'status', slot: 'status', value: { scope: 'place', status: 'closed' }, confidence: 'gap', subjectType: 'place', subjectId: 'p1' },
+      {
+        path: 'short.status',
+        kind: 'status',
+        slot: 'status',
+        value: { scope: 'place', status: 'closed' },
+        confidence: 'gap',
+        subjectType: 'place',
+        subjectId: 'p1',
+      },
     ])
     expect(gap.status).toBe('unknown')
   })
@@ -222,10 +321,13 @@ describe('public fact reader', () => {
     expect(page).toContain('Брикас')
     expect(phoneNumbers(BRIKAS)).toEqual(['74012616412', '74012531628'])
     expect(repeatedKinds(BRIKAS, hours)).toEqual(['phone', 'hours'])
-    const modules = publicVenueModules([
-      { type: 'text', text: 'Телефон +7 (4012) 53-16-28.' },
-      { type: 'practical', items: [{ key: 'other', label: 'Телефон', value: '+7 4012 61-64-12' }] },
-    ], hours)
+    const modules = publicVenueModules(
+      [
+        { type: 'text', text: 'Телефон +7 (4012) 53-16-28.' },
+        { type: 'practical', items: [{ key: 'other', label: 'Телефон', value: '+7 4012 61-64-12' }] },
+      ],
+      hours,
+    )
     expect(JSON.stringify(modules)).not.toContain('4012')
   })
 })

@@ -80,7 +80,8 @@
               <span
                 v-if="dish.priceRub"
                 class="price-rub"
-              >{{ formatRub(dish.priceRub) }}</span>
+                >{{ formatRub(dish.priceRub) }}</span
+              >
             </span>
           </div>
           <span
@@ -131,9 +132,10 @@
         :key="item.who"
       >
         <p class="who">
-          <span class="aud-icon"><Icon
-            :name="tablerIcon(`aud-${item.icon}`)"
-            size="20"
+          <span class="aud-icon"
+            ><Icon
+              :name="tablerIcon(`aud-${item.icon}`)"
+              size="20"
           /></span>
           {{ item.who }}
         </p>
@@ -199,7 +201,7 @@
                   v-if="row.image"
                   :src="row.image"
                   alt=""
-                >
+                />
                 <Sticker
                   v-else-if="row.sticker"
                   set="food"
@@ -218,7 +220,8 @@
                 <span
                   v-if="row.variant"
                   class="price-variant"
-                >{{ row.variant }}</span>
+                  >{{ row.variant }}</span
+                >
               </span>
               <span class="price-rub">{{ formatRub(row.priceRub) }}</span>
             </span>
@@ -283,9 +286,7 @@
         >
           {{ block.source.title }}
         </UiLink>
-        <template v-else>
-          {{ block.source.title }}
-        </template>,
+        <template v-else> {{ block.source.title }} </template>,
         <time :datetime="block.source.date">{{ formatPriceDate(block.source.date) }}</time>
         Цены могли измениться.
       </p>
@@ -312,11 +313,18 @@ import type { PublicDish, PublicVenueModule } from '~~/shared/venue-modules'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { tablerIcon } from '~~/shared/icons'
 import { licenseHref, licenseLabel } from '~~/shared/media'
-import { formatPriceDate, formatRub, formatTownRange, knownPortion, PRICE_STICKER_WIDTH, priceCardTap } from '~~/shared/price-compare'
+import {
+  formatPriceDate,
+  formatRub,
+  formatTownRange,
+  knownPortion,
+  PRICE_STICKER_WIDTH,
+  priceCardTap,
+} from '~~/shared/price-compare'
 import { presentVenueBlocks } from '~~/shared/venue-modules'
 import MetaLink from './MetaLink.vue'
 
-const props = defineProps<{ blocks: PublicVenueModule[], menuUrl?: string | null }>()
+const props = defineProps<{ blocks: PublicVenueModule[]; menuUrl?: string | null }>()
 const shown = computed(() => presentVenueBlocks(props.blocks))
 const openDetail = ref<string | null>(null)
 
@@ -375,17 +383,32 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.vm { margin-top: 2.6rem; }
-.vm:first-child { margin-top: 0; }
-.vm h2 { margin-bottom: 0.9rem; }
+.vm {
+  margin-top: 2.6rem;
+}
+.vm:first-child {
+  margin-top: 0;
+}
+.vm h2 {
+  margin-bottom: 0.9rem;
+}
 .vm-text .lead {
   font-size: 1.2rem;
   line-height: 1.65;
 }
-.vm-text .lead :deep(p) { margin: 0 0 0.95rem; }
-.vm-text .lead :deep(p:last-child) { margin-bottom: 0; }
-.note { color: var(--muted); font-size: 0.92rem; }
-.note :deep(a) { font-weight: 400; }
+.vm-text .lead :deep(p) {
+  margin: 0 0 0.95rem;
+}
+.vm-text .lead :deep(p:last-child) {
+  margin-bottom: 0;
+}
+.note {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.note :deep(a) {
+  font-weight: 400;
+}
 .price-head {
   display: grid;
   gap: 0.3rem;
@@ -397,7 +420,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.4rem 0.75rem;
 }
-.price-head h2 { margin: 0; }
+.price-head h2 {
+  margin: 0;
+}
 .price-lead {
   margin: 0;
   color: var(--muted);
@@ -432,7 +457,9 @@ onBeforeUnmount(() => {
 }
 .price-item:hover,
 .price-item:focus-within,
-.price-item.is-open { z-index: 2; }
+.price-item.is-open {
+  z-index: 2;
+}
 .price-card,
 .dish-card {
   display: flex;
@@ -445,11 +472,18 @@ onBeforeUnmount(() => {
   background: var(--surface);
   color: inherit;
   text-decoration: none;
-  transition: border-color var(--duration) var(--ease), background-color var(--duration) var(--ease);
+  transition:
+    border-color var(--duration) var(--ease),
+    background-color var(--duration) var(--ease);
 }
-.dish-card { cursor: default; }
+.dish-card {
+  cursor: default;
+}
 .price-card:focus-visible,
-.dish-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.dish-card:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
 .price-card:hover {
   border-color: var(--color-sea);
   background: var(--color-sea-light);
@@ -493,9 +527,22 @@ onBeforeUnmount(() => {
   object-fit: cover;
   border-radius: 8px;
 }
-.price-copy { grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
-.price-name { display: block; font-weight: 700; line-height: 1.2; }
-.price-variant { display: block; color: var(--muted); font-size: 0.82rem; line-height: 1.25; }
+.price-copy {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 0;
+}
+.price-name {
+  display: block;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.price-variant {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
 .price-rub {
   grid-column: 3;
   grid-row: 1 / span 2;
@@ -505,7 +552,10 @@ onBeforeUnmount(() => {
   line-height: 1;
   white-space: nowrap;
 }
-.scale { display: block; margin-left: calc(56px + 0.7rem); }
+.scale {
+  display: block;
+  margin-left: calc(56px + 0.7rem);
+}
 .scale-quiet {
   display: flex;
   align-items: center;
@@ -537,7 +587,9 @@ onBeforeUnmount(() => {
   pointer-events: none;
   transform: translateY(4px) scale(0.98);
   transform-origin: top left;
-  transition: opacity 150ms var(--ease), transform 150ms var(--ease);
+  transition:
+    opacity 150ms var(--ease),
+    transform 150ms var(--ease);
 }
 .price-card:hover + .price-detail,
 .price-card:focus-within + .price-detail,
@@ -548,8 +600,13 @@ onBeforeUnmount(() => {
   pointer-events: auto;
   transform: none;
 }
-.price-verdict { font-weight: 700; }
-.price-facts { display: grid; gap: 0.12rem; }
+.price-verdict {
+  font-weight: 700;
+}
+.price-facts {
+  display: grid;
+  gap: 0.12rem;
+}
 .price-kicker {
   color: var(--muted);
   font-size: 0.78rem;
@@ -562,7 +619,9 @@ onBeforeUnmount(() => {
   color: var(--muted);
   font-size: 0.75rem;
 }
-.track-wrap { position: relative; }
+.track-wrap {
+  position: relative;
+}
 .track {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -575,12 +634,24 @@ onBeforeUnmount(() => {
   border-radius: 99px;
   background: var(--color-line);
 }
-.track i:nth-child(1) { background: var(--color-price-low); }
-.track i:nth-child(2) { background: var(--color-price-mid); }
-.track i:nth-child(3) { background: var(--color-price-high); }
-.track i.on:nth-child(1) { background: var(--color-pine); }
-.track i.on:nth-child(2) { background: var(--color-amber); }
-.track i.on:nth-child(3) { background: var(--color-brick); }
+.track i:nth-child(1) {
+  background: var(--color-price-low);
+}
+.track i:nth-child(2) {
+  background: var(--color-price-mid);
+}
+.track i:nth-child(3) {
+  background: var(--color-price-high);
+}
+.track i.on:nth-child(1) {
+  background: var(--color-pine);
+}
+.track i.on:nth-child(2) {
+  background: var(--color-amber);
+}
+.track i.on:nth-child(3) {
+  background: var(--color-brick);
+}
 .mark {
   position: absolute;
   top: 50%;
@@ -592,23 +663,36 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 0 1px var(--color-ink-outline);
   transform: translate(-50%, -50%);
 }
-.mark.cheap { background: var(--color-pine); }
-.mark.medium { background: var(--color-amber); }
-.mark.expensive { background: var(--color-brick); }
+.mark.cheap {
+  background: var(--color-pine);
+}
+.mark.medium {
+  background: var(--color-amber);
+}
+.mark.expensive {
+  background: var(--color-brick);
+}
 .price-foot {
   margin: 0.25rem 0 0;
   color: var(--muted);
   font-size: 0.75rem;
   line-height: 1.35;
 }
-.price-foot :deep(a) { font-weight: 400; }
+.price-foot :deep(a) {
+  font-weight: 400;
+}
 @media (min-width: 720px) {
-  .price-grid { grid-template-columns: 1fr 1fr; }
+  .price-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .price-card,
   .dish-card,
-  .price-detail { transition: none; transform: none; }
+  .price-detail {
+    transition: none;
+    transform: none;
+  }
 }
 .cards {
   display: grid;
@@ -624,8 +708,20 @@ onBeforeUnmount(() => {
   border-radius: 14px;
   background: var(--color-surface);
 }
-.cards :deep(p) { margin: 0; font-size: 1rem; line-height: 1.45; }
-.cards .who { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem; font-size: 1rem; font-weight: 700; line-height: 1.25; }
+.cards :deep(p) {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+.cards .who {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
 .aud-icon {
   display: inline-grid;
   flex: none;
@@ -636,9 +732,22 @@ onBeforeUnmount(() => {
   background: var(--color-amber-soft);
   color: var(--color-brick);
 }
-.vm h2.with-sticker { display: flex; gap: 0.6rem; align-items: center; }
-.vm h2.with-sticker :deep(.sticker) { flex: none; width: 56px; margin: -0.6rem 0; transform: rotate(-6deg); }
-.practical { display: grid; gap: 0; margin: 0; }
+.vm h2.with-sticker {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.vm h2.with-sticker :deep(.sticker) {
+  flex: none;
+  width: 56px;
+  margin: -0.6rem 0;
+  transform: rotate(-6deg);
+}
+.practical {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
 .practical > div {
   display: grid;
   grid-template-columns: 11.5rem minmax(0, 1fr);
@@ -654,11 +763,24 @@ onBeforeUnmount(() => {
   color: var(--muted);
   font-weight: 600;
 }
-.practical dd { margin: 0; line-height: 1.45; }
-.tips { margin: 0; padding-left: 1.2rem; }
-.tips li + li { margin-top: 0.4rem; }
-.faq details { padding: 0.85rem 0 0.95rem; border-top: 1px solid var(--color-line); }
-.faq details:last-child { border-bottom: 1px solid var(--color-line); }
+.practical dd {
+  margin: 0;
+  line-height: 1.45;
+}
+.tips {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.tips li + li {
+  margin-top: 0.4rem;
+}
+.faq details {
+  padding: 0.85rem 0 0.95rem;
+  border-top: 1px solid var(--color-line);
+}
+.faq details:last-child {
+  border-bottom: 1px solid var(--color-line);
+}
 .faq summary {
   font-family: var(--font-display);
   font-size: 1.2rem;
@@ -666,8 +788,15 @@ onBeforeUnmount(() => {
   line-height: 1.3;
   cursor: pointer;
 }
-.faq :deep(p) { margin: 0.45rem 0 0; max-width: 62ch; line-height: 1.55; }
+.faq :deep(p) {
+  margin: 0.45rem 0 0;
+  max-width: 62ch;
+  line-height: 1.55;
+}
 @media (max-width: 560px) {
-  .practical > div { grid-template-columns: 1fr; gap: 0.2rem; }
+  .practical > div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
 }
 </style>

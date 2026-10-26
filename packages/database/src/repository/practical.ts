@@ -46,7 +46,11 @@ function liveAt(now: string) {
 // Admission prices (ADR 0046). The writer in the web app owns validation and facts.
 export class Admission {
   static async forSubject(subjectType: string, subjectId: string, tx?: ContentTx) {
-    return (tx ?? useDatabase()).select().from(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId))).orderBy(asc(admissionPrices.sortOrder), asc(admissionPrices.slot))
+    return (tx ?? useDatabase())
+      .select()
+      .from(admissionPrices)
+      .where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId)))
+      .orderBy(asc(admissionPrices.sortOrder), asc(admissionPrices.slot))
   }
 
   /** Serialize row/fact replacement on a subject, including an initially empty list. */
@@ -57,17 +61,34 @@ export class Admission {
   static async list(subjectType?: string) {
     const query = useDatabase().select().from(admissionPrices)
     const filtered = subjectType ? query.where(eq(admissionPrices.subjectType, subjectType)) : query
-    return filtered.orderBy(asc(admissionPrices.subjectType), asc(admissionPrices.subjectId), asc(admissionPrices.sortOrder))
+    return filtered.orderBy(
+      asc(admissionPrices.subjectType),
+      asc(admissionPrices.subjectId),
+      asc(admissionPrices.sortOrder),
+    )
   }
 
   /** Only supplied kinds are replaced. The caller owns the row/fact transaction. */
-  static async replaceLists(subjectType: AdmissionSubjectType, subjectId: string, lists: Partial<Record<AdmissionKind, AdmissionRowWrite[]>>, tx: ContentTx) {
+  static async replaceLists(
+    subjectType: AdmissionSubjectType,
+    subjectId: string,
+    lists: Partial<Record<AdmissionKind, AdmissionRowWrite[]>>,
+    tx: ContentTx,
+  ) {
     for (const kind of ['entry', 'extra'] as const) {
       const rows = lists[kind]
       if (rows === undefined) {
         continue
       }
-      await tx.delete(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId), eq(admissionPrices.kind, kind)))
+      await tx
+        .delete(admissionPrices)
+        .where(
+          and(
+            eq(admissionPrices.subjectType, subjectType),
+            eq(admissionPrices.subjectId, subjectId),
+            eq(admissionPrices.kind, kind),
+          ),
+        )
       if (rows.length) {
         await tx.insert(admissionPrices).values(rows.map((row) => ({ ...row, kind, subjectType, subjectId })))
       }
@@ -84,7 +105,9 @@ export class Admission {
   }
 
   static async removeForSubject(subjectType: string, subjectId: string) {
-    await useDatabase().delete(admissionPrices).where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId)))
+    await useDatabase()
+      .delete(admissionPrices)
+      .where(and(eq(admissionPrices.subjectType, subjectType), eq(admissionPrices.subjectId, subjectId)))
   }
 }
 
@@ -96,7 +119,11 @@ export class CalendarEvents {
   }
 
   static async forSubject(subjectType: string, subjectId: string) {
-    return useDatabase().select().from(calendarEvents).where(and(eq(calendarEvents.subjectType, subjectType), eq(calendarEvents.subjectId, subjectId))).orderBy(asc(calendarEvents.startsAt))
+    return useDatabase()
+      .select()
+      .from(calendarEvents)
+      .where(and(eq(calendarEvents.subjectType, subjectType), eq(calendarEvents.subjectId, subjectId)))
+      .orderBy(asc(calendarEvents.startsAt))
   }
 
   /** Not cancelled, not expired, and not past at `now`. The read compares time itself. */
@@ -104,7 +131,14 @@ export class CalendarEvents {
     if (!subjectIds.length) {
       return []
     }
-    return useDatabase().select().from(calendarEvents).where(and(eq(calendarEvents.subjectType, subjectType), inArray(calendarEvents.subjectId, subjectIds), liveAt(now))).orderBy(asc(calendarEvents.startsAt), asc(calendarEvents.title)).limit(limit)
+    return useDatabase()
+      .select()
+      .from(calendarEvents)
+      .where(
+        and(eq(calendarEvents.subjectType, subjectType), inArray(calendarEvents.subjectId, subjectIds), liveAt(now)),
+      )
+      .orderBy(asc(calendarEvents.startsAt), asc(calendarEvents.title))
+      .limit(limit)
   }
 
   /** Upcoming events of published places, with the place for the link. */
@@ -112,25 +146,38 @@ export class CalendarEvents {
     if (!placeIds.length) {
       return []
     }
-    return useDatabase().select({
-      event: calendarEvents,
-      subjectSlug: places.slug,
-      subjectTitle: places.title,
-    }).from(calendarEvents).innerJoin(places, eq(places.id, calendarEvents.subjectId)).where(and(
-      eq(calendarEvents.subjectType, 'place'),
-      inArray(calendarEvents.subjectId, placeIds),
-      eq(places.publicationStatus, 'published'),
-      liveAt(now),
-    )).orderBy(asc(calendarEvents.startsAt), asc(calendarEvents.title)).limit(limit)
+    return useDatabase()
+      .select({
+        event: calendarEvents,
+        subjectSlug: places.slug,
+        subjectTitle: places.title,
+      })
+      .from(calendarEvents)
+      .innerJoin(places, eq(places.id, calendarEvents.subjectId))
+      .where(
+        and(
+          eq(calendarEvents.subjectType, 'place'),
+          inArray(calendarEvents.subjectId, placeIds),
+          eq(places.publicationStatus, 'published'),
+          liveAt(now),
+        ),
+      )
+      .orderBy(asc(calendarEvents.startsAt), asc(calendarEvents.title))
+      .limit(limit)
   }
 
-  static async list(filter: { subjectType?: string, subjectId?: string, upcomingAt?: string, limit?: number } = {}) {
+  static async list(filter: { subjectType?: string; subjectId?: string; upcomingAt?: string; limit?: number } = {}) {
     const conditions = [
       filter.subjectType ? eq(calendarEvents.subjectType, filter.subjectType) : undefined,
       filter.subjectId ? eq(calendarEvents.subjectId, filter.subjectId) : undefined,
       filter.upcomingAt ? liveAt(filter.upcomingAt) : undefined,
     ].filter((item) => item !== undefined)
-    return useDatabase().select().from(calendarEvents).where(conditions.length ? and(...conditions) : undefined).orderBy(asc(calendarEvents.startsAt)).limit(Math.min(Math.max(filter.limit ?? 100, 1), 500))
+    return useDatabase()
+      .select()
+      .from(calendarEvents)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(asc(calendarEvents.startsAt))
+      .limit(Math.min(Math.max(filter.limit ?? 100, 1), 500))
   }
 
   static async insert(row: CalendarEventWrite) {
@@ -139,33 +186,51 @@ export class CalendarEvents {
   }
 
   static async update(id: string, row: Omit<CalendarEventWrite, 'subjectType' | 'subjectId'>) {
-    const [saved] = await useDatabase().update(calendarEvents).set({ ...row, updatedAt: new Date().toISOString() }).where(eq(calendarEvents.id, id)).returning()
+    const [saved] = await useDatabase()
+      .update(calendarEvents)
+      .set({ ...row, updatedAt: new Date().toISOString() })
+      .where(eq(calendarEvents.id, id))
+      .returning()
     return saved ?? null
   }
 
   static async cancel(id: string, at: string) {
-    const [saved] = await useDatabase().update(calendarEvents).set({ cancelledAt: at, updatedAt: at }).where(and(eq(calendarEvents.id, id), isNull(calendarEvents.cancelledAt))).returning()
+    const [saved] = await useDatabase()
+      .update(calendarEvents)
+      .set({ cancelledAt: at, updatedAt: at })
+      .where(and(eq(calendarEvents.id, id), isNull(calendarEvents.cancelledAt)))
+      .returning()
     return saved ?? null
   }
 
   /** Live rows whose end (or start without an end) is at or before `now`. */
   static async due(now: string) {
-    return useDatabase().select().from(calendarEvents).where(and(
-      isNull(calendarEvents.cancelledAt),
-      isNull(calendarEvents.expiredAt),
-      lte(sql`coalesce(${calendarEvents.endsAt}, ${calendarEvents.startsAt})`, now),
-    ))
+    return useDatabase()
+      .select()
+      .from(calendarEvents)
+      .where(
+        and(
+          isNull(calendarEvents.cancelledAt),
+          isNull(calendarEvents.expiredAt),
+          lte(sql`coalesce(${calendarEvents.endsAt}, ${calendarEvents.startsAt})`, now),
+        ),
+      )
   }
 
   static async markExpired(ids: string[], at: string) {
     if (!ids.length) {
       return
     }
-    await useDatabase().update(calendarEvents).set({ expiredAt: at, updatedAt: at }).where(and(inArray(calendarEvents.id, ids), isNull(calendarEvents.expiredAt)))
+    await useDatabase()
+      .update(calendarEvents)
+      .set({ expiredAt: at, updatedAt: at })
+      .where(and(inArray(calendarEvents.id, ids), isNull(calendarEvents.expiredAt)))
   }
 
   static async removeForSubject(subjectType: string, subjectId: string) {
-    await useDatabase().delete(calendarEvents).where(and(eq(calendarEvents.subjectType, subjectType), eq(calendarEvents.subjectId, subjectId)))
+    await useDatabase()
+      .delete(calendarEvents)
+      .where(and(eq(calendarEvents.subjectType, subjectType), eq(calendarEvents.subjectId, subjectId)))
   }
 }
 
@@ -173,13 +238,23 @@ export class CalendarEvents {
 export async function practicalSubjects(subjectType: string, ids: string[]) {
   const unique = [...new Set(ids)]
   if (!unique.length) {
-    return new Map<string, { slug: string, title: string, status: string }>()
+    return new Map<string, { slug: string; title: string; status: string }>()
   }
   const db = useDatabase()
-  const rows = subjectType === 'venue'
-    ? await db.select({ id: venues.id, slug: venues.slug, title: venues.name, status: venues.status }).from(venues).where(inArray(venues.id, unique))
-    : subjectType === 'route'
-      ? await db.select({ id: routes.id, slug: routes.slug, title: routes.title, status: routes.publicationStatus }).from(routes).where(inArray(routes.id, unique))
-      : await db.select({ id: places.id, slug: places.slug, title: places.title, status: places.publicationStatus }).from(places).where(inArray(places.id, unique))
+  const rows =
+    subjectType === 'venue'
+      ? await db
+          .select({ id: venues.id, slug: venues.slug, title: venues.name, status: venues.status })
+          .from(venues)
+          .where(inArray(venues.id, unique))
+      : subjectType === 'route'
+        ? await db
+            .select({ id: routes.id, slug: routes.slug, title: routes.title, status: routes.publicationStatus })
+            .from(routes)
+            .where(inArray(routes.id, unique))
+        : await db
+            .select({ id: places.id, slug: places.slug, title: places.title, status: places.publicationStatus })
+            .from(places)
+            .where(inArray(places.id, unique))
   return new Map(rows.map((row) => [row.id, { slug: row.slug, title: row.title, status: row.status }]))
 }

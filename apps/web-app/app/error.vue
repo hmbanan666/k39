@@ -14,9 +14,11 @@
           </p>
           <h1>{{ lost ? 'Такой страницы нет' : 'Что-то сломалось' }}</h1>
           <p class="lede">
-            {{ lost
-              ? 'Похоже, адрес устарел или в нём опечатка. Поищите на сайте или загляните сюда.'
-              : 'Мы уже чиним. Обновите страницу через минуту или начните с главной.' }}
+            {{
+              lost
+                ? 'Похоже, адрес устарел или в нём опечатка. Поищите на сайте или загляните сюда.'
+                : 'Мы уже чиним. Обновите страницу через минуту или начните с главной.'
+            }}
           </p>
           <SearchForm
             v-if="lost"
@@ -26,9 +28,7 @@
             placeholder="Что вы искали?"
           />
           <div class="actions">
-            <UiButton href="/">
-              На главную
-            </UiButton>
+            <UiButton href="/"> На главную </UiButton>
             <UiButton
               v-if="!lost"
               variant="line"
@@ -48,7 +48,8 @@
         <span
           class="postmark"
           aria-hidden="true"
-        >{{ code }}</span>
+          >{{ code }}</span
+        >
       </section>
       <div
         v-if="links"
@@ -78,7 +79,7 @@
 <script setup lang="ts">
 import type { TextLink } from '~~/shared/links'
 
-const props = defineProps<{ error: { statusCode: number, statusMessage?: string, message?: string } }>()
+const props = defineProps<{ error: { statusCode: number; statusMessage?: string; message?: string } }>()
 
 const code = computed(() => props.error.statusCode || 500)
 const lost = computed(() => code.value === 404)
@@ -178,7 +179,11 @@ h1 {
     grid-template-columns: 220px 1fr;
     padding: var(--space-7) var(--space-7) var(--space-7) var(--space-6);
   }
-  .mascot { width: 200px; }
-  .lists { grid-template-columns: 1fr 1fr; }
+  .mascot {
+    width: 200px;
+  }
+  .lists {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

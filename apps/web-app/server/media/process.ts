@@ -105,37 +105,44 @@ export async function processImage(input: Buffer, mediaId: string, storage: Medi
   const masterMeta = await openImage(masterBuf).metadata()
   const baseWidth = masterMeta.width ?? masterWidth
   const baseHeight = masterMeta.height ?? masterHeight
-  const variants: MediaVariant[] = [{
-    format: 'webp',
-    width: baseWidth,
-    height: baseHeight,
-    bytes: masterBuf.length,
-    file: 'master.webp',
-  }]
+  const variants: MediaVariant[] = [
+    {
+      format: 'webp',
+      width: baseWidth,
+      height: baseHeight,
+      bytes: masterBuf.length,
+      file: 'master.webp',
+    },
+  ]
   const sized = WIDTHS.filter((width) => width < baseWidth)
   const [groups, og, lqipBuf, stats] = await Promise.all([
-    Promise.all(sized.map(async (width) => {
-      const height = Math.max(1, Math.round(baseHeight * (width / baseWidth)))
-      const [avif, webp] = await Promise.all([
-        openImage(masterBuf).resize({ width, withoutEnlargement: true }).avif({ quality: 50 }).toBuffer(),
-        openImage(masterBuf).resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer(),
-      ])
-      await Promise.all([
-        storage.put(`${mediaId}/${width}.avif`, avif),
-        storage.put(`${mediaId}/${width}.webp`, webp),
-      ])
-      return [
-        { format: 'avif' as const, width, height, bytes: avif.length, file: `${width}.avif` },
-        { format: 'webp' as const, width, height, bytes: webp.length, file: `${width}.webp` },
-      ]
-    })),
-    openImage(masterBuf).resize({
-      width: Math.min(1200, baseWidth),
-      height: Math.min(630, baseHeight),
-      fit: 'cover',
-      position: 'centre',
-      withoutEnlargement: true,
-    }).jpeg({ quality: 90 }).toBuffer(),
+    Promise.all(
+      sized.map(async (width) => {
+        const height = Math.max(1, Math.round(baseHeight * (width / baseWidth)))
+        const [avif, webp] = await Promise.all([
+          openImage(masterBuf).resize({ width, withoutEnlargement: true }).avif({ quality: 50 }).toBuffer(),
+          openImage(masterBuf).resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer(),
+        ])
+        await Promise.all([
+          storage.put(`${mediaId}/${width}.avif`, avif),
+          storage.put(`${mediaId}/${width}.webp`, webp),
+        ])
+        return [
+          { format: 'avif' as const, width, height, bytes: avif.length, file: `${width}.avif` },
+          { format: 'webp' as const, width, height, bytes: webp.length, file: `${width}.webp` },
+        ]
+      }),
+    ),
+    openImage(masterBuf)
+      .resize({
+        width: Math.min(1200, baseWidth),
+        height: Math.min(630, baseHeight),
+        fit: 'cover',
+        position: 'centre',
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: 90 })
+      .toBuffer(),
     openImage(masterBuf).resize({ width: 16, withoutEnlargement: true }).blur(1).webp({ quality: 40 }).toBuffer(),
     openImage(masterBuf).stats(),
   ])

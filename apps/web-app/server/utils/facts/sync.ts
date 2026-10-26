@@ -2,12 +2,27 @@ import type { ContentTx, VenuePriceInput } from '@k39/database'
 import type { FactActor, SourceKind } from '../../../shared/facts'
 import type { ScheduleRecord, ScheduleRules } from '../../../shared/schedule'
 import { db } from '@k39/database'
-import { classifyMenuSourceUrl, classifySourceUrl, defaultTtl, hoursLookEmpty, ownerBlocksToken, seedFactDisposition, shouldWriteContact, valueHash } from '../../../shared/facts'
+import {
+  classifyMenuSourceUrl,
+  classifySourceUrl,
+  defaultTtl,
+  hoursLookEmpty,
+  ownerBlocksToken,
+  seedFactDisposition,
+  shouldWriteContact,
+  valueHash,
+} from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { rejectBannedSites } from '../mcp/writing-guard'
 import { commitFact, retireFactSlot } from './commit'
 
-export async function hoursConflict(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor, tx?: ContentTx) {
+export async function hoursConflict(
+  entityType: 'place' | 'venue',
+  entityId: string,
+  record: ScheduleRecord,
+  actor: FactActor,
+  tx?: ContentTx,
+) {
   if (actor !== 'mcp') {
     return null
   }
@@ -24,33 +39,44 @@ export async function hoursConflict(entityType: 'place' | 'venue', entityId: str
   if (!next.store) {
     return null
   }
-  const same = existing.valueHash === valueHash(next.value)
-    && existing.sourceKind === next.sourceKind
-    && (existing.sourceUrl ?? null) === next.sourceUrl
-    && existing.confidence === next.confidence
+  const same =
+    existing.valueHash === valueHash(next.value) &&
+    existing.sourceKind === next.sourceKind &&
+    (existing.sourceUrl ?? null) === next.sourceUrl &&
+    existing.confidence === next.confidence
   if (!ownerBlocksToken(latest, same)) {
     return null
   }
-  const queued = await commitFact({
-    kind: 'hours',
-    subjectType: entityType,
-    subjectId: entityId,
-    slot: 'hours',
-    value: next.value,
-    sourceUrl: next.sourceUrl,
-    sourceTitle: next.sourceTitle,
-    sourceKind: next.sourceKind,
-    checkedAt: next.checkedAt,
-    confidence: next.confidence,
-    actor,
-    refs: [{ consumerType: entityType, consumerId: entityId, path: 'short.hours' }],
-    pageType: entityType,
-    pageStatus: 'published',
-  }, tx)
+  const queued = await commitFact(
+    {
+      kind: 'hours',
+      subjectType: entityType,
+      subjectId: entityId,
+      slot: 'hours',
+      value: next.value,
+      sourceUrl: next.sourceUrl,
+      sourceTitle: next.sourceTitle,
+      sourceKind: next.sourceKind,
+      checkedAt: next.checkedAt,
+      confidence: next.confidence,
+      actor,
+      refs: [{ consumerType: entityType, consumerId: entityId, path: 'short.hours' }],
+      pageType: entityType,
+      pageStatus: 'published',
+    },
+    tx,
+  )
   return queued.conflict ? queued : null
 }
 
-export async function writeHoursFact(entityType: 'place' | 'venue', entityId: string, record: ScheduleRecord, actor: FactActor, pageStatus?: string | null, tx?: ContentTx) {
+export async function writeHoursFact(
+  entityType: 'place' | 'venue',
+  entityId: string,
+  record: ScheduleRecord,
+  actor: FactActor,
+  pageStatus?: string | null,
+  tx?: ContentTx,
+) {
   const rules = readRules(record.rules)
   if (!rules) {
     return
@@ -67,26 +93,32 @@ export async function writeHoursFact(entityType: 'place' | 'venue', entityId: st
   if (!next.store) {
     return
   }
-  await commitFact({
-    kind: 'hours',
-    subjectType: entityType,
-    subjectId: entityId,
-    slot: 'hours',
-    value: next.value,
-    sourceUrl: next.sourceUrl,
-    sourceTitle: next.sourceTitle,
-    sourceKind: next.sourceKind,
-    checkedAt: next.checkedAt,
-    confidence: next.confidence,
-    actor,
-    refs: [{ consumerType: entityType, consumerId: entityId, path: 'short.hours' }],
-    pageType: entityType,
-    pageStatus: pageStatus ?? 'published',
-    markUnseeded: !next.checkedAt,
-  }, tx)
+  await commitFact(
+    {
+      kind: 'hours',
+      subjectType: entityType,
+      subjectId: entityId,
+      slot: 'hours',
+      value: next.value,
+      sourceUrl: next.sourceUrl,
+      sourceTitle: next.sourceTitle,
+      sourceKind: next.sourceKind,
+      checkedAt: next.checkedAt,
+      confidence: next.confidence,
+      actor,
+      refs: [{ consumerType: entityType, consumerId: entityId, path: 'short.hours' }],
+      pageType: entityType,
+      pageStatus: pageStatus ?? 'published',
+      markUnseeded: !next.checkedAt,
+    },
+    tx,
+  )
 }
 
-function hoursClaim(rules: ScheduleRules, record: ScheduleRecord): {
+function hoursClaim(
+  rules: ScheduleRules,
+  record: ScheduleRecord,
+): {
   value: ScheduleRules
   sourceUrl: string | null
   sourceTitle: string | null
@@ -98,7 +130,7 @@ function hoursClaim(rules: ScheduleRules, record: ScheduleRecord): {
 } {
   const empty = hoursLookEmpty(rules)
   const unchecked = empty || !record.verifiedAt || rules.needsCheck
-  const sourceKind = empty || !record.sourceUrl ? 'none' as const : classifySourceUrl(record.sourceUrl)
+  const sourceKind = empty || !record.sourceUrl ? ('none' as const) : classifySourceUrl(record.sourceUrl)
   const disposition = seedFactDisposition({ sourceKind, empty })
   return {
     value: rules,
@@ -106,12 +138,18 @@ function hoursClaim(rules: ScheduleRules, record: ScheduleRecord): {
     sourceTitle: null,
     sourceKind,
     checkedAt: unchecked || !record.verifiedAt ? null : `${record.verifiedAt.slice(0, 10)}T00:00:00.000Z`,
-    confidence: disposition === 'stated' ? 'stated' as const : 'gap' as const,
+    confidence: disposition === 'stated' ? ('stated' as const) : ('gap' as const),
     store: disposition !== 'skip',
   }
 }
 
-export async function setVenuePrices(venueId: string, prices: VenuePriceInput[], actor: FactActor, pageStatus?: string | null, tx?: ContentTx) {
+export async function setVenuePrices(
+  venueId: string,
+  prices: VenuePriceInput[],
+  actor: FactActor,
+  pageStatus?: string | null,
+  tx?: ContentTx,
+) {
   rejectBannedSites(prices.map((row) => ({ sourceUrl: row.sourceUrl, sourceTitle: row.sourceTitle })))
   const catalog = new Map((await db.prices.items(tx)).map((item) => [item.slug, item]))
   const current = await db.prices.forVenue(venueId, tx)
@@ -130,7 +168,12 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
     const next = incoming.get(key)
     const existing = await db.facts.liveSlot('venue', venueId, `price:${item.id}:${row.variant}`, tx)
     const latest = existing ? await db.facts.latestActor(existing.id, tx) : null
-    const same = Boolean(next && next.priceRub === row.priceRub && next.sourceKind === row.sourceKind && (next.sourceUrl ?? null) === row.sourceUrl)
+    const same = Boolean(
+      next &&
+      next.priceRub === row.priceRub &&
+      next.sourceKind === row.sourceKind &&
+      (next.sourceUrl ?? null) === row.sourceUrl,
+    )
     if (actor === 'mcp' && ownerBlocksToken(latest, same)) {
       final.push({
         item: row.item,
@@ -144,35 +187,41 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
       kept.add(key)
       conflictKeys.add(key)
       if (next) {
-        const queued = await commitFact({
-          kind: 'price',
-          subjectType: 'venue',
-          subjectId: venueId,
-          slot: `price:${item.id}:${row.variant}`,
-          value: { itemId: item.id, itemSlug: item.slug, variant: row.variant, priceRub: Math.round(next.priceRub) },
-          sourceUrl: next.sourceKind === 'owner' ? null : next.sourceUrl ?? null,
-          sourceTitle: next.sourceTitle,
-          sourceKind: next.sourceKind === 'owner' ? 'owner' : classifyMenuSourceUrl(next.sourceUrl),
-          checkedAt: dateStamp(next.checkedAt),
-          confidence: next.sourceKind === 'owner' ? 'owner' : 'stated',
-          actor,
-          refs: [{ consumerType: 'venue', consumerId: venueId, path: 'modules.prices' }],
-          pageType: 'venue',
-          pageStatus: pageStatus ?? 'published',
-        }, tx)
+        const queued = await commitFact(
+          {
+            kind: 'price',
+            subjectType: 'venue',
+            subjectId: venueId,
+            slot: `price:${item.id}:${row.variant}`,
+            value: { itemId: item.id, itemSlug: item.slug, variant: row.variant, priceRub: Math.round(next.priceRub) },
+            sourceUrl: next.sourceKind === 'owner' ? null : (next.sourceUrl ?? null),
+            sourceTitle: next.sourceTitle,
+            sourceKind: next.sourceKind === 'owner' ? 'owner' : classifyMenuSourceUrl(next.sourceUrl),
+            checkedAt: dateStamp(next.checkedAt),
+            confidence: next.sourceKind === 'owner' ? 'owner' : 'stated',
+            actor,
+            refs: [{ consumerType: 'venue', consumerId: venueId, path: 'modules.prices' }],
+            pageType: 'venue',
+            pageStatus: pageStatus ?? 'published',
+          },
+          tx,
+        )
         if (queued.conflict) {
           conflicts.push(queued.queueId)
         }
       } else if (existing) {
-        const queued = await db.facts.enqueue({
-          target: 'fact',
-          factId: existing.id,
-          pageType: 'venue',
-          entityId: venueId,
-          path: 'modules.prices',
-          reason: 'owner_conflict',
-          proposal: { retire: true },
-        }, tx)
+        const queued = await db.facts.enqueue(
+          {
+            target: 'fact',
+            factId: existing.id,
+            pageType: 'venue',
+            entityId: venueId,
+            path: 'modules.prices',
+            reason: 'owner_conflict',
+            proposal: { retire: true },
+          },
+          tx,
+        )
         conflicts.push(queued.id)
       }
       continue
@@ -206,27 +255,31 @@ export async function setVenuePrices(venueId: string, prices: VenuePriceInput[],
     if (!item) {
       continue
     }
-    const keptOwner = kept.has(priceKey(row.item, row.variant)) && actor === 'mcp' && conflicts.length
-      ? current.find((itemRow) => priceKey(itemRow.item, itemRow.variant) === priceKey(row.item, row.variant))
-      : null
+    const keptOwner =
+      kept.has(priceKey(row.item, row.variant)) && actor === 'mcp' && conflicts.length
+        ? current.find((itemRow) => priceKey(itemRow.item, itemRow.variant) === priceKey(row.item, row.variant))
+        : null
     const writeActor: FactActor = keptOwner && keptOwner.priceRub === row.priceRub ? 'owner' : actor
-    const sourceKind = row.sourceKind === 'owner' ? 'owner' as const : classifyMenuSourceUrl(row.sourceUrl)
-    await commitFact({
-      kind: 'price',
-      subjectType: 'venue',
-      subjectId: venueId,
-      slot: `price:${item.id}:${row.variant}`,
-      value: { itemId: item.id, itemSlug: item.slug, variant: row.variant, priceRub: row.priceRub },
-      sourceUrl: sourceKind === 'owner' ? null : row.sourceUrl,
-      sourceTitle: row.sourceTitle,
-      sourceKind,
-      checkedAt: dateStamp(row.checkedAt),
-      confidence: sourceKind === 'owner' ? 'owner' : 'stated',
-      actor: writeActor,
-      refs: [{ consumerType: 'venue', consumerId: venueId, path: 'modules.prices' }],
-      pageType: 'venue',
-      pageStatus: pageStatus ?? 'published',
-    }, tx)
+    const sourceKind = row.sourceKind === 'owner' ? ('owner' as const) : classifyMenuSourceUrl(row.sourceUrl)
+    await commitFact(
+      {
+        kind: 'price',
+        subjectType: 'venue',
+        subjectId: venueId,
+        slot: `price:${item.id}:${row.variant}`,
+        value: { itemId: item.id, itemSlug: item.slug, variant: row.variant, priceRub: row.priceRub },
+        sourceUrl: sourceKind === 'owner' ? null : row.sourceUrl,
+        sourceTitle: row.sourceTitle,
+        sourceKind,
+        checkedAt: dateStamp(row.checkedAt),
+        confidence: sourceKind === 'owner' ? 'owner' : 'stated',
+        actor: writeActor,
+        refs: [{ consumerType: 'venue', consumerId: venueId, path: 'modules.prices' }],
+        pageType: 'venue',
+        pageStatus: pageStatus ?? 'published',
+      },
+      tx,
+    )
   }
   return { prices: saved, conflicts }
 }
@@ -239,7 +292,7 @@ export async function syncVenueContact(input: {
   phone?: string | null
   address?: string | null
   status?: string | null
-  previous: { phone: string | null, address: string | null, status: string }
+  previous: { phone: string | null; address: string | null; status: string }
 }) {
   const conflicts: string[] = []
   const skipped = { phone: false, address: false, status: false }
@@ -293,7 +346,7 @@ export async function syncCoordinates(input: {
   pageStatus?: string | null
   latitude?: number | null
   longitude?: number | null
-  previous: { latitude: number | null, longitude: number | null }
+  previous: { latitude: number | null; longitude: number | null }
   /** When set, the fact write joins this save and rolls back with it. */
   tx?: ContentTx
 }) {
@@ -340,21 +393,31 @@ export async function syncPlaceStatus(input: {
     return { skipped: false as const }
   }
   const value = { scope: 'place' as const, status: input.status }
-  const blocked = await blockOwned({
-    subjectType: 'place',
-    subjectId: input.placeId,
-    actor: input.actor,
-    pageStatus: input.pageStatus,
-  }, 'status', value, input.tx)
+  const blocked = await blockOwned(
+    {
+      subjectType: 'place',
+      subjectId: input.placeId,
+      actor: input.actor,
+      pageStatus: input.pageStatus,
+    },
+    'status',
+    value,
+    input.tx,
+  )
   if (blocked) {
     return { skipped: true as const, conflict: blocked }
   }
-  await writeOwnedFact({
-    subjectType: 'place',
-    subjectId: input.placeId,
-    actor: input.actor,
-    pageStatus: input.pageStatus,
-  }, 'status', value, input.tx)
+  await writeOwnedFact(
+    {
+      subjectType: 'place',
+      subjectId: input.placeId,
+      actor: input.actor,
+      pageStatus: input.pageStatus,
+    },
+    'status',
+    value,
+    input.tx,
+  )
   return { skipped: false as const }
 }
 
@@ -375,7 +438,12 @@ export async function syncPlacePhone(input: {
   tx?: ContentTx
 }) {
   const existing = await db.facts.liveSlot('place', input.placeId, 'phone', input.tx)
-  const target = { subjectType: 'place' as const, subjectId: input.placeId, actor: input.actor, pageStatus: input.pageStatus }
+  const target = {
+    subjectType: 'place' as const,
+    subjectId: input.placeId,
+    actor: input.actor,
+    pageStatus: input.pageStatus,
+  }
   if (!input.phone) {
     if (!existing) {
       return { skipped: false as const }
@@ -391,32 +459,38 @@ export async function syncPlacePhone(input: {
   if (existing && existing.valueHash === valueHash(value) && (existing.sourceUrl ?? null) === input.sourceUrl) {
     return { skipped: false as const }
   }
-  const queued = await commitFact({
-    kind: 'phone',
-    subjectType: 'place',
-    subjectId: input.placeId,
-    slot: 'phone',
-    value,
-    sourceUrl: input.sourceUrl,
-    sourceTitle: null,
-    sourceKind: classifySourceUrl(input.sourceUrl),
-    checkedAt: input.checkedAt,
-    confidence: 'stated',
-    actor: input.actor,
-    refs: [{ consumerType: 'place', consumerId: input.placeId, path: 'short.phone' }],
-    pageType: 'place',
-    pageStatus: input.pageStatus ?? 'published',
-  }, input.tx)
+  const queued = await commitFact(
+    {
+      kind: 'phone',
+      subjectType: 'place',
+      subjectId: input.placeId,
+      slot: 'phone',
+      value,
+      sourceUrl: input.sourceUrl,
+      sourceTitle: null,
+      sourceKind: classifySourceUrl(input.sourceUrl),
+      checkedAt: input.checkedAt,
+      confidence: 'stated',
+      actor: input.actor,
+      refs: [{ consumerType: 'place', consumerId: input.placeId, path: 'short.phone' }],
+      pageType: 'place',
+      pageStatus: input.pageStatus ?? 'published',
+    },
+    input.tx,
+  )
   return queued.conflict ? { skipped: true as const, conflict: queued.queueId } : { skipped: false as const }
 }
 
-async function contactChanged(input: {
-  tx?: ContentTx
-  venueId: string
-  phone?: string | null
-  address?: string | null
-  previous: { phone: string | null, address: string | null }
-}, slot: 'phone' | 'address') {
+async function contactChanged(
+  input: {
+    tx?: ContentTx
+    venueId: string
+    phone?: string | null
+    address?: string | null
+    previous: { phone: string | null; address: string | null }
+  },
+  slot: 'phone' | 'address',
+) {
   const raw = input[slot]
   if (raw === undefined) {
     return false
@@ -431,21 +505,35 @@ async function contactChanged(input: {
   return shouldWriteContact(false, Boolean(existing), next)
 }
 
-async function blockField(input: { venueId: string, actor: FactActor, pageStatus?: string | null, tx?: ContentTx }, slot: 'phone' | 'address' | 'status', value: unknown) {
-  return blockOwned({
-    subjectType: 'venue',
-    subjectId: input.venueId,
-    actor: input.actor,
-    pageStatus: input.pageStatus,
-  }, slot, value, input.tx)
+async function blockField(
+  input: { venueId: string; actor: FactActor; pageStatus?: string | null; tx?: ContentTx },
+  slot: 'phone' | 'address' | 'status',
+  value: unknown,
+) {
+  return blockOwned(
+    {
+      subjectType: 'venue',
+      subjectId: input.venueId,
+      actor: input.actor,
+      pageStatus: input.pageStatus,
+    },
+    slot,
+    value,
+    input.tx,
+  )
 }
 
-async function blockOwned(input: {
-  subjectType: 'place' | 'venue'
-  subjectId: string
-  actor: FactActor
-  pageStatus?: string | null
-}, slot: 'phone' | 'address' | 'status' | 'coordinates', value: unknown, tx?: ContentTx) {
+async function blockOwned(
+  input: {
+    subjectType: 'place' | 'venue'
+    subjectId: string
+    actor: FactActor
+    pageStatus?: string | null
+  },
+  slot: 'phone' | 'address' | 'status' | 'coordinates',
+  value: unknown,
+  tx?: ContentTx,
+) {
   if (input.actor !== 'mcp') {
     return null
   }
@@ -459,83 +547,104 @@ async function blockOwned(input: {
     return null
   }
   if (value == null) {
-    const queued = await db.facts.enqueue({
-      target: 'fact',
-      factId: existing.id,
-      pageType: input.subjectType,
-      entityId: input.subjectId,
-      path: `short.${slot}`,
-      reason: 'owner_conflict',
-      proposal: { retire: true },
-    }, tx)
+    const queued = await db.facts.enqueue(
+      {
+        target: 'fact',
+        factId: existing.id,
+        pageType: input.subjectType,
+        entityId: input.subjectId,
+        path: `short.${slot}`,
+        reason: 'owner_conflict',
+        proposal: { retire: true },
+      },
+      tx,
+    )
     return queued.id
   }
-  const queued = await commitFact({
-    kind: slot,
-    subjectType: input.subjectType,
-    subjectId: input.subjectId,
-    slot,
-    value,
-    sourceUrl: null,
-    sourceTitle: null,
-    sourceKind: 'none',
-    checkedAt: new Date().toISOString(),
-    confidence: 'stated',
-    actor: 'mcp',
-    refs: [{ consumerType: input.subjectType, consumerId: input.subjectId, path: `short.${slot}` }],
-    pageType: input.subjectType,
-    pageStatus: input.pageStatus ?? 'published',
-  }, tx)
+  const queued = await commitFact(
+    {
+      kind: slot,
+      subjectType: input.subjectType,
+      subjectId: input.subjectId,
+      slot,
+      value,
+      sourceUrl: null,
+      sourceTitle: null,
+      sourceKind: 'none',
+      checkedAt: new Date().toISOString(),
+      confidence: 'stated',
+      actor: 'mcp',
+      refs: [{ consumerType: input.subjectType, consumerId: input.subjectId, path: `short.${slot}` }],
+      pageType: input.subjectType,
+      pageStatus: input.pageStatus ?? 'published',
+    },
+    tx,
+  )
   return queued.conflict ? queued.queueId : null
 }
 
-async function writeOwnedFact(input: {
-  subjectType: 'place' | 'venue'
-  subjectId: string
-  actor: FactActor
-  pageStatus?: string | null
-}, slot: 'coordinates' | 'status', value: unknown, tx?: ContentTx) {
+async function writeOwnedFact(
+  input: {
+    subjectType: 'place' | 'venue'
+    subjectId: string
+    actor: FactActor
+    pageStatus?: string | null
+  },
+  slot: 'coordinates' | 'status',
+  value: unknown,
+  tx?: ContentTx,
+) {
   const owner = input.actor === 'owner'
-  await commitFact({
-    kind: slot,
-    subjectType: input.subjectType,
-    subjectId: input.subjectId,
-    slot,
-    value,
-    sourceUrl: null,
-    sourceTitle: null,
-    sourceKind: owner ? 'owner' : 'none',
-    checkedAt: new Date().toISOString(),
-    ttlDays: defaultTtl(slot),
-    confidence: owner ? 'owner' : 'stated',
-    actor: input.actor,
-    refs: [{ consumerType: input.subjectType, consumerId: input.subjectId, path: `short.${slot}` }],
-    pageType: input.subjectType,
-    pageStatus: input.pageStatus ?? 'published',
-    markUnseeded: !owner,
-  }, tx)
+  await commitFact(
+    {
+      kind: slot,
+      subjectType: input.subjectType,
+      subjectId: input.subjectId,
+      slot,
+      value,
+      sourceUrl: null,
+      sourceTitle: null,
+      sourceKind: owner ? 'owner' : 'none',
+      checkedAt: new Date().toISOString(),
+      ttlDays: defaultTtl(slot),
+      confidence: owner ? 'owner' : 'stated',
+      actor: input.actor,
+      refs: [{ consumerType: input.subjectType, consumerId: input.subjectId, path: `short.${slot}` }],
+      pageType: input.subjectType,
+      pageStatus: input.pageStatus ?? 'published',
+      markUnseeded: !owner,
+    },
+    tx,
+  )
 }
 
-async function writeContact(input: { venueId: string, actor: FactActor, pageStatus?: string | null, tx?: ContentTx }, slot: 'phone' | 'address' | 'status', value: unknown) {
+async function writeContact(
+  input: { venueId: string; actor: FactActor; pageStatus?: string | null; tx?: ContentTx },
+  slot: 'phone' | 'address' | 'status',
+  value: unknown,
+) {
   const owner = input.actor === 'owner'
-  await commitFact({
-    kind: slot,
-    subjectType: 'venue',
-    subjectId: input.venueId,
-    slot,
-    value,
-    sourceUrl: null,
-    sourceTitle: null,
-    sourceKind: owner ? 'owner' : 'none',
-    checkedAt: new Date().toISOString(),
-    ttlDays: defaultTtl(slot),
-    confidence: owner ? 'owner' : 'stated',
-    actor: input.actor,
-    refs: [{ consumerType: 'venue', consumerId: input.venueId, path: `short.${slot}` }],
-    pageType: 'venue',
-    pageStatus: input.pageStatus ?? 'published',
-    markUnseeded: !owner,
-  }, input.tx)
+  await commitFact(
+    {
+      kind: slot,
+      subjectType: 'venue',
+      subjectId: input.venueId,
+      slot,
+      value,
+      sourceUrl: null,
+      sourceTitle: null,
+      sourceKind: owner ? 'owner' : 'none',
+      checkedAt: new Date().toISOString(),
+      ttlDays: defaultTtl(slot),
+      confidence: owner ? 'owner' : 'stated',
+      actor: input.actor,
+      refs: [{ consumerType: 'venue', consumerId: input.venueId, path: `short.${slot}` }],
+      pageType: 'venue',
+      pageStatus: input.pageStatus ?? 'published',
+      markUnseeded: !owner,
+    },
+    input.tx,
+  )
 }
 
 function priceKey(item: string, variant?: string | null) {

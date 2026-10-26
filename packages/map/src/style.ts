@@ -226,7 +226,14 @@ function lineGeom() {
   return ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false]
 }
 
-function protomapsPlace(id: string, detail: string | string[], minzoom: number, size: number[], font: string[], color: string) {
+function protomapsPlace(
+  id: string,
+  detail: string | string[],
+  minzoom: number,
+  size: number[],
+  font: string[],
+  color: string,
+) {
   const details = Array.isArray(detail) ? detail : [detail]
   return {
     id,
@@ -313,7 +320,11 @@ function protomapsStyle(pmtilesUrl: string, origin?: string) {
         'type': 'fill',
         'source': 'basemap',
         'source-layer': 'water',
-        'filter': ['all', polygon(), ['match', ['get', 'kind'], ['ocean', 'sea', 'lake', 'water', 'playa'], true, false]],
+        'filter': [
+          'all',
+          polygon(),
+          ['match', ['get', 'kind'], ['ocean', 'sea', 'lake', 'water', 'playa'], true, false],
+        ],
         'paint': { 'fill-color': WATER },
       },
       {
@@ -334,10 +345,26 @@ function protomapsStyle(pmtilesUrl: string, origin?: string) {
         'source': 'basemap',
         'source-layer': 'roads',
         'minzoom': 12,
-        'filter': ['all', lineGeom(), ['!=', ['get', 'is_tunnel'], true], ['any',
-          ['all', ['==', ['get', 'kind'], 'minor_road'], ['match', ['get', 'kind_detail'], ['residential', 'unclassified', 'service', 'living_street'], true, false]],
-          ['all', ['==', ['get', 'kind'], 'other'], ['==', ['get', 'kind_detail'], 'living_street']],
-        ]],
+        'filter': [
+          'all',
+          lineGeom(),
+          ['!=', ['get', 'is_tunnel'], true],
+          [
+            'any',
+            [
+              'all',
+              ['==', ['get', 'kind'], 'minor_road'],
+              [
+                'match',
+                ['get', 'kind_detail'],
+                ['residential', 'unclassified', 'service', 'living_street'],
+                true,
+                false,
+              ],
+            ],
+            ['all', ['==', ['get', 'kind'], 'other'], ['==', ['get', 'kind_detail'], 'living_street']],
+          ],
+        ],
         'layout': { 'line-cap': 'round', 'line-join': 'round' },
         'paint': {
           'line-color': '#f4eee4',
@@ -349,7 +376,13 @@ function protomapsStyle(pmtilesUrl: string, origin?: string) {
         'type': 'line',
         'source': 'basemap',
         'source-layer': 'roads',
-        'filter': ['all', lineGeom(), ['!=', ['get', 'is_tunnel'], true], ['==', ['get', 'kind'], 'minor_road'], ['match', ['get', 'kind_detail'], ['secondary', 'tertiary', 'secondary_link', 'tertiary_link'], true, false]],
+        'filter': [
+          'all',
+          lineGeom(),
+          ['!=', ['get', 'is_tunnel'], true],
+          ['==', ['get', 'kind'], 'minor_road'],
+          ['match', ['get', 'kind_detail'], ['secondary', 'tertiary', 'secondary_link', 'tertiary_link'], true, false],
+        ],
         'layout': { 'line-cap': 'round', 'line-join': 'round' },
         'paint': {
           'line-color': '#eadcc8',
@@ -411,7 +444,11 @@ function protomapsStyle(pmtilesUrl: string, origin?: string) {
         'source': 'basemap',
         'source-layer': 'water',
         'minzoom': 11,
-        'filter': ['all', ['==', ['geometry-type'], 'Point'], ['match', ['get', 'kind'], ['sea', 'bay', 'ocean', 'lake', 'river'], true, false]],
+        'filter': [
+          'all',
+          ['==', ['geometry-type'], 'Point'],
+          ['match', ['get', 'kind'], ['sea', 'bay', 'ocean', 'lake', 'river'], true, false],
+        ],
         'layout': {
           'text-field': LOCAL_NAME,
           'text-font': FONT,

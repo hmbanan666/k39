@@ -75,15 +75,17 @@ describe('analytics store', () => {
     const claimed = await Analytics.claimRun(day, 'rollup-test')
     expect(claimed).toBe(true)
     expect(await Analytics.claimRun(day, 'rollup-test')).toBe(false)
-    await Analytics.replaceSearchRows([{
-      day,
-      engine: 'google',
-      page: '/zamok-ragnit',
-      query: 'замок рагнит',
-      impressions: 10,
-      clicks: 2,
-      position: 3.5,
-    }])
+    await Analytics.replaceSearchRows([
+      {
+        day,
+        engine: 'google',
+        page: '/zamok-ragnit',
+        query: 'замок рагнит',
+        impressions: 10,
+        clicks: 2,
+        position: 3.5,
+      },
+    ])
     const queries = await Analytics.searchQueries(from, to, 'google', '/zamok-ragnit')
     expect(queries[0]?.query).toBe('замок рагнит')
     expect(queries[0]?.clicks).toBe(2)

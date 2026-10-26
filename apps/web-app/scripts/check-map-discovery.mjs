@@ -13,14 +13,27 @@ async function main() {
     return tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`))?.[1]
   }
   const title = 'Карта Калининградской области | K39'
-  for (const query of ['', '?c=sights', '?s=forty', '?f=kofe', '?r=five-forts', '?q=fort', '?focus=fort-11-denhoff', '?utm_source=smoke']) {
+  for (const query of [
+    '',
+    '?c=sights',
+    '?s=forty',
+    '?f=kofe',
+    '?r=five-forts',
+    '?q=fort',
+    '?focus=fort-11-denhoff',
+    '?utm_source=smoke',
+  ]) {
     const html = await body(`/map${query}`)
     assert.equal(html.match(/<title>([^<]*)<\/title>/)?.[1], title, `title ${query}`)
     const canonical = (html.match(/<link\b[^>]*>/g) || []).find((tag) => attr(tag, 'rel') === 'canonical')
     assert.equal(attr(canonical || '', 'href'), 'https://k39.online/map', `canonical ${query}`)
     const robots = (html.match(/<meta\b[^>]*>/g) || []).find((tag) => attr(tag, 'name') === 'robots')
     assert(robots, `robots ${query}`)
-    assert.equal(attr(robots, 'content').includes('noindex'), Boolean(query && !query.startsWith('?utm_')), `robots ${query}`)
+    assert.equal(
+      attr(robots, 'content').includes('noindex'),
+      Boolean(query && !query.startsWith('?utm_')),
+      `robots ${query}`,
+    )
   }
   const home = await body('/')
   const footer = home.match(/<footer\b[\s\S]*?<\/footer>/)?.[0] || ''
@@ -28,7 +41,11 @@ async function main() {
   const xml = await body('/sitemap.xml')
   const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1].trim())
   assert.equal(locations.filter((loc) => loc === 'https://k39.online/map').length, 1, 'clean map in final sitemap XML')
-  assert.equal(locations.filter((loc) => /^https:\/\/k39\.online\/map[/?]/.test(loc)).length, 0, 'no filtered/child map URLs')
+  assert.equal(
+    locations.filter((loc) => /^https:\/\/k39\.online\/map[/?]/.test(loc)).length,
+    0,
+    'no filtered/child map URLs',
+  )
   process.stdout.write('Map discovery: title, canonical, robots, footer and final sitemap XML passed.\n')
 }
 

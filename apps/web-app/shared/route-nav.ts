@@ -2,7 +2,7 @@ import { formatDistance, haversineKm } from './links'
 
 export type RouteTravelMode = 'auto' | 'pd' | 'mt'
 
-export const ROUTE_TRAVEL_MODES: Array<{ value: RouteTravelMode, label: string }> = [
+export const ROUTE_TRAVEL_MODES: Array<{ value: RouteTravelMode; label: string }> = [
   { value: 'auto', label: 'На машине' },
   { value: 'pd', label: 'Пешком' },
   { value: 'mt', label: 'Транспорт' },
@@ -80,9 +80,10 @@ export function routeStopViews(stops: RouteStopInput[]): RouteStopView[] {
   }))
   return normalized.map((stop, index) => {
     const next = normalized[index + 1]
-    const km = stop.latitude != null && stop.longitude != null && next?.latitude != null && next.longitude != null
-      ? haversineKm(stop.latitude, stop.longitude, next.latitude, next.longitude)
-      : null
+    const km =
+      stop.latitude != null && stop.longitude != null && next?.latitude != null && next.longitude != null
+        ? haversineKm(stop.latitude, stop.longitude, next.latitude, next.longitude)
+        : null
     return { ...stop, distanceLabel: straightLineLabel(km) }
   })
 }
@@ -92,12 +93,14 @@ export function locatedStops(stops: Array<Pick<RouteStopView, 'latitude' | 'long
     if (stop.latitude == null || stop.longitude == null) {
       return []
     }
-    return [{
-      latitude: stop.latitude,
-      longitude: stop.longitude,
-      label: String(index + 1),
-      title: stop.text,
-    }]
+    return [
+      {
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        label: String(index + 1),
+        title: stop.text,
+      },
+    ]
   })
 }
 

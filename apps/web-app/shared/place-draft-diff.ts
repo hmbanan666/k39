@@ -90,30 +90,36 @@ function faqText(value: unknown) {
   if (!Array.isArray(value)) {
     return ''
   }
-  return value.map((item) => {
-    if (!item || typeof item !== 'object') {
-      return ''
-    }
-    const row = item as { question?: unknown, answer?: unknown }
-    const question = typeof row.question === 'string' ? row.question.trim() : ''
-    const answer = typeof row.answer === 'string' ? row.answer.trim() : ''
-    return [question, answer].filter(Boolean).join('\n')
-  }).filter(Boolean).join('\n\n')
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return ''
+      }
+      const row = item as { question?: unknown; answer?: unknown }
+      const question = typeof row.question === 'string' ? row.question.trim() : ''
+      const answer = typeof row.answer === 'string' ? row.answer.trim() : ''
+      return [question, answer].filter(Boolean).join('\n')
+    })
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 export function sourceText(value: unknown) {
   if (!Array.isArray(value)) {
     return ''
   }
-  return value.map((item) => {
-    if (!item || typeof item !== 'object') {
-      return ''
-    }
-    const row = item as { title?: unknown, url?: unknown }
-    const title = typeof row.title === 'string' ? row.title.trim() : ''
-    const url = typeof row.url === 'string' ? row.url.trim() : ''
-    return [title, url].filter(Boolean).join('\n')
-  }).filter(Boolean).join('\n\n')
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return ''
+      }
+      const row = item as { title?: unknown; url?: unknown }
+      const title = typeof row.title === 'string' ? row.title.trim() : ''
+      const url = typeof row.url === 'string' ? row.url.trim() : ''
+      return [title, url].filter(Boolean).join('\n')
+    })
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 function point(value: number | null) {
@@ -166,7 +172,9 @@ export function textRead(value: string | null | undefined): Read {
   return { key: text, text }
 }
 
-export function diffFields(fields: Array<{ field: string, label: string, live: Read, draft: Read }>): PlaceDraftChange[] {
+export function diffFields(
+  fields: Array<{ field: string; label: string; live: Read; draft: Read }>,
+): PlaceDraftChange[] {
   const changes: PlaceDraftChange[] = []
   for (const field of fields) {
     if (field.live.key === field.draft.key) {
@@ -210,10 +218,18 @@ const FIELDS: Array<{
   { field: 'price', label: 'Цена', read: (side) => textRead(side.price) },
   { field: 'phone', label: 'Телефон', read: (side) => textRead(side.phone) },
   { field: 'website', label: 'Официальный сайт', read: (side) => textRead(side.website) },
-  { field: 'schemaType', label: 'Тип schema.org', read: (side) => ({ key: side.schemaType ?? '', text: side.schemaType || 'по разделу' }) },
+  {
+    field: 'schemaType',
+    label: 'Тип schema.org',
+    read: (side) => ({ key: side.schemaType ?? '', text: side.schemaType || 'по разделу' }),
+  },
   { field: 'howToGet', label: 'Как добраться', read: (side) => textRead(side.howToGet) },
   { field: 'latitude', label: 'Широта', read: (side) => ({ key: point(side.latitude), text: point(side.latitude) }) },
-  { field: 'longitude', label: 'Долгота', read: (side) => ({ key: point(side.longitude), text: point(side.longitude) }) },
+  {
+    field: 'longitude',
+    label: 'Долгота',
+    read: (side) => ({ key: point(side.longitude), text: point(side.longitude) }),
+  },
   { field: 'seoTitle', label: 'SEO title', read: (side) => textRead(side.seoTitle) },
   { field: 'seoDescription', label: 'SEO description', read: (side) => textRead(side.seoDescription) },
   { field: 'ogImage', label: 'Картинка для соцсетей', read: (side) => textRead(side.ogImage) },
@@ -230,7 +246,11 @@ const FIELDS: Array<{
   { field: 'visitDuration', label: 'Сколько времени', read: (side) => textRead(side.visitDuration) },
   { field: 'bestTime', label: 'Когда ехать', read: (side) => textRead(side.bestTime) },
   { field: 'faq', label: 'Вопросы', read: (side) => ({ key: faqText(side.faq), text: faqText(side.faq) }) },
-  { field: 'sources', label: 'Источники', read: (side) => ({ key: sourceText(side.sources), text: sourceText(side.sources) }) },
+  {
+    field: 'sources',
+    label: 'Источники',
+    read: (side) => ({ key: sourceText(side.sources), text: sourceText(side.sources) }),
+  },
   {
     field: 'authorKind',
     label: 'Кто написал',
@@ -243,13 +263,19 @@ const FIELDS: Array<{
   },
 ]
 
-export function placeDraftChanges(live: PlaceDraftSide, draft: PlaceDraftSide, names: PlaceDraftNames = {}): PlaceDraftChange[] {
-  return diffFields(FIELDS.map((field) => ({
-    field: field.field,
-    label: field.label,
-    live: field.read(live, names),
-    draft: field.read(draft, names),
-  })))
+export function placeDraftChanges(
+  live: PlaceDraftSide,
+  draft: PlaceDraftSide,
+  names: PlaceDraftNames = {},
+): PlaceDraftChange[] {
+  return diffFields(
+    FIELDS.map((field) => ({
+      field: field.field,
+      label: field.label,
+      live: field.read(live, names),
+      draft: field.read(draft, names),
+    })),
+  )
 }
 
 export function formatDraftUpdated(iso: string) {

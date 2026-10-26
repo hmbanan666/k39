@@ -5,16 +5,20 @@ import { decideRedirect } from '../shared/redirects'
 
 describe('apex redirect', () => {
   it('sends www to the apex and folds old place URLs into the final path', () => {
-    expect(decideRedirect({
-      hostHeader: 'www.k39.online',
-      protoHeader: 'https',
-      path: '/forty',
-    })).toEqual({ kind: 'redirect', location: 'https://k39.online/forty' })
-    expect(decideRedirect({
-      hostHeader: 'WWW.k39.online:443',
-      protoHeader: 'https',
-      path: '/',
-    })).toEqual({ kind: 'redirect', location: 'https://k39.online/' })
+    expect(
+      decideRedirect({
+        hostHeader: 'www.k39.online',
+        protoHeader: 'https',
+        path: '/forty',
+      }),
+    ).toEqual({ kind: 'redirect', location: 'https://k39.online/forty' })
+    expect(
+      decideRedirect({
+        hostHeader: 'WWW.k39.online:443',
+        protoHeader: 'https',
+        path: '/',
+      }),
+    ).toEqual({ kind: 'redirect', location: 'https://k39.online/' })
   })
 
   it('leaves localhost alone', () => {
@@ -31,7 +35,9 @@ describe('distance', () => {
 
 describe('event schema', () => {
   it('requires consent', () => {
-    expect(eventCreateSchema.safeParse({ type: 'page_view', placeSlug: 'fort-11-denhoff', consent: true }).success).toBe(true)
+    expect(
+      eventCreateSchema.safeParse({ type: 'page_view', placeSlug: 'fort-11-denhoff', consent: true }).success,
+    ).toBe(true)
     expect(eventCreateSchema.safeParse({ type: 'page_view', consent: false }).success).toBe(false)
   })
 })

@@ -4,8 +4,8 @@ nodeLinker: hoisted
 shamefullyHoist: true
 shellEmulator: true
 supportedArchitectures:
-  cpu: [ x64, arm64 ]
-  os: [ linux, darwin, win32 ]
+  cpu: [x64, arm64]
+  os: [linux, darwin, win32]
 trustPolicy: no-downgrade
 # These releases predate provenance but sit after a later-published build that has it.
 # pnpm treats that as a trust downgrade. They are already in the lockfile.
@@ -19,9 +19,12 @@ packages:
 
 overrides:
   baseline-browser-mapping: 2.11.29
+  # Nuxt, plugins and Vitest must resolve the same Vite implementation.
+  vite@*: catalog:dev
+  vitest@*: catalog:test
 catalogs:
   dev:
-    '@antfu/eslint-config': ^6.6.1
+    '@typescript-eslint/parser': 8.49.0
     '@commitlint/cli': ^20.2.0
     '@commitlint/config-conventional': ^20.2.0
     '@nuxt/devtools': ^3.4.2
@@ -31,13 +34,16 @@ catalogs:
     bumpp: ^10.3.2
     drizzle-kit: 0.31.8
     eslint: ^9.39.5
+    eslint-plugin-vue: 10.6.2
+    vue-eslint-parser: 10.2.0
     husky: ^9.1.7
     lint-staged: ^16.2.7
     nuxt: ^4.6.1
     nuxt-auth-utils: ^0.5.26
     typescript: ^5.9.3
-    vite: ^8.3.4
-    vue-tsc: ^3.1.8
+    vite: npm:@voidzero-dev/vite-plus-core@1.4.0
+    vite-plus: 1.4.0
+    vue-tsc: 3.2.0
     yaml: ^2.8.2
   integrations:
     '@iconify-json/tabler': ^1.2.27
@@ -58,13 +64,11 @@ catalogs:
   test:
     '@testcontainers/postgresql': ^11.10.0
     '@vitejs/plugin-vue': ^6.0.10
-    '@vitest/browser-playwright': ^4.1.11
-    '@vitest/coverage-v8': ^4.1.11
+    '@vitest/coverage-v8': 5.0.5
     '@vue/test-utils': ^2.4.6
     happy-dom: ^20.0.10
     playwright: ^1.57.0
-    vitest: ^4.1.11
-    vitest-browser-vue: ^2.0.1
+    vitest: 5.0.5
   types:
     '@types/node': ^25.0.0
     '@types/pg': 8.16.0
@@ -79,3 +83,8 @@ allowBuilds:
   sharp: true
   ssh2: false
   vue-demi: false
+
+# Vite+ core exposes Vite 8.3.5 APIs under its own release version.
+peerDependencyRules:
+  allowedVersions:
+    vite: 1.4.0

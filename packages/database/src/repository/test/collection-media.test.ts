@@ -12,15 +12,36 @@ describe('collection media', () => {
   })
 
   it('makes the first photo the cover, keeps order, and moves the cover on detach', async () => {
-    const collection = await Editor.saveCollection({ slug: 'month-test', title: 'Месяц', publicationStatus: 'published' })
-    const first = await Editor.saveMedia({ filename: 'a.webp', mime: 'image/webp', bytes: 1, width: 10, height: 10, alt: 'Первое' })
-    const second = await Editor.saveMedia({ filename: 'b.webp', mime: 'image/webp', bytes: 1, width: 10, height: 10, alt: 'Второе' })
+    const collection = await Editor.saveCollection({
+      slug: 'month-test',
+      title: 'Месяц',
+      publicationStatus: 'published',
+    })
+    const first = await Editor.saveMedia({
+      filename: 'a.webp',
+      mime: 'image/webp',
+      bytes: 1,
+      width: 10,
+      height: 10,
+      alt: 'Первое',
+    })
+    const second = await Editor.saveMedia({
+      filename: 'b.webp',
+      mime: 'image/webp',
+      bytes: 1,
+      width: 10,
+      height: 10,
+      alt: 'Второе',
+    })
     const firstId = first?.id ?? ''
     const secondId = second?.id ?? ''
     await Editor.attachCollectionMedia(collection.id, firstId)
     await Editor.attachCollectionMedia(collection.id, secondId)
     let gallery = await Content.collectionGallery(collection.id)
-    expect(gallery.map((item) => [item.media.alt, item.isCover])).toEqual([['Первое', true], ['Второе', false]])
+    expect(gallery.map((item) => [item.media.alt, item.isCover])).toEqual([
+      ['Первое', true],
+      ['Второе', false],
+    ])
 
     await Editor.attachCollectionMedia(collection.id, secondId, { isCover: true })
     gallery = await Content.collectionGallery(collection.id)

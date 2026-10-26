@@ -10,26 +10,30 @@
         alt=""
         width="160"
         height="200"
-      >
+      />
       <b
         v-else
         class="mark"
-      >{{ label }}</b>
+        >{{ label }}</b
+      >
       <span v-if="src && label">{{ label }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  src?: string
-  label?: string
-  size?: 'sm' | 'md'
-}>(), {
-  src: '',
-  label: '',
-  size: 'md',
-})
+withDefaults(
+  defineProps<{
+    src?: string
+    label?: string
+    size?: 'sm' | 'md'
+  }>(),
+  {
+    src: '',
+    label: '',
+    size: 'md',
+  },
+)
 </script>
 
 <style scoped>
@@ -43,12 +47,12 @@ withDefaults(defineProps<{
   filter: drop-shadow(var(--shadow-stamp));
   -webkit-mask:
     radial-gradient(circle at center, transparent 0 calc(var(--perf) / 2 - 0.5px), #000 calc(var(--perf) / 2))
-    calc(var(--step) / -2) calc(var(--step) / -2) / var(--step) var(--step),
+      calc(var(--step) / -2) calc(var(--step) / -2) / var(--step) var(--step),
     linear-gradient(#000 0 0) var(--perf) var(--perf) / calc(100% - var(--step)) calc(100% - var(--step)) no-repeat;
   -webkit-mask-composite: source-over;
   mask:
     radial-gradient(circle at center, transparent 0 calc(var(--perf) / 2 - 0.5px), #000 calc(var(--perf) / 2))
-    calc(var(--step) / -2) calc(var(--step) / -2) / var(--step) var(--step),
+      calc(var(--step) / -2) calc(var(--step) / -2) / var(--step) var(--step),
     linear-gradient(#000 0 0) var(--perf) var(--perf) / calc(100% - var(--step)) calc(100% - var(--step)) no-repeat;
   mask-composite: add;
 }
@@ -90,5 +94,7 @@ span,
   font-size: 0.95rem;
   letter-spacing: 0.04em;
 }
-.sm .mark { font-size: 0.78rem; }
+.sm .mark {
+  font-size: 0.78rem;
+}
 </style>

@@ -14,7 +14,5 @@ export function operatorMailHref() {
 }
 
 export function operatorIdLine() {
-  return operator.ogrnip
-    ? `ИНН ${operator.inn}, ОГРНИП ${operator.ogrnip}`
-    : `ИНН ${operator.inn}`
+  return operator.ogrnip ? `ИНН ${operator.inn}, ОГРНИП ${operator.ogrnip}` : `ИНН ${operator.inn}`
 }

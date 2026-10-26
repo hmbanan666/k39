@@ -12,8 +12,9 @@ export default defineStrictMcpTool({
     slug: z.string(),
     period: z.string().optional(),
   },
-  handler: async ({ slug, period }) => auditedAnalytics('analytics_page', async () => {
-    const range = resolvePeriod(period || '28d')
-    return db.analytics.pageReport(slug, range.from, range.to)
-  }),
+  handler: async ({ slug, period }) =>
+    auditedAnalytics('analytics_page', async () => {
+      const range = resolvePeriod(period || '28d')
+      return db.analytics.pageReport(slug, range.from, range.to)
+    }),
 })

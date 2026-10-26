@@ -4,7 +4,13 @@ import { formatStraightLine, locatedStops, routeLinks, routeStopViews, yandexRou
 
 const castles = [
   { href: '/zamok-tapiau', text: 'Замок Тапиау', note: 'Старт от кассы', latitude: 54.64528, longitude: 21.07472 },
-  { href: '/zamok-insterburg', text: 'Замок Инстербург', note: '  Подвалы с гидом  ', latitude: 54.63972, longitude: 21.80667 },
+  {
+    href: '/zamok-insterburg',
+    text: 'Замок Инстербург',
+    note: '  Подвалы с гидом  ',
+    latitude: 54.63972,
+    longitude: 21.80667,
+  },
   { href: '/zamok-ragnit', text: 'Замок Рагнит', note: null, latitude: 55.03917, longitude: 22.02972 },
 ]
 
@@ -20,7 +26,9 @@ describe('route navigation', () => {
     const points = locatedStops(stops)
     expect(points.map((point) => point.label)).toEqual(['1', '2', '3'])
     const driving = routeLinks(points, 'auto')
-    expect(driving?.yandex).toBe('https://yandex.ru/maps/?rtext=54.64528,21.07472~54.63972,21.80667~55.03917,22.02972&rtt=auto')
+    expect(driving?.yandex).toBe(
+      'https://yandex.ru/maps/?rtext=54.64528,21.07472~54.63972,21.80667~55.03917,22.02972&rtt=auto',
+    )
     expect(driving?.google).toContain('travelmode=driving')
     expect(decodeURIComponent(driving?.google || '')).toContain('54.64528,21.07472')
     expect(decodeURIComponent(driving?.google || '')).toContain('54.63972,21.80667')
@@ -32,8 +40,14 @@ describe('route navigation', () => {
     if (!driving) {
       return
     }
-    expect(externalLinkAttrs(driving.yandex)).toMatchObject({ target: '_blank', rel: expect.stringContaining('nofollow') })
-    expect(externalLinkAttrs(driving.google)).toMatchObject({ target: '_blank', rel: expect.stringContaining('nofollow') })
+    expect(externalLinkAttrs(driving.yandex)).toMatchObject({
+      target: '_blank',
+      rel: expect.stringContaining('nofollow'),
+    })
+    expect(externalLinkAttrs(driving.google)).toMatchObject({
+      target: '_blank',
+      rel: expect.stringContaining('nofollow'),
+    })
   })
 
   it('skips a stop with no coordinates', () => {

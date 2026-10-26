@@ -6,17 +6,28 @@ import { parse } from 'yaml'
 export function workspacePackages(root) {
   const config = parse(readFileSync(resolve(root, 'pnpm-workspace.yaml'), 'utf8'))
   const patterns = config.packages ?? []
-  const manifests = globSync(patterns.filter((value) => !value.startsWith('!')).map((value) => `${value}/package.json`), {
-    cwd: root,
-    exclude: ['**/node_modules/**', ...patterns.filter((value) => value.startsWith('!')).map((value) => `${value.slice(1)}/**`)],
-  })
+  const manifests = globSync(
+    patterns.filter((value) => !value.startsWith('!')).map((value) => `${value}/package.json`),
+    {
+      cwd: root,
+      exclude: [
+        '**/node_modules/**',
+        ...patterns.filter((value) => value.startsWith('!')).map((value) => `${value.slice(1)}/**`),
+      ],
+    },
+  )
   const packages = manifests.map((file) => {
     const manifest = JSON.parse(readFileSync(resolve(root, file), 'utf8'))
     return {
       name: manifest.name,
       dir: dirname(file).replaceAll('\\', '/'),
       typecheck: Boolean(manifest.scripts?.typecheck),
-      dependencies: Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies, ...manifest.optionalDependencies }),
+      dependencies: Object.keys({
+        ...manifest.dependencies,
+        ...manifest.devDependencies,
+        ...manifest.peerDependencies,
+        ...manifest.optionalDependencies,
+      }),
     }
   })
   const names = new Set(packages.map((item) => item.name))

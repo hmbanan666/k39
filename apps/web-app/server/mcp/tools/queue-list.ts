@@ -6,7 +6,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'queue_list',
-  description: 'The verification queue (ADR 0033). Start here. Do not scan places_list to re-check fresh facts. Filters: kind, reason, minPriority. limit defaults to 20 and stops at 50. claim true locks the returned rows for 30 minutes. Writes an mcp_audits row.',
+  description:
+    'The verification queue (ADR 0033). Start here. Do not scan places_list to re-check fresh facts. Filters: kind, reason, minPriority. limit defaults to 20 and stops at 50. claim true locks the returned rows for 30 minutes. Writes an mcp_audits row.',
   inputSchema: {
     kind: z.enum(FACT_KINDS).optional(),
     reason: z.enum(QUEUE_REASONS).optional(),

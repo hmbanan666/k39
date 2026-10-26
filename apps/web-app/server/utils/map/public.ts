@@ -1,6 +1,13 @@
 import type { MapPoint, MapRoute } from '../../../shared/map'
 import { db, isStale, kindHeading } from '@k39/database'
-import { blurb, FOOD_FILTERS, isChurchPlace, normalizeRoutePath, partnerVisible, SIGHT_FACETS } from '../../../shared/map'
+import {
+  blurb,
+  FOOD_FILTERS,
+  isChurchPlace,
+  normalizeRoutePath,
+  partnerVisible,
+  SIGHT_FACETS,
+} from '../../../shared/map'
 import { toPublicMedia } from '../../../shared/media'
 import { isVerified, readRules, scheduleDetails } from '../../../shared/schedule'
 import { collectionDocument } from '../../../shared/seo'
@@ -12,9 +19,7 @@ function thumb(row: Parameters<typeof toPublicMedia>[0] | undefined) {
     return null
   }
   const media = toPublicMedia(row)
-  const small = media.variants
-    .filter((item) => item.format === 'webp')
-    .sort((a, b) => a.width - b.width)[0]
+  const small = media.variants.filter((item) => item.format === 'webp').sort((a, b) => a.width - b.width)[0]
   return small ? `/media/${media.id}/${small.file}` : media.src
 }
 
@@ -30,23 +35,31 @@ export async function loadMap() {
     db.content.coversFor(placeIds),
     db.venues.coversFor(venueIds),
     db.venues.sponsoredIds(venueIds),
-    readShownFacts('place', placeRows.map((row) => ({ id: row.id, latitude: row.latitude, longitude: row.longitude, status: undefined }))),
-    readShownFacts('venue', venueRows.map((row) => ({
-      id: row.id,
-      address: row.address,
-      phone: row.phone,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      status: row.status,
-    }))),
+    readShownFacts(
+      'place',
+      placeRows.map((row) => ({ id: row.id, latitude: row.latitude, longitude: row.longitude, status: undefined })),
+    ),
+    readShownFacts(
+      'venue',
+      venueRows.map((row) => ({
+        id: row.id,
+        address: row.address,
+        phone: row.phone,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        status: row.status,
+      })),
+    ),
     db.schedules.forEntities('venue', venueIds),
   ])
-  const scheduleByVenue = new Map(scheduleRows.flatMap((row) => {
-    const rules = readRules(row.rules)
-    const record = rules ? { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt } : null
-    const lines = record && isVerified(record) ? scheduleDetails(rules) : []
-    return [[row.entityId, lines] as const]
-  }))
+  const scheduleByVenue = new Map(
+    scheduleRows.flatMap((row) => {
+      const rules = readRules(row.rules)
+      const record = rules ? { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt } : null
+      const lines = record && isVerified(record) ? scheduleDetails(rules) : []
+      return [[row.entityId, lines] as const]
+    }),
+  )
   const stopCovers = await db.content.coversFor(stopRows.map((row) => row.placeId))
   const flag = sponsoredVenuesEnabled()
   const now = new Date()
@@ -91,9 +104,9 @@ export async function loadMap() {
       latitude: pin.latitude,
       longitude: pin.longitude,
       category,
-      marker: church ? 'tserkvi' : (sight?.id || 'forty'),
+      marker: church ? 'tserkvi' : sight?.id || 'forty',
       church,
-      kindLabel: church ? 'Церкви' : (row.categoryTitle || sight?.label || 'Место'),
+      kindLabel: church ? 'Церкви' : row.categoryTitle || sight?.label || 'Место',
       summary: blurb(row.summary),
       photo: thumb(placeCovers.get(row.id)),
       partner: false,

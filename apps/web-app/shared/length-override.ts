@@ -71,12 +71,14 @@ function validSearch(search: LengthOverrideInput['search']) {
   if (!search || typeof search !== 'object') {
     return false
   }
-  return Number.isInteger(search.impressions)
-    && search.impressions >= 1
-    && typeof search.position === 'number'
-    && Number.isFinite(search.position)
-    && search.position > 0
-    && search.position <= 100
+  return (
+    Number.isInteger(search.impressions) &&
+    search.impressions >= 1 &&
+    typeof search.position === 'number' &&
+    Number.isFinite(search.position) &&
+    search.position > 0 &&
+    search.position <= 100
+  )
 }
 
 function validCompetitors(rows: LengthOverrideInput['competitors']) {
@@ -84,13 +86,15 @@ function validCompetitors(rows: LengthOverrideInput['competitors']) {
     return false
   }
   return rows.every((row) => {
-    return Boolean(row)
-      && typeof row.query === 'string'
-      && row.query.trim().length >= 1
-      && row.query.trim().length <= 160
-      && Number.isInteger(row.chars)
-      && row.chars >= 1
-      && row.chars <= 100_000
+    return (
+      Boolean(row) &&
+      typeof row.query === 'string' &&
+      row.query.trim().length >= 1 &&
+      row.query.trim().length <= 160 &&
+      Number.isInteger(row.chars) &&
+      row.chars >= 1 &&
+      row.chars <= 100_000
+    )
   })
 }
 
@@ -155,7 +159,11 @@ function normalize(input: LengthOverrideInput): Omit<LengthOverride, 'setAt'> {
 }
 
 /** Keep `setAt` when the justification is unchanged, so a resave cannot reset the 60-day clock. */
-export function stampLengthOverride(next: LengthOverrideInput | null, previous: LengthOverride | null, now = new Date()): LengthOverride | null {
+export function stampLengthOverride(
+  next: LengthOverrideInput | null,
+  previous: LengthOverride | null,
+  now = new Date(),
+): LengthOverride | null {
   if (!next) {
     return null
   }
@@ -167,7 +175,10 @@ export function stampLengthOverride(next: LengthOverrideInput | null, previous: 
 }
 
 /** The extended ceiling, or null when the stored override must not change the score. */
-export function lengthOverrideApplies(override: LengthOverride | null | undefined, defaultMax: number | null): LengthOverride | null {
+export function lengthOverrideApplies(
+  override: LengthOverride | null | undefined,
+  defaultMax: number | null,
+): LengthOverride | null {
   if (!override || typeof override !== 'object' || defaultMax == null) {
     return null
   }
@@ -183,7 +194,12 @@ export function lengthOverrideApplies(override: LengthOverride | null | undefine
   return override
 }
 
-export function lengthOverrideIsStale(override: LengthOverride, now: Date, searchImported: boolean, impressions: number) {
+export function lengthOverrideIsStale(
+  override: LengthOverride,
+  now: Date,
+  searchImported: boolean,
+  impressions: number,
+) {
   if (!searchImported || impressions > 0) {
     return false
   }
@@ -253,7 +269,7 @@ function h2Heading(line: string) {
 }
 
 function h2Sections(text: string) {
-  const sections: Array<{ heading: string, body: string }> = []
+  const sections: Array<{ heading: string; body: string }> = []
   let heading = ''
   let body: string[] = []
   let seen = false
@@ -314,7 +330,10 @@ function repeatedParagraph(text: string) {
     }
     seen.add(line)
   }
-  const blocks = text.split(/\n\s*\n/).map((part) => part.trim()).filter((part) => fold(part).length >= PARAGRAPH_CHARS)
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter((part) => fold(part).length >= PARAGRAPH_CHARS)
   for (let i = 0; i < blocks.length; i += 1) {
     for (let j = i + 1; j < blocks.length; j += 1) {
       if (similar(blocks[i]!, blocks[j]!, PARAGRAPH_NEAR)) {

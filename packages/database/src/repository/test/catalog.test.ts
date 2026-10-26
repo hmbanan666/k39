@@ -7,7 +7,24 @@ import { applyInitialContent, INITIAL_CONTENT_IMPORT_ID } from '../../seed/apply
 import { CASTLE_REGIONS } from '../../seed/castle-regions'
 import seed from '../../seed/initial-content.json'
 import { SOURCE_LINK_LIMIT } from '../../sources'
-import { categories, collectionItems, collections, contentDrafts, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../../tables'
+import {
+  categories,
+  collectionItems,
+  collections,
+  contentDrafts,
+  contentImports,
+  places,
+  quests,
+  questSteps,
+  regions,
+  revisions,
+  routePoints,
+  routes,
+  slugRedirects,
+  venueListingIntros,
+  venueMedia,
+  venues,
+} from '../../tables'
 import { Content, Editor } from '../content'
 
 async function wipeContent() {
@@ -160,13 +177,16 @@ describe('initial content', () => {
         publicationStatus: 'draft',
       })
     }
-    const [oldRoute] = await db.insert(routes).values({
-      slug: 'five-forts',
-      title: 'Старый маршрут',
-      summary: 'Сводка из прежней схемы',
-      body: '',
-      publicationStatus: 'draft',
-    }).returning()
+    const [oldRoute] = await db
+      .insert(routes)
+      .values({
+        slug: 'five-forts',
+        title: 'Старый маршрут',
+        summary: 'Сводка из прежней схемы',
+        body: '',
+        publicationStatus: 'draft',
+      })
+      .returning()
     await db.insert(quests).values({
       slug: 'five-forts',
       title: 'Старый квест',
@@ -175,13 +195,16 @@ describe('initial content', () => {
       routeId: oldRoute?.id,
     })
     await db.insert(contentImports).values({ id: INITIAL_CONTENT_IMPORT_ID })
-    const [edited] = await db.insert(places).values({
-      slug: 'redaktorskaya-pravka',
-      title: 'Оставить как есть',
-      summary: 'Коротко от редактора',
-      body: 'Текст редактора, который сид не затирает.',
-      publicationStatus: 'draft',
-    }).returning()
+    const [edited] = await db
+      .insert(places)
+      .values({
+        slug: 'redaktorskaya-pravka',
+        title: 'Оставить как есть',
+        summary: 'Коротко от редактора',
+        body: 'Текст редактора, который сид не затирает.',
+        publicationStatus: 'draft',
+      })
+      .returning()
 
     const result = await applyInitialContent()
     expect(result.skipped).toBe(false)
@@ -213,10 +236,16 @@ describe('initial content', () => {
     expect(parkedQuest[0]?.publicationStatus).toBe('draft')
     expect(parkedQuest[0]?.routeId).toBe(oldRoute?.id)
     const redirects = await db.select().from(slugRedirects)
-    expect(redirects).toEqual(expect.arrayContaining([
-      expect.objectContaining({ fromPath: '/marshruty/five-forts', toPath: '/marshruty/pyat-fortov', statusCode: 301 }),
-      expect.objectContaining({ fromPath: '/kvesty/five-forts', toPath: '/kvesty/pyat-fortov', statusCode: 301 }),
-    ]))
+    expect(redirects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fromPath: '/marshruty/five-forts',
+          toPath: '/marshruty/pyat-fortov',
+          statusCode: 301,
+        }),
+        expect.objectContaining({ fromPath: '/kvesty/five-forts', toPath: '/kvesty/pyat-fortov', statusCode: 301 }),
+      ]),
+    )
     expect(map.routes.some((item) => item.loc.includes('five-forts'))).toBe(false)
     expect(map.quests.some((item) => item.loc.includes('five-forts'))).toBe(false)
 
@@ -259,9 +288,11 @@ describe('initial content', () => {
     })
     const redirects = await useDatabase().select().from(slugRedirects)
     expect(renamed.firstPublishedAt).toBe(publishedAt)
-    expect(redirects).toEqual(expect.arrayContaining([
-      expect.objectContaining({ fromPath: '/mcp-fort', toPath: '/mcp-fort-new', statusCode: 301 }),
-    ]))
+    expect(redirects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fromPath: '/mcp-fort', toPath: '/mcp-fort-new', statusCode: 301 }),
+      ]),
+    )
 
     const unpublished = await Editor.savePlace({
       id: renamed.id,
@@ -336,13 +367,15 @@ describe('initial content', () => {
     await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-draft'))
     await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-edited'))
     await db.update(places).set({ firstPublishedAt: null }).where(eq(places.slug, 'backfill-plain'))
-    await db.update(revisions).set({ createdAt: '2026-03-01T00:00:00.000Z' }).where(eq(revisions.entityId, publishedLater.id))
+    await db
+      .update(revisions)
+      .set({ createdAt: '2026-03-01T00:00:00.000Z' })
+      .where(eq(revisions.entityId, publishedLater.id))
     const editedRevisions = await db.select().from(revisions).where(eq(revisions.entityId, editedDraft.id))
     for (const revision of editedRevisions) {
       const snapshot = revision.snapshot as { publicationStatus?: string }
-      const createdAt = snapshot.publicationStatus === 'published'
-        ? '2026-05-01T00:00:00.000Z'
-        : '2026-03-15T00:00:00.000Z'
+      const createdAt =
+        snapshot.publicationStatus === 'published' ? '2026-05-01T00:00:00.000Z' : '2026-03-15T00:00:00.000Z'
       await db.update(revisions).set({ createdAt }).where(eq(revisions.id, revision.id))
     }
     await db.insert(revisions).values([
@@ -359,12 +392,15 @@ describe('initial content', () => {
         createdAt: '2026-08-01T00:00:00.000Z',
       },
     ])
-    const [hub] = await db.insert(categories).values({
-      slug: 'backfill-hub',
-      title: 'Хаб',
-      description: 'Описание хаба',
-      firstPublishedAt: null,
-    }).returning()
+    const [hub] = await db
+      .insert(categories)
+      .values({
+        slug: 'backfill-hub',
+        title: 'Хаб',
+        description: 'Описание хаба',
+        firstPublishedAt: null,
+      })
+      .returning()
     const updatePlaces = migrationStatement('UPDATE places')
     const updateCategories = migrationStatement('UPDATE categories')
     await db.$client.query(updatePlaces)
@@ -378,7 +414,10 @@ describe('initial content', () => {
     expect(new Date(draftedRow?.firstPublishedAt ?? '').toISOString()).toBe('2026-03-01T00:00:00.000Z')
     expect(new Date(editedRow?.firstPublishedAt ?? '').toISOString()).toBe('2026-03-15T00:00:00.000Z')
     expect(plainRow?.firstPublishedAt).toBe(plainRow?.createdAt)
-    const [hubRow] = await db.select().from(categories).where(eq(categories.id, hub?.id ?? ''))
+    const [hubRow] = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, hub?.id ?? ''))
     expect(hubRow?.firstPublishedAt).toBe(hubRow?.createdAt)
 
     await db.insert(revisions).values({
@@ -430,24 +469,28 @@ describe('page source limits', () => {
     })
     expect(kept.sources).toEqual(merged.sources)
 
-    await expect(Editor.savePlace({
-      slug: 'place-source-blank',
-      title: 'Страница',
-      summary: '',
-      body: 'Текст.',
-      sources: [{ title: '  ', url: 'https://example.com/x' }],
-    })).rejects.toThrow(/Источник 1/)
+    await expect(
+      Editor.savePlace({
+        slug: 'place-source-blank',
+        title: 'Страница',
+        summary: '',
+        body: 'Текст.',
+        sources: [{ title: '  ', url: 'https://example.com/x' }],
+      }),
+    ).rejects.toThrow(/Источник 1/)
     expect(await Editor.placeBySlug('place-source-blank')).toBeFalsy()
 
     const tooMany = Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
       title: `Источник ${index + 1}`,
       url: `https://example.com/p/${index}`,
     }))
-    await expect(Editor.saveCollection({
-      slug: 'collection-source-cap',
-      title: 'Подборка',
-      sources: tooMany,
-    })).rejects.toThrow(/Не больше/)
+    await expect(
+      Editor.saveCollection({
+        slug: 'collection-source-cap',
+        title: 'Подборка',
+        sources: tooMany,
+      }),
+    ).rejects.toThrow(/Не больше/)
     const collection = await Editor.saveCollection({
       slug: 'collection-source-merge',
       title: 'Подборка',

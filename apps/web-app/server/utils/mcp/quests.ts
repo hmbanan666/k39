@@ -31,7 +31,7 @@ export interface QuestWriteInput {
 // Moving or clearing the link is what lets content_archive delete that draft.
 export function routeIdForSlug(
   routeSlug: string | null | undefined,
-  routes: Array<{ id: string, slug: string }>,
+  routes: Array<{ id: string; slug: string }>,
 ): string | null | undefined {
   if (routeSlug === undefined) {
     return undefined
@@ -46,7 +46,7 @@ export function routeIdForSlug(
   return route.id
 }
 
-export function routeSlugOf(routeId: string | null | undefined, routes: Array<{ id: string, slug: string }>) {
+export function routeSlugOf(routeId: string | null | undefined, routes: Array<{ id: string; slug: string }>) {
   if (!routeId) {
     return null
   }
@@ -83,30 +83,34 @@ export async function writeQuest(input: QuestWriteInput, auditTool: string, opti
   const publicationStatus = resolvePublication(input.publicationStatus, current?.publicationStatus)
   refusePendingLiveEdit(publicationStatus, 'quest')
   try {
-    const { row, writingWarnings } = await saveQuestContent({
-      id: current?.id,
-      slug,
-      title,
-      summary: input.summary,
-      body: input.body,
-      publicationStatus,
-      seoTitle: input.seoTitle,
-      seoDescription: input.seoDescription,
-      ogImage: input.ogImage,
-      noindex: input.noindex,
-      routeId,
-      steps: input.steps,
-    }, null, {
-      prose: [
+    const { row, writingWarnings } = await saveQuestContent(
+      {
+        id: current?.id,
+        slug,
         title,
-        input.summary === undefined ? current?.summary : input.summary,
-        input.body === undefined ? current?.body : input.body,
-        input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
-        input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
-        input.steps,
-      ],
-      publishing: publicationStatus === 'published',
-    })
+        summary: input.summary,
+        body: input.body,
+        publicationStatus,
+        seoTitle: input.seoTitle,
+        seoDescription: input.seoDescription,
+        ogImage: input.ogImage,
+        noindex: input.noindex,
+        routeId,
+        steps: input.steps,
+      },
+      null,
+      {
+        prose: [
+          title,
+          input.summary === undefined ? current?.summary : input.summary,
+          input.body === undefined ? current?.body : input.body,
+          input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
+          input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
+          input.steps,
+        ],
+        publishing: publicationStatus === 'published',
+      },
+    )
     await auditMcp(auditTool, 'quest', row.id)
     return {
       id: row.id,

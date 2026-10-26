@@ -1,6 +1,12 @@
 import type { OsmElement } from '@k39/database'
 import process from 'node:process'
-import { assertOverpassArea, osmElementToDraft, OVERPASS_QUERY_TIMEOUT_SECONDS, overpassQuery, VenueInputError } from '@k39/database'
+import {
+  assertOverpassArea,
+  osmElementToDraft,
+  OVERPASS_QUERY_TIMEOUT_SECONDS,
+  overpassQuery,
+  VenueInputError,
+} from '@k39/database'
 
 export const OVERPASS_USER_AGENT = 'K39/1.0 (+https://k39.online)'
 export const OVERPASS_FETCH_TIMEOUT_MS = 120_000
@@ -42,7 +48,10 @@ export function overpassEndpoints(configured?: string | null) {
 }
 
 class OverpassRequestError extends VenueInputError {
-  constructor(message: string, readonly retryable: boolean) {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+  ) {
     super(message)
     this.name = 'OverpassRequestError'
   }
@@ -54,7 +63,12 @@ function sleepMs(ms: number) {
   })
 }
 
-async function postQuery(endpoint: string, body: URLSearchParams, fetchImpl: OverpassFetchOptions['fetch'], sleep: (ms: number) => Promise<void>) {
+async function postQuery(
+  endpoint: string,
+  body: URLSearchParams,
+  fetchImpl: OverpassFetchOptions['fetch'],
+  sleep: (ms: number) => Promise<void>,
+) {
   const request = fetchImpl ?? fetch
   let last: OverpassRequestError | null = null
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
@@ -108,14 +122,16 @@ export async function fetchOverpass(input: OverpassArea | OverpassBox, options: 
       const response = await postQuery(endpoint, body, options.fetch, sleep)
       let payload: { elements?: OsmElement[] }
       try {
-        payload = await response.json() as { elements?: OsmElement[] }
+        payload = (await response.json()) as { elements?: OsmElement[] }
       } catch {
         throw new OverpassRequestError('Overpass ответил не JSON', true)
       }
-      return (payload.elements ?? []).flatMap((element) => {
-        const draft = osmElementToDraft(element)
-        return draft ? [draft] : []
-      }).slice(0, 100)
+      return (payload.elements ?? [])
+        .flatMap((element) => {
+          const draft = osmElementToDraft(element)
+          return draft ? [draft] : []
+        })
+        .slice(0, 100)
     } catch (error) {
       last = error
       const retryable = error instanceof OverpassRequestError && error.retryable

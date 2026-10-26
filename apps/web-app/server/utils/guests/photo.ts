@@ -21,13 +21,19 @@ export async function submitGuestPhoto(event: H3Event) {
   const subject = await resolveGuestSubject(text('subjectType'), text('subjectSlug'))
   const member = subject.subjectType === 'venue' ? await db.venueClaims.member(subject.subjectId, user.id) : null
   if (member) {
-    throw createError({ statusCode: 403, statusMessage: 'Отзыв, совет и фото своего заведения оставляют через кабинет.' })
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Отзыв, совет и фото своего заведения оставляют через кабинет.',
+    })
   }
   const alt = text('alt')
   const altProblem = lengthProblem('alt', alt)
   const checked = inspectGuestText(alt)
   if (altProblem || !checked.ok) {
-    throw createError({ statusCode: 400, statusMessage: altProblem || (!checked.ok ? checked.message : 'Проверьте подпись.') })
+    throw createError({
+      statusCode: 400,
+      statusMessage: altProblem || (!checked.ok ? checked.message : 'Проверьте подпись.'),
+    })
   }
   const file = parts?.find((part) => part.name === 'file' && part.data?.length)
   if (!file) {
@@ -67,9 +73,10 @@ export async function submitGuestPhoto(event: H3Event) {
   })
   if (!created.ok) {
     await deleteMediaCompletely(result.row.id)
-    const message = created.reason === 'cap'
-      ? 'На этой странице уже три ваших фото. Уберите одно в кабинете.'
-      : 'Такое фото уже ждёт решения.'
+    const message =
+      created.reason === 'cap'
+        ? 'На этой странице уже три ваших фото. Уберите одно в кабинете.'
+        : 'Такое фото уже ждёт решения.'
     throw createError({ statusCode: 409, statusMessage: message })
   }
   return { id: created.id, status: 'pending' as const }

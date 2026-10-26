@@ -6,7 +6,13 @@ const screenName = [{ url: 'https://vk.com/lugowen_gastro' }]
 describe('admin VK community id field', () => {
   it('accepts digits beside a screen-name link and sends a number', () => {
     const field = vkCommunityField(' 236300695 ', screenName)
-    expect(field).toMatchObject({ disabled: false, error: null, value: 236300695, screenNames: ['lugowen_gastro'], impliedIds: [] })
+    expect(field).toMatchObject({
+      disabled: false,
+      error: null,
+      value: 236300695,
+      screenNames: ['lugowen_gastro'],
+      impliedIds: [],
+    })
   })
 
   it('sends null to clear an empty field', () => {
@@ -32,7 +38,11 @@ describe('admin VK community id field', () => {
     const club = [{ url: 'https://vk.com/club71522139' }]
     expect(vkCommunityField('', club)).toMatchObject({ impliedIds: [71522139], error: null, value: null })
     expect(vkCommunityField('71522139', club)).toMatchObject({ error: null, value: 71522139 })
-    expect(vkCommunityField('236300695', club).error).toBe('Ссылки в «Соцсети» уже дают ID 71522139. Другое число не сохранится')
-    expect(vkCommunityField('5', [{ url: 'https://vk.com/id5' }]).error).toBe('Ссылка ВКонтакте в «Соцсети» ведёт не на сообщество')
+    expect(vkCommunityField('236300695', club).error).toBe(
+      'Ссылки в «Соцсети» уже дают ID 71522139. Другое число не сохранится',
+    )
+    expect(vkCommunityField('5', [{ url: 'https://vk.com/id5' }]).error).toBe(
+      'Ссылка ВКонтакте в «Соцсети» ведёт не на сообщество',
+    )
   })
 })

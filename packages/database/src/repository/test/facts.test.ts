@@ -79,7 +79,11 @@ describe('typed facts', () => {
     ])
     ids.push(phone.fact.id, address.fact.id, hidden.fact.id, retired.fact.id)
     await Facts.retire(retired.fact.id)
-    const rows = await Facts.forConsumers('venue', ['batch-a', 'batch-b', 'batch-c', 'batch-d'], ['phone', 'address', 'coordinates', 'status'])
+    const rows = await Facts.forConsumers(
+      'venue',
+      ['batch-a', 'batch-b', 'batch-c', 'batch-d'],
+      ['phone', 'address', 'coordinates', 'status'],
+    )
     expect(rows.map((row) => row.consumerId).sort()).toEqual(['batch-a', 'batch-b'])
     expect(rows.find((row) => row.consumerId === 'batch-a')?.value).toMatchObject({ text: '+7 4012 61-64-12' })
     expect(rows.find((row) => row.consumerId === 'batch-b')?.confidence).toBe('gap')

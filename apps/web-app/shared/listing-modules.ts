@@ -10,11 +10,15 @@ import { z } from 'zod'
 const markdown = z.string().trim().min(1).max(4000)
 const short = z.string().trim().min(1).max(160)
 const title = z.string().trim().min(1).max(120)
-const placeSlug = z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(80)
+const placeSlug = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  .max(80)
 
 /** Icons that already exist in shared/icons.ts. */
 export const SITUATION_ICONS = ['kids', 'beaches', 'hours', 'coffee', 'family', 'group'] as const
-export type SituationIcon = typeof SITUATION_ICONS[number]
+export type SituationIcon = (typeof SITUATION_ICONS)[number]
 
 export const SITUATION_ICON_KEYS: Record<SituationIcon, string> = {
   kids: 'kids',
@@ -34,52 +38,75 @@ const listingModuleSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('situation'),
     title: title.optional(),
-    items: z.array(z.object({
-      label: z.string().trim().min(1).max(80),
-      note: z.string().trim().max(300).optional(),
-      placeSlug,
-      icon: z.enum(SITUATION_ICONS).optional(),
-    })).min(1).max(8),
+    items: z
+      .array(
+        z.object({
+          label: z.string().trim().min(1).max(80),
+          note: z.string().trim().max(300).optional(),
+          placeSlug,
+          icon: z.enum(SITUATION_ICONS).optional(),
+        }),
+      )
+      .min(1)
+      .max(8),
   }),
   z.object({
     type: z.literal('areas'),
     title: title.optional(),
-    items: z.array(z.object({
-      name: short,
-      text: markdown,
-    })).min(1).max(8),
+    items: z
+      .array(
+        z.object({
+          name: short,
+          text: markdown,
+        }),
+      )
+      .min(1)
+      .max(8),
   }),
   z.object({
     type: z.literal('season'),
     title: title.optional(),
     text: markdown.optional(),
-    items: z.array(z.object({
-      when: short,
-      text: markdown,
-    })).max(6).optional(),
+    items: z
+      .array(
+        z.object({
+          when: short,
+          text: markdown,
+        }),
+      )
+      .max(6)
+      .optional(),
   }),
   z.object({
     type: z.literal('faq'),
     title: title.optional(),
-    items: z.array(z.object({
-      question: short,
-      answer: z.string().trim().min(1).max(800),
-    })).min(1).max(8),
+    items: z
+      .array(
+        z.object({
+          question: short,
+          answer: z.string().trim().min(1).max(800),
+        }),
+      )
+      .min(1)
+      .max(8),
   }),
 ])
 
-export const listingModulesSchema = z.array(listingModuleSchema).max(8).superRefine((modules, ctx) => {
-  for (const unique of ['choose', 'situation', 'areas', 'season', 'faq'] as const) {
-    if (modules.filter((item) => item.type === unique).length > 1) {
-      ctx.addIssue({ code: 'custom', message: `At most one ${unique} module` })
+export const listingModulesSchema = z
+  .array(listingModuleSchema)
+  .max(8)
+  .superRefine((modules, ctx) => {
+    for (const unique of ['choose', 'situation', 'areas', 'season', 'faq'] as const) {
+      if (modules.filter((item) => item.type === unique).length > 1) {
+        ctx.addIssue({ code: 'custom', message: `At most one ${unique} module` })
+      }
     }
-  }
-  for (const [index, module] of modules.entries()) {
-    if (module.type === 'season' && !module.text && !(module.items && module.items.length)) {
-      ctx.addIssue({ code: 'custom', message: 'Season module needs text or items', path: [index] })
+    for (const [index, module] of modules.entries()) {
+      if (module.type === 'season' && !module.text && !(module.items && module.items.length)) {
+        ctx.addIssue({ code: 'custom', message: 'Season module needs text or items', path: [index] })
+      }
     }
-  }
-})
+  })
 
 export type ListingModule = z.infer<typeof listingModuleSchema>
 
@@ -114,17 +141,27 @@ export interface ListingVenueCard {
   phone?: string | null
 }
 
-export type PublicListingModule
-  = | { type: 'choose', id: string, title: string, html: string }
-    | { type: 'situation', id: string, title: string, items: { label: string, note: string | null, icon: SituationIcon | null, card: ListingVenueCard }[] }
-    | { type: 'areas', id: string, title: string, items: { name: string, html: string }[] }
-    | { type: 'season', id: string, title: string, html: string | null, items: { when: string, html: string }[] }
-    | { type: 'faq', id: string, title: string, items: { question: string, html: string }[] }
+export type PublicListingModule =
+  | { type: 'choose'; id: string; title: string; html: string }
+  | {
+      type: 'situation'
+      id: string
+      title: string
+      items: { label: string; note: string | null; icon: SituationIcon | null; card: ListingVenueCard }[]
+    }
+  | { type: 'areas'; id: string; title: string; items: { name: string; html: string }[] }
+  | { type: 'season'; id: string; title: string; html: string | null; items: { when: string; html: string }[] }
+  | { type: 'faq'; id: string; title: string; items: { question: string; html: string }[] }
 
 /** Rendered modules before venue cards are attached. Situation items still name a slug. */
-export type DraftListingModule
-  = | Exclude<PublicListingModule, { type: 'situation' }>
-    | { type: 'situation', id: string, title: string, items: { label: string, note: string | null, icon: SituationIcon | null, placeSlug: string }[] }
+export type DraftListingModule =
+  | Exclude<PublicListingModule, { type: 'situation' }>
+  | {
+      type: 'situation'
+      id: string
+      title: string
+      items: { label: string; note: string | null; icon: SituationIcon | null; placeSlug: string }[]
+    }
 
 /** Validates and renders stored modules. Invalid or empty input yields none. */
 export function toPublicListingModules(stored: unknown, render: (markdown: string) => string): DraftListingModule[] {
@@ -184,7 +221,10 @@ export function toPublicListingModules(stored: unknown, render: (markdown: strin
 }
 
 /** Drops a situation pick whose venue is missing, and the block when none remain. */
-export function attachSituationCards(blocks: DraftListingModule[], cards: ReadonlyMap<string, ListingVenueCard>): PublicListingModule[] {
+export function attachSituationCards(
+  blocks: DraftListingModule[],
+  cards: ReadonlyMap<string, ListingVenueCard>,
+): PublicListingModule[] {
   const ready: PublicListingModule[] = []
   for (const block of blocks) {
     if (block.type !== 'situation') {

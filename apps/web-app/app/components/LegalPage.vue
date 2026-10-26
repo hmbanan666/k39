@@ -44,7 +44,13 @@ usePublicHead({
   font-size: 1.45rem;
 }
 .legal :deep(p),
-.legal :deep(li) { line-height: 1.6; }
-.legal :deep(ul) { padding-left: 1.2rem; }
-.legal :deep(a) { font-weight: 700; }
+.legal :deep(li) {
+  line-height: 1.6;
+}
+.legal :deep(ul) {
+  padding-left: 1.2rem;
+}
+.legal :deep(a) {
+  font-weight: 700;
+}
 </style>

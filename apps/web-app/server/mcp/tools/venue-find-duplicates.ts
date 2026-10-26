@@ -5,7 +5,8 @@ import { venueDuplicatesInput } from '../../utils/mcp/venues'
 
 export default defineStrictMcpTool({
   name: 'venue_find_duplicates',
-  description: 'Read-only duplicate check before venue_create. Matches a name ignoring case, ё/е, quotes, and a kind word such as кафе or ресторан, and a point within radiusM metres (default 150, maximum 2000). Archived and closed venues are included. Optional regionSlug limits the search. Returns slug, name, kind, status, region, distanceM, and matched signals (name, coordinates). Pass a name, or latitude and longitude together.',
+  description:
+    'Read-only duplicate check before venue_create. Matches a name ignoring case, ё/е, quotes, and a kind word such as кафе or ресторан, and a point within radiusM metres (default 150, maximum 2000). Archived and closed venues are included. Optional regionSlug limits the search. Returns slug, name, kind, status, region, distanceM, and matched signals (name, coordinates). Pass a name, or latitude and longitude together.',
   annotations: { readOnlyHint: true },
   inputSchema: mcpStrictInput(venueDuplicatesInput),
   handler: async (input) => {

@@ -44,7 +44,9 @@ describe('variant generation', () => {
     const storage = createLocalMediaStorage(root)
     const source = await sharp({
       create: { width: 3000, height: 1500, channels: 3, background: { r: 180, g: 40, b: 30 } },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
     const processed = await processImage(source, 'shot', storage)
     expect(processed.width).toBeLessThanOrEqual(2560)
     expect(processed.variants.some((item) => item.file === '1920.avif')).toBe(true)
@@ -55,7 +57,7 @@ describe('variant generation', () => {
     expect(og?.height).toBeLessThanOrEqual(630)
     expect(processed.lqip.startsWith('data:image/webp;base64,')).toBe(true)
     expect(processed.dominantColor).toMatch(/^#[0-9a-f]{6}$/)
-    const master = await sharp(await storage.get('shot/master.webp') as Buffer).metadata()
+    const master = await sharp((await storage.get('shot/master.webp')) as Buffer).metadata()
     expect(master.exif).toBeUndefined()
     expect(await storage.exists('shot/320.avif')).toBe(true)
   })
@@ -66,7 +68,9 @@ describe('variant generation', () => {
     const storage = createLocalMediaStorage(root)
     const source = await sharp({
       create: { width: 400, height: 300, channels: 3, background: { r: 10, g: 20, b: 30 } },
-    }).png().toBuffer()
+    })
+      .png()
+      .toBuffer()
     const processed = await processImage(source, 'small', storage)
     expect(processed.width).toBe(400)
     expect(processed.variants.some((item) => item.width > 400)).toBe(false)
@@ -77,9 +81,12 @@ describe('variant generation', () => {
 describe('upload semaphore', () => {
   it('keeps two tasks active and lets the third wait', async () => {
     let releaseFirst: () => void = () => {}
-    const first = withMediaSlot(() => new Promise<void>((resolve) => {
-      releaseFirst = resolve
-    }))
+    const first = withMediaSlot(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseFirst = resolve
+        }),
+    )
     const second = withMediaSlot(() => Promise.resolve('b'))
     await second
     expect(mediaSlotDepth()).toBe(1)
@@ -100,7 +107,9 @@ describe('commons licenses', () => {
 
   it('trims a description and lists category names', () => {
     expect(plainText('<p>Fort&nbsp;III</p>')).toBe('Fort III')
-    expect(categoryNames({ categories: [{ title: 'Category:Fort VII in Kaliningrad' }, { title: '  ' }] })).toEqual(['Fort VII in Kaliningrad'])
+    expect(categoryNames({ categories: [{ title: 'Category:Fort VII in Kaliningrad' }, { title: '  ' }] })).toEqual([
+      'Fort VII in Kaliningrad',
+    ])
   })
 
   it('searches an English fort title when the Russian name has a number', () => {
@@ -127,8 +136,10 @@ function pngChunk(type: string, data: Buffer) {
 async function hugeHeaderPng(width: number, height: number) {
   const tiny = await sharp({
     create: { width: 1, height: 1, channels: 3, background: { r: 200, g: 10, b: 10 } },
-  }).png().toBuffer()
-  const chunks: Array<{ type: string, data: Buffer }> = []
+  })
+    .png()
+    .toBuffer()
+  const chunks: Array<{ type: string; data: Buffer }> = []
   let offset = 8
   while (offset < tiny.length) {
     const size = tiny.readUInt32BE(offset)
@@ -161,7 +172,9 @@ describe('upload problems', () => {
 
     const png = await sharp({
       create: { width: 4, height: 4, channels: 3, background: { r: 1, g: 2, b: 3 } },
-    }).png().toBuffer()
+    })
+      .png()
+      .toBuffer()
     expect(await uploadProblem(png, 'declared.jpg')).toBeNull()
 
     const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
@@ -171,7 +184,9 @@ describe('upload problems', () => {
 
     const jpeg = await sharp({
       create: { width: 4, height: 4, channels: 3, background: { r: 9, g: 9, b: 9 } },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
     const named = await uploadProblem(jpeg, 'IMG_2043.HEIC')
     expect(named?.code).toBe('heic')
     expect(named?.message).toContain('HEIC')

@@ -188,31 +188,47 @@ describe('venue claims', () => {
     const venue = await cafe('Булочная')
     await VenueClaims.addMember(venue.id, owner.id, 'owner')
     const before = await Venues.byId(venue.id)
-    const saved = await Venues.update(venue.id, {
-      phone: '+7 900 000-00-11',
-      modules: [{ type: 'prices' }, { type: 'text', variant: 'plain', text: 'Новый текст о булочной, своими словами.' }],
-      description: description(),
-    }, owner.id)
+    const saved = await Venues.update(
+      venue.id,
+      {
+        phone: '+7 900 000-00-11',
+        modules: [
+          { type: 'prices' },
+          { type: 'text', variant: 'plain', text: 'Новый текст о булочной, своими словами.' },
+        ],
+        description: description(),
+      },
+      owner.id,
+    )
     expect(saved?.phone).toBe('+7 900 000-00-11')
     expect(saved?.status).toBe('published')
-    expect(saved?.modules).toEqual([{ type: 'prices' }, { type: 'text', variant: 'plain', text: 'Новый текст о булочной, своими словами.' }])
+    expect(saved?.modules).toEqual([
+      { type: 'prices' },
+      { type: 'text', variant: 'plain', text: 'Новый текст о булочной, своими словами.' },
+    ])
     expect(saved?.contactEmail).toBe('desk@cafe.test')
-    const priced = await Prices.setForVenue(venue.id, [{
-      item: 'cappuccino',
-      priceRub: 180,
-      checkedAt: '2026-10-15',
-      sourceKind: 'owner',
-      sourceTitle: 'Сообщено заведением',
-    }])
+    const priced = await Prices.setForVenue(venue.id, [
+      {
+        item: 'cappuccino',
+        priceRub: 180,
+        checkedAt: '2026-10-15',
+        sourceKind: 'owner',
+        sourceTitle: 'Сообщено заведением',
+      },
+    ])
     expect(priced[0]?.item).toBe('cappuccino')
     expect(priced[0]?.sourceKind).toBe('owner')
-    await expect(Prices.setForVenue(venue.id, [{
-      item: 'no-such-item',
-      priceRub: 10,
-      checkedAt: '2026-10-15',
-      sourceKind: 'owner',
-      sourceTitle: 'Сообщено заведением',
-    }])).rejects.toThrow(/каталог/)
+    await expect(
+      Prices.setForVenue(venue.id, [
+        {
+          item: 'no-such-item',
+          priceRub: 10,
+          checkedAt: '2026-10-15',
+          sourceKind: 'owner',
+          sourceTitle: 'Сообщено заведением',
+        },
+      ]),
+    ).rejects.toThrow(/каталог/)
 
     const history = await Venues.revisions(venue.id)
     expect(history.length).toBeGreaterThan(0)

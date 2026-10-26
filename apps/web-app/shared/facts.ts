@@ -23,7 +23,16 @@ export type FactKind = (typeof FACT_KINDS)[number]
 export const FACT_SUBJECTS = ['place', 'venue', 'route', 'route_stop', 'region'] as const
 export type FactSubject = (typeof FACT_SUBJECTS)[number]
 
-export const SOURCE_KINDS = ['official', 'official_social', 'map_yandex', 'map_2gis', 'map_google', 'osm', 'owner', 'none'] as const
+export const SOURCE_KINDS = [
+  'official',
+  'official_social',
+  'map_yandex',
+  'map_2gis',
+  'map_google',
+  'osm',
+  'owner',
+  'none',
+] as const
 export type SourceKind = (typeof SOURCE_KINDS)[number]
 
 export const CONFIDENCE = ['stated', 'owner', 'gap'] as const
@@ -32,7 +41,18 @@ export type FactConfidence = (typeof CONFIDENCE)[number]
 export const FACT_ACTORS = ['migration', 'editor', 'owner', 'mcp'] as const
 export type FactActor = (typeof FACT_ACTORS)[number]
 
-export const QUEUE_REASONS = ['source_changed', 'ttl_expired', 'fetch_failed', 'source_gone', 'season_boundary', 'section_changed', 'unseeded', 'owner_conflict', 'fact_repeated', 'guest_report'] as const
+export const QUEUE_REASONS = [
+  'source_changed',
+  'ttl_expired',
+  'fetch_failed',
+  'source_gone',
+  'season_boundary',
+  'section_changed',
+  'unseeded',
+  'owner_conflict',
+  'fact_repeated',
+  'guest_report',
+] as const
 export type QueueReason = (typeof QUEUE_REASONS)[number]
 
 /** Conflict reasons that make a fact stale for the score and the trust column. */
@@ -78,19 +98,23 @@ export const statusValueSchema = z.discriminatedUnion('scope', [
   z.object({ scope: z.literal('venue'), status: z.enum(['open', 'closed']) }),
 ])
 
-const admissionEntryValueSchema = z.object({
-  audience: z.enum(ADMISSION_AUDIENCES),
-  priceRub: z.number().int().nonnegative(),
-  condition: z.string().max(ADMISSION_CONDITION_MAX).nullable(),
-  label: z.string().max(ADMISSION_LABEL_MAX).nullable(),
-}).strict()
-export const admissionExtraValueSchema = z.object({
-  kind: z.literal('extra'),
-  priceRub: z.number().int().positive(),
-  condition: z.string().max(ADMISSION_CONDITION_MAX).nullable(),
-  label: z.string().trim().min(1).max(ADMISSION_LABEL_MAX),
-  unit: z.enum(ADMISSION_EXTRA_UNITS).nullable(),
-}).strict()
+const admissionEntryValueSchema = z
+  .object({
+    audience: z.enum(ADMISSION_AUDIENCES),
+    priceRub: z.number().int().nonnegative(),
+    condition: z.string().max(ADMISSION_CONDITION_MAX).nullable(),
+    label: z.string().max(ADMISSION_LABEL_MAX).nullable(),
+  })
+  .strict()
+export const admissionExtraValueSchema = z
+  .object({
+    kind: z.literal('extra'),
+    priceRub: z.number().int().positive(),
+    condition: z.string().max(ADMISSION_CONDITION_MAX).nullable(),
+    label: z.string().trim().min(1).max(ADMISSION_LABEL_MAX),
+    unit: z.enum(ADMISSION_EXTRA_UNITS).nullable(),
+  })
+  .strict()
 // Keep legacy entry output byte-equivalent: no default discriminator in its hash.
 export const admissionValueSchema = z.union([admissionExtraValueSchema, admissionEntryValueSchema])
 export const eventValueSchema = z.object({
@@ -111,15 +135,24 @@ export type EventValue = z.infer<typeof eventValueSchema>
 
 export function valueSchema(kind: string) {
   switch (kind) {
-    case 'hours': return scheduleRulesSchema
-    case 'price': return priceValueSchema
-    case 'phone': return phoneValueSchema
-    case 'address': return addressValueSchema
-    case 'coordinates': return coordinatesValueSchema
-    case 'status': return statusValueSchema
-    case 'admission': return admissionValueSchema
-    case 'event': return eventValueSchema
-    default: return null
+    case 'hours':
+      return scheduleRulesSchema
+    case 'price':
+      return priceValueSchema
+    case 'phone':
+      return phoneValueSchema
+    case 'address':
+      return addressValueSchema
+    case 'coordinates':
+      return coordinatesValueSchema
+    case 'status':
+      return statusValueSchema
+    case 'admission':
+      return admissionValueSchema
+    case 'event':
+      return eventValueSchema
+    default:
+      return null
   }
 }
 
@@ -151,7 +184,9 @@ export function canonicalJson(value: unknown): string {
     return `[${value.map((item) => canonicalJson(item)).join(',')}]`
   }
   const record = value as Record<string, unknown>
-  const keys = Object.keys(record).filter((key) => record[key] !== undefined).sort()
+  const keys = Object.keys(record)
+    .filter((key) => record[key] !== undefined)
+    .sort()
   return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(',')}}`
 }
 
@@ -182,14 +217,20 @@ export function normalizeSourceText(html: string) {
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
-    .replace(/&#39;|&apos;/gi, '\'')
+    .replace(/&#39;|&apos;/gi, "'")
     .replace(/&quot;/gi, '"')
   return normalizeProse(stripped)
 }
 
 export function isBlockedAddress(address: string) {
   const value = address.toLowerCase().replace(/^\[|\]$/g, '')
-  if (value === '::1' || value === '::' || value.startsWith('fe80:') || value.startsWith('fc') || value.startsWith('fd')) {
+  if (
+    value === '::1' ||
+    value === '::' ||
+    value.startsWith('fe80:') ||
+    value.startsWith('fc') ||
+    value.startsWith('fd')
+  ) {
     return true
   }
   const v4 = value.startsWith('::ffff:') ? value.slice('::ffff:'.length) : value
@@ -199,21 +240,37 @@ export function isBlockedAddress(address: string) {
   }
   const a = parts[0] ?? -1
   const b = parts[1] ?? -1
-  return a === 0 || a === 10 || a === 127
-    || (a === 100 && b >= 64 && b <= 127)
-    || (a === 169 && b === 254)
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168)
-    || a >= 224
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    a >= 224
+  )
 }
 
 export function isBlockedHostname(host: string) {
-  const name = host.toLowerCase().replace(/\.$/, '').replace(/^\[|\]$/g, '')
-  return !name || name === 'localhost' || name.endsWith('.local') || name.endsWith('.internal') || name.endsWith('.localhost')
+  const name = host
+    .toLowerCase()
+    .replace(/\.$/, '')
+    .replace(/^\[|\]$/g, '')
+  return (
+    !name ||
+    name === 'localhost' ||
+    name.endsWith('.local') ||
+    name.endsWith('.internal') ||
+    name.endsWith('.localhost')
+  )
 }
 
 function bareHost(host: string) {
-  return host.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  return host
+    .toLowerCase()
+    .replace(/\.$/, '')
+    .replace(/^www\./, '')
 }
 
 /** Map cards are never fetched. They queue on TTL instead. */
@@ -229,21 +286,31 @@ export function isUnwatchedUrl(url: string) {
   if (yandex && (host.startsWith('maps.') || parsed.pathname.includes('/maps'))) {
     return true
   }
-  return /(?:^|\.)2gis\.(?:ru|com|kz|uz)$/.test(host)
-    || isGoogleMaps(host, parsed.pathname)
-    || /(?:^|\.)openstreetmap\.org$/.test(host)
-    || host === 'osm.org'
-    || host.endsWith('.osm.org')
+  return (
+    /(?:^|\.)2gis\.(?:ru|com|kz|uz)$/.test(host) ||
+    isGoogleMaps(host, parsed.pathname) ||
+    /(?:^|\.)openstreetmap\.org$/.test(host) ||
+    host === 'osm.org' ||
+    host.endsWith('.osm.org')
+  )
 }
 
 function isGoogleMaps(host: string, pathname: string) {
-  if (host === 'maps.app.goo.gl' || host.endsWith('.maps.app.goo.gl') || host === 'maps.google.com' || host.endsWith('.maps.google.com')) {
+  if (
+    host === 'maps.app.goo.gl' ||
+    host.endsWith('.maps.app.goo.gl') ||
+    host === 'maps.google.com' ||
+    host.endsWith('.maps.google.com')
+  ) {
     return true
   }
   if (host === 'goo.gl' && (pathname === '/maps' || pathname.startsWith('/maps/'))) {
     return true
   }
-  return /^google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)$/.test(host) && (pathname === '/maps' || pathname.startsWith('/maps/'))
+  return (
+    /^google\.(?:com|ru|de|fr|co\.uk|lt|pl|kz|by)$/.test(host) &&
+    (pathname === '/maps' || pathname.startsWith('/maps/'))
+  )
 }
 
 export function classifySourceUrl(url: string | null | undefined): Exclude<SourceKind, 'owner'> {
@@ -266,7 +333,12 @@ export function classifySourceUrl(url: string | null | undefined): Exclude<Sourc
   if (isGoogleMaps(host, parsed.pathname)) {
     return 'map_google'
   }
-  if (host === 'openstreetmap.org' || host.endsWith('.openstreetmap.org') || host === 'osm.org' || host.endsWith('.osm.org')) {
+  if (
+    host === 'openstreetmap.org' ||
+    host.endsWith('.openstreetmap.org') ||
+    host === 'osm.org' ||
+    host.endsWith('.osm.org')
+  ) {
     return 'osm'
   }
   const yandex = /(?:^|\.)yandex\.(?:ru|com|by|kz|uz)$/.test(host) || host === 'ya.ru' || host.endsWith('.ya.ru')
@@ -318,13 +390,14 @@ export function pastTtl(checkedAt: string | null, ttlDays: number, now = new Dat
 }
 
 export function factRisk(kind: string, reason: string) {
-  const base = kind === 'status' || kind === 'hours' || kind === 'transport'
-    ? 5
-    : kind === 'price' || kind === 'admission' || kind === 'seasonality' || kind === 'event'
-      ? 3
-      : kind === 'phone' || kind === 'address' || kind === 'coordinates'
-        ? 2
-        : 1
+  const base =
+    kind === 'status' || kind === 'hours' || kind === 'transport'
+      ? 5
+      : kind === 'price' || kind === 'admission' || kind === 'seasonality' || kind === 'event'
+        ? 3
+        : kind === 'phone' || kind === 'address' || kind === 'coordinates'
+          ? 2
+          : 1
   return base + (reason === 'season_boundary' ? 2 : 0)
 }
 
@@ -370,11 +443,13 @@ export function shouldWriteContact(changed: boolean, hasFact: boolean, next: str
 }
 
 export function hoursLookEmpty(rules: ScheduleRules) {
-  return rules.mode === 'hours'
-    && rules.seasons.every((season) => season.week.length === 0)
-    && rules.occurrences.length === 0
-    && rules.exceptions.length === 0
-    && !rules.note
+  return (
+    rules.mode === 'hours' &&
+    rules.seasons.every((season) => season.week.length === 0) &&
+    rules.occurrences.length === 0 &&
+    rules.exceptions.length === 0 &&
+    !rules.note
+  )
 }
 
 export type SeedDisposition = 'skip' | 'gap' | 'stated'
@@ -385,7 +460,7 @@ export type SeedDisposition = 'skip' | 'gap' | 'stated'
  * A gap is only the explicit unknown (empty hours), and that row does not copy a filled column.
  * A stated fact needs a source kind other than `none`.
  */
-export function seedFactDisposition(input: { sourceKind: string, empty: boolean }): SeedDisposition {
+export function seedFactDisposition(input: { sourceKind: string; empty: boolean }): SeedDisposition {
   if (input.empty) {
     return 'gap'
   }
@@ -395,7 +470,11 @@ export function seedFactDisposition(input: { sourceKind: string, empty: boolean 
   return 'stated'
 }
 
-export function seasonBoundaryWithin(rules: { seasons?: Array<{ from?: string, to?: string }> }, now = new Date(), horizon = SEASON_HORIZON_DAYS) {
+export function seasonBoundaryWithin(
+  rules: { seasons?: Array<{ from?: string; to?: string }> },
+  now = new Date(),
+  horizon = SEASON_HORIZON_DAYS,
+) {
   const marks = new Set<string>()
   for (const season of rules.seasons ?? []) {
     if (season.from) {
@@ -417,12 +496,12 @@ export function seasonBoundaryWithin(rules: { seasons?: Array<{ from?: string, t
   return false
 }
 
-export type WatchAction
-  = | { type: 'renew' }
-    | { type: 'changed' }
-    | { type: 'record' }
-    | { type: 'gone' }
-    | { type: 'backoff', delayDays: number, queue: boolean, failCount: number }
+export type WatchAction =
+  | { type: 'renew' }
+  | { type: 'changed' }
+  | { type: 'record' }
+  | { type: 'gone' }
+  | { type: 'backoff'; delayDays: number; queue: boolean; failCount: number }
 
 export function decideWatch(input: {
   status: number | null
@@ -458,7 +537,7 @@ export interface RenderedSection {
   hash: string
 }
 
-export function hashSections(parts: Array<{ path: string, text: string }>): RenderedSection[] {
+export function hashSections(parts: Array<{ path: string; text: string }>): RenderedSection[] {
   const sections: RenderedSection[] = []
   for (const part of parts) {
     const text = normalizeProse(part.text)
@@ -470,8 +549,12 @@ export function hashSections(parts: Array<{ path: string, text: string }>): Rend
   return sections
 }
 
-export function placeSections(input: { summary?: string | null, sections?: Array<{ text?: string | null }>, faq?: Array<{ question?: string | null, answer?: string | null }> }) {
-  const parts: Array<{ path: string, text: string }> = []
+export function placeSections(input: {
+  summary?: string | null
+  sections?: Array<{ text?: string | null }>
+  faq?: Array<{ question?: string | null; answer?: string | null }>
+}) {
+  const parts: Array<{ path: string; text: string }> = []
   if (input.summary) {
     parts.push({ path: 'summary', text: input.summary })
   }
@@ -484,11 +567,15 @@ export function placeSections(input: { summary?: string | null, sections?: Array
   return hashSections(parts)
 }
 
-export function articleSections(input: { summary?: string | null, sections?: Array<{ text?: string | null }>, body?: string | null }) {
+export function articleSections(input: {
+  summary?: string | null
+  sections?: Array<{ text?: string | null }>
+  body?: string | null
+}) {
   if (input.sections?.length) {
     return placeSections({ summary: input.summary, sections: input.sections })
   }
-  const parts: Array<{ path: string, text: string }> = []
+  const parts: Array<{ path: string; text: string }> = []
   if (input.summary) {
     parts.push({ path: 'summary', text: input.summary })
   }
@@ -499,7 +586,10 @@ export function articleSections(input: { summary?: string | null, sections?: Arr
 }
 
 function splitPlain(markdown: string) {
-  return markdown.split(/\n(?=## )/).map((part) => part.trim()).filter(Boolean)
+  return markdown
+    .split(/\n(?=## )/)
+    .map((part) => part.trim())
+    .filter(Boolean)
 }
 
 export function moduleProse(module: PageModule) {
@@ -512,7 +602,9 @@ export function moduleProse(module: PageModule) {
         module.verdict,
         ...module.tiles.flatMap((tile) => [tile.label, tile.value, tile.note]),
         ...module.rows.flatMap((row) => [row.label, row.value]),
-      ].filter(Boolean).join('\n')
+      ]
+        .filter(Boolean)
+        .join('\n')
     case 'ideas':
     case 'plans':
       return [module.title, ...module.items.flatMap((item) => [item.title, item.text])].join('\n')
@@ -525,9 +617,15 @@ export function moduleProse(module: PageModule) {
   }
 }
 
-export function collectionSections(input: { summary?: string | null, body?: string | null, modules?: PageModule[] | null }) {
+export function collectionSections(input: {
+  summary?: string | null
+  body?: string | null
+  modules?: PageModule[] | null
+}) {
   if (input.modules?.length) {
-    return hashSections(input.modules.map((module, index) => ({ path: `modules[${index}]`, text: moduleProse(module) })))
+    return hashSections(
+      input.modules.map((module, index) => ({ path: `modules[${index}]`, text: moduleProse(module) })),
+    )
   }
   return articleSections({ summary: input.summary, body: input.body })
 }
@@ -540,11 +638,9 @@ export function venueModuleProse(module: VenueModule) {
     case 'how-to-get':
       return module.text
     case 'dishes':
-      return [
-        module.title,
-        module.note,
-        ...module.items.flatMap((item) => [item.name, item.description, item.note]),
-      ].filter(Boolean).join('\n')
+      return [module.title, module.note, ...module.items.flatMap((item) => [item.name, item.description, item.note])]
+        .filter(Boolean)
+        .join('\n')
     case 'audience':
       return [module.title, ...module.items.flatMap((item) => [item.who, item.text])].filter(Boolean).join('\n')
     case 'practical':
@@ -558,8 +654,8 @@ export function venueModuleProse(module: VenueModule) {
   }
 }
 
-export function venueSections(input: { description?: string | null, modules?: VenueModule[] | null }) {
-  const parts: Array<{ path: string, text: string }> = []
+export function venueSections(input: { description?: string | null; modules?: VenueModule[] | null }) {
+  const parts: Array<{ path: string; text: string }> = []
   if (input.description) {
     parts.push({ path: 'summary', text: input.description })
   }
@@ -569,8 +665,12 @@ export function venueSections(input: { description?: string | null, modules?: Ve
   return hashSections(parts)
 }
 
-export function questSections(input: { summary?: string | null, body?: string | null, steps?: Array<{ title?: string | null, prompt?: string | null }> }) {
-  const parts: Array<{ path: string, text: string }> = []
+export function questSections(input: {
+  summary?: string | null
+  body?: string | null
+  steps?: Array<{ title?: string | null; prompt?: string | null }>
+}) {
+  const parts: Array<{ path: string; text: string }> = []
   if (input.summary) {
     parts.push({ path: 'summary', text: input.summary })
   }
@@ -583,7 +683,7 @@ export function questSections(input: { summary?: string | null, body?: string | 
   return hashSections(parts)
 }
 
-export function unreviewedSections(current: RenderedSection[], reviewed: Array<{ path: string, hash: string }>) {
+export function unreviewedSections(current: RenderedSection[], reviewed: Array<{ path: string; hash: string }>) {
   const hashes = new Set(reviewed.map((item) => item.hash))
   return current.filter((section) => !hashes.has(section.hash))
 }
@@ -591,7 +691,7 @@ export function unreviewedSections(current: RenderedSection[], reviewed: Array<{
 export interface ReviewWrite {
   ok: boolean
   rejected: string[]
-  sections: Array<{ path: string, hash: string }>
+  sections: Array<{ path: string; hash: string }>
 }
 
 /**
@@ -599,11 +699,18 @@ export interface ReviewWrite {
  * matches. A single path stores when that path still matches, and hashes
  * that no longer belong to any section are dropped.
  */
-export function reviewUpdate(current: RenderedSection[], stored: Array<{ path: string, hash: string }>, submitted: Array<{ path: string, hash: string }>, all: boolean): ReviewWrite {
+export function reviewUpdate(
+  current: RenderedSection[],
+  stored: Array<{ path: string; hash: string }>,
+  submitted: Array<{ path: string; hash: string }>,
+  all: boolean,
+): ReviewWrite {
   const live = new Map(current.map((section) => [section.path, section.hash]))
   const submittedByPath = new Map(submitted.map((item) => [item.path, item.hash]))
   if (all) {
-    const rejected = current.filter((section) => submittedByPath.get(section.path) !== section.hash).map((section) => section.path)
+    const rejected = current
+      .filter((section) => submittedByPath.get(section.path) !== section.hash)
+      .map((section) => section.path)
     if (rejected.length || current.length !== submitted.length) {
       const missing = current.filter((section) => !submittedByPath.has(section.path)).map((section) => section.path)
       return { ok: false, rejected: [...new Set([...rejected, ...missing])], sections: stored }
@@ -633,7 +740,7 @@ export interface TrustCounts {
   labels: Array<'verified' | 'stale' | 'unreviewed'>
 }
 
-export function trustOf(input: { staleFacts: number, unreviewed: number }): TrustCounts {
+export function trustOf(input: { staleFacts: number; unreviewed: number }): TrustCounts {
   const verified = input.staleFacts === 0 && input.unreviewed === 0
   if (verified) {
     return { verified: true, staleFacts: 0, unreviewed: 0, labels: ['verified'] }

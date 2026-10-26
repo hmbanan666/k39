@@ -55,7 +55,10 @@ function parsedHttpUrl(url: string | null | undefined) {
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       return null
     }
-    const host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+    const host = parsed.hostname
+      .toLowerCase()
+      .replace(/\.$/, '')
+      .replace(/^www\./, '')
     if (!host) {
       return null
     }
@@ -95,7 +98,9 @@ function isMapUrl(host: string, pathname: string) {
   if (GOOGLE_SITE.test(host) && (pathname === '/maps' || pathname.startsWith('/maps/'))) {
     return true
   }
-  return isYandexHost(host) && (pathname.includes('/maps') || pathname === '/profile' || pathname.startsWith('/profile/'))
+  return (
+    isYandexHost(host) && (pathname.includes('/maps') || pathname === '/profile' || pathname.startsWith('/profile/'))
+  )
 }
 
 function isAggregator(host: string, pathname: string) {

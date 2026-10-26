@@ -15,15 +15,18 @@
 <script setup lang="ts">
 import type { Crumb } from '~~/shared/seo'
 
-withDefaults(defineProps<{
-  h1?: string
-  crumbs?: Crumb[]
-  kicker?: string
-  lede?: string
-}>(), {
-  h1: '',
-  crumbs: () => [],
-  kicker: '',
-  lede: '',
-})
+withDefaults(
+  defineProps<{
+    h1?: string
+    crumbs?: Crumb[]
+    kicker?: string
+    lede?: string
+  }>(),
+  {
+    h1: '',
+    crumbs: () => [],
+    kicker: '',
+    lede: '',
+  },
+)
 </script>

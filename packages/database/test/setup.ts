@@ -49,7 +49,9 @@ async function initDb() {
   }
 
   const { PostgreSqlContainer } = await import('@testcontainers/postgresql')
-  container = await new PostgreSqlContainer('postgres:18').start()
+  container = await new PostgreSqlContainer('postgres:18')
+    .withLabels(process.env.AO_SESSION_ID ? { 'ao.session': process.env.AO_SESSION_ID } : {})
+    .start()
   const ephemeral = container.getConnectionUri()
   const testName = 'k39_test'
   const testUrl = new URL(ephemeral)

@@ -8,7 +8,8 @@ const contentScorePreviewInput = z.strictObject({
 
 export default defineStrictMcpTool({
   name: 'content_score_preview',
-  description: 'Score one page on demand without writing content_scores. A draft or review row is scored from that row. A place or venue with a pending payload (content_drafts) is scored from that payload, and the live page stays. A published page with no pending payload is scored from the live row. The response has preview true and source live, draft, or pending. Traffic results are not applicable for a draft row or a pending payload. On a draft row, not 200 and not in sitemap are not applicable and are left out of the average. A pending payload keeps its indexing score. Stored scores and /admin are unchanged. content_score_get still reads the stored score. There is no refresh argument; unknown keys are rejected.',
+  description:
+    'Score one page on demand without writing content_scores. A draft or review row is scored from that row. A place or venue with a pending payload (content_drafts) is scored from that payload, and the live page stays. A published page with no pending payload is scored from the live row. The response has preview true and source live, draft, or pending. Traffic results are not applicable for a draft row or a pending payload. On a draft row, not 200 and not in sitemap are not applicable and are left out of the average. A pending payload keeps its indexing score. Stored scores and /admin are unchanged. content_score_get still reads the stored score. There is no refresh argument; unknown keys are rejected.',
   annotations: { readOnlyHint: true },
   inputSchema: mcpStrictInput(contentScorePreviewInput),
   handler: async (input) => {

@@ -5,9 +5,33 @@
 
 export const WEEKDAYS_RU = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'] as const
 const SCHEMA_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
-const DAY_WORD: Record<string, number> = { понедельник: 1, вторник: 2, среду: 3, среда: 3, четверг: 4, пятницу: 5, пятница: 5, субботу: 6, суббота: 6, воскресенье: 0 }
+const DAY_WORD: Record<string, number> = {
+  понедельник: 1,
+  вторник: 2,
+  среду: 3,
+  среда: 3,
+  четверг: 4,
+  пятницу: 5,
+  пятница: 5,
+  субботу: 6,
+  суббота: 6,
+  воскресенье: 0,
+}
 const DAY_NAME = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
-const MONTH_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+const MONTH_GEN = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+]
 
 export interface ParsedHours {
   /** Weekdays 0..6 (Sunday first) with the same opening time. */
@@ -15,7 +39,7 @@ export interface ParsedHours {
   opens: string
   closes: string
   /** A monthly closed day, such as the last Monday of the month. */
-  monthlyClosure: { weekday: number, which: 'first' | 'last', label: string } | null
+  monthlyClosure: { weekday: number; which: 'first' | 'last'; label: string } | null
 }
 
 function clock(value: string) {
@@ -39,7 +63,10 @@ function dayIndex(short: string) {
 }
 
 function mainSchedule(text: string): Pick<ParsedHours, 'days' | 'opens' | 'closes'> | null {
-  const match = /^(?:ежедневно|каждый день|без выходных|(пн|вт|ср|чт|пт|сб|вс)(?:-(пн|вт|ср|чт|пт|сб|вс))?)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/.exec(text)
+  const match =
+    /^(?:ежедневно|каждый день|без выходных|(пн|вт|ср|чт|пт|сб|вс)(?:-(пн|вт|ср|чт|пт|сб|вс))?)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/.exec(
+      text,
+    )
   if (!match) {
     return null
   }
@@ -66,13 +93,20 @@ function mainSchedule(text: string): Pick<ParsedHours, 'days' | 'opens' | 'close
 const LAST_ENTRY = /^(?:касса|кассы|вход|вход и кассы)\s+до\s+\d{1,2}:\d{2}$/
 
 function closureNote(text: string, days: number[]) {
-  const monthly = /^(последний|последняя|первый|первая)\s+(\S+)\s+(?:каждого\s+)?месяца\s*(?:-\s*)?(санитарный день|выходной|закрыто)$/.exec(text)
+  const monthly =
+    /^(последний|последняя|первый|первая)\s+(\S+)\s+(?:каждого\s+)?месяца\s*(?:-\s*)?(санитарный день|выходной|закрыто)$/.exec(
+      text,
+    )
   if (monthly) {
     const weekday = DAY_WORD[monthly[2]!]
     if (weekday === undefined) {
       return undefined
     }
-    return { weekday, which: monthly[1]!.startsWith('послед') ? 'last' as const : 'first' as const, label: monthly[3] === 'санитарный день' ? 'Санитарный день' : 'Выходной' }
+    return {
+      weekday,
+      which: monthly[1]!.startsWith('послед') ? ('last' as const) : ('first' as const),
+      label: monthly[3] === 'санитарный день' ? 'Санитарный день' : 'Выходной',
+    }
   }
   // "пн выходной" after a range that already leaves Monday out adds nothing.
   const weekly = /^(пн|вт|ср|чт|пт|сб|вс)\s+выходной$/.exec(text)
@@ -84,7 +118,11 @@ function closureNote(text: string, days: number[]) {
 
 /** Reads an hours string, or returns null when it is not a recognised shape. */
 export function parsePlaceHours(raw: string | null | undefined): ParsedHours | null {
-  const text = (raw || '').replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase()
+  const text = (raw || '')
+    .replace(/[–—]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
   if (!text) {
     return null
   }
@@ -117,7 +155,15 @@ function nthWeekday(year: number, month: number, weekday: number, which: 'first'
 
 /** Today's calendar date in Kaliningrad, as UTC midnight. */
 function localToday(now: Date) {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kaliningrad', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now).split('-').map(Number)
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Kaliningrad',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(now)
+    .split('-')
+    .map(Number)
   return Date.UTC(parts[0]!, parts[1]! - 1, parts[2]!)
 }
 
@@ -150,7 +196,10 @@ export function nextClosureFact(raw: string | null | undefined, now: Date) {
     return null
   }
   const date = new Date(`${next}T00:00:00Z`)
-  return { label: `Ближайший ${hours.monthlyClosure.label.toLowerCase()}`, value: `${DAY_NAME[date.getUTCDay()]}, ${date.getUTCDate()} ${MONTH_GEN[date.getUTCMonth()]}` }
+  return {
+    label: `Ближайший ${hours.monthlyClosure.label.toLowerCase()}`,
+    value: `${DAY_NAME[date.getUTCDay()]}, ${date.getUTCDate()} ${MONTH_GEN[date.getUTCMonth()]}`,
+  }
 }
 
 /** schema.org openingHoursSpecification plus closed special days. */

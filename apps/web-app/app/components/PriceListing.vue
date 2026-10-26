@@ -23,7 +23,7 @@
             class="item-art"
             :src="page.item.image ?? ''"
             alt=""
-          >
+          />
         </span>
       </template>
     </PageHeader>
@@ -35,13 +35,15 @@
       <a
         :href="page.oblastHref"
         :aria-current="page.regionSlug ? undefined : 'page'"
-      >Вся область</a>
+        >Вся область</a
+      >
       <a
         v-for="town in page.towns"
         :key="town.slug"
         :href="town.href"
         :aria-current="town.slug === page.regionSlug ? 'page' : undefined"
-      >{{ town.title }} <span>{{ town.count }}</span></a>
+        >{{ town.title }} <span>{{ town.count }}</span></a
+      >
     </nav>
     <dl
       v-if="page.stats"
@@ -90,12 +92,14 @@
             <span
               v-if="item.variant"
               class="portion"
-            >{{ item.variant }}</span>
+              >{{ item.variant }}</span
+            >
           </template>
           <span
             v-if="from === item.slug"
             class="here"
-          >Это заведение</span>
+            >Это заведение</span
+          >
         </VenueCard>
       </li>
     </ol>
@@ -109,9 +113,7 @@
       >
         {{ page.stats.source.title }}
       </UiLink>
-      <template v-else>
-        {{ page.stats.source.title }}
-      </template>,
+      <template v-else> {{ page.stats.source.title }} </template>,
       <time :datetime="page.stats.source.date">{{ formatPriceDate(page.stats.source.date) }}</time>
       Цены могли измениться.
     </p>
@@ -130,9 +132,9 @@ import { usePublicHead } from '~/composables/usePublicHead'
 
 export interface PriceListingData {
   doc: SeoDocument
-  item: { slug: string, title: string, image: string | null, sticker: FoodStickerSlug | null }
+  item: { slug: string; title: string; image: string | null; sticker: FoodStickerSlug | null }
   regionSlug: string | null
-  towns: Array<{ slug: string, title: string, href: string, count: number }>
+  towns: Array<{ slug: string; title: string; href: string; count: number }>
   oblastHref: string
   stats?: {
     medianRub: number
@@ -158,7 +160,7 @@ export interface PriceListingData {
   }>
 }
 
-const props = defineProps<{ page: PriceListingData, from?: string }>()
+const props = defineProps<{ page: PriceListingData; from?: string }>()
 
 usePublicHead(props.page.doc)
 </script>
@@ -170,7 +172,9 @@ usePublicHead(props.page.doc)
   gap: 0.85rem 1.6rem;
   margin: 0 0 0.7rem;
 }
-.figures div { min-width: 6.5rem; }
+.figures div {
+  min-width: 6.5rem;
+}
 .figures dt {
   margin: 0;
   color: var(--muted);
@@ -183,8 +187,16 @@ usePublicHead(props.page.doc)
   font-weight: 700;
   line-height: 1.1;
 }
-.fresh { margin: 0 0 1.2rem; color: var(--muted); }
-.towns { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1.4rem; }
+.fresh {
+  margin: 0 0 1.2rem;
+  color: var(--muted);
+}
+.towns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.4rem;
+}
 .towns a {
   padding: 0.3rem 0.8rem;
   border: 1px solid var(--color-line);
@@ -193,8 +205,15 @@ usePublicHead(props.page.doc)
   color: var(--text);
   text-decoration: none;
 }
-.towns a span { color: var(--muted); font-size: var(--step--1); }
-.towns a[aria-current='page'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.towns a span {
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+.towns a[aria-current='page'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
 ol {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
@@ -204,8 +223,15 @@ ol {
   list-style: none;
   counter-reset: cheaper;
 }
-li { display: flex; min-width: 0; position: relative; }
-li :deep(.card) { flex: 1; min-width: 0; }
+li {
+  display: flex;
+  min-width: 0;
+  position: relative;
+}
+li :deep(.card) {
+  flex: 1;
+  min-width: 0;
+}
 .rank {
   position: absolute;
   z-index: 1;
@@ -222,16 +248,29 @@ li :deep(.card) { flex: 1; min-width: 0; }
   font-weight: 700;
   line-height: 1;
 }
-li.current :deep(.card) { box-shadow: 0 0 0 2px var(--color-sea); }
-.here { color: var(--color-sea); font-size: 0.82rem; font-weight: 700; }
+li.current :deep(.card) {
+  box-shadow: 0 0 0 2px var(--color-sea);
+}
+.here {
+  color: var(--color-sea);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
 .ask {
   font-family: var(--font-display);
   font-size: 1.45rem;
   font-weight: 700;
   line-height: 1;
 }
-.portion { color: var(--muted); font-size: var(--step--1); }
-.note { margin: 1.2rem 0 0; color: var(--muted); font-size: 0.92rem; }
+.portion {
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+.note {
+  margin: 1.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
 .item-mark {
   display: grid;
   flex: none;

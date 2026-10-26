@@ -45,7 +45,8 @@
           <span
             v-if="item.note"
             class="note"
-          >{{ item.note }}</span>
+            >{{ item.note }}</span
+          >
         </VenueCard>
       </li>
     </ul>
@@ -114,10 +115,21 @@ defineProps<{ blocks: PublicListingModule[] }>()
 </script>
 
 <style scoped>
-.mod { margin: 0 0 1.8rem; }
-.mod h2 { margin: 0 0 0.8rem; }
-.picks { margin: 0; padding: 0; list-style: none; }
-.picks li { display: flex; min-width: 0; }
+.mod {
+  margin: 0 0 1.8rem;
+}
+.mod h2 {
+  margin: 0 0 0.8rem;
+}
+.picks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.picks li {
+  display: flex;
+  min-width: 0;
+}
 .why {
   display: inline-flex;
   gap: 0.3rem;
@@ -127,11 +139,33 @@ defineProps<{ blocks: PublicListingModule[] }>()
   font-size: var(--step--1);
   font-weight: 700;
 }
-.note { color: var(--muted); font-size: var(--step--1); }
-.areas, .seasons { margin: 0; padding: 0; list-style: none; }
-.areas li, .seasons li { margin-top: 1rem; }
-.areas h3, .seasons h3 { margin: 0 0 0.3rem; }
-.faq details { padding: 0.6rem 0; border-top: 1px solid var(--color-line); }
-.faq summary { font-weight: 600; cursor: pointer; }
-.prose :deep(p:last-child) { margin-bottom: 0; }
+.note {
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+.areas,
+.seasons {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.areas li,
+.seasons li {
+  margin-top: 1rem;
+}
+.areas h3,
+.seasons h3 {
+  margin: 0 0 0.3rem;
+}
+.faq details {
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--color-line);
+}
+.faq summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+.prose :deep(p:last-child) {
+  margin-bottom: 0;
+}
 </style>

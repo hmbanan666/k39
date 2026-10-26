@@ -12,17 +12,17 @@
           <source
             type="image/webp"
             srcset="/logo/moose-head.webp 1x, /logo/moose-head@2x.webp 2x"
-          >
+          />
           <source
             type="image/png"
             srcset="/logo/moose-head.png 1x, /logo/moose-head@2x.png 2x"
-          >
+          />
           <img
             src="/logo/moose-head.png"
             alt=""
             width="108"
             height="96"
-          >
+          />
         </picture>
         <span class="logo-word">
           K39
@@ -38,27 +38,32 @@
           :key="link.href"
           :href="link.href"
           :class="{ active: path === link.href }"
-        >{{ link.text }}</a>
+          >{{ link.text }}</a
+        >
         <a
           href="/map"
           :class="{ active: path === '/map' }"
-        >Карта</a>
+          >Карта</a
+        >
         <span class="account">
           <a
             v-if="loggedIn"
             href="/kabinet"
             :class="{ active: path.startsWith('/kabinet') }"
-          >Кабинет</a>
+            >Кабинет</a
+          >
           <a
             v-if="isStaff"
             href="/admin"
             :class="{ active: path.startsWith('/admin') }"
-          >Админка</a>
+            >Админка</a
+          >
           <a
             v-if="!loggedIn"
             href="/sign-in?redirectTo=/kabinet"
             :class="{ active: path === '/sign-in' }"
-          >Войти</a>
+            >Войти</a
+          >
         </span>
       </nav>
       <SearchForm
@@ -83,11 +88,14 @@
 import { tablerIcon } from '~~/shared/icons'
 import { HUBS } from '~~/shared/links'
 
-withDefaults(defineProps<{
-  tagline?: string
-}>(), {
-  tagline: 'Калининградская область',
-})
+withDefaults(
+  defineProps<{
+    tagline?: string
+  }>(),
+  {
+    tagline: 'Калининградская область',
+  },
+)
 
 const route = useRoute()
 const { loggedIn, user } = useUserSession()
@@ -203,16 +211,24 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
     align-items: center;
     height: var(--header-logo-row);
   }
-  .logo-word { font-size: 1.3rem; }
-  .logo-word small { display: none; }
+  .logo-word {
+    font-size: 1.3rem;
+  }
+  .logo-word small {
+    display: none;
+  }
   .nav {
     flex: 1 0 100%;
     flex-wrap: nowrap;
     gap: 0.5rem;
     overflow-x: auto;
   }
-  .account { margin-left: 0; }
-  .search-box { display: none; }
+  .account {
+    margin-left: 0;
+  }
+  .search-box {
+    display: none;
+  }
   .search-link {
     display: inline-flex;
     order: 1;
@@ -225,7 +241,9 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
     border-radius: 999px;
     color: var(--text);
   }
-  .nav { order: 2; }
+  .nav {
+    order: 2;
+  }
   .nav a {
     display: inline-flex;
     flex: none;

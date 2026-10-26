@@ -15,7 +15,8 @@
         :key="town.slug"
         :href="town.href"
         :aria-current="page.type === 'town' && town.slug === page.town.slug ? 'page' : undefined"
-      >{{ town.title }} <span>{{ town.count }}</span></a>
+        >{{ town.title }} <span>{{ town.count }}</span></a
+      >
     </nav>
     <template v-if="page.type === 'town'">
       <div class="tools">
@@ -101,20 +102,20 @@ interface EatNowItem {
   notices: NoticeWindow[]
 }
 
-export type EatNowData
-  = | { type: 'index', doc: SeoDocument, towns: Array<{ slug: string, title: string, href: string, count: number }> }
-    | {
+export type EatNowData =
+  | { type: 'index'; doc: SeoDocument; towns: Array<{ slug: string; title: string; href: string; count: number }> }
+  | {
       type: 'town'
       doc: SeoDocument
-      town: { slug: string, title: string, where: string }
-      centre: { latitude: number, longitude: number } | null
-      towns: Array<{ slug: string, title: string, href: string, count: number }>
+      town: { slug: string; title: string; where: string }
+      centre: { latitude: number; longitude: number } | null
+      towns: Array<{ slug: string; title: string; href: string; count: number }>
       items: EatNowItem[]
     }
 
 const props = defineProps<{ page: EatNowData }>()
 
-const origin = ref<{ latitude: number, longitude: number } | null>(null)
+const origin = ref<{ latitude: number; longitude: number } | null>(null)
 const statuses = ref<Record<string, EatNowGroup> | null>(null)
 const locating = ref(false)
 const canLocate = ref(false)
@@ -151,7 +152,9 @@ const originNote = computed(() => {
   if (origin.value) {
     return 'Расстояние от вас, по прямой.'
   }
-  return props.page.centre ? `Расстояние от центра, по прямой. ${props.page.town.title}.` : 'Расстояния пока не определены.'
+  return props.page.centre
+    ? `Расстояние от центра, по прямой. ${props.page.town.title}.`
+    : 'Расстояния пока не определены.'
 })
 
 function refreshStatuses() {
@@ -162,9 +165,12 @@ function refreshStatuses() {
   const next: Record<string, EatNowGroup> = {}
   for (const item of props.page.items) {
     const value = liveStatus(item.schedule, item.notices, now)
-    next[item.slug] = value.status === 'open' || value.status === 'closing_soon'
-      ? 'open'
-      : value.status === 'unknown' ? 'unknown' : 'later'
+    next[item.slug] =
+      value.status === 'open' || value.status === 'closing_soon'
+        ? 'open'
+        : value.status === 'unknown'
+          ? 'unknown'
+          : 'later'
   }
   statuses.value = next
 }
@@ -186,32 +192,40 @@ function locate() {
       return
     }
     locating.value = false
-    locationError.value = error?.code === 1
-      ? 'Доступ к местоположению запрещён. Разрешите его в настройках браузера и повторите попытку.'
-      : error?.code === 3
-        ? 'Не удалось определить местоположение за 10 секунд. Попробуйте ещё раз.'
-        : 'Не удалось определить местоположение. Попробуйте ещё раз.'
+    locationError.value =
+      error?.code === 1
+        ? 'Доступ к местоположению запрещён. Разрешите его в настройках браузера и повторите попытку.'
+        : error?.code === 3
+          ? 'Не удалось определить местоположение за 10 секунд. Попробуйте ещё раз.'
+          : 'Не удалось определить местоположение. Попробуйте ещё раз.'
   }
   try {
-    navigator.geolocation.getCurrentPosition((position) => {
-      if (request !== locationRequest) {
-        return
-      }
-      origin.value = { latitude: position.coords.latitude, longitude: position.coords.longitude }
-      locating.value = false
-    }, fail, { maximumAge: 300_000, timeout: 10_000 })
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (request !== locationRequest) {
+          return
+        }
+        origin.value = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+        locating.value = false
+      },
+      fail,
+      { maximumAge: 300_000, timeout: 10_000 },
+    )
   } catch {
     fail()
   }
 }
 
-watch(() => props.page.type === 'town' ? props.page.town.slug : null, () => {
-  locationRequest++
-  origin.value = null
-  locating.value = false
-  locationError.value = canLocate.value ? '' : locationUnavailable
-  refreshStatuses()
-})
+watch(
+  () => (props.page.type === 'town' ? props.page.town.slug : null),
+  () => {
+    locationRequest++
+    origin.value = null
+    locating.value = false
+    locationError.value = canLocate.value ? '' : locationUnavailable
+    refreshStatuses()
+  },
+)
 
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
@@ -231,7 +245,12 @@ usePublicHead(props.page.doc)
 </script>
 
 <style scoped>
-.towns { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1.5rem; }
+.towns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+}
 .towns a {
   padding: 0.3rem 0.8rem;
   border: 1px solid var(--color-line);
@@ -240,13 +259,44 @@ usePublicHead(props.page.doc)
   color: var(--text);
   text-decoration: none;
 }
-.towns a span { color: var(--muted); font-size: var(--step--1); }
-.towns a[aria-current='page'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
-.tools { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; }
-.note { margin: 0; color: var(--muted); font-size: var(--step--1); }
-.location-note, .location-error { margin: 0 0 1.2rem; }
-.location-error { color: var(--color-warn); font-size: var(--step--1); }
-.group { margin-bottom: 2.4rem; }
-.group h2 { margin: 0 0 1rem; }
-.count { color: var(--muted); font-size: 0.7em; }
+.towns a span {
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+.towns a[aria-current='page'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+.note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+.location-note,
+.location-error {
+  margin: 0 0 1.2rem;
+}
+.location-error {
+  color: var(--color-warn);
+  font-size: var(--step--1);
+}
+.group {
+  margin-bottom: 2.4rem;
+}
+.group h2 {
+  margin: 0 0 1rem;
+}
+.count {
+  color: var(--muted);
+  font-size: 0.7em;
+}
 </style>

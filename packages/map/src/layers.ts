@@ -89,7 +89,7 @@ export function stopsLayer(id: string, stops: MapStopInput[]): StopsLayer {
   return { type: 'stops', id: layerId(id), stops }
 }
 
-export function mapScene(input: { variant: StyleVariant, basemap: BasemapSpec, layers: MapLayer[] }): MapScene {
+export function mapScene(input: { variant: StyleVariant; basemap: BasemapSpec; layers: MapLayer[] }): MapScene {
   const seen = new Set<string>()
   for (const layer of input.layers) {
     if (seen.has(layer.id)) {
@@ -109,7 +109,7 @@ export interface MapFeatureCollection {
   features: Array<{
     type: 'Feature'
     id?: string
-    geometry: { type: 'Point', coordinates: LngLat } | { type: 'LineString', coordinates: LngLat[] }
+    geometry: { type: 'Point'; coordinates: LngLat } | { type: 'LineString'; coordinates: LngLat[] }
     properties: Record<string, string | number>
   }>
 }
@@ -149,11 +149,13 @@ export function layerCollection(layer: MapLayer): MapFeatureCollection {
   }
   return {
     type: 'FeatureCollection',
-    features: [{
-      type: 'Feature',
-      geometry: { type: 'LineString', coordinates: layer.coordinates },
-      properties: { dashed: layer.dashed ? 1 : 0 },
-    }],
+    features: [
+      {
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: layer.coordinates },
+        properties: { dashed: layer.dashed ? 1 : 0 },
+      },
+    ],
   }
 }
 
@@ -193,7 +195,9 @@ export function layerCoordinates(layers: readonly MapLayer[]): LngLat[] {
 }
 
 export function lonePoint(layers: readonly MapLayer[]): LngLat | null {
-  const points = layers.filter((layer): layer is PointsLayer => layer.type === 'points').flatMap((layer) => layer.points)
+  const points = layers
+    .filter((layer): layer is PointsLayer => layer.type === 'points')
+    .flatMap((layer) => layer.points)
   const stops = layers.filter((layer): layer is StopsLayer => layer.type === 'stops').flatMap((layer) => layer.stops)
   if (points.length === 1 && stops.length === 0) {
     return points[0]?.coordinates ?? null

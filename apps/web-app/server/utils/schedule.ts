@@ -26,7 +26,15 @@ export function unknownSpansFor(rules: ScheduleRules, at = new Date()) {
   return unknownSpans(rules, addDays(localNow(at).date, -1), WINDOW_DAYS + 1)
 }
 
-export async function saveSchedule(entityType: string, entityId: string, record: ScheduleRecord, options?: { actor?: FactActor, syncFacts?: boolean, pageStatus?: string | null }, tx?: ContentTx): Promise<{ conflict: true, queueId: string } | { conflict: false, saved: Awaited<ReturnType<typeof db.schedules.save>> }> {
+export async function saveSchedule(
+  entityType: string,
+  entityId: string,
+  record: ScheduleRecord,
+  options?: { actor?: FactActor; syncFacts?: boolean; pageStatus?: string | null },
+  tx?: ContentTx,
+): Promise<
+  { conflict: true; queueId: string } | { conflict: false; saved: Awaited<ReturnType<typeof db.schedules.save>> }
+> {
   rejectBannedSites(record.sourceUrl)
   if (!tx) {
     return db.editor.transaction((transaction) => saveSchedule(entityType, entityId, record, options, transaction))
@@ -39,20 +47,28 @@ export async function saveSchedule(entityType: string, entityId: string, record:
       return { conflict: true as const, queueId: blocked.queueId }
     }
   }
-  const saved = await db.schedules.save({
-    entityType,
-    entityId,
-    rules: record.rules as unknown as Record<string, unknown>,
-    sourceUrl: record.sourceUrl,
-    verifiedAt: record.verifiedAt,
-  }, intervalsFor(record.rules), tx)
+  const saved = await db.schedules.save(
+    {
+      entityType,
+      entityId,
+      rules: record.rules as unknown as Record<string, unknown>,
+      sourceUrl: record.sourceUrl,
+      verifiedAt: record.verifiedAt,
+    },
+    intervalsFor(record.rules),
+    tx,
+  )
   if (syncFacts && (entityType === 'place' || entityType === 'venue')) {
     await writeHoursFact(entityType, entityId, record, actor, options?.pageStatus, tx)
   }
   return { conflict: false as const, saved }
 }
 
-export async function loadSchedule(entityType: string, entityId: string, tx?: ContentTx): Promise<ScheduleRecord | null> {
+export async function loadSchedule(
+  entityType: string,
+  entityId: string,
+  tx?: ContentTx,
+): Promise<ScheduleRecord | null> {
   const row = await db.schedules.get(entityType, entityId, tx)
   const rules = row ? readRules(row.rules) : null
   return row && rules ? { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt } : null
@@ -73,7 +89,12 @@ export async function refreshScheduleIntervals() {
     if (!rules) {
       continue
     }
-    await saveSchedule(row.entityType, row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }, { syncFacts: false })
+    await saveSchedule(
+      row.entityType,
+      row.entityId,
+      { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt },
+      { syncFacts: false },
+    )
     count += 1
   }
   return count

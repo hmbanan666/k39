@@ -5,12 +5,16 @@ import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 function pnpmVersion() {
-  const result = spawnSync('pnpm', ['--version'], { encoding: 'utf8', timeout: 15_000 })
+  const result = spawnSync('corepack', ['pnpm', '--version'], { encoding: 'utf8', timeout: 15_000 })
   return result.status === 0 ? result.stdout.trim() : null
 }
 
 /** Tool resolution only: no install, profile rewrite, database or image assumption. */
-export function inspectToolchain({ root = process.cwd(), nodeVersion = process.version, probePnpm = pnpmVersion } = {}) {
+export function inspectToolchain({
+  root = process.cwd(),
+  nodeVersion = process.version,
+  probePnpm = pnpmVersion,
+} = {}) {
   const expectedNode = readFileSync(resolve(root, '.nvmrc'), 'utf8').trim().replace(/^v/, '')
   const manager = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).packageManager
   const expectedPnpm = /^pnpm@(\d+\.\d+\.\d+)(?:\+.*)?$/.exec(manager ?? '')?.[1]
@@ -20,10 +24,18 @@ export function inspectToolchain({ root = process.cwd(), nodeVersion = process.v
   const node = { expected: expectedNode, actual: nodeVersion.replace(/^v/, ''), executable: process.execPath }
   // Do not let a package-manager shim download or run under the wrong Node.
   if (node.actual !== node.expected) {
-    return { ok: false, node, pnpm: { expected: expectedPnpm, actual: null, reason: 'not checked: select the pinned Node first' } }
+    return {
+      ok: false,
+      node,
+      pnpm: { expected: expectedPnpm, actual: null, reason: 'not checked: select the pinned Node first' },
+    }
   }
   const actual = probePnpm()
-  return { ok: actual === expectedPnpm, node, pnpm: { expected: expectedPnpm, actual, reason: actual ? null : 'unavailable or version probe failed' } }
+  return {
+    ok: actual === expectedPnpm,
+    node,
+    pnpm: { expected: expectedPnpm, actual, reason: actual ? null : 'unavailable or version probe failed' },
+  }
 }
 
 const entry = process.argv[1]
@@ -35,7 +47,11 @@ if (entry && import.meta.url === pathToFileURL(realpathSync(entry)).href) {
     } else {
       console.log(`node: ${report.node.actual} (want ${report.node.expected}) at ${report.node.executable}`)
       console.log(`pnpm: ${report.pnpm.actual ?? report.pnpm.reason} (want ${report.pnpm.expected})`)
-      console.log(report.ok ? 'toolchain ready; database and application readiness are separate checks' : 'toolchain check failed; select project tools in this shell and retry')
+      console.log(
+        report.ok
+          ? 'toolchain ready; database and application readiness are separate checks'
+          : 'toolchain check failed; select project tools in this shell and retry',
+      )
     }
     process.exitCode = report.ok ? 0 : 1
   } catch (error) {

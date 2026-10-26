@@ -65,7 +65,10 @@ async function loadCheaperSamples(now = new Date()) {
     }
   }
   const ids = [...new Set(samples.map((sample) => sample.venueId))]
-  const facts = await readShownFacts('venue', ids.map((id) => ({ id, status: 'published' })))
+  const facts = await readShownFacts(
+    'venue',
+    ids.map((id) => ({ id, status: 'published' })),
+  )
   const open = samples.filter((sample) => facts.get(sample.venueId)?.status !== 'closed')
   return { samples: open, regions, catalog }
 }
@@ -76,11 +79,13 @@ function listingStats(points: CheaperSample[]) {
     ...stats,
     places: points.length,
     freshness: priceFreshnessText(points.map((point) => point.checkedAt)),
-    source: sharedPriceSource(points.map((point) => ({
-      sourceTitle: point.sourceTitle,
-      sourceUrl: point.sourceUrl,
-      checkedAt: point.checkedAt,
-    }))),
+    source: sharedPriceSource(
+      points.map((point) => ({
+        sourceTitle: point.sourceTitle,
+        sourceUrl: point.sourceUrl,
+        checkedAt: point.checkedAt,
+      })),
+    ),
   }
 }
 
@@ -96,15 +101,16 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
     return null
   }
   const wanted = regionSlug?.trim().toLowerCase() || null
-  const region = wanted ? regions.find((row) => row.slug === wanted) ?? null : null
+  const region = wanted ? (regions.find((row) => row.slug === wanted) ?? null) : null
   if (wanted && !region) {
     return null
   }
   const grouped = groupCheaperSamples(samples.filter((sample) => sample.itemSlug === slug))
   const group = grouped.items.find((entry) => entry.slug === slug)
-  const points = (region
-    ? grouped.cities.find((city) => city.slug === region.slug)?.items.find((entry) => entry.slug === slug)?.points
-    : group?.points) ?? []
+  const points =
+    (region
+      ? grouped.cities.find((city) => city.slug === region.slug)?.items.find((entry) => entry.slug === slug)?.points
+      : group?.points) ?? []
   if (!showsPriceSample(points.length)) {
     return null
   }
@@ -116,19 +122,24 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
     db.schedules.forEntities('venue', [...byId.keys()]),
     loadNoticeWindows('venue', [...byId.keys()]),
   ])
-  const scheduleById = new Map(scheduleRows.flatMap((row) => {
-    const rules = readRules(row.rules)
-    return rules ? [[row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }] as const] : []
-  }))
+  const scheduleById = new Map(
+    scheduleRows.flatMap((row) => {
+      const rules = readRules(row.rules)
+      return rules ? [[row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }] as const] : []
+    }),
+  )
   const now = new Date()
-  const facts = await readShownFacts('venue', [...byId.values()].map((venue) => ({
-    id: venue.id,
-    address: venue.address,
-    latitude: venue.latitude,
-    longitude: venue.longitude,
-    phone: venue.phone,
-    status: venue.status,
-  })))
+  const facts = await readShownFacts(
+    'venue',
+    [...byId.values()].map((venue) => ({
+      id: venue.id,
+      address: venue.address,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+      phone: venue.phone,
+      status: venue.status,
+    })),
+  )
   const shownIds = new Set<string>()
   const items = points.flatMap((point) => {
     const venue = byId.get(point.venueId)
@@ -138,20 +149,22 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
     }
     shownIds.add(venue.id)
     const cover = covers.get(venue.id)
-    return [{
-      href: `/zavedeniya/${venue.slug}`,
-      slug: venue.slug,
-      name: venue.name,
-      kindLabel: kindLabel(venue.kind),
-      media: cover ? toPublicMedia(cover) : null,
-      schedule: scheduleById.get(venue.id) ?? null,
-      notices: windows.get(venue.id) ?? [],
-      stale: isStale(venue.lastVerifiedAt, now),
-      meta: shownFacts?.address?.trim() && shownFacts.address !== 'уточняйте' ? shownFacts.address.trim() : '',
-      phone: omitFactGap(shownFacts?.phone),
-      priceLabel: formatRub(point.priceRub),
-      variant: knownPortion(point.variant) ?? '',
-    }]
+    return [
+      {
+        href: `/zavedeniya/${venue.slug}`,
+        slug: venue.slug,
+        name: venue.name,
+        kindLabel: kindLabel(venue.kind),
+        media: cover ? toPublicMedia(cover) : null,
+        schedule: scheduleById.get(venue.id) ?? null,
+        notices: windows.get(venue.id) ?? [],
+        stale: isStale(venue.lastVerifiedAt, now),
+        meta: shownFacts?.address?.trim() && shownFacts.address !== 'уточняйте' ? shownFacts.address.trim() : '',
+        phone: omitFactGap(shownFacts?.phone),
+        priceLabel: formatRub(point.priceRub),
+        variant: knownPortion(point.variant) ?? '',
+      },
+    ]
   })
   if (!showsPriceSample(items.length)) {
     return null
@@ -163,12 +176,14 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
         return []
       }
       const row = regions.find((entry) => entry.slug === city.slug)
-      return [{
-        slug: city.slug,
-        title: regionLabel(row) || city.slug,
-        href: priceItemPath(slug, city.slug),
-        count: match.count,
-      }]
+      return [
+        {
+          slug: city.slug,
+          title: regionLabel(row) || city.slug,
+          href: priceItemPath(slug, city.slug),
+          count: match.count,
+        },
+      ]
     })
     .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'ru'))
   const meta = priceListingMeta({
@@ -212,17 +227,22 @@ export async function loadPriceListing(itemSlug: string, regionSlug: string | nu
   }
 }
 
-function cityCards(cities: ReturnType<typeof groupCheaperSamples>['cities'], regions: Array<{ slug: string, title: string, shortTitle?: string | null }>) {
-  return cities.map((city) => {
-    const row = regions.find((entry) => entry.slug === city.slug)
-    return {
-      slug: city.slug,
-      title: regionLabel(row) || city.slug,
-      href: cheaperCityPath(city.slug),
-      places: placesLabel(city.venueCount),
-      venueCount: city.venueCount,
-    }
-  }).sort((a, b) => b.venueCount - a.venueCount || a.title.localeCompare(b.title, 'ru'))
+function cityCards(
+  cities: ReturnType<typeof groupCheaperSamples>['cities'],
+  regions: Array<{ slug: string; title: string; shortTitle?: string | null }>,
+) {
+  return cities
+    .map((city) => {
+      const row = regions.find((entry) => entry.slug === city.slug)
+      return {
+        slug: city.slug,
+        title: regionLabel(row) || city.slug,
+        href: cheaperCityPath(city.slug),
+        places: placesLabel(city.venueCount),
+        venueCount: city.venueCount,
+      }
+    })
+    .sort((a, b) => b.venueCount - a.venueCount || a.title.localeCompare(b.title, 'ru'))
 }
 
 /** Cities that have at least one comparable item. */
@@ -306,17 +326,30 @@ export async function loadCheaperCity(regionSlug: string) {
 export async function priceSitemapEntries() {
   const { samples } = await loadCheaperSamples()
   const grouped = groupCheaperSamples(samples)
-  const itemLocs = indexablePriceLocs(grouped.items.filter((item) => showsPriceSample(item.count)).map((item) => ({
-    slug: item.slug,
-    points: item.points.map((point) => ({
-      regionSlug: point.regionSlug,
-      checkedAt: point.checkedAt,
-    })),
-  })))
+  const itemLocs = indexablePriceLocs(
+    grouped.items
+      .filter((item) => showsPriceSample(item.count))
+      .map((item) => ({
+        slug: item.slug,
+        points: item.points.map((point) => ({
+          regionSlug: point.regionSlug,
+          checkedAt: point.checkedAt,
+        })),
+      })),
+  )
   const indexableCities = grouped.cities.filter((city) => isPriceIndexable(city.venueCount))
   const cityLocs = indexableCities.map((city) => ({ loc: cheaperCityPath(city.slug), lastmod: city.lastmod }))
   const indexLoc = indexableCities.length
-    ? [{ loc: CHEAPER_PATH, lastmod: indexableCities.map((city) => city.lastmod).sort().at(-1) ?? null }]
+    ? [
+        {
+          loc: CHEAPER_PATH,
+          lastmod:
+            indexableCities
+              .map((city) => city.lastmod)
+              .sort()
+              .at(-1) ?? null,
+        },
+      ]
     : []
   return [...indexLoc, ...cityLocs, ...itemLocs]
 }

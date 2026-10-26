@@ -78,12 +78,16 @@ export async function weeklyContentReport() {
   const [byReason, top] = await Promise.all([db.facts.countsByReason(), db.facts.topOpen(10)])
   const open = await db.facts.openRows()
   const openKeys = new Set(open.map((row) => `${row.pageType}:${row.entityId}`))
-  const goalAndQueue = current.filter((row) => row.goal30d != null && row.organic30d < row.goal30d && openKeys.has(`${row.pageType}:${row.entityId}`)).map((row) => ({
-    path: row.path,
-    title: row.title,
-    organic30d: row.organic30d,
-    goal30d: row.goal30d,
-  }))
+  const goalAndQueue = current
+    .filter(
+      (row) => row.goal30d != null && row.organic30d < row.goal30d && openKeys.has(`${row.pageType}:${row.entityId}`),
+    )
+    .map((row) => ({
+      path: row.path,
+      title: row.title,
+      organic30d: row.organic30d,
+      goal30d: row.goal30d,
+    }))
   return {
     ...report,
     queue: {
@@ -163,9 +167,20 @@ export async function previewContentScore(path: string) {
             return row
           }
           const schedule = Object.hasOwn(draft.payload, 'schedule')
-            ? draft.payload.schedule as typeof row.schedule
+            ? (draft.payload.schedule as typeof row.schedule)
             : row.schedule
-          return { ...row, name: next.name, kind: next.kind, description: next.description, latitude: next.latitude, longitude: next.longitude, factsCheckedAt: next.lastVerifiedAt, regionSlug: region?.slug ?? null, regionTitle: region?.title ?? null, schedule }
+          return {
+            ...row,
+            name: next.name,
+            kind: next.kind,
+            description: next.description,
+            latitude: next.latitude,
+            longitude: next.longitude,
+            factsCheckedAt: next.lastVerifiedAt,
+            regionSlug: region?.slug ?? null,
+            regionTitle: region?.title ?? null,
+            schedule,
+          }
         }),
       }
     }
@@ -233,57 +248,110 @@ export async function readPassport(page: ResolvedPage) {
   }
 }
 
-export async function writePassport(page: ResolvedPage, input: {
-  targetQueries?: string[]
-  audience?: string | null
-  primaryAction?: PrimaryAction | null
-  goal30d?: number | null
-  goal90d?: number | null
-  notes?: string | null
-  lengthOverride?: LengthOverrideInput | null
-}) {
+export async function writePassport(
+  page: ResolvedPage,
+  input: {
+    targetQueries?: string[]
+    audience?: string | null
+    primaryAction?: PrimaryAction | null
+    goal30d?: number | null
+    goal90d?: number | null
+    notes?: string | null
+    lengthOverride?: LengthOverrideInput | null
+  },
+) {
   let lengthOverride: Awaited<ReturnType<typeof stampLengthOverride>> | undefined
   if (input.lengthOverride !== undefined) {
     if (input.lengthOverride) {
-      const reason = page.pageType === 'venue'
-        ? 'Для заведения потолок длины не расширяется'
-        : lengthOverrideRejection(lengthNorm(page.pageType, page.categorySlug).max, input.lengthOverride)
+      const reason =
+        page.pageType === 'venue'
+          ? 'Для заведения потолок длины не расширяется'
+          : lengthOverrideRejection(lengthNorm(page.pageType, page.categorySlug).max, input.lengthOverride)
       if (reason) {
         throw createError({ statusCode: 400, statusMessage: reason })
       }
     }
     const previous = input.lengthOverride
-      ? (await db.scoring.findPassport(page.pageType, page.entityId))?.lengthOverride ?? null
+      ? ((await db.scoring.findPassport(page.pageType, page.entityId))?.lengthOverride ?? null)
       : null
     lengthOverride = stampLengthOverride(input.lengthOverride, previous)
   }
-  await savePassportContent({
-    pageType: page.pageType,
-    entityId: page.entityId,
-    path: page.path,
-    targetQueries: input.targetQueries,
-    audience: input.audience,
-    primaryAction: input.primaryAction,
-    goal30d: input.goal30d,
-    goal90d: input.goal90d,
-    notes: input.notes,
-    ...(lengthOverride !== undefined ? { lengthOverride } : {}),
-  }, {
-    prose: [input.notes, input.audience, input.targetQueries],
-    publishing: false,
-  })
+  await savePassportContent(
+    {
+      pageType: page.pageType,
+      entityId: page.entityId,
+      path: page.path,
+      targetQueries: input.targetQueries,
+      audience: input.audience,
+      primaryAction: input.primaryAction,
+      goal30d: input.goal30d,
+      goal90d: input.goal90d,
+      notes: input.notes,
+      ...(lengthOverride !== undefined ? { lengthOverride } : {}),
+    },
+    {
+      prose: [input.notes, input.audience, input.targetQueries],
+      publishing: false,
+    },
+  )
   return readPassport(page)
 }
 
-export async function resolveScoredPage(input: { path?: string, pageType?: PageKind, slug?: string }): Promise<ResolvedPage | null> {
+export async function resolveScoredPage(input: {
+  path?: string
+  pageType?: PageKind
+  slug?: string
+}): Promise<ResolvedPage | null> {
   const catalog = await db.scoring.loadCatalog()
   const pages: ResolvedPage[] = [
-    ...catalog.places.map((row) => ({ pageType: 'place' as const, entityId: row.id, path: `/${row.slug}`, title: row.title, slug: row.slug, categorySlug: row.categorySlug })),
-    ...catalog.routes.map((row) => ({ pageType: 'route' as const, entityId: row.id, path: `/marshruty/${row.slug}`, title: row.title, slug: row.slug, categorySlug: null })),
-    ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}`, title: row.title, slug: row.slug, categorySlug: null })),
-    ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}`, title: row.title, slug: row.slug, categorySlug: null })),
-    ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}`, title: row.title, slug: row.slug, categorySlug: row.slug })),
-    ...catalog.venues.map((row) => ({ pageType: 'venue' as const, entityId: row.id, path: `/zavedeniya/${row.slug}`, title: row.name, slug: row.slug, categorySlug: row.kind })),
+    ...catalog.places.map((row) => ({
+      pageType: 'place' as const,
+      entityId: row.id,
+      path: `/${row.slug}`,
+      title: row.title,
+      slug: row.slug,
+      categorySlug: row.categorySlug,
+    })),
+    ...catalog.routes.map((row) => ({
+      pageType: 'route' as const,
+      entityId: row.id,
+      path: `/marshruty/${row.slug}`,
+      title: row.title,
+      slug: row.slug,
+      categorySlug: null,
+    })),
+    ...catalog.collections.map((row) => ({
+      pageType: 'collection' as const,
+      entityId: row.id,
+      path: `/podborki/${row.slug}`,
+      title: row.title,
+      slug: row.slug,
+      categorySlug: null,
+    })),
+    ...catalog.quests.map((row) => ({
+      pageType: 'quest' as const,
+      entityId: row.id,
+      path: `/kvesty/${row.slug}`,
+      title: row.title,
+      slug: row.slug,
+      categorySlug: null,
+    })),
+    ...catalog.hubs.map((row) => ({
+      pageType: 'hub' as const,
+      entityId: row.id,
+      path: `/${row.slug}`,
+      title: row.title,
+      slug: row.slug,
+      categorySlug: row.slug,
+    })),
+    ...catalog.venues.map((row) => ({
+      pageType: 'venue' as const,
+      entityId: row.id,
+      path: `/zavedeniya/${row.slug}`,
+      title: row.name,
+      slug: row.slug,
+      categorySlug: row.kind,
+    })),
   ]
   if (input.path) {
     const path = normalizePath(input.path)

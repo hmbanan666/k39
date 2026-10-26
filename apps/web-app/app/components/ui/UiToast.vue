@@ -51,6 +51,8 @@ const { items } = useToast()
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .toast { transition: none; }
+  .toast {
+    transition: none;
+  }
 }
 </style>

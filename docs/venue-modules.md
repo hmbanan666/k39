@@ -33,29 +33,29 @@ Rules:
 
 ## Stored content modules (editor writes them)
 
-| type | Title on page | Shape | Notes |
-| --- | --- | --- | --- |
-| `text` | «О месте» or own title | `{ title?, variant: lead\|plain, text }` | Same shape as ADR 0023 `text`. |
-| `dishes` | «Что заказать» | `{ title?, items: [{ id, name, description?, priceRub?, mediaId?, updatedAt }], note? }` | Showcase of at most 8, not a menu. See below. Falls back to `signatureDishes` when this module is absent. |
-| `audience` | «Кому подойдёт» | `{ title?, items: [{ who, icon?, text }] }` | 2 to 5 short cards. `icon` is one of `AUDIENCE_ICONS` (group, family, kids, couple, solo, friends, beach, day-trip, tourist, local, pets, work), default `group`. The heading shows the `with-heart` sticker. |
-| `practical` | «Полезно знать» | `{ title?, items: [{ key, label, value }] }` | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other. |
-| `best-time` | «Когда лучше прийти» | `{ title?, text }` | Only with real data (hours, queues seen, season). |
-| `how-to-get` | in «Как добраться» | `{ text }` | Shown above the map, including when the venue has no coordinates. The heading shows the `with-map` sticker. |
-| `prices` | «Ориентиры цен» | `{ title? }` | Cards come from `venue_prices` (see below), not from the module. Hidden without fresh verified prices. |
-| `tips` | «Советы» | `{ title?, items: [text] }` | Short practical tips. |
-| `faq` | «Вопросы» | `{ title?, items: [{ question, answer }] }` | Answers from known facts only. |
+| type         | Title on page          | Shape                                                                                    | Notes                                                                                                                                                                                                         |
+| ------------ | ---------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`       | «О месте» or own title | `{ title?, variant: lead\|plain, text }`                                                 | Same shape as ADR 0023 `text`.                                                                                                                                                                                |
+| `dishes`     | «Что заказать»         | `{ title?, items: [{ id, name, description?, priceRub?, mediaId?, updatedAt }], note? }` | Showcase of at most 8, not a menu. See below. Falls back to `signatureDishes` when this module is absent.                                                                                                     |
+| `audience`   | «Кому подойдёт»        | `{ title?, items: [{ who, icon?, text }] }`                                              | 2 to 5 short cards. `icon` is one of `AUDIENCE_ICONS` (group, family, kids, couple, solo, friends, beach, day-trip, tourist, local, pets, work), default `group`. The heading shows the `with-heart` sticker. |
+| `practical`  | «Полезно знать»        | `{ title?, items: [{ key, label, value }] }`                                             | Only known facts: takeaway, terrace, kids, payment, wifi, dogs, parking, other.                                                                                                                               |
+| `best-time`  | «Когда лучше прийти»   | `{ title?, text }`                                                                       | Only with real data (hours, queues seen, season).                                                                                                                                                             |
+| `how-to-get` | in «Как добраться»     | `{ text }`                                                                               | Shown above the map, including when the venue has no coordinates. The heading shows the `with-map` sticker.                                                                                                   |
+| `prices`     | «Ориентиры цен»        | `{ title? }`                                                                             | Cards come from `venue_prices` (see below), not from the module. Hidden without fresh verified prices.                                                                                                        |
+| `tips`       | «Советы»               | `{ title?, items: [text] }`                                                              | Short practical tips.                                                                                                                                                                                         |
+| `faq`        | «Вопросы»              | `{ title?, items: [{ question, answer }] }`                                              | Answers from known facts only.                                                                                                                                                                                |
 
 ## System modules (built from fields, not stored)
 
-| Block | Source | Shown when |
-| --- | --- | --- |
-| Hero bento | venue photos | always (sticker without photos) |
-| «Коротко» | hours, price, address, phone, actions | always; «Маршрут» whenever there are coordinates |
-| «Как внутри» | photos not in the hero | there are such photos |
-| «Как добраться» map | coordinates | coordinates set |
-| «Рядом посмотреть» | nearest places within 3 km; farther ones as one line | any place found |
-| «Источники» | `sources` | at least one source |
-| Owner note | link to `/kabinet/zayavka/{slug}` | always |
+| Block               | Source                                               | Shown when                                       |
+| ------------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| Hero bento          | venue photos                                         | always (sticker without photos)                  |
+| «Коротко»           | hours, price, address, phone, actions                | always; «Маршрут» whenever there are coordinates |
+| «Как внутри»        | photos not in the hero                               | there are such photos                            |
+| «Как добраться» map | coordinates                                          | coordinates set                                  |
+| «Рядом посмотреть»  | nearest places within 3 km; farther ones as one line | any place found                                  |
+| «Источники»         | `sources`                                            | at least one source                              |
+| Owner note          | link to `/kabinet/zayavka/{slug}`                    | always                                           |
 
 ## Order on the page
 
@@ -256,13 +256,13 @@ A town or kind listing (`/zavedeniya`, `/zavedeniya/{region}`, `/zavedeniya/{kin
 
 Each block is optional and renders only when it has data. Invalid JSON renders nothing, and the card grid stays. «Как выбрать» and «По ситуации» sit above the grid. «Районы и улицы», «Сезонность» and «Вопросы» sit below it. «Вопросы» adds FAQPage when the page is indexable. «По ситуации» links to published venues and reuses `VenueCard`. A missing venue is left out of that block.
 
-| type | Title on page | Shape |
-| --- | --- | --- |
-| `choose` | «Как выбрать» | `{ title?, text }` markdown |
-| `situation` | «По ситуации» | `{ title?, items: [{ label, note?, placeSlug, icon? }] }` up to 8. `icon` is `kids`, `beaches`, `hours`, `coffee`, `family`, or `group`. `placeSlug` must be a published venue. |
-| `areas` | «Районы и улицы» | `{ title?, items: [{ name, text }] }` up to 8 |
-| `season` | «Сезонность» | `{ title?, text?, items?: [{ when, text }] }`. Needs `text` or at least one item. |
-| `faq` | «Вопросы» | `{ title?, items: [{ question, answer }] }` up to 8 |
+| type        | Title on page    | Shape                                                                                                                                                                           |
+| ----------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `choose`    | «Как выбрать»    | `{ title?, text }` markdown                                                                                                                                                     |
+| `situation` | «По ситуации»    | `{ title?, items: [{ label, note?, placeSlug, icon? }] }` up to 8. `icon` is `kids`, `beaches`, `hours`, `coffee`, `family`, or `group`. `placeSlug` must be a published venue. |
+| `areas`     | «Районы и улицы» | `{ title?, items: [{ name, text }] }` up to 8                                                                                                                                   |
+| `season`    | «Сезонность»     | `{ title?, text?, items?: [{ when, text }] }`. Needs `text` or at least one item.                                                                                               |
+| `faq`       | «Вопросы»        | `{ title?, items: [{ question, answer }] }` up to 8                                                                                                                             |
 
 At most one module of each type. Do not invent the copy here: the tool only stores what an editor sends.
 

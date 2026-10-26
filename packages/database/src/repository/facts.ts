@@ -2,7 +2,18 @@ import type { ConsumerFactFreshness } from '../types/scoring'
 import type { ContentTx } from './content'
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { useDatabase } from '../database'
-import { admissionPrices, analyticsDaily, analyticsSearchQueries, contentImports, factRefs, factRevisions, facts, pageReviews, sourceDocuments, verificationQueue } from '../tables'
+import {
+  admissionPrices,
+  analyticsDaily,
+  analyticsSearchQueries,
+  contentImports,
+  factRefs,
+  factRevisions,
+  facts,
+  pageReviews,
+  sourceDocuments,
+  verificationQueue,
+} from '../tables'
 import { Admission } from './practical'
 
 /** The pool, or the transaction a content save already opened. */
@@ -49,7 +60,11 @@ const OPEN_LOCK = sql`(${verificationQueue.lockedUntil} is null or ${verificatio
 
 export class Facts {
   static async importApplied(id: string) {
-    const [row] = await useDatabase().select({ id: contentImports.id }).from(contentImports).where(eq(contentImports.id, id)).limit(1)
+    const [row] = await useDatabase()
+      .select({ id: contentImports.id })
+      .from(contentImports)
+      .where(eq(contentImports.id, id))
+      .limit(1)
     return Boolean(row)
   }
 
@@ -59,12 +74,18 @@ export class Facts {
 
   static async liveSlot(subjectType: string, subjectId: string, slot: string, tx?: FactExecutor) {
     const db = client(tx)
-    const [row] = await db.select().from(facts).where(and(
-      eq(facts.subjectType, subjectType),
-      eq(facts.subjectId, subjectId),
-      eq(facts.slot, slot),
-      isNull(facts.retiredAt),
-    )).limit(1)
+    const [row] = await db
+      .select()
+      .from(facts)
+      .where(
+        and(
+          eq(facts.subjectType, subjectType),
+          eq(facts.subjectId, subjectId),
+          eq(facts.slot, slot),
+          isNull(facts.retiredAt),
+        ),
+      )
+      .limit(1)
     return row ?? null
   }
 
@@ -75,12 +96,22 @@ export class Facts {
 
   static async latestActor(factId: string, tx?: FactExecutor) {
     const db = client(tx)
-    const [row] = await db.select({ actor: factRevisions.actor }).from(factRevisions).where(eq(factRevisions.factId, factId)).orderBy(desc(factRevisions.recordedAt)).limit(1)
+    const [row] = await db
+      .select({ actor: factRevisions.actor })
+      .from(factRevisions)
+      .where(eq(factRevisions.factId, factId))
+      .orderBy(desc(factRevisions.recordedAt))
+      .limit(1)
     return row?.actor ?? null
   }
 
   static async revisions(factId: string, limit = 20) {
-    return useDatabase().select().from(factRevisions).where(eq(factRevisions.factId, factId)).orderBy(desc(factRevisions.recordedAt)).limit(limit)
+    return useDatabase()
+      .select()
+      .from(factRevisions)
+      .where(eq(factRevisions.factId, factId))
+      .orderBy(desc(factRevisions.recordedAt))
+      .limit(limit)
   }
 
   static async refsFor(factId: string) {
@@ -88,32 +119,50 @@ export class Facts {
   }
 
   static async forUrl(url: string) {
-    return useDatabase().select().from(facts).where(and(eq(facts.sourceUrl, url), isNull(facts.retiredAt)))
+    return useDatabase()
+      .select()
+      .from(facts)
+      .where(and(eq(facts.sourceUrl, url), isNull(facts.retiredAt)))
   }
 
   static async upsert(input: FactWrite, refs: FactRefWrite[], tx?: FactExecutor) {
     const db = client(tx)
     const current = await Facts.liveSlot(input.subjectType, input.subjectId, input.slot, db)
-    const sameClaim = current
-      && current.valueHash === input.valueHash
-      && current.sourceUrl === input.sourceUrl
-      && current.sourceKind === input.sourceKind
-      && current.sourceTitle === input.sourceTitle
-      && current.confidence === input.confidence
+    const sameClaim =
+      current &&
+      current.valueHash === input.valueHash &&
+      current.sourceUrl === input.sourceUrl &&
+      current.sourceKind === input.sourceKind &&
+      current.sourceTitle === input.sourceTitle &&
+      current.confidence === input.confidence
     if (current && sameClaim) {
-      const [row] = await db.update(facts).set({
-        checkedAt: input.checkedAt,
-        ttlDays: input.ttlDays,
-      }).where(eq(facts.id, current.id)).returning()
+      const [row] = await db
+        .update(facts)
+        .set({
+          checkedAt: input.checkedAt,
+          ttlDays: input.ttlDays,
+        })
+        .where(eq(facts.id, current.id))
+        .returning()
       await Facts.replaceRefs(current.id, refs, db)
       return { fact: row ?? current, revised: false }
     }
-    if (current && current.valueHash === input.valueHash && current.sourceKind === input.sourceKind && current.sourceUrl === input.sourceUrl && current.confidence === input.confidence) {
-      const [row] = await db.update(facts).set({
-        checkedAt: input.checkedAt,
-        ttlDays: input.ttlDays,
-        sourceTitle: input.sourceTitle,
-      }).where(eq(facts.id, current.id)).returning()
+    if (
+      current &&
+      current.valueHash === input.valueHash &&
+      current.sourceKind === input.sourceKind &&
+      current.sourceUrl === input.sourceUrl &&
+      current.confidence === input.confidence
+    ) {
+      const [row] = await db
+        .update(facts)
+        .set({
+          checkedAt: input.checkedAt,
+          ttlDays: input.ttlDays,
+          sourceTitle: input.sourceTitle,
+        })
+        .where(eq(facts.id, current.id))
+        .returning()
       if (current.sourceTitle !== input.sourceTitle) {
         await db.insert(factRevisions).values(revisionOf(row ?? current, input.actor))
       }
@@ -126,11 +175,36 @@ export class Facts {
     }
     const now = new Date().toISOString()
     if (!current) {
-      const [created] = await db.insert(facts).values({
+      const [created] = await db
+        .insert(facts)
+        .values({
+          kind: input.kind,
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+          slot: input.slot,
+          value: input.value,
+          valueHash: input.valueHash,
+          sourceUrl: input.sourceUrl,
+          sourceTitle: input.sourceTitle,
+          sourceKind: input.sourceKind,
+          checkedAt: input.checkedAt,
+          ttlDays: input.ttlDays,
+          confidence: input.confidence,
+          updatedAt: now,
+        })
+        .returning()
+      if (!created) {
+        throw new Error('Fact insert failed')
+      }
+      await db.insert(factRevisions).values(revisionOf(created, input.actor))
+      await Facts.replaceRefs(created.id, refs, db)
+      await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind, db)
+      return { fact: created, revised: true }
+    }
+    const [row] = await db
+      .update(facts)
+      .set({
         kind: input.kind,
-        subjectType: input.subjectType,
-        subjectId: input.subjectId,
-        slot: input.slot,
         value: input.value,
         valueHash: input.valueHash,
         sourceUrl: input.sourceUrl,
@@ -140,27 +214,9 @@ export class Facts {
         ttlDays: input.ttlDays,
         confidence: input.confidence,
         updatedAt: now,
-      }).returning()
-      if (!created) {
-        throw new Error('Fact insert failed')
-      }
-      await db.insert(factRevisions).values(revisionOf(created, input.actor))
-      await Facts.replaceRefs(created.id, refs, db)
-      await Facts.closeGuestReportSections(input.subjectType, input.subjectId, input.kind, db)
-      return { fact: created, revised: true }
-    }
-    const [row] = await db.update(facts).set({
-      kind: input.kind,
-      value: input.value,
-      valueHash: input.valueHash,
-      sourceUrl: input.sourceUrl,
-      sourceTitle: input.sourceTitle,
-      sourceKind: input.sourceKind,
-      checkedAt: input.checkedAt,
-      ttlDays: input.ttlDays,
-      confidence: input.confidence,
-      updatedAt: now,
-    }).where(eq(facts.id, current.id)).returning()
+      })
+      .where(eq(facts.id, current.id))
+      .returning()
     const fact = row ?? current
     await db.insert(factRevisions).values(revisionOf(fact, input.actor))
     await Facts.replaceRefs(fact.id, refs, db)
@@ -193,10 +249,21 @@ export class Facts {
       if (current.kind === 'admission') {
         const extra = current.slot.startsWith('admission-extra:')
         if (extra || current.slot.startsWith('admission:')) {
-          await tx.update(admissionPrices).set({ checkedAt: new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kaliningrad' }).format(new Date(checkedAt)) }).where(and(
-            eq(admissionPrices.subjectType, current.subjectType), eq(admissionPrices.subjectId, current.subjectId),
-            eq(admissionPrices.kind, extra ? 'extra' : 'entry'), eq(admissionPrices.slot, current.slot.slice(current.slot.indexOf(':') + 1)),
-          ))
+          await tx
+            .update(admissionPrices)
+            .set({
+              checkedAt: new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kaliningrad' }).format(
+                new Date(checkedAt),
+              ),
+            })
+            .where(
+              and(
+                eq(admissionPrices.subjectType, current.subjectType),
+                eq(admissionPrices.subjectId, current.subjectId),
+                eq(admissionPrices.kind, extra ? 'extra' : 'entry'),
+                eq(admissionPrices.slot, current.slot.slice(current.slot.indexOf(':') + 1)),
+              ),
+            )
         }
       }
       await Facts.closeForFact(id, tx)
@@ -207,7 +274,10 @@ export class Facts {
   static async retire(id: string, tx?: FactExecutor) {
     const db = client(tx)
     const now = new Date().toISOString()
-    await db.update(facts).set({ retiredAt: now, updatedAt: now }).where(and(eq(facts.id, id), isNull(facts.retiredAt)))
+    await db
+      .update(facts)
+      .set({ retiredAt: now, updatedAt: now })
+      .where(and(eq(facts.id, id), isNull(facts.retiredAt)))
     await db.delete(factRefs).where(eq(factRefs.factId, id))
     await Facts.closeForFact(id, db)
   }
@@ -221,53 +291,79 @@ export class Facts {
 
   static async closeForFact(factId: string, tx?: FactExecutor) {
     const db = client(tx)
-    await db.update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(eq(verificationQueue.factId, factId), isNull(verificationQueue.resolvedAt)))
+    await db
+      .update(verificationQueue)
+      .set({ resolvedAt: new Date().toISOString() })
+      .where(and(eq(verificationQueue.factId, factId), isNull(verificationQueue.resolvedAt)))
   }
 
   static async close(id: string) {
-    await useDatabase().update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(eq(verificationQueue.id, id), isNull(verificationQueue.resolvedAt)))
+    await useDatabase()
+      .update(verificationQueue)
+      .set({ resolvedAt: new Date().toISOString() })
+      .where(and(eq(verificationQueue.id, id), isNull(verificationQueue.resolvedAt)))
   }
 
   static async enqueue(input: QueueWrite, tx?: FactExecutor) {
     const db = client(tx)
-    const match = input.target === 'fact'
-      ? and(eq(verificationQueue.target, 'fact'), eq(verificationQueue.factId, input.factId ?? ''), eq(verificationQueue.reason, input.reason), isNull(verificationQueue.resolvedAt))
-      : and(
-          eq(verificationQueue.target, 'section'),
-          eq(verificationQueue.pageType, input.pageType ?? ''),
-          eq(verificationQueue.entityId, input.entityId ?? ''),
-          eq(verificationQueue.path, input.path ?? ''),
-          eq(verificationQueue.reason, input.reason),
-          isNull(verificationQueue.resolvedAt),
-        )
+    const match =
+      input.target === 'fact'
+        ? and(
+            eq(verificationQueue.target, 'fact'),
+            eq(verificationQueue.factId, input.factId ?? ''),
+            eq(verificationQueue.reason, input.reason),
+            isNull(verificationQueue.resolvedAt),
+          )
+        : and(
+            eq(verificationQueue.target, 'section'),
+            eq(verificationQueue.pageType, input.pageType ?? ''),
+            eq(verificationQueue.entityId, input.entityId ?? ''),
+            eq(verificationQueue.path, input.path ?? ''),
+            eq(verificationQueue.reason, input.reason),
+            isNull(verificationQueue.resolvedAt),
+          )
     const [existing] = await db.select().from(verificationQueue).where(match).limit(1)
     if (existing) {
-      const [row] = await db.update(verificationQueue).set({
-        priority: input.priority ?? existing.priority,
-        proposal: input.proposal === undefined ? existing.proposal : input.proposal,
-        pageType: input.pageType ?? existing.pageType,
-        entityId: input.entityId ?? existing.entityId,
-        path: input.path ?? existing.path,
-      }).where(eq(verificationQueue.id, existing.id)).returning()
+      const [row] = await db
+        .update(verificationQueue)
+        .set({
+          priority: input.priority ?? existing.priority,
+          proposal: input.proposal === undefined ? existing.proposal : input.proposal,
+          pageType: input.pageType ?? existing.pageType,
+          entityId: input.entityId ?? existing.entityId,
+          path: input.path ?? existing.path,
+        })
+        .where(eq(verificationQueue.id, existing.id))
+        .returning()
       return row ?? existing
     }
-    const [created] = await db.insert(verificationQueue).values({
-      target: input.target,
-      factId: input.factId ?? null,
-      pageType: input.pageType ?? null,
-      entityId: input.entityId ?? null,
-      path: input.path ?? null,
-      reason: input.reason,
-      priority: input.priority ?? 0,
-      proposal: input.proposal ?? null,
-    }).returning()
+    const [created] = await db
+      .insert(verificationQueue)
+      .values({
+        target: input.target,
+        factId: input.factId ?? null,
+        pageType: input.pageType ?? null,
+        entityId: input.entityId ?? null,
+        path: input.path ?? null,
+        reason: input.reason,
+        priority: input.priority ?? 0,
+        proposal: input.proposal ?? null,
+      })
+      .returning()
     if (!created) {
       throw new Error('Queue insert failed')
     }
     return created
   }
 
-  static async listQueue(input: { kind?: string, reason?: string, minPriority?: number, limit: number, claim?: boolean, lockedBy?: string }) {
+  static async listQueue(input: {
+    kind?: string
+    reason?: string
+    minPriority?: number
+    limit: number
+    claim?: boolean
+    lockedBy?: string
+  }) {
     const db = useDatabase()
     const filters = [isNull(verificationQueue.resolvedAt), OPEN_LOCK]
     if (input.reason) {
@@ -277,25 +373,42 @@ export class Facts {
       filters.push(sql`${verificationQueue.priority} >= ${input.minPriority}`)
     }
     if (input.kind) {
-      filters.push(sql`exists (select 1 from facts f where f.id = ${verificationQueue.factId} and f.kind = ${input.kind})`)
+      filters.push(
+        sql`exists (select 1 from facts f where f.id = ${verificationQueue.factId} and f.kind = ${input.kind})`,
+      )
     }
-    const rows = await db.select().from(verificationQueue).where(and(...filters)).orderBy(desc(verificationQueue.priority), asc(verificationQueue.enqueuedAt)).limit(input.limit)
+    const rows = await db
+      .select()
+      .from(verificationQueue)
+      .where(and(...filters))
+      .orderBy(desc(verificationQueue.priority), asc(verificationQueue.enqueuedAt))
+      .limit(input.limit)
     if (!input.claim || !rows.length) {
       return rows
     }
     const until = new Date(Date.now() + 30 * 60 * 1000).toISOString()
-    await db.update(verificationQueue).set({ lockedBy: input.lockedBy ?? 'mcp', lockedUntil: until }).where(inArray(verificationQueue.id, rows.map((row) => row.id)))
+    await db
+      .update(verificationQueue)
+      .set({ lockedBy: input.lockedBy ?? 'mcp', lockedUntil: until })
+      .where(
+        inArray(
+          verificationQueue.id,
+          rows.map((row) => row.id),
+        ),
+      )
     return rows.map((row) => ({ ...row, lockedBy: input.lockedBy ?? 'mcp', lockedUntil: until }))
   }
 
   static async openConflicts() {
-    return useDatabase().select({
-      queue: verificationQueue,
-      fact: facts,
-    }).from(verificationQueue).innerJoin(facts, eq(facts.id, verificationQueue.factId)).where(and(
-      isNull(verificationQueue.resolvedAt),
-      eq(verificationQueue.reason, 'owner_conflict'),
-    )).orderBy(desc(verificationQueue.priority), asc(verificationQueue.enqueuedAt))
+    return useDatabase()
+      .select({
+        queue: verificationQueue,
+        fact: facts,
+      })
+      .from(verificationQueue)
+      .innerJoin(facts, eq(facts.id, verificationQueue.factId))
+      .where(and(isNull(verificationQueue.resolvedAt), eq(verificationQueue.reason, 'owner_conflict')))
+      .orderBy(desc(verificationQueue.priority), asc(verificationQueue.enqueuedAt))
   }
 
   static async queueById(id: string) {
@@ -310,23 +423,29 @@ export class Facts {
       where resolved_at is null
       group by reason
     `)
-    return rowsOf<{ reason: string, count: number }>(rows)
+    return rowsOf<{ reason: string; count: number }>(rows)
   }
 
   static async topOpen(limit: number) {
-    return useDatabase().select({
-      id: verificationQueue.id,
-      reason: verificationQueue.reason,
-      priority: verificationQueue.priority,
-      factId: verificationQueue.factId,
-      pageType: verificationQueue.pageType,
-      entityId: verificationQueue.entityId,
-      path: verificationQueue.path,
-      kind: facts.kind,
-      slot: facts.slot,
-      subjectType: facts.subjectType,
-      subjectId: facts.subjectId,
-    }).from(verificationQueue).leftJoin(facts, eq(facts.id, verificationQueue.factId)).where(isNull(verificationQueue.resolvedAt)).orderBy(desc(verificationQueue.priority), asc(verificationQueue.enqueuedAt)).limit(limit)
+    return useDatabase()
+      .select({
+        id: verificationQueue.id,
+        reason: verificationQueue.reason,
+        priority: verificationQueue.priority,
+        factId: verificationQueue.factId,
+        pageType: verificationQueue.pageType,
+        entityId: verificationQueue.entityId,
+        path: verificationQueue.path,
+        kind: facts.kind,
+        slot: facts.slot,
+        subjectType: facts.subjectType,
+        subjectId: facts.subjectId,
+      })
+      .from(verificationQueue)
+      .leftJoin(facts, eq(facts.id, verificationQueue.factId))
+      .where(isNull(verificationQueue.resolvedAt))
+      .orderBy(desc(verificationQueue.priority), asc(verificationQueue.enqueuedAt))
+      .limit(limit)
   }
 
   static async freshnessByConsumer(nowIso: string) {
@@ -360,7 +479,11 @@ export class Facts {
   }
 
   static async review(pageType: string, entityId: string) {
-    const [row] = await useDatabase().select().from(pageReviews).where(and(eq(pageReviews.pageType, pageType), eq(pageReviews.entityId, entityId))).limit(1)
+    const [row] = await useDatabase()
+      .select()
+      .from(pageReviews)
+      .where(and(eq(pageReviews.pageType, pageType), eq(pageReviews.entityId, entityId)))
+      .limit(1)
     return row ?? null
   }
 
@@ -378,22 +501,35 @@ export class Facts {
     if (sections.length === review.sections.length) {
       return review
     }
-    const [row] = await useDatabase().update(pageReviews).set({ sections }).where(eq(pageReviews.id, review.id)).returning()
+    const [row] = await useDatabase()
+      .update(pageReviews)
+      .set({ sections })
+      .where(eq(pageReviews.id, review.id))
+      .returning()
     return row ?? review
   }
 
-  static async saveReview(input: { pageType: string, entityId: string, reviewer: string, sections: Array<{ path: string, hash: string }> }) {
+  static async saveReview(input: {
+    pageType: string
+    entityId: string
+    reviewer: string
+    sections: Array<{ path: string; hash: string }>
+  }) {
     const now = new Date().toISOString()
-    const [row] = await useDatabase().insert(pageReviews).values({
-      pageType: input.pageType,
-      entityId: input.entityId,
-      reviewer: input.reviewer,
-      sections: input.sections,
-      reviewedAt: now,
-    }).onConflictDoUpdate({
-      target: [pageReviews.pageType, pageReviews.entityId],
-      set: { reviewer: input.reviewer, sections: input.sections, reviewedAt: now },
-    }).returning()
+    const [row] = await useDatabase()
+      .insert(pageReviews)
+      .values({
+        pageType: input.pageType,
+        entityId: input.entityId,
+        reviewer: input.reviewer,
+        sections: input.sections,
+        reviewedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [pageReviews.pageType, pageReviews.entityId],
+        set: { reviewer: input.reviewer, sections: input.sections, reviewedAt: now },
+      })
+      .returning()
     return row
   }
 
@@ -457,18 +593,10 @@ export class Facts {
     nextFetchAt: string | null
     failCount: number
   }) {
-    await useDatabase().insert(sourceDocuments).values({
-      url: input.url,
-      contentHash: input.contentHash,
-      etag: input.etag,
-      lastModified: input.lastModified,
-      httpStatus: input.httpStatus,
-      fetchedAt: input.fetchedAt,
-      nextFetchAt: input.nextFetchAt,
-      failCount: input.failCount,
-    }).onConflictDoUpdate({
-      target: sourceDocuments.url,
-      set: {
+    await useDatabase()
+      .insert(sourceDocuments)
+      .values({
+        url: input.url,
         contentHash: input.contentHash,
         etag: input.etag,
         lastModified: input.lastModified,
@@ -476,15 +604,24 @@ export class Facts {
         fetchedAt: input.fetchedAt,
         nextFetchAt: input.nextFetchAt,
         failCount: input.failCount,
-      },
-    })
+      })
+      .onConflictDoUpdate({
+        target: sourceDocuments.url,
+        set: {
+          contentHash: input.contentHash,
+          etag: input.etag,
+          lastModified: input.lastModified,
+          httpStatus: input.httpStatus,
+          fetchedAt: input.fetchedAt,
+          nextFetchAt: input.nextFetchAt,
+          failCount: input.failCount,
+        },
+      })
   }
 
   /** Move checked_at on facts for this URL that were not edited after the previous fetch. */
   static async renewUrl(url: string, checkedAt: string, previousFetchedAt: string | null) {
-    const guard = previousFetchedAt
-      ? sql`and f.updated_at <= ${previousFetchedAt}::timestamptz`
-      : sql``
+    const guard = previousFetchedAt ? sql`and f.updated_at <= ${previousFetchedAt}::timestamptz` : sql``
     await useDatabase().execute(sql`
       update facts f
       set checked_at = ${checkedAt}::timestamptz
@@ -511,7 +648,7 @@ export class Facts {
     `)
   }
 
-  static async setPriorities(rows: Array<{ id: string, priority: number }>) {
+  static async setPriorities(rows: Array<{ id: string; priority: number }>) {
     if (!rows.length) {
       return
     }
@@ -522,16 +659,20 @@ export class Facts {
   }
 
   static async openRows() {
-    return useDatabase().select({
-      id: verificationQueue.id,
-      target: verificationQueue.target,
-      factId: verificationQueue.factId,
-      pageType: verificationQueue.pageType,
-      entityId: verificationQueue.entityId,
-      path: verificationQueue.path,
-      reason: verificationQueue.reason,
-      kind: facts.kind,
-    }).from(verificationQueue).leftJoin(facts, eq(facts.id, verificationQueue.factId)).where(isNull(verificationQueue.resolvedAt))
+    return useDatabase()
+      .select({
+        id: verificationQueue.id,
+        target: verificationQueue.target,
+        factId: verificationQueue.factId,
+        pageType: verificationQueue.pageType,
+        entityId: verificationQueue.entityId,
+        path: verificationQueue.path,
+        reason: verificationQueue.reason,
+        kind: facts.kind,
+      })
+      .from(verificationQueue)
+      .leftJoin(facts, eq(facts.id, verificationQueue.factId))
+      .where(isNull(verificationQueue.resolvedAt))
   }
 
   static async closeGuestReportSections(subjectType: string, subjectId: string, kind: string, tx?: FactExecutor) {
@@ -539,24 +680,35 @@ export class Facts {
       return
     }
     const db = client(tx)
-    await db.update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(
-      eq(verificationQueue.target, 'section'),
-      eq(verificationQueue.pageType, subjectType),
-      eq(verificationQueue.entityId, subjectId),
-      eq(verificationQueue.path, `guest:${kind}`),
-      eq(verificationQueue.reason, 'guest_report'),
-      isNull(verificationQueue.resolvedAt),
-    ))
+    await db
+      .update(verificationQueue)
+      .set({ resolvedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(verificationQueue.target, 'section'),
+          eq(verificationQueue.pageType, subjectType),
+          eq(verificationQueue.entityId, subjectId),
+          eq(verificationQueue.path, `guest:${kind}`),
+          eq(verificationQueue.reason, 'guest_report'),
+          isNull(verificationQueue.resolvedAt),
+        ),
+      )
   }
 
   static async trafficForPath(path: string) {
     const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
-    const views = await useDatabase().select({
-      pageviews: sql<number>`coalesce(sum(${analyticsDaily.pageviews}), 0)::int`,
-    }).from(analyticsDaily).where(and(eq(analyticsDaily.path, path), sql`${analyticsDaily.day} >= ${since}`))
-    const impressions = await useDatabase().select({
-      impressions: sql<number>`coalesce(sum(${analyticsSearchQueries.impressions}), 0)::int`,
-    }).from(analyticsSearchQueries).where(and(eq(analyticsSearchQueries.page, path), sql`${analyticsSearchQueries.day} >= ${since}`))
+    const views = await useDatabase()
+      .select({
+        pageviews: sql<number>`coalesce(sum(${analyticsDaily.pageviews}), 0)::int`,
+      })
+      .from(analyticsDaily)
+      .where(and(eq(analyticsDaily.path, path), sql`${analyticsDaily.day} >= ${since}`))
+    const impressions = await useDatabase()
+      .select({
+        impressions: sql<number>`coalesce(sum(${analyticsSearchQueries.impressions}), 0)::int`,
+      })
+      .from(analyticsSearchQueries)
+      .where(and(eq(analyticsSearchQueries.page, path), sql`${analyticsSearchQueries.day} >= ${since}`))
     return {
       pageviews: Number(views[0]?.pageviews ?? 0),
       impressions: Number(impressions[0]?.impressions ?? 0),
@@ -564,25 +716,38 @@ export class Facts {
   }
 
   static async closeSection(pageType: string, entityId: string, path: string, reason = 'section_changed') {
-    await useDatabase().update(verificationQueue).set({ resolvedAt: new Date().toISOString() }).where(and(
-      eq(verificationQueue.target, 'section'),
-      eq(verificationQueue.pageType, pageType),
-      eq(verificationQueue.entityId, entityId),
-      eq(verificationQueue.path, path),
-      eq(verificationQueue.reason, reason),
-      isNull(verificationQueue.resolvedAt),
-    ))
+    await useDatabase()
+      .update(verificationQueue)
+      .set({ resolvedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(verificationQueue.target, 'section'),
+          eq(verificationQueue.pageType, pageType),
+          eq(verificationQueue.entityId, entityId),
+          eq(verificationQueue.path, path),
+          eq(verificationQueue.reason, reason),
+          isNull(verificationQueue.resolvedAt),
+        ),
+      )
   }
 
   static async trafficSince(day: string) {
-    const views = await useDatabase().select({
-      path: analyticsDaily.path,
-      pageviews: sql<number>`sum(${analyticsDaily.pageviews})::int`,
-    }).from(analyticsDaily).where(sql`${analyticsDaily.day} >= ${day}`).groupBy(analyticsDaily.path)
-    const impressions = await useDatabase().select({
-      page: analyticsSearchQueries.page,
-      impressions: sql<number>`sum(${analyticsSearchQueries.impressions})::int`,
-    }).from(analyticsSearchQueries).where(sql`${analyticsSearchQueries.day} >= ${day}`).groupBy(analyticsSearchQueries.page)
+    const views = await useDatabase()
+      .select({
+        path: analyticsDaily.path,
+        pageviews: sql<number>`sum(${analyticsDaily.pageviews})::int`,
+      })
+      .from(analyticsDaily)
+      .where(sql`${analyticsDaily.day} >= ${day}`)
+      .groupBy(analyticsDaily.path)
+    const impressions = await useDatabase()
+      .select({
+        page: analyticsSearchQueries.page,
+        impressions: sql<number>`sum(${analyticsSearchQueries.impressions})::int`,
+      })
+      .from(analyticsSearchQueries)
+      .where(sql`${analyticsSearchQueries.day} >= ${day}`)
+      .groupBy(analyticsSearchQueries.page)
     return { views, impressions }
   }
 
@@ -602,25 +767,31 @@ export class Facts {
     if (!consumerIds.length || !kinds.length) {
       return []
     }
-    return useDatabase().select({
-      consumerId: factRefs.consumerId,
-      path: factRefs.path,
-      kind: facts.kind,
-      slot: facts.slot,
-      value: facts.value,
-      confidence: facts.confidence,
-      subjectType: facts.subjectType,
-      subjectId: facts.subjectId,
-      sourceUrl: facts.sourceUrl,
-      sourceTitle: facts.sourceTitle,
-      sourceKind: facts.sourceKind,
-      checkedAt: facts.checkedAt,
-    }).from(factRefs).innerJoin(facts, eq(facts.id, factRefs.factId)).where(and(
-      eq(factRefs.consumerType, consumerType),
-      inArray(factRefs.consumerId, consumerIds),
-      inArray(facts.kind, [...kinds]),
-      isNull(facts.retiredAt),
-    ))
+    return useDatabase()
+      .select({
+        consumerId: factRefs.consumerId,
+        path: factRefs.path,
+        kind: facts.kind,
+        slot: facts.slot,
+        value: facts.value,
+        confidence: facts.confidence,
+        subjectType: facts.subjectType,
+        subjectId: facts.subjectId,
+        sourceUrl: facts.sourceUrl,
+        sourceTitle: facts.sourceTitle,
+        sourceKind: facts.sourceKind,
+        checkedAt: facts.checkedAt,
+      })
+      .from(factRefs)
+      .innerJoin(facts, eq(facts.id, factRefs.factId))
+      .where(
+        and(
+          eq(factRefs.consumerType, consumerType),
+          inArray(factRefs.consumerId, consumerIds),
+          inArray(facts.kind, [...kinds]),
+          isNull(facts.retiredAt),
+        ),
+      )
   }
 }
 

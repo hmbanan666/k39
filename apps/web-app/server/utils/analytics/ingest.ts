@@ -1,7 +1,15 @@
 import type { H3Event } from 'h3'
 import process from 'node:process'
 import { db } from '@k39/database'
-import { classifyChannel, isBotUserAgent, mergeHitEntities, parseUserAgent, screenBucket, scrollBucket, utmFromPath } from '../../../shared/analytics'
+import {
+  classifyChannel,
+  isBotUserAgent,
+  mergeHitEntities,
+  parseUserAgent,
+  screenBucket,
+  scrollBucket,
+  utmFromPath,
+} from '../../../shared/analytics'
 import { collectsPageSubject, entityLookupPath, normalizeCollectEvents, resolveCollectSubjects } from './collect'
 import { analyticsSalt, dailyVisitorKey, newVisitorKey } from './identity'
 import { collectRateKey, takeCollectSlot } from './rate'
@@ -97,18 +105,12 @@ export async function ingest(event: H3Event, incoming: unknown, source: 'beacon'
       utmSource: utm.utmSource,
       utmMedium: utm.utmMedium,
     })
-    const channel = item.ref ? classified.channel : (knownChannel || classified.channel)
+    const channel = item.ref ? classified.channel : knownChannel || classified.channel
     const kind = item.type || ''
-    const pageSubject = collectsPageSubject(kind)
-      ? (subjects.get(path) ?? EMPTY_SUBJECT)
-      : EMPTY_SUBJECT
-    const shown = kind === 'impression' && item.target
-      ? (subjects.get(item.target) ?? EMPTY_SUBJECT)
-      : null
+    const pageSubject = collectsPageSubject(kind) ? (subjects.get(path) ?? EMPTY_SUBJECT) : EMPTY_SUBJECT
+    const shown = kind === 'impression' && item.target ? (subjects.get(item.target) ?? EMPTY_SUBJECT) : null
     const entityPath = entityLookupPath(item.entity)
-    const entitySubject = entityPath
-      ? (subjects.get(entityPath) ?? EMPTY_SUBJECT)
-      : null
+    const entitySubject = entityPath ? (subjects.get(entityPath) ?? EMPTY_SUBJECT) : null
     const ids = mergeHitEntities(pageSubject, entitySubject, shown)
     const entry = item.type === 'pageview' && !entryTaken
     if (entry) {

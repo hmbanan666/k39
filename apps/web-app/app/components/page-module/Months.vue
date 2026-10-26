@@ -15,11 +15,13 @@
           v-if="month.current"
           aria-current="page"
           class="current"
-        >{{ month.text }}</span>
+          >{{ month.text }}</span
+        >
         <a
           v-else
           :href="month.href"
-        >{{ month.text }}</a>
+          >{{ month.text }}</a
+        >
       </li>
     </ul>
   </nav>
@@ -28,7 +30,7 @@
 <script setup lang="ts">
 defineProps<{
   title?: string
-  months: { href: string, text: string, current: boolean }[]
+  months: { href: string; text: string; current: boolean }[]
 }>()
 
 // On a phone the row scrolls; start it at the current month.
@@ -57,7 +59,8 @@ ul {
   padding: 0;
   list-style: none;
 }
-a, .current {
+a,
+.current {
   display: inline-flex;
   align-items: center;
   min-height: 2rem;
@@ -83,7 +86,9 @@ a:hover {
     overflow-x: auto;
     scrollbar-width: none;
   }
-  li { flex: none; }
+  li {
+    flex: none;
+  }
 }
 .current {
   border-color: var(--color-brick);

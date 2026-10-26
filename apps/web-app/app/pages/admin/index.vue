@@ -21,5 +21,9 @@ useHead({ title: 'Админка | K39' })
 </script>
 
 <style scoped>
-.admin { max-width: 40rem; margin: 0 auto; padding: 1.5rem; }
+.admin {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
 </style>

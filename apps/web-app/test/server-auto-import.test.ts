@@ -15,9 +15,10 @@ describe('server nitro auto-imports', () => {
   it('injects h3 helpers a route calls and ignores a mention in prose', () => {
     const prose = 'export const note = "createError is not called here"\n'
     expect(serverNitroPreamble(route, prose)).toBe('')
-    const source = 'export default defineEventHandler(() => {\n  throw createError({ statusCode: 410, statusMessage: "Gone" })\n})\n'
+    const source =
+      'export default defineEventHandler(() => {\n  throw createError({ statusCode: 410, statusMessage: "Gone" })\n})\n'
     const preamble = serverNitroPreamble(route, source)
-    expect(preamble).toContain('from \'h3\'')
+    expect(preamble).toContain("from 'h3'")
     expect(preamble).toContain('createError')
     expect(preamble).toContain('defineEventHandler')
   })

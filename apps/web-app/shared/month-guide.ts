@@ -14,7 +14,20 @@ export function splitCollections<T extends MonthGuideRow>(rows: T[]) {
   return { months, themes }
 }
 
-const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+const MONTH_NAMES = [
+  'Январь',
+  'Февраль',
+  'Март',
+  'Апрель',
+  'Май',
+  'Июнь',
+  'Июль',
+  'Август',
+  'Сентябрь',
+  'Октябрь',
+  'Ноябрь',
+  'Декабрь',
+]
 
 /** Short Russian month name for chips, from a 1-based month number. */
 export function monthName(month: number | null | undefined) {

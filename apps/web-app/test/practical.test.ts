@@ -4,8 +4,19 @@ import { classifyOfficialUrl } from '@k39/types/official-url'
 import { describe, expect, it } from 'vitest'
 import TicketsFact from '../app/components/TicketsFact.vue'
 import UpcomingEvents from '../app/components/UpcomingEvents.vue'
-import { admissionSourceProblem, eventSourceProblem, ownOfficialSourceKind, ticketUrlProblem } from '../server/utils/practical/sources'
-import { ADMISSION_UNKNOWN, admissionFree, admissionOffers, admissionRowProblem, admissionView } from '../shared/admission'
+import {
+  admissionSourceProblem,
+  eventSourceProblem,
+  ownOfficialSourceKind,
+  ticketUrlProblem,
+} from '../server/utils/practical/sources'
+import {
+  ADMISSION_UNKNOWN,
+  admissionFree,
+  admissionOffers,
+  admissionRowProblem,
+  admissionView,
+} from '../shared/admission'
 import { eventFormTiming, eventInstants, eventLine, eventUpcoming } from '../shared/events'
 import { guideFacts } from '../shared/place-guide'
 import { emptyResults, issueLabel, scorePage } from '../shared/scoring'
@@ -60,12 +71,15 @@ describe('admission rows', () => {
   })
 
   it('orders fresh rows by audience and hides stale ones', () => {
-    const view = admissionView([
-      row({ slot: 'free', audience: 'free', priceRub: 0, condition: 'дети до 7 лет' }),
-      row({ slot: 'reduced', audience: 'reduced', priceRub: 300, condition: 'студенты' }),
-      row({ slot: 'old', priceRub: 200, checkedAt: '2025-01-01' }),
-      row({ priceRub: 1200 }),
-    ], NOW)
+    const view = admissionView(
+      [
+        row({ slot: 'free', audience: 'free', priceRub: 0, condition: 'дети до 7 лет' }),
+        row({ slot: 'reduced', audience: 'reduced', priceRub: 300, condition: 'студенты' }),
+        row({ slot: 'old', priceRub: 200, checkedAt: '2025-01-01' }),
+        row({ priceRub: 1200 }),
+      ],
+      NOW,
+    )
     expect(view.stored).toBe(true)
     expect(view.lines.map((line) => [line.label, line.amount])).toEqual([
       ['Взрослый', `${(1200).toLocaleString('ru-RU')} ₽`],
@@ -83,20 +97,26 @@ describe('admission rows', () => {
   it('reads isAccessibleForFree from fresh rows only', () => {
     expect(admissionFree(admissionView([row()], NOW))).toBe(false)
     expect(admissionFree(admissionView([row({ audience: 'free', priceRub: 0 })], NOW))).toBe(true)
-    expect(admissionFree(admissionView([row({ audience: 'free', priceRub: 0, condition: 'по средам' })], NOW))).toBeNull()
+    expect(
+      admissionFree(admissionView([row({ audience: 'free', priceRub: 0, condition: 'по средам' })], NOW)),
+    ).toBeNull()
     expect(admissionFree(admissionView([row({ checkedAt: '2025-01-01' })], NOW))).toBeNull()
   })
 
   it('turns fresh rows into offers with the condition as description', () => {
-    const offers = admissionOffers(admissionView([row({ audience: 'reduced', condition: 'пенсионеры', label: 'Пенсионный' })], NOW))
-    expect(offers).toEqual([{
-      '@type': 'Offer',
-      'name': 'Пенсионный',
-      'price': 500,
-      'priceCurrency': 'RUB',
-      'url': 'https://museum.example/tickets',
-      'description': 'пенсионеры',
-    }])
+    const offers = admissionOffers(
+      admissionView([row({ audience: 'reduced', condition: 'пенсионеры', label: 'Пенсионный' })], NOW),
+    )
+    expect(offers).toEqual([
+      {
+        '@type': 'Offer',
+        'name': 'Пенсионный',
+        'price': 500,
+        'priceCurrency': 'RUB',
+        'url': 'https://museum.example/tickets',
+        'description': 'пенсионеры',
+      },
+    ])
   })
 })
 
@@ -119,13 +139,18 @@ describe('ticket and event sources', () => {
 
   it('takes admission only from the official site', () => {
     expect(admissionSourceProblem('https://museum.example/tickets')).toBeNull()
-    for (const url of ['https://radario.ru/events/1', 'https://vk.com/museum', 'https://yandex.ru/maps/org/1', 'https://disk.yandex.ru/i/1']) {
+    for (const url of [
+      'https://radario.ru/events/1',
+      'https://vk.com/museum',
+      'https://yandex.ru/maps/org/1',
+      'https://disk.yandex.ru/i/1',
+    ]) {
       expect(admissionSourceProblem(url)).toContain('только официальный сайт')
     }
     expect(admissionSourceProblem('ftp://museum.example')).toContain('http(s)')
   })
 
-  it('takes an event from the official site or the venue\'s own VK', () => {
+  it("takes an event from the official site or the venue's own VK", () => {
     expect(ownOfficialSourceKind('https://museum.example/afisha', null)).toBe('official')
     expect(ownOfficialSourceKind('https://vk.com/cafe_own?w=wall-123_45', own)).toBe('official_social')
     expect(ownOfficialSourceKind('https://vk.com/wall-123_46', own)).toBe('official_social')
@@ -160,7 +185,9 @@ describe('event timing', () => {
     expect(eventInstants({ allDay: true, startsOn: '2026-11-21', startsAt: '2026-11-21T10:00' })).toBeTypeOf('string')
     expect(eventInstants({ allDay: false, startsOn: '2026-11-21' })).toBeTypeOf('string')
     expect(eventInstants({ allDay: false, startsAt: '2026-11-14T25:00' })).toBeTypeOf('string')
-    expect(eventInstants({ allDay: false, startsAt: '2026-11-14T19:00', endsAt: '2026-11-14T18:00' })).toBeTypeOf('string')
+    expect(eventInstants({ allDay: false, startsAt: '2026-11-14T19:00', endsAt: '2026-11-14T18:00' })).toBeTypeOf(
+      'string',
+    )
     expect(eventInstants({ allDay: true, startsOn: '2026-02-30' })).toBeTypeOf('string')
   })
 
@@ -210,7 +237,9 @@ describe('admission and events in JSON-LD', () => {
     const place = doc.jsonLd[1] as Record<string, unknown>
     expect(place.isAccessibleForFree).toBe(false)
     expect((place.offers as unknown[]).length).toBe(1)
-    const events = doc.jsonLd.filter((node) => (node as Record<string, unknown>)['@type'] === 'Event') as Array<Record<string, unknown>>
+    const events = doc.jsonLd.filter((node) => (node as Record<string, unknown>)['@type'] === 'Event') as Array<
+      Record<string, unknown>
+    >
     expect(events).toHaveLength(2)
     expect(events[0]).toMatchObject({
       name: 'Органный вечер',
@@ -285,7 +314,12 @@ describe('коротко and the ticket block', () => {
   })
 
   it('renders fresh rows as a table', async () => {
-    const html = await renderPage(TicketsFact, { admission: admissionView([row(), row({ slot: 'r', audience: 'reduced', priceRub: 250, condition: 'студенты' })], NOW) })
+    const html = await renderPage(TicketsFact, {
+      admission: admissionView(
+        [row(), row({ slot: 'r', audience: 'reduced', priceRub: 250, condition: 'студенты' })],
+        NOW,
+      ),
+    })
     expect(html).toContain('Билеты')
     expect(html).toContain('Взрослый')
     expect(html).toContain('500 ₽')
@@ -365,7 +399,9 @@ describe('practical points in the score', () => {
   it('passes on fresh admission, an upcoming event, or a schedule', () => {
     expect(scorePage(place()).checks.quality).toContain('no prices')
     expect(scorePage(place({ practical: none })).checks.quality).toContain('no prices')
-    expect(scorePage(place({ practical: { ...none, admissionRows: 1, freshAdmission: 1 } })).checks.quality).not.toContain('no prices')
+    expect(
+      scorePage(place({ practical: { ...none, admissionRows: 1, freshAdmission: 1 } })).checks.quality,
+    ).not.toContain('no prices')
     expect(scorePage(place({ practical: { ...none, upcomingEvents: 1 } })).checks.quality).not.toContain('no prices')
     expect(scorePage(place({ practical: { ...none, schedule: true } })).checks.quality).not.toContain('no prices')
   })

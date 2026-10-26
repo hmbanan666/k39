@@ -6,13 +6,13 @@
         type="image/avif"
         :srcset="avif"
         :sizes="sizes"
-      >
+      />
       <source
         v-if="webp"
         type="image/webp"
         :srcset="webp"
         :sizes="sizes"
-      >
+      />
       <img
         :src="media.src"
         :alt="alt"
@@ -21,7 +21,7 @@
         :loading="priority ? 'eager' : 'lazy'"
         :fetchpriority="priority ? 'high' : undefined"
         :style="imageStyle"
-      >
+      />
     </picture>
     <figcaption v-if="showCredit && credit">
       <span v-if="media.author">{{ media.author }}</span>
@@ -46,16 +46,19 @@
 import type { PublicMedia } from '~~/shared/media'
 import { describedAlt, licenseHref, licenseLabel, variantSrcset } from '~~/shared/media'
 
-const props = withDefaults(defineProps<{
-  media: PublicMedia
-  sizes?: string
-  priority?: boolean
-  showCredit?: boolean
-}>(), {
-  sizes: '(min-width: 900px) 640px, 100vw',
-  priority: false,
-  showCredit: true,
-})
+const props = withDefaults(
+  defineProps<{
+    media: PublicMedia
+    sizes?: string
+    priority?: boolean
+    showCredit?: boolean
+  }>(),
+  {
+    sizes: '(min-width: 900px) 640px, 100vw',
+    priority: false,
+    showCredit: true,
+  },
+)
 
 const alt = computed(() => describedAlt(props.media.alt, props.media.author, props.media.license))
 const avif = computed(() => srcset('avif'))

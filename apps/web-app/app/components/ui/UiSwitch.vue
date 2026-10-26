@@ -18,5 +18,9 @@ const model = defineModel<boolean>({ required: true })
 </script>
 
 <style scoped>
-.switch-row { display: flex; align-items: center; gap: 0.6rem; }
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
 </style>

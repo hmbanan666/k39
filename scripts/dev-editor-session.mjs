@@ -50,9 +50,7 @@ if (response.status !== 302 && response.status !== 303) {
 
 console.log('Editor session ready. Open this URL in the browser:')
 console.log(url)
-const cookies = typeof response.headers.getSetCookie === 'function'
-  ? response.headers.getSetCookie()
-  : []
+const cookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : []
 for (const line of cookies) {
   console.log(line.split(';')[0])
 }

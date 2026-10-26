@@ -16,7 +16,14 @@ import {
   normalizeCollectEvents,
   resolveCollectSubjects,
 } from '../server/utils/analytics/collect'
-import { COLLECT_LIMIT, COLLECT_MAX_KEYS, COLLECT_WINDOW_MS, collectRateKey, resetCollectSlots, takeCollectSlot } from '../server/utils/analytics/rate'
+import {
+  COLLECT_LIMIT,
+  COLLECT_MAX_KEYS,
+  COLLECT_WINDOW_MS,
+  collectRateKey,
+  resetCollectSlots,
+  takeCollectSlot,
+} from '../server/utils/analytics/rate'
 
 describe('collect input', () => {
   it('truncates long strings and drops non-strings', () => {
@@ -166,7 +173,11 @@ describe('collect http limits', () => {
     for (let index = 0; index < COLLECT_LIMIT; index++) {
       expect(takeCollectSlot(key)).toBe(true)
     }
-    const first = await postCollect('203.0.113.50', 'RotatedAgent/9', Buffer.from('{"events":[{"type":"pageview","path":"/fort"}]}'))
+    const first = await postCollect(
+      '203.0.113.50',
+      'RotatedAgent/9',
+      Buffer.from('{"events":[{"type":"pageview","path":"/fort"}]}'),
+    )
     const second = await postCollect('203.0.113.50', 'AnotherAgent/2', Buffer.from('{"events":[]}'))
     expect(first.status).toBe(204)
     expect(second.status).toBe(204)
@@ -178,10 +189,12 @@ describe('collect http limits', () => {
   })
 
   it('answers 413 when a chunked body grows past the cap', async () => {
-    const body = Readable.from((async function* () {
-      yield Buffer.alloc(COLLECT_BODY_MAX, 0x61)
-      yield Buffer.alloc(64, 0x62)
-    })())
+    const body = Readable.from(
+      (async function* () {
+        yield Buffer.alloc(COLLECT_BODY_MAX, 0x61)
+        yield Buffer.alloc(64, 0x62)
+      })(),
+    )
     const response = await postCollect('203.0.113.51', 'Mozilla/5.0', body)
     expect(response.status).toBe(413)
   })
@@ -222,16 +235,19 @@ function postCollect(ip: string, ua: string, body: Buffer | Readable) {
       if (Buffer.isBuffer(body)) {
         headers['content-length'] = body.length
       }
-      const req = request({
-        hostname: '127.0.0.1',
-        port,
-        path: '/api/collect',
-        method: 'POST',
-        headers,
-      }, (res) => {
-        res.resume()
-        res.on('end', () => finish(undefined, res.statusCode ?? 0))
-      })
+      const req = request(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/api/collect',
+          method: 'POST',
+          headers,
+        },
+        (res) => {
+          res.resume()
+          res.on('end', () => finish(undefined, res.statusCode ?? 0))
+        },
+      )
       req.on('error', (error) => finish(error))
       if (Buffer.isBuffer(body)) {
         req.end(body)

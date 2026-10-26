@@ -18,7 +18,10 @@ export default defineEventHandler(async (event) => {
   const file = parts?.find((part) => part.name === 'file' && part.data)
   const text = (name: string) => parts?.find((part) => part.name === name)?.data?.toString() || ''
   if (text('rights') !== '1') {
-    throw createError({ statusCode: 400, statusMessage: 'Подтвердите, что права на фото ваши и его можно опубликовать' })
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Подтвердите, что права на фото ваши и его можно опубликовать',
+    })
   }
   if (!file) {
     throw createError({ statusCode: 400, statusMessage: 'Нужен файл' })

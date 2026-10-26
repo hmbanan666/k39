@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": [
-      "ESNext"
-    ],
+    "lib": ["ESNext"],
     "moduleDetection": "force",
     "useDefineForClassFields": true,
     "module": "preserve",
@@ -22,9 +20,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "exclude": [
-    "./dist",
-    "./node_modules",
-    "./src/repository/test/**/*.writer.test.ts"
-  ]
+  "exclude": ["./dist", "./node_modules", "./src/repository/test/**/*.writer.test.ts"]
 }

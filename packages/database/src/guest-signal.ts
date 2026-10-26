@@ -50,10 +50,12 @@ export function matchGuestFact(kind: string, value: string, facts: GuestFactHint
   return null
 }
 
-export function nextGuestProposal(current: unknown, next: { submissionId: string, text: string, url: string | null }): GuestReportProposal {
-  const previous = current && typeof current === 'object' && 'count' in current
-    ? Number((current as { count: unknown }).count)
-    : 0
+export function nextGuestProposal(
+  current: unknown,
+  next: { submissionId: string; text: string; url: string | null },
+): GuestReportProposal {
+  const previous =
+    current && typeof current === 'object' && 'count' in current ? Number((current as { count: unknown }).count) : 0
   const count = Number.isFinite(previous) && previous > 0 ? previous + 1 : 1
   return {
     submissionId: next.submissionId,

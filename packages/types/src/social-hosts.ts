@@ -27,7 +27,10 @@ const SOCIAL_HOSTS = [
 ] as const
 
 export function isSocialHost(host: string) {
-  const bare = host.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  const bare = host
+    .toLowerCase()
+    .replace(/\.$/, '')
+    .replace(/^www\./, '')
   if (!bare) {
     return false
   }

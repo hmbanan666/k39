@@ -6,7 +6,13 @@ export default defineEventHandler(async (event) => {
     return
   }
   const path = event.path.split('?')[0] || ''
-  if (path.startsWith('/api') || path.startsWith('/admin') || path.startsWith('/_') || path.startsWith('/mcp') || path.includes('.')) {
+  if (
+    path.startsWith('/api') ||
+    path.startsWith('/admin') ||
+    path.startsWith('/_') ||
+    path.startsWith('/mcp') ||
+    path.includes('.')
+  ) {
     return
   }
   const accept = getHeader(event, 'accept') || ''
@@ -17,9 +23,15 @@ export default defineEventHandler(async (event) => {
   if (!isBotUserAgent(ua)) {
     return
   }
-  await ingest(event, [{
-    type: 'pageview',
-    path: event.path,
-    ref: getHeader(event, 'referer') || '',
-  }], 'server').catch(() => undefined)
+  await ingest(
+    event,
+    [
+      {
+        type: 'pageview',
+        path: event.path,
+        ref: getHeader(event, 'referer') || '',
+      },
+    ],
+    'server',
+  ).catch(() => undefined)
 })

@@ -9,11 +9,11 @@ import { areaSearchResults } from '../shared/search-results'
 
 const { fetchPage, sendEvents } = vi.hoisted(() => ({ fetchPage: vi.fn(), sendEvents: vi.fn() }))
 vi.mock('./nuxt-stubs', async (original) => ({
-  ...await original<object>(),
+  ...(await original<object>()),
   useRoute: () => route,
   useFetch: fetchPage,
 }))
-vi.mock('../shared/search', async (original) => ({ ...await original<object>(), sendSearchEvents: sendEvents }))
+vi.mock('../shared/search', async (original) => ({ ...(await original<object>()), sendSearchEvents: sendEvents }))
 
 const route = reactive({ query: { q: 'Форт', s: 'header' } })
 const data = ref<SearchResponse | null>(null)
@@ -23,12 +23,22 @@ const refresh = vi.fn()
 let wrapper: VueWrapper | undefined
 
 function response(query = 'Форт', empty = false): SearchResponse {
-  return { query, normalized: query.toLowerCase(), results: empty
-    ? []
-    : [{
-        kind: 'place', path: '/fixture-fort', title: 'Фикстура: форт',
-        label: 'Форты', region: 'Калининград', snippet: 'Тестовый результат',
-      }] }
+  return {
+    query,
+    normalized: query.toLowerCase(),
+    results: empty
+      ? []
+      : [
+          {
+            kind: 'place',
+            path: '/fixture-fort',
+            title: 'Фикстура: форт',
+            label: 'Форты',
+            region: 'Калининград',
+            snippet: 'Тестовый результат',
+          },
+        ],
+  }
 }
 async function renderPage() {
   wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(SearchPage) }) }))
@@ -43,9 +53,11 @@ beforeEach(() => {
   error.value = new TypeError('Failed to fetch')
   refresh.mockReset()
   sendEvents.mockReset()
-  fetchPage.mockImplementation((url: string) => url === '/api/search'
-    ? { data, status, error, refresh }
-    : { data: ref({ hubs: [{ text: 'Форты', href: '/forty' }], places: [], routes: [] }) })
+  fetchPage.mockImplementation((url: string) =>
+    url === '/api/search'
+      ? { data, status, error, refresh }
+      : { data: ref({ hubs: [{ text: 'Форты', href: '/forty' }], places: [], routes: [] }) },
+  )
 })
 afterEach(() => {
   wrapper?.unmount()
@@ -66,14 +78,19 @@ it('shows a recoverable failure instead of an empty search and does not log it',
     data.value = response()
     status.value = 'success'
   })
-  await page.findAll('button').find((button) => button.text() === 'Повторить')!.trigger('click')
+  await page
+    .findAll('button')
+    .find((button) => button.text() === 'Повторить')!
+    .trigger('click')
   await flushPromises()
   expect(refresh).toHaveBeenCalledExactlyOnceWith()
   expect(page.find('[role="alert"]').exists()).toBe(false)
   expect(page.get('.result').text()).toContain('Фикстура: форт')
   expect(sendEvents).toHaveBeenCalledExactlyOnceWith([expect.objectContaining({ type: 'search', q: 'Форт', count: 1 })])
   await page.get('.result').trigger('click')
-  expect(sendEvents).toHaveBeenLastCalledWith([expect.objectContaining({ type: 'click', position: 1, path: '/fixture-fort' })])
+  expect(sendEvents).toHaveBeenLastCalledWith([
+    expect.objectContaining({ type: 'click', position: 1, path: '/fixture-fort' }),
+  ])
 })
 
 it('logs a real successful empty search once and keeps alternative destinations', async () => {
@@ -147,7 +164,19 @@ it('server-renders the same failure and a plain GET recovery form without analyt
 
 it('server-renders area labels and retains the subject name and destination link', async () => {
   data.value = response()
-  data.value.results = areaSearchResults([{ kind: 'place', path: '/primorsk', title: 'Приморск', label: 'Курорты', region: 'Балтийск', snippet: 'Фикстура' }], [{ slug: 'baltiysk', title: 'Историческое название', shortTitle: 'Балтийск' }])
+  data.value.results = areaSearchResults(
+    [
+      {
+        kind: 'place',
+        path: '/primorsk',
+        title: 'Приморск',
+        label: 'Курорты',
+        region: 'Балтийск',
+        snippet: 'Фикстура',
+      },
+    ],
+    [{ slug: 'baltiysk', title: 'Историческое название', shortTitle: 'Балтийск' }],
+  )
   status.value = 'success'
   error.value = null
   const html = await renderToString(createSSRApp(SearchPage))
@@ -169,9 +198,9 @@ it('server-renders real results and links without requiring client analytics', a
 })
 
 it('keeps recovery available when both search and alternative-link requests fail', async () => {
-  fetchPage.mockImplementation((url: string) => url === '/api/search'
-    ? { data, status, error, refresh }
-    : { data: ref(null) })
+  fetchPage.mockImplementation((url: string) =>
+    url === '/api/search' ? { data, status, error, refresh } : { data: ref(null) },
+  )
   const page = await renderPage()
   expect(page.get('[role="alert"]').text()).toContain('измените запрос')
   expect(page.find('form[action="/poisk"]').exists()).toBe(true)

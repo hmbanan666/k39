@@ -4,7 +4,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'collection_get',
-  description: 'Load one collection by id or slug, including drafts, ordered places, kind, month, sources, and the other stored fields. article is modules or body: the store the public page renders. renderedFields lists those fields. On a module page body is the stored projection, not a second article. pendingReview is the stored draft payload when a draft-token write is waiting, or null.',
+  description:
+    'Load one collection by id or slug, including drafts, ordered places, kind, month, sources, and the other stored fields. article is modules or body: the store the public page renders. renderedFields lists those fields. On a module page body is the stored projection, not a second article. pendingReview is the stored draft payload when a draft-token write is waiting, or null.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),

@@ -63,15 +63,48 @@ describe('site search', () => {
     await db.delete(searchEvents)
     const day = new Date().toISOString().slice(0, 10)
     await db.delete(analyticsSearchQueries).where(inArray(analyticsSearchQueries.query, ['Форт Кёнигсберг']))
-    await db.insert(analyticsSearchQueries).values({ day, engine: 'google', page: '/x', query: 'Форт Кёнигсберг', impressions: 7, clicks: 1, position: 8 })
+    await db
+      .insert(analyticsSearchQueries)
+      .values({ day, engine: 'google', page: '/x', query: 'Форт Кёнигсберг', impressions: 7, clicks: 1, position: 8 })
     const now = Date.now()
     const at = (offset: number) => new Date(now - offset).toISOString()
     const base = { visitorKey: 'v1', sessionKey: 's1', surface: 'header' }
     await Search.insertEvents([
-      { ...base, searchId: 'a', eventType: 'search', query: 'фрт', normalized: 'фрт', resultCount: 0, occurredAt: at(60_000) },
-      { ...base, searchId: 'b', eventType: 'search', query: 'Форт Кёнигсберг', normalized: normalizeSearchQuery('Форт Кёнигсберг'), resultCount: 3, occurredAt: at(30_000) },
-      { ...base, searchId: 'b', eventType: 'click', position: 1, resultPath: '/search-fort-kenig', occurredAt: at(20_000) },
-      { ...base, searchId: 'b', eventType: 'search', query: 'dup', normalized: 'dup', resultCount: 3, occurredAt: at(10_000) },
+      {
+        ...base,
+        searchId: 'a',
+        eventType: 'search',
+        query: 'фрт',
+        normalized: 'фрт',
+        resultCount: 0,
+        occurredAt: at(60_000),
+      },
+      {
+        ...base,
+        searchId: 'b',
+        eventType: 'search',
+        query: 'Форт Кёнигсберг',
+        normalized: normalizeSearchQuery('Форт Кёнигсберг'),
+        resultCount: 3,
+        occurredAt: at(30_000),
+      },
+      {
+        ...base,
+        searchId: 'b',
+        eventType: 'click',
+        position: 1,
+        resultPath: '/search-fort-kenig',
+        occurredAt: at(20_000),
+      },
+      {
+        ...base,
+        searchId: 'b',
+        eventType: 'search',
+        query: 'dup',
+        normalized: 'dup',
+        resultCount: 3,
+        occurredAt: at(10_000),
+      },
       { visitorKey: 'bot', searchId: 'c', eventType: 'search', isBot: true, normalized: 'фрт', resultCount: 0 },
     ])
     const from = new Date(now - 3_600_000)

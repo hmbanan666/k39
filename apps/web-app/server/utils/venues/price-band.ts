@@ -23,7 +23,9 @@ export async function recomputeTownPriceBands(regionId: string | null, now = new
   const comparable = await loadComparablePrices(now)
   const peerRows = comparable.filter((row) => slugs.has(row.item))
   const peers = peersByItem(peerRows)
-  const ownRows = town.flatMap((venue) => (freshByVenue.get(venue.id) ?? []).map((row) => ({ ...row, venueId: venue.id })))
+  const ownRows = town.flatMap((venue) =>
+    (freshByVenue.get(venue.id) ?? []).map((row) => ({ ...row, venueId: venue.id })),
+  )
   const ownByVenue = new Map<string, typeof ownRows>()
   for (const item of await projectMenuPrices(ownRows, now)) {
     const list = ownByVenue.get(item.row.venueId) ?? []
@@ -50,7 +52,10 @@ export async function recomputeTownPriceBands(regionId: string | null, now = new
 }
 
 /** Publication or a move between towns changes who is in the sample. */
-export async function recomputePriceBandsAfterStatus(before: { regionId: string | null, status: string }, after: { regionId: string | null, status: string }) {
+export async function recomputePriceBandsAfterStatus(
+  before: { regionId: string | null; status: string },
+  after: { regionId: string | null; status: string },
+) {
   const publicationChanged = (before.status === 'published') !== (after.status === 'published')
   const regionChanged = before.regionId !== after.regionId
   if (!publicationChanged && !regionChanged) {

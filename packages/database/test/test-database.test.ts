@@ -20,12 +20,16 @@ describe('test database url', () => {
   })
 
   it('refuses a shared or remote database', () => {
-    expect(() => resolveTestDatabaseUrl({
-      DATABASE_URL: 'postgres://postgres:postgres@db.example.com:5432/k39',
-    })).toThrow(TestDatabaseError)
-    expect(() => resolveTestDatabaseUrl({
-      DATABASE_URL_TEST: 'postgres://postgres:postgres@localhost:5432/k39',
-    })).toThrow(/_test/)
+    expect(() =>
+      resolveTestDatabaseUrl({
+        DATABASE_URL: 'postgres://postgres:postgres@db.example.com:5432/k39',
+      }),
+    ).toThrow(TestDatabaseError)
+    expect(() =>
+      resolveTestDatabaseUrl({
+        DATABASE_URL_TEST: 'postgres://postgres:postgres@localhost:5432/k39',
+      }),
+    ).toThrow(/_test/)
     expect(() => assertResettable('postgres://postgres:postgres@127.0.0.1:5432/k39')).toThrow(/k39/)
   })
 

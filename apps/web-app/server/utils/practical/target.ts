@@ -22,7 +22,11 @@ const LIVE: Record<PracticalSubjectType, readonly string[]> = {
 }
 
 /** Resolves the owner of admission rows, events, or notices by id or slug. */
-export async function practicalTarget<T extends PracticalSubjectType>(type: T, id?: string | null, slug?: string | null): Promise<PracticalTarget<T>> {
+export async function practicalTarget<T extends PracticalSubjectType>(
+  type: T,
+  id?: string | null,
+  slug?: string | null,
+): Promise<PracticalTarget<T>> {
   if (!id && !slug) {
     throw createError({ statusCode: 400, statusMessage: 'Нужен id или slug' })
   }
@@ -34,7 +38,14 @@ export async function practicalTarget<T extends PracticalSubjectType>(type: T, i
   } else if (type === 'venue') {
     const row = id ? await db.venues.byId(id) : await db.venues.bySlug(slug || '')
     if (row) {
-      return { type, id: row.id, slug: row.slug, title: row.name, status: row.status, own: { socials: row.socials, vkCommunityId: row.vkCommunityId } }
+      return {
+        type,
+        id: row.id,
+        slug: row.slug,
+        title: row.name,
+        status: row.status,
+        own: { socials: row.socials, vkCommunityId: row.vkCommunityId },
+      }
     }
   } else {
     const row = id ? await db.editor.routeById(id) : await db.editor.routeBySlug(slug || '')

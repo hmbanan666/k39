@@ -17,7 +17,9 @@ describe('sticker picture', () => {
     expect(img.attributes('src')).not.toContain('/stickers/food/')
     expect(img.attributes('alt')).toBe(STICKERS['with-map'].alt)
     expect(img.attributes('width')).toBe('160')
-    expect(img.attributes('height')).toBe(String(Math.round(160 * STICKERS['with-map'].height / STICKERS['with-map'].width)))
+    expect(img.attributes('height')).toBe(
+      String(Math.round((160 * STICKERS['with-map'].height) / STICKERS['with-map'].width)),
+    )
     expect(img.attributes('loading')).toBe('lazy')
     const avif = wrapper.get('source[type="image/avif"]')
     expect(avif.attributes('srcset')).toBe(stickerSrcset('with-map', 'avif'))
@@ -42,7 +44,9 @@ describe('sticker picture', () => {
     expect(img.attributes('src')).toBe(foodStickerSrc('latte', 256, 'png'))
     expect(img.attributes('alt')).toBe('')
     expect(img.attributes('width')).toBe('56')
-    expect(img.attributes('height')).toBe(String(Math.round(56 * FOOD_STICKERS.latte.height / FOOD_STICKERS.latte.width)))
+    expect(img.attributes('height')).toBe(
+      String(Math.round((56 * FOOD_STICKERS.latte.height) / FOOD_STICKERS.latte.width)),
+    )
     const avif = wrapper.get('source[type="image/avif"]')
     expect(avif.attributes('srcset')).toBe(foodStickerSrcset('latte', 'avif'))
     expect(avif.attributes('srcset')).toContain('/stickers/food/latte-128.avif 128w')
@@ -61,9 +65,11 @@ describe('sticker picture', () => {
   })
 
   it('prints the food picture in server HTML', async () => {
-    const html = await renderToString(createSSRApp({
-      render: () => h(Sticker, { set: 'food', slug: 'cappuccino', width: 56, decorative: true }),
-    }))
+    const html = await renderToString(
+      createSSRApp({
+        render: () => h(Sticker, { set: 'food', slug: 'cappuccino', width: 56, decorative: true }),
+      }),
+    )
     expect(html).toContain('src="/stickers/food/cappuccino-256.png"')
     expect(html).toContain('/stickers/food/cappuccino-128.avif 128w')
     expect(html).toContain('/stickers/food/cappuccino-256.webp 256w')
@@ -78,15 +84,18 @@ describe('sticker picture', () => {
     expect(isFoodStickerSlug('cappuccino')).toBe(true)
     expect(isFoodStickerSlug('with-map')).toBe(false)
     expect(Object.keys(FOOD_STICKERS).every((slug) => isFoodStickerSlug(slug))).toBe(true)
-    expect(() => mount(Sticker, { props: { set: 'food', slug: 'with-map' as 'borscht' } })).toThrow(/Unknown food sticker/)
+    expect(() => mount(Sticker, { props: { set: 'food', slug: 'with-map' as 'borscht' } })).toThrow(
+      /Unknown food sticker/,
+    )
   })
 
   it('lists every moose sticker once in the catalog, with its category', () => {
     const catalog = readFileSync(join(process.cwd(), 'docs/stickers.md'), 'utf8')
     for (const slug of Object.keys(STICKERS) as Array<keyof typeof STICKERS>) {
-      const row = catalog.split('\n').find((line) => line.startsWith(`| \`${slug}\` |`))
-      expect(row, slug).toBeDefined()
-      expect(row).toContain(`| ${STICKER_CATEGORY[slug]} |`)
+      const rows = catalog.split('\n').map((line) => line.split('|').map((cell) => cell.trim()))
+      const matches = rows.filter((cells) => cells[1] === `\`${slug}\``)
+      expect(matches, slug).toHaveLength(1)
+      expect(matches[0]?.[2]).toBe(STICKER_CATEGORY[slug])
     }
   })
 })

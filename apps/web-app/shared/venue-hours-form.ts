@@ -23,7 +23,7 @@ const WEEKDAY_NUMBER: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3,
 
 export type HoursDayState = 'open' | 'closed' | 'unknown'
 
-export const HOURS_DAY_STATES: Array<{ value: HoursDayState, label: string }> = [
+export const HOURS_DAY_STATES: Array<{ value: HoursDayState; label: string }> = [
   { value: 'open', label: 'часы' },
   { value: 'closed', label: 'выходной' },
   { value: 'unknown', label: 'часы уточняйте' },
@@ -83,7 +83,13 @@ export function hoursFormState(rules: ScheduleRules | null, today: string): Hour
     const number = WEEKDAY_NUMBER[day.weekday]!
     const entry = season?.week.find((item) => item.days.includes(number))
     if (entry) {
-      return { weekday: day.weekday, state: 'open', opens: entry.opens, closes: entry.closes ?? '', ...(entry.closes ? {} : { openEnded: true }) }
+      return {
+        weekday: day.weekday,
+        state: 'open',
+        opens: entry.opens,
+        closes: entry.closes ?? '',
+        ...(entry.closes ? {} : { openEnded: true }),
+      }
     }
     return season?.unknownDays?.includes(number) ? { ...day, state: 'unknown' } : day
   })

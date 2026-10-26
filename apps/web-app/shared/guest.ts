@@ -22,7 +22,8 @@ export const GUEST_KIND_LABELS: Record<'review' | 'tip' | 'photo', string> = {
   photo: 'Фото гостя',
 }
 
-export const GUEST_DISCLAIMER = 'Это сообщения посетителей. Редакция не проверяла их как факты. Часы и цены на странице остаются сверенными с источниками.'
+export const GUEST_DISCLAIMER =
+  'Это сообщения посетителей. Редакция не проверяла их как факты. Часы и цены на странице остаются сверенными с источниками.'
 
 const EMAIL_RE = /[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i
 const HTTP_RE = /https?:\/\/[^\s<>"']+/gi
@@ -85,19 +86,24 @@ export function guestDateLabel(iso: string) {
   }).format(new Date(iso))
 }
 
-export function guestReviewNodes(itemId: string, items: Array<{ kind: string, byline: string, body: string, acceptedAt: string }>) {
+export function guestReviewNodes(
+  itemId: string,
+  items: Array<{ kind: string; byline: string; body: string; acceptedAt: string }>,
+) {
   return items.flatMap((item) => {
     if (item.kind !== 'review' || !item.body.trim() || !item.byline.trim()) {
       return []
     }
-    return [{
-      '@type': 'Review',
-      'author': { '@type': 'Person', 'name': item.byline },
-      'datePublished': guestDay(item.acceptedAt),
-      'reviewBody': item.body,
-      'inLanguage': 'ru',
-      'itemReviewed': { '@id': itemId },
-    }]
+    return [
+      {
+        '@type': 'Review',
+        'author': { '@type': 'Person', 'name': item.byline },
+        'datePublished': guestDay(item.acceptedAt),
+        'reviewBody': item.body,
+        'inLanguage': 'ru',
+        'itemReviewed': { '@id': itemId },
+      },
+    ]
   })
 }
 
@@ -119,7 +125,14 @@ function isPrivateHost(host: string) {
   if (parts.some((part) => part > 255)) {
     return true
   }
-  return a === 10 || a === 127 || a === 0 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254)
+  return (
+    a === 10 ||
+    a === 127 ||
+    a === 0 ||
+    (a === 192 && b === 168) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 169 && b === 254)
+  )
 }
 
 function bannedHost(host: string) {
@@ -127,7 +140,7 @@ function bannedHost(host: string) {
 }
 
 /** One public https URL, or a reason the text cannot be stored. */
-export function inspectGuestUrl(raw: string): { ok: true, url: URL } | { ok: false, message: string } {
+export function inspectGuestUrl(raw: string): { ok: true; url: URL } | { ok: false; message: string } {
   let url: URL
   try {
     url = new URL(trimUrl(raw))
@@ -168,7 +181,10 @@ function phoneFragment(text: string) {
   return ''
 }
 
-export function inspectGuestText(text: string, options?: { allowPhone?: boolean }): { ok: true, body: string } | { ok: false, message: string } {
+export function inspectGuestText(
+  text: string,
+  options?: { allowPhone?: boolean },
+): { ok: true; body: string } | { ok: false; message: string } {
   const body = text.trim()
   if (EMAIL_RE.test(body)) {
     return { ok: false, message: 'Уберите адрес электронной почты из текста.' }
@@ -253,7 +269,7 @@ export function routeGuestDecision(input: {
   decision: 'accept' | 'reject' | 'dispute'
   recognizableFace?: boolean
   note?: string
-}): { decision: 'accept' | 'reject' | 'dispute', note: string | null } {
+}): { decision: 'accept' | 'reject' | 'dispute'; note: string | null } {
   if (input.decision === 'accept' && input.kind === 'photo' && input.recognizableFace === true) {
     return { decision: 'reject', note: GUEST_FACE_REJECT_NOTE }
   }

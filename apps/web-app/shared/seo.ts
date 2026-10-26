@@ -29,9 +29,7 @@ export const ORGANIZATION_LOGO = {
 export const GEO_REGION = 'RU-KGD'
 
 export function publicRobots(noindex = false) {
-  return noindex
-    ? 'noindex, follow, max-image-preview:large'
-    : 'index, follow, max-image-preview:large'
+  return noindex ? 'noindex, follow, max-image-preview:large' : 'index, follow, max-image-preview:large'
 }
 
 // Bump when the favicon, touch icon, or manifest icons change.
@@ -90,14 +88,47 @@ export const RESERVED_SLUGS = [
 ] as const
 
 const RU: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y',
-  к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f',
-  х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'e',
+  ж: 'zh',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'h',
+  ц: 'ts',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'sch',
+  ъ: '',
+  ы: 'y',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
 }
 
 export function transliterateSlug(value: string) {
   const lowered = value.trim().toLowerCase()
-  const mapped = lowered.split('').map((char) => RU[char] ?? char).join('')
+  const mapped = lowered
+    .split('')
+    .map((char) => RU[char] ?? char)
+    .join('')
   return mapped.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
@@ -112,7 +143,7 @@ export function slugError(slug: string) {
 }
 
 export function verificationMeta(yandex?: string | null, google?: string | null) {
-  const tags: Array<{ name: string, content: string }> = []
+  const tags: Array<{ name: string; content: string }> = []
   const yandexToken = yandex?.trim()
   const googleToken = google?.trim()
   if (yandexToken) {
@@ -242,7 +273,9 @@ export function breadcrumbNode(crumbs: Crumb[]) {
 
 export function homeDocument(): SeoDocument {
   const title = pageTitle('Куда сходить в Калининградской области')
-  const description = metaDescription('Форты, замки, пляжи, курорты, музеи и еда Калининградской области: статус, часы и как добраться.')
+  const description = metaDescription(
+    'Форты, замки, пляжи, курорты, музеи и еда Калининградской области: статус, часы и как добраться.',
+  )
   return {
     title,
     description,
@@ -251,10 +284,7 @@ export function homeDocument(): SeoDocument {
     h1: 'Куда сходить в Калининградской области',
     crumbs: [],
     ogImage: DEFAULT_OG_IMAGE,
-    jsonLd: [
-      { ...organizationNode(), '@id': `${SITE_ORIGIN}/#organization` },
-      websiteNode(),
-    ],
+    jsonLd: [{ ...organizationNode(), '@id': `${SITE_ORIGIN}/#organization` }, websiteNode()],
   }
 }
 
@@ -339,13 +369,21 @@ export function intentTitle(name: string, intent: string, seoTitle?: string | nu
     return plain
   }
   const room = TITLE_MAX - ` | ${SITE_NAME}`.length
-  const cut = base.slice(0, room).replace(/\s+\S*$/, '').trim() || base.slice(0, room)
+  const cut =
+    base
+      .slice(0, room)
+      .replace(/\s+\S*$/, '')
+      .trim() || base.slice(0, room)
   return pageTitle(cut)
 }
 
 const DESCRIPTION_FLOOR = 'Справочник K39 по Калининградской области: места, часы и как добраться.'
 
-export function pageDescription(summary: string, override?: string | null, facts: Array<string | null | undefined> = []) {
+export function pageDescription(
+  summary: string,
+  override?: string | null,
+  facts: Array<string | null | undefined> = [],
+) {
   const custom = override?.trim()
   if (custom) {
     return metaDescription(custom)
@@ -363,7 +401,7 @@ export function pageDescription(summary: string, override?: string | null, facts
   }
   if (text.length < 50 && !text.includes(SITE_NAME)) {
     const withShort = text ? `${text} Справочник ${SITE_NAME}.` : `Справочник ${SITE_NAME}.`
-    text = withShort.length >= 50 ? withShort : (text ? `${text} ${DESCRIPTION_FLOOR}` : DESCRIPTION_FLOOR)
+    text = withShort.length >= 50 ? withShort : text ? `${text} ${DESCRIPTION_FLOOR}` : DESCRIPTION_FLOOR
   }
   return metaDescription(text)
 }
@@ -396,7 +434,11 @@ function schemaClock(value: string) {
 
 // Only a whole string that names the days is emitted. A bare range or a note is left out.
 export function schemaOpeningHours(raw: string | null | undefined) {
-  const text = (raw || '').replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase()
+  const text = (raw || '')
+    .replace(/[–—]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
   if (!text) {
     return null
   }
@@ -519,7 +561,7 @@ function collectionIntent(crumbName?: string) {
   return COLLECTION_INTENT[crumbName || ''] || 'Калининградская область'
 }
 
-function venueIntent(input: { hours?: VenueSeoInput['hours'], cuisine?: string[], priceLevel?: number | null }) {
+function venueIntent(input: { hours?: VenueSeoInput['hours']; cuisine?: string[]; priceLevel?: number | null }) {
   const bits: string[] = []
   if ((input.hours ?? []).some((day) => !day.closed && day.opens && day.closes)) {
     bits.push('часы')
@@ -551,7 +593,10 @@ const SCHEMA_DAY: Record<string, string> = {
 
 /** Whole sentences up to 160 chars, so a snippet never stops mid-phrase. */
 export function searchBlurb(text: string, max = 160) {
-  const clean = text.replace(/[#*_>`[\]]/g, '').replace(/\s+/g, ' ').trim()
+  const clean = text
+    .replace(/[#*_>`[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
   if (clean.length <= max) {
     return clean
   }
@@ -566,7 +611,10 @@ export function searchBlurb(text: string, max = 160) {
   if (out.trim().length >= 70) {
     return out.trim()
   }
-  return `${clean.slice(0, max - 1).replace(/\s+\S*$/, '').replace(/[,;:\s]+$/, '')}…`
+  return `${clean
+    .slice(0, max - 1)
+    .replace(/\s+\S*$/, '')
+    .replace(/[,;:\s]+$/, '')}…`
 }
 
 /** «Сковородка, ресторан в Зеленоградске». */
@@ -588,7 +636,7 @@ export interface VenueSeoInput {
   website?: string | null
   priceLevel?: number | null
   cuisine?: string[]
-  hours?: Array<{ weekday: string, opens: string | null, closes: string | null, closed?: boolean }>
+  hours?: Array<{ weekday: string; opens: string | null; closes: string | null; closed?: boolean }>
   seoTitle?: string | null
   seoDescription?: string | null
   noindex?: boolean
@@ -616,7 +664,11 @@ export interface PracticalSeoInput {
  * Fresh admission rows become `offers` on the node, and the stored rows decide
  * `isAccessibleForFree`. Returns the upcoming `Event` nodes located at the node.
  */
-function practicalMarkup(node: Record<string, unknown>, practical: PracticalSeoInput | undefined, options: { events: boolean }) {
+function practicalMarkup(
+  node: Record<string, unknown>,
+  practical: PracticalSeoInput | undefined,
+  options: { events: boolean },
+) {
   const admission = practical?.admission
   if (admission?.stored) {
     const offers = admissionOffers(admission)
@@ -689,7 +741,9 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
   if (input.priceLevel && input.priceLevel >= 1 && input.priceLevel <= 4) {
     node.priceRange = '₽'.repeat(input.priceLevel)
   }
-  const cuisine = (input.cuisineLabels?.length ? input.cuisineLabels : input.cuisine ?? []).map((item) => item.trim()).filter(Boolean)
+  const cuisine = (input.cuisineLabels?.length ? input.cuisineLabels : (input.cuisine ?? []))
+    .map((item) => item.trim())
+    .filter(Boolean)
   if (cuisine.length) {
     node.servesCuisine = cuisine
   }
@@ -715,12 +769,14 @@ export function venueDocument(input: VenueSeoInput): SeoDocument {
     if (!name || !opens || !closes) {
       return []
     }
-    return [{
-      '@type': 'OpeningHoursSpecification',
-      'dayOfWeek': `https://schema.org/${name}`,
-      'opens': opens,
-      'closes': closes,
-    }]
+    return [
+      {
+        '@type': 'OpeningHoursSpecification',
+        'dayOfWeek': `https://schema.org/${name}`,
+        'opens': opens,
+        'closes': closes,
+      },
+    ]
   })
   if (specs.length) {
     node.openingHoursSpecification = specs
@@ -819,12 +875,12 @@ export interface PlaceSeoInput {
   seoTitle?: string | null
   seoDescription?: string | null
   noindex?: boolean
-  sources: Array<{ title: string, url: string }>
+  sources: Array<{ title: string; url: string }>
   image?: SeoImage | null
   images?: SeoImage[]
   page?: number
   body?: string | null
-  faq?: Array<{ question: string, answer: string }>
+  faq?: Array<{ question: string; answer: string }>
   updatedAt?: string | null
   checkedAt?: string | null
   practical?: PracticalSeoInput
@@ -840,7 +896,12 @@ export function isoDay(value: string | null | undefined) {
   return Number.isFinite(Date.parse(day)) ? day : null
 }
 
-function placeWebPage(path: string, name: string, description: string, input: { updatedAt?: string | null, checkedAt?: string | null }) {
+function placeWebPage(
+  path: string,
+  name: string,
+  description: string,
+  input: { updatedAt?: string | null; checkedAt?: string | null },
+) {
   const url = absoluteUrl(path)
   const node: Record<string, unknown> = {
     '@type': 'WebPage',
@@ -909,7 +970,8 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
     node.openingHours = hours
   }
   const now = input.now ?? new Date()
-  const parsedHours = scheduleMarkup(input.schedule ?? null, now) ?? openingHoursSchema(parsePlaceHours(input.hours), now)
+  const parsedHours =
+    scheduleMarkup(input.schedule ?? null, now) ?? openingHoursSchema(parsePlaceHours(input.hours), now)
   if (parsedHours?.regular.length) {
     node.openingHoursSpecification = parsedHours.regular
     if (parsedHours.special.length) {
@@ -920,7 +982,9 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
   if (free != null) {
     node.isAccessibleForFree = free
   }
-  const sameAs = input.sources.map((source) => source.url).filter((url) => url.startsWith('http://') || url.startsWith('https://'))
+  const sameAs = input.sources
+    .map((source) => source.url)
+    .filter((url) => url.startsWith('http://') || url.startsWith('https://'))
   if (sameAs.length) {
     node.sameAs = sameAs
   }
@@ -962,14 +1026,20 @@ export function placeDocument(input: PlaceSeoInput): SeoDocument {
 }
 
 // Structured FAQ wins. A «Частые вопросы» section in the body is the fallback for older pages.
-export function pageFaq(body: string | null | undefined, structured?: Array<{ question: string, answer: string }> | null) {
+export function pageFaq(
+  body: string | null | undefined,
+  structured?: Array<{ question: string; answer: string }> | null,
+) {
   const listed = (structured ?? [])
     .map((item) => ({ question: item.question.trim(), answer: item.answer.trim() }))
     .filter((item) => item.question && item.answer)
   return listed.length ? listed : faqFromBody(body || '')
 }
 
-export function faqPageNode(body: string | null | undefined, structured?: Array<{ question: string, answer: string }> | null) {
+export function faqPageNode(
+  body: string | null | undefined,
+  structured?: Array<{ question: string; answer: string }> | null,
+) {
   const faq = pageFaq(body, structured)
   if (!faq.length) {
     return null
@@ -987,7 +1057,7 @@ export function faqPageNode(body: string | null | undefined, structured?: Array<
 export function faqFromBody(body: string) {
   const lines = body.replace(/\r\n/g, '\n').split('\n')
   let inFaq = false
-  const items: Array<{ question: string, answer: string }> = []
+  const items: Array<{ question: string; answer: string }> = []
   let question = ''
   const answer: string[] = []
   const commit = () => {
@@ -1051,7 +1121,10 @@ export function splitDirections(body: string) {
   const next = rest.findIndex((line) => /^##[ \t]+\S/.test(line.trim()))
   const section = next < 0 ? rest : rest.slice(0, next)
   const after = next < 0 ? [] : rest.slice(next)
-  const article = [...lines.slice(0, start), ...after].join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  const article = [...lines.slice(0, start), ...after]
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
   return { article, directions: section.join('\n').trim() }
 }
 
@@ -1076,13 +1149,18 @@ export function stripRepeatedLead(summary: string, body: string) {
   return [rest, after].filter(Boolean).join('\n\n')
 }
 
-function tripPlace(item: { name: string, url: string, latitude?: number | null, longitude?: number | null }) {
+function tripPlace(item: { name: string; url: string; latitude?: number | null; longitude?: number | null }) {
   const place: Record<string, unknown> = {
     '@type': 'TouristAttraction',
     'name': item.name,
     'url': absoluteUrl(item.url),
   }
-  if (typeof item.latitude === 'number' && Number.isFinite(item.latitude) && typeof item.longitude === 'number' && Number.isFinite(item.longitude)) {
+  if (
+    typeof item.latitude === 'number' &&
+    Number.isFinite(item.latitude) &&
+    typeof item.longitude === 'number' &&
+    Number.isFinite(item.longitude)
+  ) {
     place.geo = {
       '@type': 'GeoCoordinates',
       'latitude': item.latitude,
@@ -1098,7 +1176,7 @@ export function collectionDocument(input: {
   summary: string
   crumbName?: string
   parent?: Crumb
-  items: Array<{ name: string, url: string, note?: string | null, latitude?: number | null, longitude?: number | null }>
+  items: Array<{ name: string; url: string; note?: string | null; latitude?: number | null; longitude?: number | null }>
   seoTitle?: string | null
   seoDescription?: string | null
   noindex?: boolean
@@ -1112,9 +1190,13 @@ export function collectionDocument(input: {
 }): SeoDocument {
   const page = input.page ?? 1
   const parent = input.parent ?? { name: 'Главная', href: '/' }
-  const crumbs: Crumb[] = parent.href === '/'
-    ? [{ name: 'Главная', href: '/' }, { name: input.h1, href: input.path }]
-    : [{ name: 'Главная', href: '/' }, parent, { name: input.h1, href: input.path }]
+  const crumbs: Crumb[] =
+    parent.href === '/'
+      ? [
+          { name: 'Главная', href: '/' },
+          { name: input.h1, href: input.path },
+        ]
+      : [{ name: 'Главная', href: '/' }, parent, { name: input.h1, href: input.path }]
   const title = intentTitle(input.h1, collectionIntent(input.crumbName), input.seoTitle)
   const description = pageDescription(input.summary, input.seoDescription)
   const listed = input.items.filter((item) => item.name.trim() && item.url.trim())
@@ -1140,9 +1222,22 @@ export function collectionDocument(input: {
       return entry
     })
   }
-  const node: Record<string, unknown> = input.kind === 'TouristTrip'
-    ? { '@type': 'TouristTrip', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'itinerary': list }
-    : { '@type': 'CollectionPage', 'name': input.h1, 'description': description, 'url': absoluteUrl(input.path), 'mainEntity': list }
+  const node: Record<string, unknown> =
+    input.kind === 'TouristTrip'
+      ? {
+          '@type': 'TouristTrip',
+          'name': input.h1,
+          'description': description,
+          'url': absoluteUrl(input.path),
+          'itinerary': list,
+        }
+      : {
+          '@type': 'CollectionPage',
+          'name': input.h1,
+          'description': description,
+          'url': absoluteUrl(input.path),
+          'mainEntity': list,
+        }
   if (input.images?.length) {
     node.image = input.images.map((item) => imageObject(item))
   }
@@ -1217,10 +1312,12 @@ export function headFromDocument(doc: SeoDocument) {
       { name: 'twitter:image', content: doc.ogImage.url },
     ],
     link: [{ rel: 'canonical' as const, href: doc.canonical }],
-    script: [{
-      type: 'application/ld+json' as const,
-      innerHTML: JSON.stringify({ '@context': 'https://schema.org', '@graph': doc.jsonLd }),
-    }],
+    script: [
+      {
+        type: 'application/ld+json' as const,
+        innerHTML: JSON.stringify({ '@context': 'https://schema.org', '@graph': doc.jsonLd }),
+      },
+    ],
   }
 }
 

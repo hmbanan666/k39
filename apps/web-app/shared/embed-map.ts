@@ -103,11 +103,14 @@ export function shortMapText(value: string, max = 140) {
   if (text.length <= max) {
     return text
   }
-  const cut = text.slice(0, max - 1).replace(/\s+\S*$/, '').trim()
+  const cut = text
+    .slice(0, max - 1)
+    .replace(/\s+\S*$/, '')
+    .trim()
   return `${cut || text.slice(0, max - 1)}…`
 }
 
-export function pinOffer(input: { partner: boolean, offer: string | null }, enabled: boolean) {
+export function pinOffer(input: { partner: boolean; offer: string | null }, enabled: boolean) {
   if (!enabled || !input.partner || !input.offer?.trim()) {
     return { partner: false, offer: null as string | null }
   }
@@ -125,7 +128,13 @@ function finiteIn(value: string | undefined, min: number, max: number) {
   return number
 }
 
-export function parseMapQuery(input: { scope?: string, lat?: string, lng?: string, route?: string, radius?: string }): MapQuery {
+export function parseMapQuery(input: {
+  scope?: string
+  lat?: string
+  lng?: string
+  route?: string
+  radius?: string
+}): MapQuery {
   const latitude = finiteIn(input.lat, -90, 90)
   const longitude = finiteIn(input.lng, -180, 180)
   const routeRaw = (input.route || '').trim().toLowerCase()

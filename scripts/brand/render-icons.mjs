@@ -19,7 +19,7 @@ const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 }
  * diameter and the artwork is not clipped by a circular mask.
  */
 export function maskableSafeSide(canvas = 512) {
-  return Math.floor(canvas * 0.8 / Math.SQRT2)
+  return Math.floor((canvas * 0.8) / Math.SQRT2)
 }
 
 /**
@@ -188,7 +188,9 @@ function parseArgs(argv) {
     rest.push(arg)
   }
   if (rest.length !== 1) {
-    throw new Error('usage: node scripts/brand/render-icons.mjs <master> [--out dir] [--seo file] [--manifest file] [--version YYYYMMDD]')
+    throw new Error(
+      'usage: node scripts/brand/render-icons.mjs <master> [--out dir] [--seo file] [--manifest file] [--version YYYYMMDD]',
+    )
   }
   return { master: rest[0], ...options }
 }

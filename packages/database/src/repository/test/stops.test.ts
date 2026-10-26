@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
-import { collectionItems, collections, offers, places, quests, questSteps, routePoints, routes, slugRedirects } from '../../tables'
+import {
+  collectionItems,
+  collections,
+  offers,
+  places,
+  quests,
+  questSteps,
+  routePoints,
+  routes,
+  slugRedirects,
+} from '../../tables'
 import { Content, Editor } from '../content'
 
 async function storedRedirects() {
@@ -66,13 +76,15 @@ describe('ordered stops and archive', () => {
     })
     expect((await Editor.routePoints(route.id)).map((point) => point.placeSlug)).toEqual(['stop-hidden', 'stop-live'])
 
-    await expect(Editor.saveRoute({
-      id: route.id,
-      slug: route.slug,
-      title: 'Не должно сохраниться',
-      publicationStatus: 'published',
-      points: [{ placeSlug: 'no-such-place' }],
-    })).rejects.toThrow('Place not found: no-such-place')
+    await expect(
+      Editor.saveRoute({
+        id: route.id,
+        slug: route.slug,
+        title: 'Не должно сохраниться',
+        publicationStatus: 'published',
+        points: [{ placeSlug: 'no-such-place' }],
+      }),
+    ).rejects.toThrow('Place not found: no-such-place')
     const kept = (await Editor.listRoutes()).find((item) => item.id === route.id)
     expect(kept?.title).toBe('Порядок без точек в запросе')
     expect(await Editor.routePoints(route.id)).toHaveLength(2)
@@ -82,10 +94,7 @@ describe('ordered stops and archive', () => {
       slug: route.slug,
       title: kept?.title ?? route.title,
       publicationStatus: 'published',
-      points: [
-        { placeSlug: 'stop-live' },
-        { placeSlug: 'stop-live', note: 'Второй заход' },
-      ],
+      points: [{ placeSlug: 'stop-live' }, { placeSlug: 'stop-live', note: 'Второй заход' }],
     })
     expect((await Editor.routePoints(route.id)).map((point) => [point.placeSlug, point.note])).toEqual([
       ['stop-live', null],
@@ -141,9 +150,11 @@ describe('ordered stops and archive', () => {
     expect(archived).toMatchObject({ action: 'archived', slug: 'ordered-route', publicationStatus: 'archived' })
     expect(await Content.publishedRoute('ordered-route')).toBeNull()
     expect((await Content.sitemapRows()).routes.some((item) => item.loc === '/marshruty/ordered-route')).toBe(false)
-    expect(await storedRedirects()).toEqual(expect.arrayContaining([
-      expect.objectContaining({ fromPath: '/marshruty/ordered-route', toPath: null, statusCode: 410 }),
-    ]))
+    expect(await storedRedirects()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fromPath: '/marshruty/ordered-route', toPath: null, statusCode: 410 }),
+      ]),
+    )
     expect(await Editor.routePoints(route.id)).toHaveLength(1)
 
     const republished = await Editor.saveRoute({
@@ -167,7 +178,9 @@ describe('ordered stops and archive', () => {
 
     const linked = await Editor.saveRoute({ slug: 'linked-route', title: 'Связан' })
     const quest = await Editor.saveQuest({ slug: 'linked-quest', title: 'Квест', routeId: linked.id })
-    await expect(Editor.archiveOrDeleteRoute(linked.id)).rejects.toThrow('Cannot delete: a quest still links this route')
+    await expect(Editor.archiveOrDeleteRoute(linked.id)).rejects.toThrow(
+      'Cannot delete: a quest still links this route',
+    )
     expect((await Editor.listRoutes()).some((item) => item.id === linked.id)).toBe(true)
 
     const other = await Editor.saveRoute({ slug: 'other-route', title: 'Другой' })
@@ -202,39 +215,42 @@ describe('ordered stops and archive', () => {
       publicationStatus: 'review',
     })
     expect((await Editor.archiveOrDeleteRoute(review.id))?.action).toBe('archived')
-    expect((await storedRedirects()).some((item) => item.fromPath === '/marshruty/review-route' && item.statusCode === 410)).toBe(true)
+    expect(
+      (await storedRedirects()).some((item) => item.fromPath === '/marshruty/review-route' && item.statusCode === 410),
+    ).toBe(true)
   })
 
   it('stores collection items and archives a published collection', async () => {
-    await expect(Editor.saveCollection({
-      slug: 'never-collection',
-      title: 'Нет',
-      items: [{ placeSlug: 'missing' }],
-    })).rejects.toThrow('Place not found: missing')
+    await expect(
+      Editor.saveCollection({
+        slug: 'never-collection',
+        title: 'Нет',
+        items: [{ placeSlug: 'missing' }],
+      }),
+    ).rejects.toThrow('Place not found: missing')
     expect((await Editor.listCollections()).some((item) => item.slug === 'never-collection')).toBe(false)
 
     const collection = await Editor.saveCollection({
       slug: 'ordered-collection',
       title: 'Подборка',
       publicationStatus: 'published',
-      items: [
-        { placeSlug: 'stop-live', note: 'Сначала сюда' },
-        { placeSlug: 'stop-hidden' },
-      ],
+      items: [{ placeSlug: 'stop-live', note: 'Сначала сюда' }, { placeSlug: 'stop-hidden' }],
     })
     expect((await Editor.collectionItems(collection.id)).map((item) => [item.placeSlug, item.note])).toEqual([
       ['stop-live', 'Сначала сюда'],
       ['stop-hidden', null],
     ])
-    expect((await Content.publishedCollection('ordered-collection'))?.items).toMatchObject([{
-      slug: 'stop-live',
-      title: 'Живой форт',
-      summary: '',
-      note: 'Сначала сюда',
-      categorySlug: null,
-      categoryTitle: null,
-      regionTitle: null,
-    }])
+    expect((await Content.publishedCollection('ordered-collection'))?.items).toMatchObject([
+      {
+        slug: 'stop-live',
+        title: 'Живой форт',
+        summary: '',
+        note: 'Сначала сюда',
+        categorySlug: null,
+        categoryTitle: null,
+        regionTitle: null,
+      },
+    ])
 
     await Editor.saveCollection({
       id: collection.id,
@@ -265,17 +281,35 @@ describe('ordered stops and archive', () => {
     })
     expect((await Editor.archiveOrDeleteCollection(live.id))?.publicationStatus).toBe('archived')
     expect(await Content.publishedCollection('live-collection')).toBeNull()
-    expect((await Content.sitemapRows()).collections.some((item) => item.loc === '/podborki/live-collection')).toBe(false)
+    expect((await Content.sitemapRows()).collections.some((item) => item.loc === '/podborki/live-collection')).toBe(
+      false,
+    )
     expect(await Editor.collectionItems(live.id)).toHaveLength(1)
-    expect((await storedRedirects()).some((item) => item.fromPath === '/podborki/live-collection' && item.statusCode === 410)).toBe(true)
+    expect(
+      (await storedRedirects()).some(
+        (item) => item.fromPath === '/podborki/live-collection' && item.statusCode === 410,
+      ),
+    ).toBe(true)
   })
 
   it('projects existing region display inputs with collection items without changing order or identity', async () => {
     const region = await Editor.upsertRegion({ slug: 'baltiysk', title: 'Балтийск', shortTitle: 'Балтийск' })
     await Editor.savePlace({ slug: 'primorsk', title: 'Приморск', regionId: region.id, publicationStatus: 'published' })
-    await Editor.saveCollection({ slug: 'area-cards', title: 'Территории', publicationStatus: 'published', items: [{ placeSlug: 'primorsk' }, { placeSlug: 'stop-live' }] })
+    await Editor.saveCollection({
+      slug: 'area-cards',
+      title: 'Территории',
+      publicationStatus: 'published',
+      items: [{ placeSlug: 'primorsk' }, { placeSlug: 'stop-live' }],
+    })
     expect((await Content.publishedCollection('area-cards'))?.items).toMatchObject([
-      { slug: 'primorsk', title: 'Приморск', position: 0, regionSlug: 'baltiysk', regionTitle: 'Балтийск', regionShortTitle: 'Балтийск' },
+      {
+        slug: 'primorsk',
+        title: 'Приморск',
+        position: 0,
+        regionSlug: 'baltiysk',
+        regionTitle: 'Балтийск',
+        regionShortTitle: 'Балтийск',
+      },
       { slug: 'stop-live', position: 1, regionSlug: null, regionTitle: null, regionShortTitle: null },
     ])
   })
@@ -333,7 +367,10 @@ describe('ordered stops and archive', () => {
       latitude: 54.71,
       longitude: 20.51,
     })
-    const line: [number, number][] = [[20.51, 54.71], [20.52, 54.72]]
+    const line: [number, number][] = [
+      [20.51, 54.71],
+      [20.52, 54.72],
+    ]
     const route = await Editor.saveRoute({
       slug: 'with-path',
       title: 'С линией',
@@ -350,13 +387,15 @@ describe('ordered stops and archive', () => {
     })
     expect(kept.path).toEqual(line)
     const stops = await Content.mapRouteStops()
-    expect(stops).toEqual([expect.objectContaining({
-      routeSlug: 'with-path',
-      placeId: expect.any(String),
-      latitude: 54.71,
-      longitude: 20.51,
-      path: line,
-    })])
+    expect(stops).toEqual([
+      expect.objectContaining({
+        routeSlug: 'with-path',
+        placeId: expect.any(String),
+        latitude: 54.71,
+        longitude: 20.51,
+        path: line,
+      }),
+    ])
     const cleared = await Editor.saveRoute({
       id: route.id,
       slug: 'with-path',

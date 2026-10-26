@@ -9,8 +9,9 @@ export default defineStrictMcpTool({
   description: 'External referrer hosts for a period.',
   annotations: { readOnlyHint: true },
   inputSchema: { period: z.string().optional() },
-  handler: async ({ period }) => auditedAnalytics('analytics_referrers', async () => {
-    const range = resolvePeriod(period || '28d')
-    return { period: range.label, referrers: await db.analytics.referrers(range.from, range.to) }
-  }),
+  handler: async ({ period }) =>
+    auditedAnalytics('analytics_referrers', async () => {
+      const range = resolvePeriod(period || '28d')
+      return { period: range.label, referrers: await db.analytics.referrers(range.from, range.to) }
+    }),
 })

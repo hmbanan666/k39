@@ -22,7 +22,7 @@ describe('overpass client', () => {
     expect(overpassBackoffMs(1)).toBe(1000)
     expect(overpassEndpoints()).toEqual([OVERPASS_DEFAULT_URL, OVERPASS_MIRROR_URL])
     expect(overpassEndpoints(OVERPASS_MIRROR_URL)).toEqual([OVERPASS_MIRROR_URL, OVERPASS_DEFAULT_URL])
-    const calls: Array<{ url: string, userAgent: string | null, query: string, timeout: number }> = []
+    const calls: Array<{ url: string; userAgent: string | null; query: string; timeout: number }> = []
     const sleeps: number[] = []
     let attempt = 0
     const rows = await fetchOverpass(area, {
@@ -44,13 +44,15 @@ describe('overpass client', () => {
           return jsonResponse(406, { remark: 'no user agent' })
         }
         return jsonResponse(200, {
-          elements: [{
-            type: 'node',
-            id: 9,
-            lat: 54.7,
-            lon: 20.5,
-            tags: { amenity: 'cafe', name: 'Уют' },
-          }],
+          elements: [
+            {
+              type: 'node',
+              id: 9,
+              lat: 54.7,
+              lon: 20.5,
+              tags: { amenity: 'cafe', name: 'Уют' },
+            },
+          ],
         })
       },
     })
@@ -87,14 +89,16 @@ describe('overpass client', () => {
     expect(sleeps).toEqual([500, 1000])
 
     const bad: string[] = []
-    await expect(fetchOverpass(area, {
-      endpoints: [OVERPASS_DEFAULT_URL, OVERPASS_MIRROR_URL],
-      sleep: async () => {},
-      fetch: async (url) => {
-        bad.push(url)
-        return jsonResponse(400, { remark: 'bad query' })
-      },
-    })).rejects.toThrow('Overpass ответил 400')
+    await expect(
+      fetchOverpass(area, {
+        endpoints: [OVERPASS_DEFAULT_URL, OVERPASS_MIRROR_URL],
+        sleep: async () => {},
+        fetch: async (url) => {
+          bad.push(url)
+          return jsonResponse(400, { remark: 'bad query' })
+        },
+      }),
+    ).rejects.toThrow('Overpass ответил 400')
     expect(bad).toEqual([OVERPASS_DEFAULT_URL])
   })
 })
@@ -107,12 +111,14 @@ describe('oSM action tags', () => {
     expect(osmYesNo('only')).toBe(true)
     expect(osmYesNo('no')).toBe(false)
     expect(osmYesNo(undefined)).toBeNull()
-    expect(osmSocials({
-      'contact:vk': 'https://vk.com/moreca',
-      'contact:telegram': '@moreca',
-      'contact:whatsapp': '+7 900 000-00-00',
-      'contact:instagram': 'not a handle!',
-    })).toEqual([
+    expect(
+      osmSocials({
+        'contact:vk': 'https://vk.com/moreca',
+        'contact:telegram': '@moreca',
+        'contact:whatsapp': '+7 900 000-00-00',
+        'contact:instagram': 'not a handle!',
+      }),
+    ).toEqual([
       { network: 'vk', url: 'https://vk.com/moreca' },
       { network: 'telegram', url: 'https://t.me/moreca' },
       { network: 'whatsapp', url: 'https://wa.me/79000000000' },

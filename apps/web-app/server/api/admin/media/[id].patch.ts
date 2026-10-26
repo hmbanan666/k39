@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
     author: typeof body.author === 'string' ? body.author : undefined,
     caption: typeof body.caption === 'string' ? body.caption : undefined,
     sourceUrl: typeof body.sourceUrl === 'string' ? body.sourceUrl : undefined,
-    license: licenseRaw === '' ? null : licenseRaw as MediaLicense | undefined,
+    license: licenseRaw === '' ? null : (licenseRaw as MediaLicense | undefined),
     focalX,
     focalY,
   })
@@ -47,7 +47,10 @@ export default defineEventHandler(async (event) => {
     await db.editor.setCover(placeId, id)
   }
   if (placeId && Array.isArray(body.order)) {
-    await db.editor.reorderGallery(placeId, body.order.filter((item): item is string => typeof item === 'string'))
+    await db.editor.reorderGallery(
+      placeId,
+      body.order.filter((item): item is string => typeof item === 'string'),
+    )
   }
   return updated
 })

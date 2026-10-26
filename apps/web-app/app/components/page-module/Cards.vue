@@ -1,5 +1,8 @@
 <template>
-  <section class="module-cards" :class="[module.type]">
+  <section
+    class="module-cards"
+    :class="[module.type]"
+  >
     <h2>{{ module.title }}</h2>
     <ol class="cards">
       <li
@@ -12,7 +15,8 @@
         <span
           v-if="fitsPicker(entry.fit)"
           class="badge"
-        >Под ваш выбор</span>
+          >Под ваш выбор</span
+        >
         <ProseHtml
           class="prose"
           :html="entry.item.html"
@@ -57,7 +61,9 @@ h2 {
   border-radius: 8px;
   background: var(--color-surface);
 }
-.card.fits { border-color: var(--color-brick); }
+.card.fits {
+  border-color: var(--color-brick);
+}
 h3 {
   margin: 0;
   font-family: var(--font-display);
@@ -72,8 +78,12 @@ h3 {
   font-size: 0.78rem;
   font-weight: 700;
 }
-.card .prose :deep(p) { margin: 0.3rem 0 0; }
+.card .prose :deep(p) {
+  margin: 0.3rem 0 0;
+}
 @media (min-width: 900px) {
-  .ideas .cards { grid-template-columns: 1fr 1fr; }
+  .ideas .cards {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

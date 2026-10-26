@@ -53,7 +53,10 @@ function rowsOf<T>(result: unknown): T[] {
 }
 
 function numArray(values: number[]) {
-  return sql`array[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::float8[]`
+  return sql`array[${sql.join(
+    values.map((value) => sql`${value}`),
+    sql`, `,
+  )}]::float8[]`
 }
 
 function distanceSql(lat: ReturnType<typeof sql>, lng: ReturnType<typeof sql>, origins: MapOrigin[]) {
@@ -69,8 +72,10 @@ function distanceSql(lat: ReturnType<typeof sql>, lng: ReturnType<typeof sql>, o
 /** Fact coordinates when that row exists, otherwise the column. */
 function pointFrom(alias: 'p' | 'v', subject: 'place' | 'venue') {
   const id = sql.raw(`${alias}.id`)
-  const latitude = () => sql`case when coord.fact_id is not null then coord.latitude else ${sql.raw(`${alias}.latitude`)} end`
-  const longitude = () => sql`case when coord.fact_id is not null then coord.longitude else ${sql.raw(`${alias}.longitude`)} end`
+  const latitude = () =>
+    sql`case when coord.fact_id is not null then coord.latitude else ${sql.raw(`${alias}.latitude`)} end`
+  const longitude = () =>
+    sql`case when coord.fact_id is not null then coord.longitude else ${sql.raw(`${alias}.longitude`)} end`
   const fact = sql`left join lateral (
     select f.id as fact_id,
       (f.value->>'latitude')::float8 as latitude,
@@ -87,7 +92,7 @@ function pointFrom(alias: 'p' | 'v', subject: 'place' | 'venue') {
 }
 
 export class MapCatalog {
-  static async places(input: { origins: MapOrigin[], radiusKm: number | null, limit: number }) {
+  static async places(input: { origins: MapOrigin[]; radiusKm: number | null; limit: number }) {
     const limit = Math.max(1, Math.min(800, Math.floor(input.limit)))
     const nearby = input.origins.length > 0 && input.radiusKm != null
     const point = pointFrom('p', 'place')
@@ -135,7 +140,7 @@ export class MapCatalog {
     }))
   }
 
-  static async venues(input: { origins: MapOrigin[], radiusKm: number | null, limit: number }) {
+  static async venues(input: { origins: MapOrigin[]; radiusKm: number | null; limit: number }) {
     const limit = Math.max(1, Math.min(800, Math.floor(input.limit)))
     const nearby = input.origins.length > 0 && input.radiusKm != null
     const point = pointFrom('v', 'venue')
@@ -227,7 +232,7 @@ export class MapCatalog {
 
   static async activeOffers(venueIds: string[]) {
     const ids = [...new Set(venueIds.filter(Boolean))]
-    const found = new Map<string, { title: string, terms: string }>()
+    const found = new Map<string, { title: string; terms: string }>()
     if (!ids.length) {
       return found
     }
@@ -235,10 +240,13 @@ export class MapCatalog {
       select distinct on (venue_id) venue_id, title, terms
       from offers
       where status = 'active'
-        and venue_id in (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
+        and venue_id in (${sql.join(
+          ids.map((id) => sql`${id}`),
+          sql`, `,
+        )})
       order by venue_id, updated_at desc
     `)
-    for (const row of rowsOf<{ venue_id: string, title: string, terms: string }>(result)) {
+    for (const row of rowsOf<{ venue_id: string; title: string; terms: string }>(result)) {
       found.set(row.venue_id, { title: row.title, terms: row.terms })
     }
     return found

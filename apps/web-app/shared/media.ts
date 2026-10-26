@@ -111,12 +111,8 @@ export function largestVariantUrl(media: Pick<PublicMedia, 'id' | 'src' | 'varia
 
 export function toPublicMedia(row: MediaRowLike): PublicMedia {
   const variants = row.variants ?? []
-  const webp = variants
-    .filter((item) => item.format === 'webp')
-    .sort((a, b) => b.width - a.width)[0]
-  const src = variants.length && webp
-    ? `/media/${row.id}/${webp.file}`
-    : `/media/${row.filename}`
+  const webp = variants.filter((item) => item.format === 'webp').sort((a, b) => b.width - a.width)[0]
+  const src = variants.length && webp ? `/media/${row.id}/${webp.file}` : `/media/${row.filename}`
   return {
     id: row.id,
     alt: row.alt,
@@ -162,11 +158,11 @@ export function openGraphFile(media: Pick<PublicMedia, 'id' | 'src' | 'width' | 
     }
   }
   const type = media.src.endsWith('.webp')
-    ? 'image/webp' as const
+    ? ('image/webp' as const)
     : media.src.endsWith('.avif')
-      ? 'image/avif' as const
+      ? ('image/avif' as const)
       : media.src.endsWith('.png')
-        ? 'image/png' as const
+        ? ('image/png' as const)
         : undefined
   return {
     path: media.src,

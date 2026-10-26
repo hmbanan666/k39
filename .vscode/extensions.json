@@ -1,6 +1,3 @@
 {
-  "recommendations": [
-    "bradlc.vscode-tailwindcss",
-    "Nuxtr.nuxtr-vscode"
-  ]
+  "recommendations": ["VoidZero.vite-plus-extension-pack", "Vue.volar", "dbaeumer.vscode-eslint", "Nuxtr.nuxtr-vscode"]
 }

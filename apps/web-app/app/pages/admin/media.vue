@@ -38,22 +38,24 @@
           accept="image/jpeg,image/png,image/webp"
           multiple
           @change="onFile"
-        >
+        />
         <p v-if="queue.length">
           {{ queue.map((item) => item.name).join(', ') }}
         </p>
       </div>
-      <label>Alt <input
-        v-model="alt"
-        required
-      ></label>
+      <label
+        >Alt
+        <input
+          v-model="alt"
+          required
+      /></label>
       <p
         v-if="!alt.trim()"
         class="warn"
       >
         Alt обязателен.
       </p>
-      <label>Автор <input v-model="author"></label>
+      <label>Автор <input v-model="author" /></label>
       <label>
         Лицензия
         <select v-model="license">
@@ -66,11 +68,9 @@
           </option>
         </select>
       </label>
-      <label>Источник <input v-model="sourceUrl"></label>
-      <label>Подпись <input v-model="caption"></label>
-      <p v-if="queue.length">
-        Файлов: {{ queue.length }}
-      </p>
+      <label>Источник <input v-model="sourceUrl" /></label>
+      <label>Подпись <input v-model="caption" /></label>
+      <p v-if="queue.length"> Файлов: {{ queue.length }} </p>
       <button
         type="submit"
         :disabled="!alt.trim() || !queue.length || busy"
@@ -106,7 +106,7 @@
           :alt="hit.title"
           width="160"
           height="120"
-        >
+        />
         <p>{{ hit.author || 'автор не указан' }} · {{ hit.licenseName }}</p>
         <button
           type="button"
@@ -132,12 +132,10 @@
           width="240"
           height="160"
           @click="setFocal($event, item.media)"
-        >
+        />
         <p>
           {{ item.media.alt }}
-          <template v-if="item.isCover">
-            · обложка
-          </template>
+          <template v-if="item.isCover"> · обложка </template>
         </p>
         <p
           v-if="item.media.width && item.media.width < 1200"
@@ -165,7 +163,10 @@
 <script setup lang="ts">
 import { ofetch } from 'ofetch'
 
-interface PlaceRow { id: string, title: string }
+interface PlaceRow {
+  id: string
+  title: string
+}
 interface MediaRow {
   id: string
   alt: string
@@ -175,7 +176,11 @@ interface MediaRow {
   focalY: number
   variants: Array<{ file: string }> | null
 }
-interface GalleryItem { media: MediaRow, isCover: boolean, sortOrder: number }
+interface GalleryItem {
+  media: MediaRow
+  isCover: boolean
+  sortOrder: number
+}
 interface CommonsHit {
   title: string
   pageUrl: string
@@ -196,7 +201,7 @@ const license = ref('own')
 const sourceUrl = ref('')
 const caption = ref('')
 const queue = ref<File[]>([])
-const notes = ref<Array<{ text: string, warn: boolean }>>([])
+const notes = ref<Array<{ text: string; warn: boolean }>>([])
 const busy = ref(false)
 const gallery = ref<GalleryItem[]>([])
 const commons = ref<CommonsHit[]>([])
@@ -337,11 +342,31 @@ async function importHit(hit: CommonsHit) {
 </script>
 
 <style scoped>
-.admin { max-width: 52rem; margin: 0 auto; padding: 1.5rem; }
-.upload, .admin { display: flex; flex-direction: column; gap: 0.7rem; }
-.drop { position: relative; padding: 1rem; border: 1px dashed var(--color-line); border-radius: 12px; background: var(--color-surface); }
-.drop p { margin: 0 0 0.6rem; }
-.pick { font: inherit; cursor: pointer; }
+.admin {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+.upload,
+.admin {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.drop {
+  position: relative;
+  padding: 1rem;
+  border: 1px dashed var(--color-line);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+.drop p {
+  margin: 0 0 0.6rem;
+}
+.pick {
+  font: inherit;
+  cursor: pointer;
+}
 .sr {
   position: absolute;
   width: 1px;
@@ -352,9 +377,34 @@ async function importHit(hit: CommonsHit) {
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
-.gallery, .commons { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 0.8rem; padding: 0; list-style: none; }
-.gallery li, .commons li { padding: 0.5rem; border: 1px solid var(--color-line); border-radius: 12px; background: var(--color-surface); }
-img { display: block; width: 100%; height: 8rem; object-fit: cover; cursor: crosshair; }
-.warn { color: var(--color-danger); }
-button, select, input { font: inherit; }
+.gallery,
+.commons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.8rem;
+  padding: 0;
+  list-style: none;
+}
+.gallery li,
+.commons li {
+  padding: 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+img {
+  display: block;
+  width: 100%;
+  height: 8rem;
+  object-fit: cover;
+  cursor: crosshair;
+}
+.warn {
+  color: var(--color-danger);
+}
+button,
+select,
+input {
+  font: inherit;
+}
 </style>

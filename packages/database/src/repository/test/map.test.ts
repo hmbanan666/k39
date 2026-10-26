@@ -15,7 +15,12 @@ async function wipe() {
   const db = useDatabase()
   const rows = await db.select({ id: venues.id }).from(venues).where(inArray(venues.slug, VENUE_SLUGS))
   const ids = rows.map((row) => row.id)
-  const placeIds = (await db.select({ id: places.id }).from(places).where(inArray(places.slug, ['map-pin-place', 'map-pin-far-place']))).map((row) => row.id)
+  const placeIds = (
+    await db
+      .select({ id: places.id })
+      .from(places)
+      .where(inArray(places.slug, ['map-pin-place', 'map-pin-far-place']))
+  ).map((row) => row.id)
   const subjectIds = [...ids, ...placeIds]
   if (subjectIds.length) {
     await db.delete(facts).where(inArray(facts.subjectId, subjectIds))
@@ -40,65 +45,77 @@ describe('map catalog', () => {
 
   it('keeps published points inside the walking radius and reads the active offer', async () => {
     const db = useDatabase()
-    const insertedPlaces = await db.insert(places).values([
-      {
-        slug: 'map-pin-place',
-        title: 'Тестовое место на карте',
-        summary: 'Короткий текст для карточки.',
+    const insertedPlaces = await db
+      .insert(places)
+      .values([
+        {
+          slug: 'map-pin-place',
+          title: 'Тестовое место на карте',
+          summary: 'Короткий текст для карточки.',
+          publicationStatus: 'published',
+          latitude: HERE.latitude,
+          longitude: HERE.longitude,
+        },
+        {
+          slug: 'map-pin-far-place',
+          title: 'Дальнее место',
+          summary: 'Вне пешей дистанции.',
+          publicationStatus: 'published',
+          latitude: 10,
+          longitude: 10,
+        },
+      ])
+      .returning()
+    const [route] = await db
+      .insert(routes)
+      .values({
+        slug: 'map-pin-route',
+        title: 'Тестовый маршрут',
+        body: '',
         publicationStatus: 'published',
-        latitude: HERE.latitude,
-        longitude: HERE.longitude,
-      },
-      {
-        slug: 'map-pin-far-place',
-        title: 'Дальнее место',
-        summary: 'Вне пешей дистанции.',
-        publicationStatus: 'published',
-        latitude: 10,
-        longitude: 10,
-      },
-    ]).returning()
-    const [route] = await db.insert(routes).values({
-      slug: 'map-pin-route',
-      title: 'Тестовый маршрут',
-      body: '',
-      publicationStatus: 'published',
-    }).returning()
+      })
+      .returning()
     const focus = insertedPlaces.find((row) => row.slug === 'map-pin-place')
     await db.insert(routePoints).values({
       routeId: route!.id,
       placeId: focus!.id,
       position: 1,
     })
-    const near = await db.insert(venues).values({
-      slug: 'map-pin-cafe',
-      name: 'Кофейня на карте',
-      kind: 'coffee',
-      description,
-      status: 'published',
-      latitude: HERE.latitude + 0.004,
-      longitude: HERE.longitude,
-    }).returning()
-    const [farVenue] = await db.insert(venues).values([
-      {
-        slug: 'map-pin-far',
-        name: 'Дальняя кофейня',
+    const near = await db
+      .insert(venues)
+      .values({
+        slug: 'map-pin-cafe',
+        name: 'Кофейня на карте',
         kind: 'coffee',
         description,
         status: 'published',
-        latitude: HERE.latitude + 0.2,
+        latitude: HERE.latitude + 0.004,
         longitude: HERE.longitude,
-      },
-      {
-        slug: 'map-pin-draft',
-        name: 'Черновик на карте',
-        kind: 'cafe',
-        description: '',
-        status: 'draft',
-        latitude: HERE.latitude,
-        longitude: HERE.longitude,
-      },
-    ]).returning()
+      })
+      .returning()
+    const [farVenue] = await db
+      .insert(venues)
+      .values([
+        {
+          slug: 'map-pin-far',
+          name: 'Дальняя кофейня',
+          kind: 'coffee',
+          description,
+          status: 'published',
+          latitude: HERE.latitude + 0.2,
+          longitude: HERE.longitude,
+        },
+        {
+          slug: 'map-pin-draft',
+          name: 'Черновик на карте',
+          kind: 'cafe',
+          description: '',
+          status: 'draft',
+          latitude: HERE.latitude,
+          longitude: HERE.longitude,
+        },
+      ])
+      .returning()
     const [business] = await db.insert(businesses).values({ slug: 'map-pin-biz', name: 'Карта' }).returning()
     await db.insert(offers).values({
       businessId: business!.id,
@@ -137,19 +154,22 @@ describe('map catalog', () => {
 })
 
 async function pointFact(subjectType: 'place' | 'venue', subjectId: string, latitude: number, longitude: number) {
-  await Facts.upsert({
-    kind: 'coordinates',
-    subjectType,
-    subjectId,
-    slot: 'coordinates',
-    value: { latitude, longitude },
-    valueHash: 'c'.repeat(64),
-    sourceUrl: null,
-    sourceTitle: null,
-    sourceKind: 'none',
-    checkedAt: '2026-01-01T00:00:00.000Z',
-    ttlDays: 365,
-    confidence: 'stated',
-    actor: 'editor',
-  }, [{ consumerType: subjectType, consumerId: subjectId, path: 'short.coordinates' }])
+  await Facts.upsert(
+    {
+      kind: 'coordinates',
+      subjectType,
+      subjectId,
+      slot: 'coordinates',
+      value: { latitude, longitude },
+      valueHash: 'c'.repeat(64),
+      sourceUrl: null,
+      sourceTitle: null,
+      sourceKind: 'none',
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      ttlDays: 365,
+      confidence: 'stated',
+      actor: 'editor',
+    },
+    [{ consumerType: subjectType, consumerId: subjectId, path: 'short.coordinates' }],
+  )
 }

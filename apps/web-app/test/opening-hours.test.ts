@@ -16,7 +16,10 @@ describe('opening hours', () => {
   })
 
   it('reads ranges and a redundant weekly day off', () => {
-    expect(parsePlaceHours('вт–вс 10:00–18:00, пн выходной')).toMatchObject({ days: [2, 3, 4, 5, 6, 0], monthlyClosure: null })
+    expect(parsePlaceHours('вт–вс 10:00–18:00, пн выходной')).toMatchObject({
+      days: [2, 3, 4, 5, 6, 0],
+      monthlyClosure: null,
+    })
     expect(parsePlaceHours('ежедневно 10:00–18:00, пн выходной')).toBeNull()
   })
 
@@ -33,14 +36,26 @@ describe('opening hours', () => {
   it('builds schema parts and the facts row', () => {
     const schema = openingHoursSchema(parsePlaceHours(MARKET), NOW)!
     expect(schema.regular[0]).toMatchObject({ opens: '08:00', closes: '19:00' })
-    expect(schema.special[0]).toEqual({ '@type': 'OpeningHoursSpecification', 'validFrom': '2026-10-26', 'validThrough': '2026-10-26', 'opens': '00:00', 'closes': '00:00' })
-    expect(nextClosureFact(MARKET, NOW)).toEqual({ label: 'Ближайший санитарный день', value: 'понедельник, 26 октября' })
+    expect(schema.special[0]).toEqual({
+      '@type': 'OpeningHoursSpecification',
+      'validFrom': '2026-10-26',
+      'validThrough': '2026-10-26',
+      'opens': '00:00',
+      'closes': '00:00',
+    })
+    expect(nextClosureFact(MARKET, NOW)).toEqual({
+      label: 'Ближайший санитарный день',
+      value: 'понедельник, 26 октября',
+    })
     expect(guideFacts({ hours: MARKET }, NOW).map((row) => row.key)).toEqual(['hours', 'closed'])
   })
 
   it('ignores a last-entry note', () => {
     expect(parsePlaceHours('Ежедневно 10:00–19:00, касса до 18:00')?.closes).toBe('19:00')
-    expect(parsePlaceHours('Ежедневно 10:00–19:00, касса до 18:00, последний понедельник месяца санитарный день')?.monthlyClosure?.weekday).toBe(1)
+    expect(
+      parsePlaceHours('Ежедневно 10:00–19:00, касса до 18:00, последний понедельник месяца санитарный день')
+        ?.monthlyClosure?.weekday,
+    ).toBe(1)
     expect(parsePlaceHours('Ежедневно 10:00–19:00, обед 13:00–14:00')).toBeNull()
   })
 })

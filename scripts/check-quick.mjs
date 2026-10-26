@@ -9,7 +9,8 @@ import { isWriterTest } from './writer-tests.mjs'
 const root = process.cwd()
 const baseRef = 'origin/main'
 
-const LINT_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.tsx', '.vue', '.md', '.json'])
+const LINT_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.tsx', '.vue'])
+const FORMAT_EXTENSIONS = new Set([...LINT_EXTENSIONS, '.md', '.json', '.jsonc', '.yaml', '.yml', '.css', '.html'])
 const VITEST_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.tsx', '.vue'])
 const scriptRoot = resolve(import.meta.dirname, '..')
 
@@ -31,7 +32,9 @@ export function quickCheckPlan(files, deleted = [], packages = workspacePackages
     if (isRootTypecheckConfig(file)) {
       allPackages = true
     }
-    const owner = packages.filter((item) => file.startsWith(`${item.dir}/`)).sort((a, b) => b.dir.length - a.dir.length)[0]
+    const owner = packages
+      .filter((item) => file.startsWith(`${item.dir}/`))
+      .sort((a, b) => b.dir.length - a.dir.length)[0]
     if (!owner && /^(?:packages|apps)\//.test(file)) {
       allPackages = true
     }
@@ -47,6 +50,9 @@ export function quickCheckPlan(files, deleted = [], packages = workspacePackages
     writer = false
   }
   return {
+    all: allPackages,
+    format: files.filter((file) => FORMAT_EXTENSIONS.has(extname(file))),
+    vue: files.filter((file) => extname(file) === '.vue'),
     lint: files.filter((file) => LINT_EXTENSIONS.has(extname(file))),
     typecheck,
     writer,
@@ -58,12 +64,15 @@ function isRootTypecheckConfig(file) {
   if (file.includes('/') || file.includes('\\')) {
     return false
   }
-  return file === 'package.json'
-    || file === 'pnpm-lock.yaml'
-    || file === 'pnpm-workspace.yaml'
-    || file.startsWith('tsconfig')
-    || file.startsWith('vitest.config.')
-    || file.startsWith('eslint.config.')
+  return (
+    file === 'package.json' ||
+    file === 'pnpm-lock.yaml' ||
+    file === 'pnpm-workspace.yaml' ||
+    file.startsWith('tsconfig') ||
+    file.startsWith('vite.config.') ||
+    file.startsWith('vitest.config.') ||
+    file.startsWith('eslint.config.')
+  )
 }
 
 function gitLines(args) {
@@ -97,7 +106,9 @@ function run(command, args, step) {
   const started = performance.now()
   const result = spawnSync(command, args, { cwd: root, stdio: 'inherit' })
   if (process.env.K39_CHECK_TIMINGS === '1') {
-    console.log(`check:quick: timing ${JSON.stringify({ step, ms: Math.round(performance.now() - started), exitCode: result.status ?? 1 })}`)
+    console.log(
+      `check:quick: timing ${JSON.stringify({ step, ms: Math.round(performance.now() - started), exitCode: result.status ?? 1 })}`,
+    )
   }
   if (result.status !== 0) {
     process.exit(result.status ?? 1)
@@ -126,28 +137,42 @@ if (isDirectRun()) {
 
   const baseSha = diffBase()
   console.log(`check:quick: base ${baseSha}`)
-  run('pnpm', ['run', 'check:repo'], 'repo')
+  run('corepack', ['pnpm', 'run', 'check:repo'], 'repo')
 
   const { files, deleted } = changedFiles(baseSha)
   const plan = quickCheckPlan(files, deleted, workspacePackages(root))
-  if (!plan.lint.length && !plan.typecheck.length && !plan.writer && !plan.vitest.length) {
+  if (!plan.format.length && !plan.lint.length && !plan.typecheck.length && !plan.writer && !plan.vitest.length) {
     console.log(`check:quick: no file changes against ${baseSha}`)
     process.exit(0)
   }
 
-  console.log(`check:quick: eslint ${plan.lint.length}, typecheck ${plan.typecheck.join(', ') || 'none'}${plan.writer ? ' + writer tests' : ''}, vitest ${plan.vitest.length}`)
+  console.log(
+    `check:quick: format ${plan.format.length}, lint ${plan.lint.length}, Vue templates ${plan.vue.length}, typecheck ${plan.typecheck.join(', ') || 'none'}${plan.writer ? ' + writer tests' : ''}, vitest ${plan.vitest.length}`,
+  )
 
-  if (plan.lint.length) {
-    run('pnpm', ['exec', 'eslint', ...plan.lint], 'lint')
+  if (plan.all || plan.format.length) {
+    run('corepack', ['pnpm', 'exec', 'vp', 'fmt', '--check', ...(plan.all ? ['.'] : plan.format)], 'format')
+  }
+  if (plan.all || plan.lint.length) {
+    run('corepack', ['pnpm', 'exec', 'vp', 'lint', ...(plan.all ? ['.'] : plan.lint)], 'lint')
+  }
+  if (plan.all || plan.vue.length) {
+    run(
+      'corepack',
+      ['pnpm', 'exec', 'eslint', '--no-warn-ignored', ...(plan.all ? ['apps/web-app'] : plan.vue)],
+      'Vue templates',
+    )
   }
   for (const name of plan.typecheck) {
-    run('pnpm', ['--filter', name, 'typecheck'], `typecheck ${name}`)
+    run('corepack', ['pnpm', '--filter', name, 'typecheck'], `typecheck ${name}`)
   }
   if (plan.writer) {
     run('node', ['scripts/typecheck-writer.mjs'], 'writer typecheck')
   }
-  if (plan.vitest.length) {
-    run('pnpm', ['exec', 'vitest', 'related', '--run', '--passWithNoTests', ...plan.vitest], 'tests')
+  if (plan.all) {
+    run('corepack', ['pnpm', 'run', 'test'], 'tests')
+  } else if (plan.vitest.length) {
+    run('corepack', ['pnpm', 'exec', 'vp', 'test', 'related', '--run', '--passWithNoTests', ...plan.vitest], 'tests')
   }
   console.log('check:quick passed')
 }

@@ -21,9 +21,15 @@ describe('meta product links', () => {
   })
 
   it('names only the products on the page', () => {
-    expect(metaFootnote(['instagram'])).toBe('* Instagram принадлежит компании Meta, признанной экстремистской и запрещённой в России.')
-    expect(metaFootnote(['facebook', 'instagram'])).toBe('* Instagram и Facebook принадлежат компании Meta, признанной экстремистской и запрещённой в России.')
-    expect(metaFootnote(['threads', 'whatsapp', 'instagram'])).toBe('* Instagram, Threads и WhatsApp принадлежат компании Meta, признанной экстремистской и запрещённой в России.')
+    expect(metaFootnote(['instagram'])).toBe(
+      '* Instagram принадлежит компании Meta, признанной экстремистской и запрещённой в России.',
+    )
+    expect(metaFootnote(['facebook', 'instagram'])).toBe(
+      '* Instagram и Facebook принадлежат компании Meta, признанной экстремистской и запрещённой в России.',
+    )
+    expect(metaFootnote(['threads', 'whatsapp', 'instagram'])).toBe(
+      '* Instagram, Threads и WhatsApp принадлежат компании Meta, признанной экстремистской и запрещённой в России.',
+    )
     expect(metaFootnote([])).toBe('')
   })
 

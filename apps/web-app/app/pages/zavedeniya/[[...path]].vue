@@ -10,9 +10,7 @@
       class="pick"
       aria-label="Территории"
     >
-      <p class="pick-label">
-        Территории
-      </p>
+      <p class="pick-label"> Территории </p>
       <ul class="towns">
         <li>
           <a
@@ -53,7 +51,7 @@
                 alt=""
                 width="80"
                 height="80"
-              >
+              />
             </span>
             <span class="town-copy">
               <span class="town-name">{{ town.title }}</span>
@@ -67,15 +65,14 @@
       class="pick"
       aria-label="Что поесть"
     >
-      <p class="pick-label">
-        Что поесть
-      </p>
+      <p class="pick-label"> Что поесть </p>
       <div class="themes">
         <a
           class="theme"
           :href="page.filters.allKindsHref"
           :aria-current="page.kind ? undefined : 'page'"
-        >Все</a>
+          >Все</a
+        >
         <a
           v-for="kind in page.filters.kinds"
           :key="kind.kind"
@@ -180,7 +177,11 @@
       v-if="!shownItems.length"
       class="empty"
     >
-      {{ openNow ? 'Сейчас нет открытых заведений с проверенными часами.' : 'В этом списке пока нет опубликованных заведений.' }}
+      {{
+        openNow
+          ? 'Сейчас нет открытых заведений с проверенными часами.'
+          : 'В этом списке пока нет опубликованных заведений.'
+      }}
     </p>
   </ArticleShell>
   <VenuePage
@@ -236,7 +237,7 @@ interface ListingPage {
       media: PublicMedia | null
       image: string
     }>
-    kinds: Array<{ kind: string, label: string, href: string }>
+    kinds: Array<{ kind: string; label: string; href: string }>
   }
   items: ListingItem[]
 }
@@ -267,9 +268,9 @@ const mapHrefs = computed(() => {
     return []
   }
   const source = openNow.value ? shownItems.value : page.items
-  return source.flatMap((item) => item.latitude != null && item.longitude != null ? [item.href] : [])
+  return source.flatMap((item) => (item.latitude != null && item.longitude != null ? [item.href] : []))
 })
-const mapLabel = computed(() => page.type === 'listing' ? `Карта: ${page.heading}` : 'Карта')
+const mapLabel = computed(() => (page.type === 'listing' ? `Карта: ${page.heading}` : 'Карта'))
 
 function cardMeta(item: ListingItem) {
   return [item.address, item.cuisine.join(', '), item.price, item.avgCheck].filter(Boolean).join(' · ')
@@ -278,13 +279,14 @@ function cardMeta(item: ListingItem) {
 function venueCount(count: number) {
   const mod100 = Math.abs(count) % 100
   const mod10 = mod100 % 10
-  const word = mod100 > 10 && mod100 < 20
-    ? 'заведений'
-    : mod10 === 1
-      ? 'заведение'
-      : mod10 > 1 && mod10 < 5
-        ? 'заведения'
-        : 'заведений'
+  const word =
+    mod100 > 10 && mod100 < 20
+      ? 'заведений'
+      : mod10 === 1
+        ? 'заведение'
+        : mod10 > 1 && mod10 < 5
+          ? 'заведения'
+          : 'заведений'
   return `${count} ${word}`
 }
 
@@ -314,12 +316,15 @@ async function toggleOpen() {
   }
 }
 
-watch(() => route.path, () => {
-  availabilityRequest++
-  openNow.value = false
-  openSlugs.value = null
-  openError.value = false
-})
+watch(
+  () => route.path,
+  () => {
+    availabilityRequest++
+    openNow.value = false
+    openSlugs.value = null
+    openError.value = false
+  },
+)
 onBeforeUnmount(() => {
   availabilityRequest++
 })
@@ -328,7 +333,9 @@ usePublicHead(page.doc)
 </script>
 
 <style scoped>
-.pick { margin: 0 0 1.15rem; }
+.pick {
+  margin: 0 0 1.15rem;
+}
 .pick-label {
   margin: 0 0 0.45rem;
   color: var(--muted);
@@ -345,7 +352,10 @@ usePublicHead(page.doc)
   overflow-x: auto;
 }
 @media (min-width: 900px) {
-  .towns { flex-wrap: wrap; overflow: visible; }
+  .towns {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
 }
 .town {
   display: flex;
@@ -359,7 +369,10 @@ usePublicHead(page.doc)
   color: inherit;
   text-decoration: none;
 }
-.town[aria-current='page'] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.town[aria-current='page'] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 .shot {
   display: grid;
   flex: 0 0 3.4rem;
@@ -370,7 +383,9 @@ usePublicHead(page.doc)
   border-radius: 8px;
   background: var(--color-amber-soft);
 }
-.shot.plain { color: var(--accent); }
+.shot.plain {
+  color: var(--accent);
+}
 .shot :deep(figure),
 .shot :deep(picture) {
   display: block;
@@ -386,10 +401,26 @@ usePublicHead(page.doc)
   aspect-ratio: auto;
   object-fit: cover;
 }
-.town-copy { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
-.town-name { font-weight: 700; line-height: 1.2; }
-.town-count { color: var(--muted); font-size: var(--step--1); }
-.themes { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+.town-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.town-name {
+  font-weight: 700;
+  line-height: 1.2;
+}
+.town-count {
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+.themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
 .theme {
   display: inline-flex;
   gap: 0.35rem;
@@ -401,7 +432,10 @@ usePublicHead(page.doc)
   font-weight: 600;
   text-decoration: none;
 }
-.theme[aria-current='page'] { background: var(--accent); color: var(--surface); }
+.theme[aria-current='page'] {
+  background: var(--accent);
+  color: var(--surface);
+}
 .open-now {
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--color-sea);
@@ -412,8 +446,13 @@ usePublicHead(page.doc)
   font-weight: 600;
   cursor: pointer;
 }
-.open-now[aria-pressed='true'] { background: var(--color-sea); color: var(--color-paper, #fff); }
-.open-now[aria-busy='true'] { cursor: progress; }
+.open-now[aria-pressed='true'] {
+  background: var(--color-sea);
+  color: var(--color-paper, #fff);
+}
+.open-now[aria-busy='true'] {
+  cursor: progress;
+}
 .availability-error {
   display: flex;
   flex-wrap: wrap;
@@ -422,13 +461,35 @@ usePublicHead(page.doc)
   margin: 0 0 1rem;
   color: var(--color-warn);
 }
-.availability-error p { flex: 1 1 18rem; margin: 0; }
-.open-note { margin: 0 0 1rem; color: var(--color-muted); font-size: 0.95rem; }
-.town-map { margin: 0.4rem 0 1.6rem; }
-.town-map h2 { margin: 0 0 0.7rem; }
-.cards { margin: 0.2rem 0 0; padding: 0; list-style: none; }
-.cards li { display: flex; min-width: 0; }
-.places { margin: 0; padding: 0; list-style: none; }
+.availability-error p {
+  flex: 1 1 18rem;
+  margin: 0;
+}
+.open-note {
+  margin: 0 0 1rem;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+.town-map {
+  margin: 0.4rem 0 1.6rem;
+}
+.town-map h2 {
+  margin: 0 0 0.7rem;
+}
+.cards {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.cards li {
+  display: flex;
+  min-width: 0;
+}
+.places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .places li {
   display: flex;
   flex-wrap: wrap;
@@ -436,18 +497,49 @@ usePublicHead(page.doc)
   padding: 0.7rem 0;
   border-top: 1px solid var(--color-line);
 }
-.facts { display: grid; grid-template-columns: 7rem 1fr; gap: 0.35rem 1rem; margin: 1.2rem 0; }
-.facts dt { color: var(--muted); }
-.facts dd { margin: 0; }
-.facts p { margin: 0; }
-.photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
-.directions { margin: 0.4rem 0 0.9rem; }
-.venue-map { margin: 0 0 1.2rem; }
-.stale, .stale-note { color: var(--color-warn); }
-.stale-note { margin: 0 0 1rem; }
-.sources { margin-top: 2rem; }
-.empty { color: var(--muted); }
+.facts {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.35rem 1rem;
+  margin: 1.2rem 0;
+}
+.facts dt {
+  color: var(--muted);
+}
+.facts dd {
+  margin: 0;
+}
+.facts p {
+  margin: 0;
+}
+.photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+.directions {
+  margin: 0.4rem 0 0.9rem;
+}
+.venue-map {
+  margin: 0 0 1.2rem;
+}
+.stale,
+.stale-note {
+  color: var(--color-warn);
+}
+.stale-note {
+  margin: 0 0 1rem;
+}
+.sources {
+  margin-top: 2rem;
+}
+.empty {
+  color: var(--muted);
+}
 @media (max-width: 640px) {
-  .facts { grid-template-columns: 1fr; }
+  .facts {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

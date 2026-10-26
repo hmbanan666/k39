@@ -9,7 +9,8 @@
         :href="`tel:${item.e164}`"
         data-track="outbound"
         data-track-name="phone"
-      >{{ item.display }}</a>
+        >{{ item.display }}</a
+      >
       <span v-else>{{ item.display }}</span>
     </template>
   </p>

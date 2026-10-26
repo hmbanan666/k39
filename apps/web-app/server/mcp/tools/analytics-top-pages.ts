@@ -12,8 +12,9 @@ export default defineStrictMcpTool({
     period: z.string().optional(),
     channel: z.string().optional(),
   },
-  handler: async ({ period, channel }) => auditedAnalytics('analytics_top_pages', async () => {
-    const range = resolvePeriod(period || '28d')
-    return { period: range.label, pages: await db.analytics.topPages(range.from, range.to, channel) }
-  }),
+  handler: async ({ period, channel }) =>
+    auditedAnalytics('analytics_top_pages', async () => {
+      const range = resolvePeriod(period || '28d')
+      return { period: range.label, pages: await db.analytics.topPages(range.from, range.to, channel) }
+    }),
 })

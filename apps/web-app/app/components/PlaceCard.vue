@@ -43,38 +43,39 @@ import type { PublicMedia } from '~~/shared/media'
 import { illustrationFor } from '~~/shared/illustrations'
 import { formatDistance, HUBS } from '~~/shared/links'
 
-const props = withDefaults(defineProps<{
-  href: string
-  title: string
-  hub?: string
-  town?: string
-  summary?: string
-  summaryLines?: number
-  metaPlace?: 'aside' | 'stack'
-  distanceKm?: number | null
-  kind?: string
-  image?: { src: string, alt: string, width: number | null, height: number | null } | null
-  media?: PublicMedia | null
-}>(), {
-  hub: '',
-  town: '',
-  summary: '',
-  summaryLines: 3,
-  metaPlace: 'aside',
-  distanceKm: null,
-  kind: '',
-  image: null,
-  media: null,
-})
+const props = withDefaults(
+  defineProps<{
+    href: string
+    title: string
+    hub?: string
+    town?: string
+    summary?: string
+    summaryLines?: number
+    metaPlace?: 'aside' | 'stack'
+    distanceKm?: number | null
+    kind?: string
+    image?: { src: string; alt: string; width: number | null; height: number | null } | null
+    media?: PublicMedia | null
+  }>(),
+  {
+    hub: '',
+    town: '',
+    summary: '',
+    summaryLines: 3,
+    metaPlace: 'aside',
+    distanceKm: null,
+    kind: '',
+    image: null,
+    media: null,
+  },
+)
 
 const slug = computed(() => props.href.split('/').filter(Boolean).pop() || '')
 const src = computed(() => props.image?.src || illustrationFor(props.kind, slug.value))
 const alt = computed(() => props.image?.alt || props.title)
 const meta = computed(() => {
   const bits: string[] = []
-  const fromKind = props.distanceKm != null
-    ? (HUBS.find((item) => item.href === `/${props.kind}`)?.text || '')
-    : ''
+  const fromKind = props.distanceKm != null ? HUBS.find((item) => item.href === `/${props.kind}`)?.text || '' : ''
   const label = props.hub || fromKind
   if (label) {
     bits.push(label)
@@ -90,7 +91,9 @@ const meta = computed(() => {
 </script>
 
 <style scoped>
-.stack :deep(.cap) { display: block; }
+.stack :deep(.cap) {
+  display: block;
+}
 .stack :deep(.caption) {
   min-width: 0;
   overflow-wrap: break-word;
@@ -111,5 +114,7 @@ const meta = computed(() => {
   line-clamp: var(--lines, 3);
   -webkit-box-orient: vertical;
 }
-.stack .summary { margin-top: 0.35rem; }
+.stack .summary {
+  margin-top: 0.35rem;
+}
 </style>

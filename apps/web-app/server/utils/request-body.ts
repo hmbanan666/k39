@@ -43,10 +43,12 @@ function tooLarge(statusMessage: string) {
 }
 
 export function isPayloadTooLarge(error: unknown) {
-  return typeof error === 'object'
-    && error !== null
-    && 'statusCode' in error
-    && (error as { statusCode?: number }).statusCode === 413
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'statusCode' in error &&
+    (error as { statusCode?: number }).statusCode === 413
+  )
 }
 
 async function asBuffer(value: unknown, maxBytes: number, statusMessage: string): Promise<Buffer | undefined> {

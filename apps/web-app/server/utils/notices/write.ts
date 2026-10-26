@@ -4,7 +4,16 @@ import type { ContentScope } from '../access'
 import type { PracticalTarget } from '../practical/target'
 import { db, NOTICE_DRAFT_KEYS } from '@k39/database'
 import { createError } from 'h3'
-import { normalizeNotice, NoticeInputError, noticeListSchema, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeSummary, noticeToday } from '../../../shared/notices'
+import {
+  normalizeNotice,
+  NoticeInputError,
+  noticeListSchema,
+  noticeNeedsCheck,
+  noticeOverlapProblem,
+  noticeState,
+  noticeSummary,
+  noticeToday,
+} from '../../../shared/notices'
 import { contentScope } from '../access'
 import { writeWithCheckedDraft } from '../content/pending-guard'
 import { contentWarnings, savePendingDraftContent } from '../content/save'
@@ -40,7 +49,13 @@ export function noticeSourceProblem(target: Pick<NoticeTarget, 'type' | 'own'>, 
  * the stored ids of that subject: `strict` refuses another id, otherwise it
  * becomes an insert (a staged row whose live row was removed since).
  */
-export function prepareNotices(target: NoticeTarget, input: unknown, today: string, known: ReadonlySet<string>, strict: boolean): NoticeValue[] {
+export function prepareNotices(
+  target: NoticeTarget,
+  input: unknown,
+  today: string,
+  known: ReadonlySet<string>,
+  strict: boolean,
+): NoticeValue[] {
   const parsed = noticeListSchema.safeParse(input)
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
@@ -70,7 +85,7 @@ export function prepareNotices(target: NoticeTarget, input: unknown, today: stri
     }
     rows.push(row)
   }
-  const ids = rows.flatMap((row) => row.id ? [row.id] : [])
+  const ids = rows.flatMap((row) => (row.id ? [row.id] : []))
   if (new Set(ids).size !== ids.length) {
     throw createError({ statusCode: 400, statusMessage: 'Один id объявления указан дважды' })
   }
@@ -182,28 +197,39 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
   const stored = await db.notices.forSubject(target.type, target.id)
   const known = new Set(stored.map((row) => row.id))
   if (scope === 'draft' && target.type === 'venue' && target.status === 'archived') {
-    throw createError({ statusCode: 409, statusMessage: 'Draft token cannot edit notices of an archived venue. The live page was not changed.' })
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Draft token cannot edit notices of an archived venue. The live page was not changed.',
+    })
   }
   const rows = prepareNotices(target, input.notices, today, known, true)
   if (scope === 'draft' && isLivePractical(target)) {
     const stagedAt = new Date().toISOString()
     const store = async (tx?: ContentTx) => {
       const pending = await db.editor.contentDraft(target.type, target.id, tx)
-      return savePendingDraftContent({
-        entityType: target.type,
-        entityId: target.id,
-        publicationStatus: pending?.publicationStatus ?? 'review',
-        payload: { ...(pending?.payload ?? {}), notices: rows, noticesStagedAt: stagedAt },
-      }, noticeGate(target, rows, false), tx)
+      return savePendingDraftContent(
+        {
+          entityType: target.type,
+          entityId: target.id,
+          publicationStatus: pending?.publicationStatus ?? 'review',
+          payload: { ...pending?.payload, notices: rows, noticesStagedAt: stagedAt },
+        },
+        noticeGate(target, rows, false),
+        tx,
+      )
     }
-    const { row: saved, writingWarnings } = target.type === 'venue'
-      ? await db.venues.withLocked(target.id, (tx, venue) => {
-          if (venue.status !== 'published' && venue.status !== 'closed') {
-            throw createError({ statusCode: 409, statusMessage: 'Статус заведения изменился. Живая карточка не изменилась.' })
-          }
-          return store(tx)
-        })
-      : await store()
+    const { row: saved, writingWarnings } =
+      target.type === 'venue'
+        ? await db.venues.withLocked(target.id, (tx, venue) => {
+            if (venue.status !== 'published' && venue.status !== 'closed') {
+              throw createError({
+                statusCode: 409,
+                statusMessage: 'Статус заведения изменился. Живая карточка не изменилась.',
+              })
+            }
+            return store(tx)
+          })
+        : await store()
     if (via === 'mcp') {
       await auditMcp('notices_set', target.type, target.id)
     }
@@ -220,10 +246,20 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
   }
   const writingWarnings = noticeWarnings(target, rows, isPublicSubject(target))
   const write = (tx: ContentTx) => db.notices.replace(target.type, target.id, rows.map(toNoticeWrite), tx)
-  const apply = (tx?: ContentTx) => writeWithCheckedDraft(target.type, target.id, via === 'admin' ? { pendingDraft: input.pendingDraft } : 'editor', write, tx)
-  const { result: saved, draftDropped } = scope === 'editor'
-    ? target.type === 'venue' ? await db.venues.withLocked(target.id, (tx) => apply(tx)) : await apply()
-    : { result: await db.editor.transaction(write), draftDropped: false }
+  const apply = (tx?: ContentTx) =>
+    writeWithCheckedDraft(
+      target.type,
+      target.id,
+      via === 'admin' ? { pendingDraft: input.pendingDraft } : 'editor',
+      write,
+      tx,
+    )
+  const { result: saved, draftDropped } =
+    scope === 'editor'
+      ? target.type === 'venue'
+        ? await db.venues.withLocked(target.id, (tx) => apply(tx))
+        : await apply()
+      : { result: await db.editor.transaction(write), draftDropped: false }
   if (via === 'mcp') {
     await auditMcp('notices_set', target.type, target.id)
   }
@@ -244,12 +280,20 @@ export async function setNotices(input: SetNoticesInput, via: 'mcp' | 'admin') {
  * checks, with the publish gate. Used by `content_set_publication` when the
  * draft has nothing else for the page columns. Status is not changed.
  */
-export async function applyStagedNotices(target: NoticeTarget, pending: { id: string, updatedAt: string, payload: Record<string, unknown> }) {
+export async function applyStagedNotices(
+  target: NoticeTarget,
+  pending: { id: string; updatedAt: string; payload: Record<string, unknown> },
+) {
   const prepared = await stagedForApply(target, pending.payload)
   if (!prepared) {
     return null
   }
-  const saved = await db.notices.applyStaged(target.type, target.id, { id: pending.id, updatedAt: pending.updatedAt }, prepared.rows.map(toNoticeWrite))
+  const saved = await db.notices.applyStaged(
+    target.type,
+    target.id,
+    { id: pending.id, updatedAt: pending.updatedAt },
+    prepared.rows.map(toNoticeWrite),
+  )
   if (!saved) {
     throw createError({ statusCode: 409, statusMessage: 'Черновик изменился. Обновите страницу.' })
   }
@@ -283,14 +327,16 @@ export async function noticesView(target: Pick<NoticeTarget, 'type' | 'id'>, now
   const staged = stagedNotices(pending?.payload)
   return {
     notices: rows.map((row) => storedNotice(row, today)),
-    pendingReview: pending && staged
-      ? {
-          id: pending.id,
-          updatedAt: pending.updatedAt,
-          noticesStagedAt: typeof pending.payload.noticesStagedAt === 'string' ? pending.payload.noticesStagedAt : null,
-          notices: staged.map((row) => ({ ...row, state: noticeState(row, today) })),
-        }
-      : null,
+    pendingReview:
+      pending && staged
+        ? {
+            id: pending.id,
+            updatedAt: pending.updatedAt,
+            noticesStagedAt:
+              typeof pending.payload.noticesStagedAt === 'string' ? pending.payload.noticesStagedAt : null,
+            notices: staged.map((row) => ({ ...row, state: noticeState(row, today) })),
+          }
+        : null,
   }
 }
 

@@ -33,5 +33,9 @@ useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] })
   border-bottom: 1px solid var(--color-line);
   background: var(--surface);
 }
-.admin-bar a { color: var(--text); font-weight: 700; text-decoration: none; }
+.admin-bar a {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
 </style>

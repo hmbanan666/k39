@@ -146,7 +146,10 @@ import type { PageSection } from '~~/shared/page-sections'
 import type { SeoDocument } from '~~/shared/seo'
 import { moduleAnchors, PAGE_SECTIONS, presentSections } from '~~/shared/page-sections'
 
-interface TextLink { href: string, text: string }
+interface TextLink {
+  href: string
+  text: string
+}
 
 const slug = String(useRoute().params.slug || '')
 const page = await fetchPublic<{
@@ -155,7 +158,7 @@ const page = await fetchPublic<{
   modules: PublicPageModule[]
   places: Array<PublicPlaceCard & { media: PublicMedia | null }>
   kind: string
-  sources: { title: string, url: string }[]
+  sources: { title: string; url: string }[]
   months: TextLink[]
   monthNav: Array<TextLink & { current: boolean }>
   cover: PublicMedia | null
@@ -173,17 +176,24 @@ function openPhoto(id: string) {
 }
 usePublicHead(page.doc)
 const placesTitle = page.kind === 'month' ? 'Места из путеводителя' : 'Места подборки'
-const moduleSections = moduleAnchors(page.modules, (module) => module.type !== 'places' || page.places.length > 0)
-  .filter((item): item is PageSection => Boolean(item))
-const sectionsAfter = presentSections([
-  [PAGE_SECTIONS.upcoming, page.upcoming.length > 0],
-  [PAGE_SECTIONS.gallery, rest.length > 0],
-  [PAGE_SECTIONS.places, !page.modules.length && page.places.length > 0],
-], { [PAGE_SECTIONS.places.id]: placesTitle })
+const moduleSections = moduleAnchors(
+  page.modules,
+  (module) => module.type !== 'places' || page.places.length > 0,
+).filter((item): item is PageSection => Boolean(item))
+const sectionsAfter = presentSections(
+  [
+    [PAGE_SECTIONS.upcoming, page.upcoming.length > 0],
+    [PAGE_SECTIONS.gallery, rest.length > 0],
+    [PAGE_SECTIONS.places, !page.modules.length && page.places.length > 0],
+  ],
+  { [PAGE_SECTIONS.places.id]: placesTitle },
+)
 </script>
 
 <style scoped>
-.cover { margin: 0 0 1.6rem; }
+.cover {
+  margin: 0 0 1.6rem;
+}
 .caption,
 .gallery figcaption {
   margin: 0.45rem 0 0;
@@ -195,15 +205,21 @@ const sectionsAfter = presentSections([
   gap: 1.2rem;
   margin: 2rem 0;
 }
-.gallery figure { margin: 0; }
+.gallery figure {
+  margin: 0;
+}
 .gallery figcaption {
   display: flex;
   flex-wrap: wrap;
   gap: 0.2rem 0.6rem;
 }
-.places h2 { margin-bottom: 1rem; }
+.places h2 {
+  margin-bottom: 1rem;
+}
 @media (min-width: 700px) {
-  .gallery { grid-template-columns: repeat(2, 1fr); }
+  .gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 .sources {
   margin-top: 2.8rem;
@@ -223,7 +239,9 @@ const sectionsAfter = presentSections([
   padding: 0;
   list-style: none;
 }
-.sources li { padding: 0.15rem 0; }
+.sources li {
+  padding: 0.15rem 0;
+}
 .sources :deep(a) {
   color: var(--muted);
   font-weight: 500;

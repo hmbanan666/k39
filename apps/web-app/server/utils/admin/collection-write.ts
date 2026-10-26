@@ -25,20 +25,29 @@ export async function saveAdminCollection(id: string, body: Record<string, unkno
     throw createError({ statusCode: 400, statusMessage: COLLECTION_BODY_REJECTED })
   }
   return withPendingGuard('collection', id, body.pendingDraft, async (tx) => {
-    const { row, writingWarnings } = await saveCollectionContent({
-      ...body,
-      body: plan.body,
-      modules,
-      id,
-    } as Parameters<typeof saveCollectionContent>[0], userId, contentGate('collection', {
-      title: body.title,
-      summary: body.summary,
-      copy: plan.copy,
-      seoTitle: body.seoTitle,
-      seoDescription: body.seoDescription,
-      sources: body.sources === undefined ? current?.sources : body.sources,
-      items: body.items,
-    }, body.publicationStatus === 'published'), tx)
+    const { row, writingWarnings } = await saveCollectionContent(
+      {
+        ...body,
+        body: plan.body,
+        modules,
+        id,
+      } as Parameters<typeof saveCollectionContent>[0],
+      userId,
+      contentGate(
+        'collection',
+        {
+          title: body.title,
+          summary: body.summary,
+          copy: plan.copy,
+          seoTitle: body.seoTitle,
+          seoDescription: body.seoDescription,
+          sources: body.sources === undefined ? current?.sources : body.sources,
+          items: body.items,
+        },
+        body.publicationStatus === 'published',
+      ),
+      tx,
+    )
     return { ...row, writingWarnings, article: plan.article, renderedFields: plan.renderedFields }
   })
 }

@@ -5,7 +5,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'fact_confirm',
-  description: 'Confirm the value hash you read. A mismatch is rejected. The same hash moves checked_at, closes that fact\'s queue rows, and writes no revision. Writes an mcp_audits row.',
+  description:
+    "Confirm the value hash you read. A mismatch is rejected. The same hash moves checked_at, closes that fact's queue rows, and writes no revision. Writes an mcp_audits row.",
   inputSchema: {
     id: z.string(),
     valueHash: z.string().min(64).max(64),

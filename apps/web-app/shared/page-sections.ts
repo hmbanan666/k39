@@ -27,12 +27,20 @@ export const PAGE_SECTIONS = {
 } as const satisfies Record<string, PageSection>
 
 /** Picks the registry entries whose block renders, in the given order. */
-export function presentSections(entries: Array<[PageSection, boolean]>, titles: Partial<Record<string, string>> = {}): PageSection[] {
-  return entries.filter(([, shown]) => shown).map(([section]) => ({ id: section.id, title: titles[section.id] ?? section.title }))
+export function presentSections(
+  entries: Array<[PageSection, boolean]>,
+  titles: Partial<Record<string, string>> = {},
+): PageSection[] {
+  return entries
+    .filter(([, shown]) => shown)
+    .map(([section]) => ({ id: section.id, title: titles[section.id] ?? section.title }))
 }
 
 /** Anchor of each module, aligned with the list; untitled modules get none. */
-export function moduleAnchors(modules: readonly PublicPageModule[], rendered: (module: PublicPageModule) => boolean = () => true): Array<PageSection | null> {
+export function moduleAnchors(
+  modules: readonly PublicPageModule[],
+  rendered: (module: PublicPageModule) => boolean = () => true,
+): Array<PageSection | null> {
   const used = new Map<string, number>()
   return modules.map((module) => {
     const title = 'title' in module && typeof module.title === 'string' ? module.title.trim() : ''
