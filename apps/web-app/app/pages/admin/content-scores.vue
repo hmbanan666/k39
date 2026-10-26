@@ -3,9 +3,7 @@
     <header class="head">
       <div>
         <h1>Оценки страниц</h1>
-        <p class="muted">
-          Качество, ссылки, индексация и результат. Ночная оценка и кнопка «Пересчитать».
-        </p>
+        <p class="muted"> Качество, ссылки, индексация и результат. Ночная оценка и кнопка «Пересчитать». </p>
       </div>
       <UiButton
         type="button"
@@ -26,9 +24,7 @@
       class="conflicts"
     >
       <h2>Конфликты владельца</h2>
-      <p class="muted">
-        Токен содержания не записал эти факты. Редактор принимает значение или отклоняет его.
-      </p>
+      <p class="muted"> Токен содержания не записал эти факты. Редактор принимает значение или отклоняет его. </p>
       <ul>
         <li
           v-for="conflict in conflicts"
@@ -61,24 +57,16 @@
         <input
           v-model="withoutPersona"
           type="checkbox"
-        >
+        />
         Только страницы без основной персоны ({{ missingPersona }})
       </label>
       <label class="filter">
         Доверие
         <select v-model="trustFilter">
-          <option value="all">
-            Все
-          </option>
-          <option value="verified">
-            Проверено
-          </option>
-          <option value="stale">
-            Устаревшие факты
-          </option>
-          <option value="unreviewed">
-            Непроверенные правки
-          </option>
+          <option value="all"> Все </option>
+          <option value="verified"> Проверено </option>
+          <option value="stale"> Устаревшие факты </option>
+          <option value="unreviewed"> Непроверенные правки </option>
         </select>
       </label>
     </div>
@@ -194,16 +182,19 @@
                 <b
                   v-for="persona in row.personas.filter((item) => item.primary)"
                   :key="persona.code"
-                >{{ persona.title }}</b>
+                  >{{ persona.title }}</b
+                >
                 <span
                   v-for="persona in row.personas.filter((item) => !item.primary)"
                   :key="persona.code"
-                >{{ persona.title }}</span>
+                  >{{ persona.title }}</span
+                >
               </span>
               <span
                 v-else
                 class="missing"
-              >нет</span>
+                >нет</span
+              >
             </td>
             <td>{{ trustText(row.trust) }}</td>
             <td>{{ row.topIssue ? issueLabel(row.topIssue) : 'нет' }}</td>
@@ -288,7 +279,7 @@ interface ScoreRow {
   results: number
   checks: ScoreChecks
   topIssue: string | null
-  personas: { code: string, title: string, weight: number, primary: boolean }[]
+  personas: { code: string; title: string; weight: number; primary: boolean }[]
   trust: TrustCounts
 }
 
@@ -338,14 +329,18 @@ const goal30 = ref<string | number>('')
 const goal90 = ref<string | number>('')
 const notes = ref('')
 
-const { data, pending, error, refresh } = await useFetch<{ rows: ScoreRow[], conflicts: OwnerConflict[] }>('/api/admin/content-scores')
+const { data, pending, error, refresh } = await useFetch<{ rows: ScoreRow[]; conflicts: OwnerConflict[] }>(
+  '/api/admin/content-scores',
+)
 const withoutPersona = ref(false)
 const trustFilter = ref<'all' | 'verified' | 'stale' | 'unreviewed'>('all')
 const rows = computed(() => data.value?.rows ?? [])
 const conflicts = computed(() => data.value?.conflicts ?? [])
 const missingPersona = computed(() => rows.value.filter((row) => !row.personas.some((item) => item.primary)).length)
 const visible = computed(() => {
-  const persona = withoutPersona.value ? rows.value.filter((row) => !row.personas.some((item) => item.primary)) : rows.value
+  const persona = withoutPersona.value
+    ? rows.value.filter((row) => !row.personas.some((item) => item.primary))
+    : rows.value
   if (trustFilter.value === 'all') {
     return persona
   }
@@ -364,9 +359,13 @@ const sorted = computed(() => {
   })
 })
 
-watch(error, (value) => {
-  errorText.value = value ? 'Не удалось загрузить оценки.' : ''
-}, { immediate: true })
+watch(
+  error,
+  (value) => {
+    errorText.value = value ? 'Не удалось загрузить оценки.' : ''
+  },
+  { immediate: true },
+)
 
 function kindLabel(kind: PageKind) {
   return pageKindLabel(kind)
@@ -408,7 +407,10 @@ async function recompute() {
   refreshing.value = true
   errorText.value = ''
   try {
-    const response = await $fetch<{ rows: ScoreRow[], conflicts: OwnerConflict[] }>('/api/admin/content-scores/refresh', { method: 'POST' })
+    const response = await $fetch<{ rows: ScoreRow[]; conflicts: OwnerConflict[] }>(
+      '/api/admin/content-scores/refresh',
+      { method: 'POST' },
+    )
     data.value = { rows: response.rows, conflicts: response.conflicts }
   } catch {
     errorText.value = 'Не удалось пересчитать.'
@@ -450,7 +452,10 @@ async function savePassport() {
       method: 'PUT',
       body: {
         path: passport.value.path,
-        targetQueries: queriesText.value.split('\n').map((line) => line.trim()).filter(Boolean),
+        targetQueries: queriesText.value
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean),
         audience: audience.value.trim() || null,
         primaryAction: action.value || null,
         goal30d: goalValue(goal30.value),
@@ -469,33 +474,139 @@ async function savePassport() {
 </script>
 
 <style scoped>
-.admin { max-width: 72rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
-.head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
-h1 { margin: 0; font-family: var(--font-display); }
-h2 { margin: 0 0 0.8rem; font-size: 1.25rem; }
-.muted { color: var(--muted); }
-.filters { display: flex; flex-wrap: wrap; gap: 0.8rem 1.2rem; align-items: center; margin: 1rem 0 0.5rem; }
-.filter { display: inline-flex; gap: 0.4rem; align-items: center; }
-.filter select { font: inherit; }
-.conflicts { margin-top: 1rem; padding: 0.8rem 1rem; border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--surface); }
-.conflicts ul { list-style: none; margin: 0.6rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
-.conflicts li { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; align-items: center; }
-.actions { display: inline-flex; gap: 0.4rem; }
-.personas { display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; font-size: 0.85rem; }
-.personas span { color: var(--muted); }
-.missing { color: var(--color-danger); }
-.error { color: var(--color-brick); }
-.score-table { max-width: 100%; overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-th, td { padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--color-line); text-align: left; vertical-align: top; }
-th button { padding: 0; border: 0; background: none; font: inherit; font-weight: 700; cursor: pointer; }
-.num { font-variant-numeric: tabular-nums; text-align: right; }
-.path { display: block; color: var(--muted); font-size: 0.85rem; }
-tr { cursor: pointer; }
-tr.selected { background: var(--color-sand); }
-.passport { margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--surface); display: flex; flex-direction: column; gap: 0.8rem; }
-.goals { display: grid; gap: 0.8rem; }
+.admin {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+h2 {
+  margin: 0 0 0.8rem;
+  font-size: 1.25rem;
+}
+.muted {
+  color: var(--muted);
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.2rem;
+  align-items: center;
+  margin: 1rem 0 0.5rem;
+}
+.filter {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.filter select {
+  font: inherit;
+}
+.conflicts {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.conflicts ul {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.conflicts li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  align-items: center;
+}
+.actions {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+.personas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+}
+.personas span {
+  color: var(--muted);
+}
+.missing {
+  color: var(--color-danger);
+}
+.error {
+  color: var(--color-brick);
+}
+.score-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+th,
+td {
+  padding: 0.45rem 0.4rem;
+  border-bottom: 1px solid var(--color-line);
+  text-align: left;
+  vertical-align: top;
+}
+th button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.path {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+tr {
+  cursor: pointer;
+}
+tr.selected {
+  background: var(--color-sand);
+}
+.passport {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.goals {
+  display: grid;
+  gap: 0.8rem;
+}
 @media (min-width: 700px) {
-  .goals { grid-template-columns: 1fr 1fr; }
+  .goals {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

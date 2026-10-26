@@ -1,5 +1,19 @@
-import type { CatalogSchedule, CatalogStop, ConsumerFactFreshness, ContentCatalog, PageMetric, StoredScore } from '@k39/database'
-import type { LinkCatalog, PageKind, PageScore, PassportFields, ScoreFactRefs, ScoreSource } from '../../../shared/scoring'
+import type {
+  CatalogSchedule,
+  CatalogStop,
+  ConsumerFactFreshness,
+  ContentCatalog,
+  PageMetric,
+  StoredScore,
+} from '@k39/database'
+import type {
+  LinkCatalog,
+  PageKind,
+  PageScore,
+  PassportFields,
+  ScoreFactRefs,
+  ScoreSource,
+} from '../../../shared/scoring'
 import { collectionArticle } from '../../../shared/page-modules'
 import { readRules, scheduleHoursKnown } from '../../../shared/schedule'
 import { emptyResults, linkStats, scorePage, searchTotalsForPath } from '../../../shared/scoring'
@@ -13,7 +27,11 @@ export function catalogPageRefs(catalog: ContentCatalog) {
   return [
     ...catalog.places.map((row) => ({ pageType: 'place' as const, entityId: row.id, path: `/${row.slug}` })),
     ...catalog.routes.map((row) => ({ pageType: 'route' as const, entityId: row.id, path: `/marshruty/${row.slug}` })),
-    ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}` })),
+    ...catalog.collections.map((row) => ({
+      pageType: 'collection' as const,
+      entityId: row.id,
+      path: `/podborki/${row.slug}`,
+    })),
     ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}` })),
     ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}` })),
     ...catalog.venues.map((row) => ({ pageType: 'venue' as const, entityId: row.id, path: `/zavedeniya/${row.slug}` })),
@@ -43,10 +61,7 @@ function passportOf(catalog: ContentCatalog, kind: PageKind, id: string): Passpo
 }
 
 function demandTargets(passport: PassportFields | null) {
-  return [
-    ...(passport?.targetQueries ?? []),
-    ...(passport?.lengthOverride?.queries ?? []),
-  ]
+  return [...(passport?.targetQueries ?? []), ...(passport?.lengthOverride?.queries ?? [])]
 }
 
 export interface ScoreInclude {
@@ -56,15 +71,22 @@ export interface ScoreInclude {
 
 /** Preview and stored runs retain the canonical reader's reasons without reclassifying facts. */
 export function scoreFactRefs(rows: ConsumerFactFreshness[]): Map<string, ScoreFactRefs> {
-  return new Map(rows.map((row) => [`${row.consumer_type}:${row.consumer_id}`, {
-    count: Number(row.refs), stale: Number(row.stale), reasons: row.reasons,
-  }]))
+  return new Map(
+    rows.map((row) => [
+      `${row.consumer_type}:${row.consumer_id}`,
+      {
+        count: Number(row.refs),
+        stale: Number(row.stale),
+        reasons: row.reasons,
+      },
+    ]),
+  )
 }
 
 export function scoresFromCatalog(
   catalog: ContentCatalog,
   metrics: PageMetric[],
-  queries: Array<{ page: string, query: string }>,
+  queries: Array<{ page: string; query: string }>,
   searchImported: boolean,
   now = new Date(),
   factRefs?: Map<string, ScoreFactRefs>,
@@ -127,10 +149,18 @@ export function scoresFromCatalog(
   const stats = linkStats(linkCatalog)
   const photos = new Map(catalog.photos.map((row) => [row.placeId, row.count]))
   const placeId = new Map(catalog.places.map((place) => [place.slug, place.id]))
-  const publishedRoutes = new Set(catalog.routes.filter((route) => route.publicationStatus === 'published').map((route) => route.id))
-  const publishedCollections = new Set(catalog.collections.filter((row) => row.publicationStatus === 'published').map((row) => row.id))
-  const inRoute = new Set(catalog.routeStops.filter((stop) => publishedRoutes.has(stop.parentId)).map((stop) => stop.placeSlug))
-  const inCollection = new Set(catalog.collectionStops.filter((stop) => publishedCollections.has(stop.parentId)).map((stop) => stop.placeSlug))
+  const publishedRoutes = new Set(
+    catalog.routes.filter((route) => route.publicationStatus === 'published').map((route) => route.id),
+  )
+  const publishedCollections = new Set(
+    catalog.collections.filter((row) => row.publicationStatus === 'published').map((row) => row.id),
+  )
+  const inRoute = new Set(
+    catalog.routeStops.filter((stop) => publishedRoutes.has(stop.parentId)).map((stop) => stop.placeSlug),
+  )
+  const inCollection = new Set(
+    catalog.collectionStops.filter((stop) => publishedCollections.has(stop.parentId)).map((stop) => stop.placeSlug),
+  )
   const metricByPath = new Map(metrics.map((row) => [row.path, row]))
   const venuePhotos = new Map((catalog.venuePhotos ?? []).map((row) => [row.venueId, row.count]))
   const practicalRows = new Map((catalog.practical ?? []).map((row) => [`${row.subjectType}:${row.subjectId}`, row]))
@@ -360,7 +390,9 @@ export function scoresFromCatalog(
       const path = `/${hub.slug}`
       const link = stat(path)
       const passport = passportOf(catalog, 'hub', hub.id)
-      const members = catalog.places.filter((place) => place.publicationStatus === 'published' && place.categorySlug === hub.slug).map((place) => place.slug)
+      const members = catalog.places
+        .filter((place) => place.publicationStatus === 'published' && place.categorySlug === hub.slug)
+        .map((place) => place.slug)
       return {
         kind: 'hub',
         id: hub.id,

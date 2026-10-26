@@ -18,13 +18,15 @@ async function googleAccessToken() {
     const key = parseServiceAccountKey(raw)
     const now = Math.floor(Date.now() / 1000)
     const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-    const claim = b64url(JSON.stringify({
-      iss: key.client_email,
-      scope: 'https://www.googleapis.com/auth/webmasters.readonly',
-      aud: 'https://oauth2.googleapis.com/token',
-      iat: now,
-      exp: now + 3600,
-    }))
+    const claim = b64url(
+      JSON.stringify({
+        iss: key.client_email,
+        scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+        aud: 'https://oauth2.googleapis.com/token',
+        iat: now,
+        exp: now + 3600,
+      }),
+    )
     const unsigned = `${header}.${claim}`
     const sign = createSign('RSA-SHA256')
     sign.update(unsigned)
@@ -40,7 +42,7 @@ async function googleAccessToken() {
     if (!response.ok) {
       throw new Error(`Google token ${response.status}`)
     }
-    const json = await response.json() as { access_token?: string }
+    const json = (await response.json()) as { access_token?: string }
     return json.access_token || ''
   }
   const clientId = process.env.GSC_CLIENT_ID
@@ -62,7 +64,7 @@ async function googleAccessToken() {
   if (!response.ok) {
     throw new Error(`Google refresh ${response.status}`)
   }
-  const json = await response.json() as { access_token?: string }
+  const json = (await response.json()) as { access_token?: string }
   return json.access_token || ''
 }
 
@@ -76,7 +78,7 @@ const BACKFILL_DAYS = 90
  * are different sites to the API, so a configured URL that the account
  * cannot read falls back to the property on the same host it can read.
  */
-export function pickGoogleSite(configured: string, sites: Array<{ siteUrl?: string, permissionLevel?: string }>) {
+export function pickGoogleSite(configured: string, sites: Array<{ siteUrl?: string; permissionLevel?: string }>) {
   const readable = sites
     .filter((site) => site.siteUrl && site.permissionLevel && site.permissionLevel !== 'siteUnverifiedUser')
     .map((site) => site.siteUrl as string)
@@ -88,15 +90,17 @@ export function pickGoogleSite(configured: string, sites: Array<{ siteUrl?: stri
     host = new URL(configured).hostname
   } catch {}
   host = host.replace(/^www\./, '').replace(/\/$/, '')
-  return readable.find((site) => site === `sc-domain:${host}`)
-    ?? readable.find((site) => {
+  return (
+    readable.find((site) => site === `sc-domain:${host}`) ??
+    readable.find((site) => {
       try {
         return new URL(site).hostname.replace(/^www\./, '') === host
       } catch {
         return false
       }
-    })
-    ?? configured
+    }) ??
+    configured
+  )
 }
 
 async function resolveGoogleSite(token: string, configured: string) {
@@ -106,7 +110,7 @@ async function resolveGoogleSite(token: string, configured: string) {
   if (!response.ok) {
     return configured
   }
-  const json = await response.json() as { siteEntry?: Array<{ siteUrl?: string, permissionLevel?: string }> }
+  const json = (await response.json()) as { siteEntry?: Array<{ siteUrl?: string; permissionLevel?: string }> }
   return pickGoogleSite(configured, json.siteEntry ?? [])
 }
 
@@ -122,36 +126,43 @@ async function pullGoogle(from: string, to: string) {
     : dayStamp(new Date(new Date(`${to}T00:00:00Z`).getTime() - BACKFILL_DAYS * 86_400_000))
   let total = 0
   for (let startRow = 0; startRow < GOOGLE_MAX_ROWS; startRow += GOOGLE_PAGE) {
-    const response = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
-      method: 'POST',
-      headers: { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        startDate: start,
-        endDate: to,
-        dimensions: ['date', 'query', 'page'],
-        rowLimit: GOOGLE_PAGE,
-        startRow,
-      }),
-    })
+    const response = await fetch(
+      `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`,
+      {
+        method: 'POST',
+        headers: { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          startDate: start,
+          endDate: to,
+          dimensions: ['date', 'query', 'page'],
+          rowLimit: GOOGLE_PAGE,
+          startRow,
+        }),
+      },
+    )
     if (!response.ok) {
       throw new Error(`Search Console ${response.status}`)
     }
-    const json = await response.json() as { rows?: Array<{ keys?: string[], clicks?: number, impressions?: number, position?: number }> }
+    const json = (await response.json()) as {
+      rows?: Array<{ keys?: string[]; clicks?: number; impressions?: number; position?: number }>
+    }
     const page = json.rows ?? []
     const rows = page.flatMap((row) => {
       const [day, query, url] = row.keys ?? []
       if (!day || !query) {
         return []
       }
-      return [{
-        day,
-        engine: 'google',
-        page: url || '',
-        query,
-        impressions: Math.round(row.impressions || 0),
-        clicks: Math.round(row.clicks || 0),
-        position: row.position ?? null,
-      }]
+      return [
+        {
+          day,
+          engine: 'google',
+          page: url || '',
+          query,
+          impressions: Math.round(row.impressions || 0),
+          clicks: Math.round(row.clicks || 0),
+          position: row.position ?? null,
+        },
+      ]
     })
     await db.analytics.replaceSearchRows(rows)
     total += rows.length
@@ -174,7 +185,7 @@ export interface YandexHost {
 }
 
 export interface YandexPopularResponse {
-  queries?: Array<{ query_text?: string, indicators?: Record<string, number> }>
+  queries?: Array<{ query_text?: string; indicators?: Record<string, number> }>
   date_to?: string
   count?: number | string
 }
@@ -211,9 +222,11 @@ export function pickYandexHost(configured: string, hosts: YandexHost[]) {
   }
   const wanted = yandexHostName(configured)
   const match = verified.find((host) => {
-    return yandexHostName(host.host_id || '') === wanted
-      || yandexHostName(host.unicode_host_url || '') === wanted
-      || yandexHostName(host.ascii_host_url || '') === wanted
+    return (
+      yandexHostName(host.host_id || '') === wanted ||
+      yandexHostName(host.unicode_host_url || '') === wanted ||
+      yandexHostName(host.ascii_host_url || '') === wanted
+    )
   })
   return match?.host_id || configured
 }
@@ -244,7 +257,9 @@ export function yandexFallbackWindow(from: string) {
 }
 
 export function yandexPopularUrl(userId: string, hostId: string, from: string, to: string, offset: number) {
-  const url = new URL(`https://api.webmaster.yandex.net/v4/user/${userId}/hosts/${encodeURIComponent(hostId)}/search-queries/popular/`)
+  const url = new URL(
+    `https://api.webmaster.yandex.net/v4/user/${userId}/hosts/${encodeURIComponent(hostId)}/search-queries/popular/`,
+  )
   url.searchParams.set('order_by', 'TOTAL_SHOWS')
   url.searchParams.set('date_from', from)
   url.searchParams.set('date_to', to)
@@ -263,15 +278,17 @@ export function yandexQueryRows(json: YandexPopularResponse, fallbackDay: string
     if (!item.query_text) {
       return []
     }
-    return [{
-      day,
-      engine: 'yandex',
-      page: '',
-      query: item.query_text,
-      impressions: Math.round(item.indicators?.TOTAL_SHOWS || 0),
-      clicks: Math.round(item.indicators?.TOTAL_CLICKS || 0),
-      position: item.indicators?.AVG_SHOW_POSITION ?? null,
-    }]
+    return [
+      {
+        day,
+        engine: 'yandex',
+        page: '',
+        query: item.query_text,
+        impressions: Math.round(item.indicators?.TOTAL_SHOWS || 0),
+        clicks: Math.round(item.indicators?.TOTAL_CLICKS || 0),
+        position: item.indicators?.AVG_SHOW_POSITION ?? null,
+      },
+    ]
   })
 }
 
@@ -280,7 +297,7 @@ async function yandexJson<T>(token: string, url: string, label: string) {
   if (!response.ok) {
     throw new Error(`${label} ${response.status}`)
   }
-  return await response.json() as T
+  return (await response.json()) as T
 }
 
 async function pullYandexPopular(token: string, userId: string, hostId: string, from: string, to: string) {
@@ -310,7 +327,11 @@ async function pullYandex(_from: string, _to: string, now = new Date()) {
   if (!token || !configuredHost) {
     return { engine: 'yandex', skipped: true, rows: 0 }
   }
-  const user = await yandexJson<{ user_id?: number | string }>(token, 'https://api.webmaster.yandex.net/v4/user', 'Yandex user')
+  const user = await yandexJson<{ user_id?: number | string }>(
+    token,
+    'https://api.webmaster.yandex.net/v4/user',
+    'Yandex user',
+  )
   const hosts = await yandexJson<{ hosts?: YandexHost[] }>(
     token,
     `https://api.webmaster.yandex.net/v4/user/${user.user_id}/hosts`,

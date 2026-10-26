@@ -10,7 +10,8 @@ import { venuePendingReview } from '../../utils/venues/pending'
 
 export default defineStrictMcpTool({
   name: 'venue_get',
-  description: 'Load one venue by id or slug, including photos (author, license, source, origin), the hours schedule (rules, sourceUrl, verifiedAt, as schedule_get returns them; null when none), action links, signature dishes, sources, createdAt, updatedAt, whether the facts are stale, and the live dated notices (ADR 0049). pendingReview is null, or the stored fields, opening schedule, menu prices and notices draft with per-key staging times and changedFields (ADR 0047).',
+  description:
+    'Load one venue by id or slug, including photos (author, license, source, origin), the hours schedule (rules, sourceUrl, verifiedAt, as schedule_get returns them; null when none), action links, signature dishes, sources, createdAt, updatedAt, whether the facts are stale, and the live dated notices (ADR 0049). pendingReview is null, or the stored fields, opening schedule, menu prices and notices draft with per-key staging times and changedFields (ADR 0047).',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -45,14 +46,21 @@ export default defineStrictMcpTool({
       priceBandBasis: venue.priceBandBasis,
       avgCheck: venue.avgCheck,
       schedule: await loadSchedule('venue', venue.id),
-      phone: shownText((await readShownFacts('venue', [{
-        id: venue.id,
-        phone: venue.phone,
-        address: venue.address,
-        latitude: venue.latitude,
-        longitude: venue.longitude,
-        status: venue.status,
-      }])).get(venue.id)?.phone, venue.phone),
+      phone: shownText(
+        (
+          await readShownFacts('venue', [
+            {
+              id: venue.id,
+              phone: venue.phone,
+              address: venue.address,
+              latitude: venue.latitude,
+              longitude: venue.longitude,
+              status: venue.status,
+            },
+          ])
+        ).get(venue.id)?.phone,
+        venue.phone,
+      ),
       website: venue.website,
       socials: venue.socials,
       vkCommunityId: venue.vkCommunityId,

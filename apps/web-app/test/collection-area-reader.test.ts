@@ -6,13 +6,15 @@ import { loadCollection } from '../server/utils/public-pages'
 
 const { publishedCollection, fetchPage } = vi.hoisted(() => ({ publishedCollection: vi.fn(), fetchPage: vi.fn() }))
 vi.mock('@k39/database', async (original) => ({
-  ...await original<object>(),
-  db: { content: {
-    publishedCollection,
-    collectionGallery: async () => [],
-    coversFor: async () => new Map(),
-    listPublishedCollections: async () => [],
-  } },
+  ...(await original<object>()),
+  db: {
+    content: {
+      publishedCollection,
+      collectionGallery: async () => [],
+      coversFor: async () => new Map(),
+      listPublishedCollections: async () => [],
+    },
+  },
 }))
 vi.mock('../server/utils/practical/public', () => ({ loadMemberEvents: async () => [] }))
 vi.mock('../app/composables/fetchPublic', () => ({ fetchPublic: fetchPage }))
@@ -25,15 +27,55 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
-it.each([['theme', false], ['month', false], ['theme', true], ['month', true]] as const)(
-  'carries area labels through the reader and %s page (modules: %s), retaining subject identity', async (kind, modules) => {
+it.each([
+  ['theme', false],
+  ['month', false],
+  ['theme', true],
+  ['month', true],
+] as const)(
+  'carries area labels through the reader and %s page (modules: %s), retaining subject identity',
+  async (kind, modules) => {
     const items = [
-      { id: 'primorsk', slug: 'primorsk', title: 'Приморск', summary: 'Самостоятельный предмет карточки.', categorySlug: 'kurorty', categoryTitle: 'Курорты', regionSlug: 'baltiysk', regionTitle: 'Балтийск', regionShortTitle: 'Балтийск' },
-      { id: 'custom', slug: 'custom', title: 'Другой предмет', categorySlug: 'kurorty', categoryTitle: 'Курорты', regionSlug: 'coast', regionTitle: 'Побережье', regionShortTitle: null },
-      { id: 'unknown', slug: 'unknown', title: 'Без территории', regionSlug: null, regionTitle: null, regionShortTitle: null },
+      {
+        id: 'primorsk',
+        slug: 'primorsk',
+        title: 'Приморск',
+        summary: 'Самостоятельный предмет карточки.',
+        categorySlug: 'kurorty',
+        categoryTitle: 'Курорты',
+        regionSlug: 'baltiysk',
+        regionTitle: 'Балтийск',
+        regionShortTitle: 'Балтийск',
+      },
+      {
+        id: 'custom',
+        slug: 'custom',
+        title: 'Другой предмет',
+        categorySlug: 'kurorty',
+        categoryTitle: 'Курорты',
+        regionSlug: 'coast',
+        regionTitle: 'Побережье',
+        regionShortTitle: null,
+      },
+      {
+        id: 'unknown',
+        slug: 'unknown',
+        title: 'Без территории',
+        regionSlug: null,
+        regionTitle: null,
+        regionShortTitle: null,
+      },
     ]
     publishedCollection.mockResolvedValue({
-      collection: { id: 'collection', slug: 'example', title: 'Проверка карточек', kind, month: kind === 'month' ? 11 : null, body: '', modules: modules ? [{ type: 'places', title: 'Места' }] : [] },
+      collection: {
+        id: 'collection',
+        slug: 'example',
+        title: 'Проверка карточек',
+        kind,
+        month: kind === 'month' ? 11 : null,
+        body: '',
+        modules: modules ? [{ type: 'places', title: 'Места' }] : [],
+      },
       items,
     })
     const page = await loadCollection('example')

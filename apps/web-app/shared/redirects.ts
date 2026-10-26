@@ -16,10 +16,7 @@ export interface RedirectInput {
   redirects?: StoredRedirect[]
 }
 
-export type RedirectDecision
-  = | { kind: 'none' }
-    | { kind: 'redirect', location: string }
-    | { kind: 'gone' }
+export type RedirectDecision = { kind: 'none' } | { kind: 'redirect'; location: string } | { kind: 'gone' }
 
 const QUEST_SLUGS: Record<string, string> = {
   'five-forts': 'pyat-fortov',

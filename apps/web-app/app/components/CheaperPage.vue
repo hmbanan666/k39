@@ -16,7 +16,8 @@
         :key="city.slug"
         :href="city.href"
         :aria-current="page.regionSlug === city.slug ? 'page' : undefined"
-      >{{ city.title }} <span>{{ city.places }}</span></a>
+        >{{ city.title }} <span>{{ city.places }}</span></a
+      >
     </nav>
     <ul
       v-if="page.items.length"
@@ -39,7 +40,7 @@
               v-else-if="item.image"
               :src="item.image"
               alt=""
-            >
+            />
           </span>
           <span class="name">{{ item.title }}</span>
           <span class="price">{{ formatRub(item.medianRub) }}</span>
@@ -95,7 +96,12 @@ usePublicHead(props.page.doc)
 </script>
 
 <style scoped>
-.towns { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1.4rem; }
+.towns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.4rem;
+}
 .towns a {
   padding: 0.3rem 0.8rem;
   border: 1px solid var(--color-line);
@@ -104,8 +110,15 @@ usePublicHead(props.page.doc)
   color: var(--text);
   text-decoration: none;
 }
-.towns a span { color: var(--muted); font-size: var(--step--1); }
-.towns a[aria-current='page'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.towns a span {
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+.towns a[aria-current='page'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
 .dishes {
   display: flex;
   flex-direction: column;
@@ -165,12 +178,17 @@ usePublicHead(props.page.doc)
   font-weight: 700;
   line-height: 1;
 }
-.empty { margin: 0; color: var(--muted); }
+.empty {
+  margin: 0;
+  color: var(--muted);
+}
 @media (max-width: 420px) {
   .dishes a {
     grid-template-columns: 56px 1fr;
     grid-template-areas: 'mark name' 'mark price' 'mark meta';
   }
-  .price { margin-top: 0.15rem; }
+  .price {
+    margin-top: 0.15rem;
+  }
 }
 </style>

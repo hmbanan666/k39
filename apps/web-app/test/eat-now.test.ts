@@ -20,7 +20,9 @@ describe('eat now hub', () => {
 
   it('measures distance and names towns', () => {
     expect(haversineKm({ latitude: 54.9439, longitude: 20.1517 }, { latitude: 54.9439, longitude: 20.1517 })).toBe(0)
-    expect(Math.round(haversineKm({ latitude: 54.71, longitude: 20.51 }, { latitude: 54.96, longitude: 20.48 }))).toBe(28)
+    expect(Math.round(haversineKm({ latitude: 54.71, longitude: 20.51 }, { latitude: 54.96, longitude: 20.48 }))).toBe(
+      28,
+    )
     expect(inTown('svetlogorsk', 'Светлогорск')).toBe('в Светлогорске и окрестностях')
     expect(eatNowPath('zelenogradsk')).toBe('/gde-poest-seychas/zelenogradsk')
   })

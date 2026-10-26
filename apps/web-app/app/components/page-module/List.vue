@@ -59,7 +59,7 @@ import { moduleAnchors } from '~~/shared/page-sections'
 const props = defineProps<{
   modules: PublicPageModule[]
   places: Array<PublicPlaceCard & { media: PublicMedia | null }>
-  months: { href: string, text: string, current: boolean }[]
+  months: { href: string; text: string; current: boolean }[]
 }>()
 
 const questions = computed<PickerQuestion[]>(() => {
@@ -67,16 +67,22 @@ const questions = computed<PickerQuestion[]>(() => {
   return module?.type === 'picker' ? module.questions : []
 })
 const picker = usePagePicker(questions.value)
-const anchors = computed(() => moduleAnchors(props.modules, (module) => module.type !== 'places' || props.places.length > 0))
+const anchors = computed(() =>
+  moduleAnchors(props.modules, (module) => module.type !== 'places' || props.places.length > 0),
+)
 
 const taggedCards = computed(() => [
-  ...props.modules.flatMap((module) => module.type === 'ideas' || module.type === 'plans' ? module.items.map((item) => item.tags) : []),
+  ...props.modules.flatMap((module) =>
+    module.type === 'ideas' || module.type === 'plans' ? module.items.map((item) => item.tags) : [],
+  ),
   ...(props.modules.some((module) => module.type === 'places') ? props.places.map((place) => place.tags) : []),
 ])
 const total = computed(() => taggedCards.value.length)
-const fitting = computed(() => pickerActive(picker.state.value)
-  ? taggedCards.value.filter((tags) => fitsPicker(pickerFit(tags, picker.state.value))).length
-  : 0)
+const fitting = computed(() =>
+  pickerActive(picker.state.value)
+    ? taggedCards.value.filter((tags) => fitsPicker(pickerFit(tags, picker.state.value))).length
+    : 0,
+)
 </script>
 
 <style scoped>
@@ -87,5 +93,7 @@ const fitting = computed(() => pickerActive(picker.state.value)
 }
 /* Grid items may shrink below their content, so a scrolling chip row
    stays inside the page instead of widening it. */
-.page-modules > * { min-width: 0; }
+.page-modules > * {
+  min-width: 0;
+}
 </style>

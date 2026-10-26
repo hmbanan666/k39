@@ -45,7 +45,9 @@ export const PICKER_QUESTIONS = {
 
 export type PickerQuestion = keyof typeof PICKER_QUESTIONS
 export const PICKER_QUESTION_KEYS = Object.keys(PICKER_QUESTIONS) as PickerQuestion[]
-export const PICKER_TAGS: string[] = PICKER_QUESTION_KEYS.flatMap((key) => PICKER_QUESTIONS[key].options.map((option) => option.value))
+export const PICKER_TAGS: string[] = PICKER_QUESTION_KEYS.flatMap((key) =>
+  PICKER_QUESTIONS[key].options.map((option) => option.value),
+)
 /** Query keys the picker owns. Robots treat them as clean params. */
 export const PICKER_PARAMS: string[] = PICKER_QUESTION_KEYS.map((key) => PICKER_QUESTIONS[key].param)
 
@@ -60,7 +62,18 @@ export const CATEGORY_TAGS: Record<string, string[]> = {
 }
 
 /** Roles a text module can declare, so coverage knows what a page answers. */
-export const TEXT_ROLES = ['events', 'open-closed', 'bad-weather', 'transport', 'pack', 'prices', 'faq', 'short-facts', 'route-steps', 'eat-nearby'] as const
+export const TEXT_ROLES = [
+  'events',
+  'open-closed',
+  'bad-weather',
+  'transport',
+  'pack',
+  'prices',
+  'faq',
+  'short-facts',
+  'route-steps',
+  'eat-nearby',
+] as const
 export type TextRole = (typeof TEXT_ROLES)[number]
 
 const tag = z.enum(PICKER_TAGS as [string, ...string[]])
@@ -86,12 +99,23 @@ export const pageModuleSchema = z.discriminatedUnion('type', [
     type: z.literal('month-stats'),
     title,
     verdict: z.string().trim().max(200).optional(),
-    tiles: z.array(z.object({ label: title, value: z.string().trim().min(1).max(40), note: z.string().trim().max(80).optional() })).min(2).max(8),
-    rows: z.array(z.object({ label: title, value: z.string().trim().min(1).max(60) })).max(30).default([]),
+    tiles: z
+      .array(
+        z.object({ label: title, value: z.string().trim().min(1).max(40), note: z.string().trim().max(80).optional() }),
+      )
+      .min(2)
+      .max(8),
+    rows: z
+      .array(z.object({ label: title, value: z.string().trim().min(1).max(60) }))
+      .max(30)
+      .default([]),
   }),
   z.object({
     type: z.literal('picker'),
-    questions: z.array(z.enum(PICKER_QUESTION_KEYS as [PickerQuestion, ...PickerQuestion[]])).min(1).max(3),
+    questions: z
+      .array(z.enum(PICKER_QUESTION_KEYS as [PickerQuestion, ...PickerQuestion[]]))
+      .min(1)
+      .max(3),
   }),
   z.object({
     type: z.literal('ideas'),
@@ -113,11 +137,14 @@ export const pageModuleSchema = z.discriminatedUnion('type', [
   }),
 ])
 
-export const pageModulesSchema = z.array(pageModuleSchema).max(20).superRefine((modules, ctx) => {
-  if (modules.filter((item) => item.type === 'picker').length > 1) {
-    ctx.addIssue({ code: 'custom', message: 'A page has at most one picker module' })
-  }
-})
+export const pageModulesSchema = z
+  .array(pageModuleSchema)
+  .max(20)
+  .superRefine((modules, ctx) => {
+    if (modules.filter((item) => item.type === 'picker').length > 1) {
+      ctx.addIssue({ code: 'custom', message: 'A page has at most one picker module' })
+    }
+  })
 
 export type PageModule = z.infer<typeof pageModuleSchema>
 export type PageModuleType = PageModule['type']
@@ -129,7 +156,10 @@ function firstValue(value: unknown) {
 }
 
 /** Reads picker answers from a route query, dropping unknown values. */
-export function parsePickerQuery(query: Record<string, unknown>, questions: readonly PickerQuestion[] = PICKER_QUESTION_KEYS): PickerState {
+export function parsePickerQuery(
+  query: Record<string, unknown>,
+  questions: readonly PickerQuestion[] = PICKER_QUESTION_KEYS,
+): PickerState {
   const state: PickerState = {}
   for (const key of questions) {
     const spec = PICKER_QUESTIONS[key]
@@ -212,7 +242,7 @@ export function rankByPicker<T>(items: readonly T[], tagsOf: (item: T) => readon
   if (!pickerActive(state)) {
     return scored
   }
-  return [...scored].sort((a, b) => (a.fit.missed - b.fit.missed) || (b.fit.matched - a.fit.matched) || (a.index - b.index))
+  return [...scored].sort((a, b) => a.fit.missed - b.fit.missed || b.fit.matched - a.fit.matched || a.index - b.index)
 }
 
 export interface PublicCard {
@@ -232,13 +262,19 @@ export interface PublicPlaceCard {
 }
 
 /** Modules as the page receives them: markdown is already HTML. */
-export type PublicPageModule
-  = | { type: 'text', title?: string, variant: 'lead' | 'plain', html: string }
-    | { type: 'month-stats', title: string, verdict?: string, tiles: { label: string, value: string, note?: string }[], rows: { label: string, value: string }[] }
-    | { type: 'picker', questions: PickerQuestion[] }
-    | { type: 'ideas' | 'plans', title: string, items: PublicCard[] }
-    | { type: 'places', title: string }
-    | { type: 'months', title?: string }
+export type PublicPageModule =
+  | { type: 'text'; title?: string; variant: 'lead' | 'plain'; html: string }
+  | {
+      type: 'month-stats'
+      title: string
+      verdict?: string
+      tiles: { label: string; value: string; note?: string }[]
+      rows: { label: string; value: string }[]
+    }
+  | { type: 'picker'; questions: PickerQuestion[] }
+  | { type: 'ideas' | 'plans'; title: string; items: PublicCard[] }
+  | { type: 'places'; title: string }
+  | { type: 'months'; title?: string }
 
 /**
  * Validates stored modules and renders their markdown. A stored list that no
@@ -256,7 +292,11 @@ export function toPublicModules(stored: unknown, render: (markdown: string) => s
         return { type: 'text', title: module.title, variant: module.variant, html: render(module.text) }
       case 'ideas':
       case 'plans':
-        return { type: module.type, title: module.title, items: module.items.map((item) => ({ title: item.title, html: render(item.text), tags: item.tags })) }
+        return {
+          type: module.type,
+          title: module.title,
+          items: module.items.map((item) => ({ title: item.title, html: render(item.text), tags: item.tags })),
+        }
       default:
         return module
     }
@@ -328,7 +368,10 @@ function moduleBlock(module: PageModule): string {
 
 /** Markdown of the modules a visitor sees. Picker chips are UI, not prose. */
 export function modulesArticle(modules: readonly PageModule[]): string {
-  return modules.map((module) => moduleBlock(module)).filter(Boolean).join('\n\n')
+  return modules
+    .map((module) => moduleBlock(module))
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 /**
@@ -336,7 +379,7 @@ export function modulesArticle(modules: readonly PageModule[]): string {
  * A valid non-empty module list wins. Anything else stays the stored body,
  * including a list that no longer validates: the page falls back to it.
  */
-export function collectionArticle(row: { body?: string | null, modules?: unknown }): string {
+export function collectionArticle(row: { body?: string | null; modules?: unknown }): string {
   const parsed = pageModulesSchema.safeParse(row.modules ?? [])
   if (parsed.success && parsed.data.length > 0) {
     return modulesArticle(parsed.data)

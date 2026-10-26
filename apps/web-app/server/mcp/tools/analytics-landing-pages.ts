@@ -12,8 +12,9 @@ export default defineStrictMcpTool({
     period: z.string().optional(),
     channel: z.string().optional().describe('organic, organic:yandex, organic:google, or another channel'),
   },
-  handler: async ({ period, channel }) => auditedAnalytics('analytics_landing_pages', async () => {
-    const range = resolvePeriod(period || '28d')
-    return { period: range.label, pages: await db.analytics.landingPages(range.from, range.to, channel || 'organic') }
-  }),
+  handler: async ({ period, channel }) =>
+    auditedAnalytics('analytics_landing_pages', async () => {
+      const range = resolvePeriod(period || '28d')
+      return { period: range.label, pages: await db.analytics.landingPages(range.from, range.to, channel || 'organic') }
+    }),
 })

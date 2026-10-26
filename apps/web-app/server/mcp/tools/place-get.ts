@@ -7,7 +7,8 @@ import { noticesView } from '../../utils/notices/write'
 
 export default defineStrictMcpTool({
   name: 'place_get',
-  description: 'Load one place by id or slug, including media, sources, related published places, the official phone with phoneSourceUrl, the website, schemaType (null means the hub default), and the live dated notices (ADR 0049). pendingReview is the pending draft payload; it includes notices when a draft-token notices_set staged them.',
+  description:
+    'Load one place by id or slug, including media, sources, related published places, the official phone with phoneSourceUrl, the website, schemaType (null means the hub default), and the live dated notices (ADR 0049). pendingReview is the pending draft payload; it includes notices when a draft-token notices_set staged them.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),
@@ -23,9 +24,7 @@ export default defineStrictMcpTool({
     const category = place.categoryId
       ? (await db.content.categories()).find((item) => item.id === place.categoryId)
       : null
-    const region = place.regionId
-      ? (await db.editor.listRegions()).find((item) => item.id === place.regionId)
-      : null
+    const region = place.regionId ? (await db.editor.listRegions()).find((item) => item.id === place.regionId) : null
     return {
       id: place.id,
       slug: place.slug,

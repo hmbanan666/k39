@@ -2,10 +2,22 @@ import { describe, expect, it } from 'vitest'
 import GuideFactRow from '../app/components/GuideFactRow.vue'
 import PhoneLinks from '../app/components/PhoneLinks.vue'
 import { ownWebsiteMessage, ownWebsiteProblem } from '../shared/facts'
-import { checkPlacePhone, checkPlacePhoneSource, checkPlaceSchemaType, checkPlaceWebsite } from '../shared/place-contact'
+import {
+  checkPlacePhone,
+  checkPlacePhoneSource,
+  checkPlaceSchemaType,
+  checkPlaceWebsite,
+} from '../shared/place-contact'
 import { placeDraftChanges } from '../shared/place-draft-diff'
 import { guideFacts, websiteLabel } from '../shared/place-guide'
-import { jsonLdTypes, PLACE_SCHEMA_TYPES, placeDocument, placeNodeTypes, placeSchemaType, schemaProblems } from '../shared/seo'
+import {
+  jsonLdTypes,
+  PLACE_SCHEMA_TYPES,
+  placeDocument,
+  placeNodeTypes,
+  placeSchemaType,
+  schemaProblems,
+} from '../shared/seo'
 import { writingSplit } from '../shared/writing-split'
 import { renderPage } from './helpers/render-page'
 
@@ -61,7 +73,10 @@ describe('place contact checks', () => {
   })
 
   it('takes the phone from an own-site page, never a map, a listing, or a Yandex card', () => {
-    expect(checkPlacePhoneSource('https://museum.example.org/contacts', 'https://museum.example.org/')).toEqual({ ok: true, value: 'https://museum.example.org/contacts' })
+    expect(checkPlacePhoneSource('https://museum.example.org/contacts', 'https://museum.example.org/')).toEqual({
+      ok: true,
+      value: 'https://museum.example.org/contacts',
+    })
     expect(checkPlacePhoneSource(null, null).ok).toBe(false)
     expect(checkPlacePhoneSource('ftp://museum.example.org', null).ok).toBe(false)
     for (const url of [
@@ -130,7 +145,12 @@ describe('place contact markup', () => {
   })
 
   it('keeps the WebPage about the place node when url is the official site', () => {
-    const doc = placeDocument({ ...base, schemaType: 'Church', phone: '+7 4012 30-30-40', website: 'https://kirha.example.org/' })
+    const doc = placeDocument({
+      ...base,
+      schemaType: 'Church',
+      phone: '+7 4012 30-30-40',
+      website: 'https://kirha.example.org/',
+    })
     const page = doc.jsonLd.find((item) => item['@type'] === 'WebPage')!
     const node = placeNode(doc)
     expect(node['@id']).toBe('https://k39.online/kirha-test#place')
@@ -151,7 +171,11 @@ describe('place contact markup', () => {
 
 describe('practical block rows', () => {
   it('adds «Телефон» with tel links and «Сайт» after the price', () => {
-    const rows = guideFacts({ price: '300 ₽', phone: '+7 4012 30-30-40, +7 911 851-68-55', website: 'https://www.kirha.example.org/' })
+    const rows = guideFacts({
+      price: '300 ₽',
+      phone: '+7 4012 30-30-40, +7 911 851-68-55',
+      website: 'https://www.kirha.example.org/',
+    })
     expect(rows.map((row) => row.key)).toEqual(['price', 'phone', 'website'])
     expect(rows[1]).toMatchObject({
       label: 'Телефон',
@@ -186,7 +210,12 @@ describe('practical block rows', () => {
   })
 
   it('renders one PhoneLinks for places and venues, with a fragment as text', async () => {
-    const html = await renderPage(PhoneLinks, { phones: [{ display: '+7 4012 30-30-40', e164: '+74012303040' }, { display: 'доб. 6', e164: '' }] })
+    const html = await renderPage(PhoneLinks, {
+      phones: [
+        { display: '+7 4012 30-30-40', e164: '+74012303040' },
+        { display: 'доб. 6', e164: '' },
+      ],
+    })
     expect(html).toContain('href="tel:+74012303040"')
     expect(html).toContain('data-track="outbound"')
     expect(html).toMatch(/<span[^>]*>доб. 6<\/span>/)
@@ -196,7 +225,11 @@ describe('practical block rows', () => {
 
 describe('place contact plumbing', () => {
   it('checks phone and URLs as names, not prose', () => {
-    const split = writingSplit('place', { phone: '+7 4012 30-30-40', phoneSourceUrl: 'https://a.example.org/c', website: 'https://a.example.org/' })
+    const split = writingSplit('place', {
+      phone: '+7 4012 30-30-40',
+      phoneSourceUrl: 'https://a.example.org/c',
+      website: 'https://a.example.org/',
+    })
     expect(split.prose).toEqual([])
     expect(split.names).toEqual(['+7 4012 30-30-40', 'https://a.example.org/c', 'https://a.example.org/'])
   })
@@ -227,7 +260,12 @@ describe('place contact plumbing', () => {
       authorKind: 'ai',
       publicationStatus: 'published',
     }
-    const changes = placeDraftChanges(side, { ...side, phone: '+7 4012 30-30-40', website: 'https://a.example.org/', schemaType: 'Church' })
+    const changes = placeDraftChanges(side, {
+      ...side,
+      phone: '+7 4012 30-30-40',
+      website: 'https://a.example.org/',
+      schemaType: 'Church',
+    })
     expect(changes.map((item) => item.field)).toEqual(['phone', 'website', 'schemaType'])
     expect(changes[2]).toMatchObject({ live: 'по разделу', draft: 'Church' })
   })

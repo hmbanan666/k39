@@ -45,9 +45,8 @@
                 v-for="(town, index) in eatTowns"
                 :key="town.slug"
               >
-                <NuxtLink :to="`/zavedeniya/${town.slug}`">
-                  {{ town.title }}
-                </NuxtLink>{{ index < eatTowns.length - 1 ? ', ' : '' }}
+                <NuxtLink :to="`/zavedeniya/${town.slug}`"> {{ town.title }} </NuxtLink
+                >{{ index < eatTowns.length - 1 ? ', ' : '' }}
               </template>
             </p>
           </GuideFactRow>
@@ -117,13 +116,23 @@ const page = await fetchPublic<{
   doc: SeoDocument
   html: string
   bodyHtml: string
-  places: Array<{ href: string, title: string, summary: string, hub: string, hubHref: string, kind: string, media: PublicMedia | null, image: { src: string, alt: string, width: number | null, height: number | null } | null }>
-  routes: { href: string, text: string }[]
+  places: Array<{
+    href: string
+    title: string
+    summary: string
+    hub: string
+    hubHref: string
+    kind: string
+    media: PublicMedia | null
+    image: { src: string; alt: string; width: number | null; height: number | null } | null
+  }>
+  routes: { href: string; text: string }[]
 }>(`/api/public/hubs/${props.slug}`)
 const articleHtml = `${page.html}${page.bodyHtml}`
-const eatTowns = props.slug === 'eda'
-  ? (await fetchPublic<{ towns: Array<{ slug: string, title: string }> }>('/api/public/eat-now')).towns
-  : []
+const eatTowns =
+  props.slug === 'eda'
+    ? (await fetchPublic<{ towns: Array<{ slug: string; title: string }> }>('/api/public/eat-now')).towns
+    : []
 const hrefs = page.places.map((place) => place.href)
 const sections = presentSections([
   [PAGE_SECTIONS.map, hrefs.length > 0],
@@ -134,6 +143,10 @@ usePublicHead(page.doc)
 </script>
 
 <style scoped>
-.block { margin-top: var(--space-7); }
-.block h2 { margin: 0 0 var(--space-4); }
+.block {
+  margin-top: var(--space-7);
+}
+.block h2 {
+  margin: 0 0 var(--space-4);
+}
 </style>

@@ -12,7 +12,7 @@ export interface ReaderHeading {
 export interface ReaderTocItem {
   id: string
   text: string
-  children: Array<{ id: string, text: string }>
+  children: Array<{ id: string; text: string }>
 }
 
 /** Offer passed into the reader slot. Absent data renders nothing. */
@@ -55,7 +55,7 @@ function plainText(html: string) {
   return html
     .replace(/<[^>]+>/g, '')
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, '\'')
+    .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
@@ -113,7 +113,7 @@ export function splitAfterFirstSection(html: string) {
  * Last heading whose top is at or above `line`.
  * `headings` must be in document order.
  */
-export function activeHeadingId(headings: Array<{ id: string, top: number }>, line: number) {
+export function activeHeadingId(headings: Array<{ id: string; top: number }>, line: number) {
   let current = ''
   for (const heading of headings) {
     if (heading.top <= line) {
@@ -124,7 +124,10 @@ export function activeHeadingId(headings: Array<{ id: string, top: number }>, li
 }
 
 /** The reader slot stays empty unless sponsored venues are on and the offer is complete. */
-export function readerPartner(enabled: boolean, partner: Partial<ReaderPartner> | null | undefined): ReaderPartner | null {
+export function readerPartner(
+  enabled: boolean,
+  partner: Partial<ReaderPartner> | null | undefined,
+): ReaderPartner | null {
   if (enabled !== true || !partner) {
     return null
   }

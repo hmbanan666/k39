@@ -3,7 +3,14 @@ import type { GuestCorrectionKind, GuestKind } from '../../../shared/guest'
 import { db } from '@k39/database'
 import { createError } from 'h3'
 import { CONSENT_VERSION, GUEST_CONSENT_METHOD, GUEST_CONSENT_VERSION } from '../../../shared/consent'
-import { GUEST_CORRECTION_KINDS, inspectGuestText, inspectGuestUrl, lengthProblem, memberGuestBlock, normalizeGuestBody } from '../../../shared/guest'
+import {
+  GUEST_CORRECTION_KINDS,
+  inspectGuestText,
+  inspectGuestUrl,
+  lengthProblem,
+  memberGuestBlock,
+  normalizeGuestBody,
+} from '../../../shared/guest'
 import { requireAccount } from '../cabinet/account'
 import { limitGuestSubmit } from '../cabinet/rate'
 
@@ -57,7 +64,13 @@ export async function resolveGuestSubject(subjectType: unknown, subjectSlug: unk
   return { subjectType, subjectId: venue.id, path: `/zavedeniya/${venue.slug}`, title: venue.name }
 }
 
-async function assertMemberRules(userId: string, subjectType: 'place' | 'venue', subjectId: string, kind: GuestKind, correctionKind: string | null) {
+async function assertMemberRules(
+  userId: string,
+  subjectType: 'place' | 'venue',
+  subjectId: string,
+  kind: GuestKind,
+  correctionKind: string | null,
+) {
   if (subjectType !== 'venue') {
     return
   }
@@ -78,17 +91,20 @@ function correctionKindOf(value: unknown): GuestCorrectionKind {
   throw createError({ statusCode: 400, statusMessage: 'Укажите, что именно поправить.' })
 }
 
-export async function submitGuestText(event: H3Event, input: {
-  consent: unknown
-  subjectType: unknown
-  subjectSlug: unknown
-  kind: unknown
-  body?: unknown
-  correctionKind?: unknown
-  correctionValue?: unknown
-  note?: unknown
-  sourceUrl?: unknown
-}) {
+export async function submitGuestText(
+  event: H3Event,
+  input: {
+    consent: unknown
+    subjectType: unknown
+    subjectSlug: unknown
+    kind: unknown
+    body?: unknown
+    correctionKind?: unknown
+    correctionValue?: unknown
+    note?: unknown
+    sourceUrl?: unknown
+  },
+) {
   requireGuestConsent(input.consent)
   const user = await requireGuestAuthor(event)
   const subject = await resolveGuestSubject(input.subjectType, input.subjectSlug)
@@ -125,7 +141,11 @@ export async function submitGuestText(event: H3Event, input: {
     const valueCheck = inspectGuestText(value, { allowPhone: correctionKind === 'phone' })
     const noteCheck = note.trim() ? inspectGuestText(note) : { ok: true as const, body: '' }
     if (valueProblem || noteProblem || !valueCheck.ok || !noteCheck.ok) {
-      const message = valueProblem || noteProblem || (!valueCheck.ok ? valueCheck.message : '') || (!noteCheck.ok ? noteCheck.message : '')
+      const message =
+        valueProblem ||
+        noteProblem ||
+        (!valueCheck.ok ? valueCheck.message : '') ||
+        (!noteCheck.ok ? noteCheck.message : '')
       throw createError({ statusCode: 400, statusMessage: message || 'Проверьте поправку.' })
     }
     correctionValue = valueCheck.body

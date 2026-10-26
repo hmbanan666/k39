@@ -4,9 +4,7 @@
       class="btn btn-quiet menu-trigger"
       type="button"
     >
-      <slot name="trigger">
-        Меню
-      </slot>
+      <slot name="trigger"> Меню </slot>
     </DialogTrigger>
     <DialogPortal>
       <DialogOverlay class="dialog-overlay" />
@@ -27,7 +25,15 @@
 </template>
 
 <script setup lang="ts">
-import { DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, DialogTrigger } from 'reka-ui'
+import {
+  DialogClose,
+  DialogContent,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger,
+} from 'reka-ui'
 
 defineProps<{ title: string }>()
 const open = defineModel<boolean>('open', { default: false })
@@ -39,5 +45,7 @@ const open = defineModel<boolean>('open', { default: false })
   font-family: var(--font-display);
   font-size: var(--step-1);
 }
-.menu-trigger { margin-left: auto; }
+.menu-trigger {
+  margin-left: auto;
+}
 </style>

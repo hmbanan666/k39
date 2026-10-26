@@ -56,7 +56,10 @@ function textArray(values: string[]) {
   if (!values.length) {
     return sql`array[]::varchar[]`
   }
-  return sql`array[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::varchar[]`
+  return sql`array[${sql.join(
+    values.map((value) => sql`${value}`),
+    sql`, `,
+  )}]::varchar[]`
 }
 
 function classifyPath(path: string) {
@@ -84,38 +87,43 @@ export class Analytics {
     if (!hits.length) {
       return []
     }
-    return useDatabase().insert(analyticsHits).values(hits.map((row) => ({
-      id: createId(),
-      occurredAt: row.occurredAt,
-      visitorKey: row.visitorKey,
-      visitorMode: row.visitorMode,
-      sessionKey: row.sessionKey,
-      consented: row.consented,
-      isBot: row.isBot,
-      eventType: row.eventType,
-      path: row.path.slice(0, 500),
-      placeId: row.placeId ?? null,
-      routeId: row.routeId ?? null,
-      venueId: row.venueId ?? null,
-      referrer: row.referrer?.slice(0, 500) ?? null,
-      referrerHost: row.referrerHost ?? null,
-      utmSource: row.utmSource ?? null,
-      utmMedium: row.utmMedium ?? null,
-      utmCampaign: row.utmCampaign ?? null,
-      channel: row.channel,
-      searchQuery: row.searchQuery ?? null,
-      device: row.device ?? null,
-      browser: row.browser ?? null,
-      os: row.os ?? null,
-      screenBucket: row.screenBucket ?? null,
-      language: row.language ?? null,
-      landingPath: row.landingPath ?? null,
-      isEntry: row.isEntry ?? false,
-      isExit: row.isExit ?? false,
-      engagedMs: row.engagedMs ?? null,
-      scrollBucket: row.scrollBucket ?? null,
-      target: row.target?.slice(0, 300) ?? null,
-    }))).returning({ id: analyticsHits.id })
+    return useDatabase()
+      .insert(analyticsHits)
+      .values(
+        hits.map((row) => ({
+          id: createId(),
+          occurredAt: row.occurredAt,
+          visitorKey: row.visitorKey,
+          visitorMode: row.visitorMode,
+          sessionKey: row.sessionKey,
+          consented: row.consented,
+          isBot: row.isBot,
+          eventType: row.eventType,
+          path: row.path.slice(0, 500),
+          placeId: row.placeId ?? null,
+          routeId: row.routeId ?? null,
+          venueId: row.venueId ?? null,
+          referrer: row.referrer?.slice(0, 500) ?? null,
+          referrerHost: row.referrerHost ?? null,
+          utmSource: row.utmSource ?? null,
+          utmMedium: row.utmMedium ?? null,
+          utmCampaign: row.utmCampaign ?? null,
+          channel: row.channel,
+          searchQuery: row.searchQuery ?? null,
+          device: row.device ?? null,
+          browser: row.browser ?? null,
+          os: row.os ?? null,
+          screenBucket: row.screenBucket ?? null,
+          language: row.language ?? null,
+          landingPath: row.landingPath ?? null,
+          isEntry: row.isEntry ?? false,
+          isExit: row.isExit ?? false,
+          engagedMs: row.engagedMs ?? null,
+          scrollBucket: row.scrollBucket ?? null,
+          target: row.target?.slice(0, 300) ?? null,
+        })),
+      )
+      .returning({ id: analyticsHits.id })
   }
 
   static async latestSession(visitorKey: string) {
@@ -126,9 +134,16 @@ export class Analytics {
       order by occurred_at desc
       limit 1
     `)
-    const row = rowsOf<{ session_key: string, occurred_at: string, landing_path: string | null, channel: string }>(result)[0]
+    const row = rowsOf<{ session_key: string; occurred_at: string; landing_path: string | null; channel: string }>(
+      result,
+    )[0]
     return row
-      ? { sessionKey: row.session_key, occurredAt: row.occurred_at, landingPath: row.landing_path, channel: row.channel }
+      ? {
+          sessionKey: row.session_key,
+          occurredAt: row.occurred_at,
+          landingPath: row.landing_path,
+          channel: row.channel,
+        }
       : null
   }
 
@@ -190,7 +205,7 @@ export class Analytics {
         union all
         select 'venue' as kind, id, slug from venues where slug = any(${textArray([...venueSlugs])})
       `)
-      for (const row of rowsOf<{ kind: string, id: string, slug: string }>(result)) {
+      for (const row of rowsOf<{ kind: string; id: string; slug: string }>(result)) {
         if (row.kind === 'place') {
           byPlace.set(row.slug, row.id)
         } else if (row.kind === 'route') {
@@ -228,7 +243,7 @@ export class Analytics {
       group by venue_id
       order by impressions desc, pageviews desc
     `)
-    return rowsOf<{ venue_id: string, impressions: number, pageviews: number }>(result).map((row) => ({
+    return rowsOf<{ venue_id: string; impressions: number; pageviews: number }>(result).map((row) => ({
       venueId: row.venue_id,
       impressions: Number(row.impressions) || 0,
       pageviews: Number(row.pageviews) || 0,
@@ -277,7 +292,7 @@ export class Analytics {
       group by channel
       order by pageviews desc
     `)
-    return rowsOf<{ channel: string, pageviews: number, visitors: number }>(result)
+    return rowsOf<{ channel: string; pageviews: number; visitors: number }>(result)
   }
 
   static async topPages(from: Date, to: Date, channel?: string) {
@@ -296,7 +311,7 @@ export class Analytics {
           and is_bot = false and event_type = 'pageview'
         group by path order by pageviews desc limit 20
       `)
-    return rowsOf<{ path: string, pageviews: number, visitors: number }>(result)
+    return rowsOf<{ path: string; pageviews: number; visitors: number }>(result)
   }
 
   static async landingPages(from: Date, to: Date, channel = 'organic:yandex') {
@@ -310,7 +325,7 @@ export class Analytics {
       order by pageviews desc
       limit 20
     `)
-    return rowsOf<{ path: string, pageviews: number }>(result)
+    return rowsOf<{ path: string; pageviews: number }>(result)
   }
 
   static async referrers(from: Date, to: Date) {
@@ -324,7 +339,7 @@ export class Analytics {
       order by pageviews desc
       limit 20
     `)
-    return rowsOf<{ host: string, pageviews: number }>(result)
+    return rowsOf<{ host: string; pageviews: number }>(result)
   }
 
   static async searchQueries(from: Date, to: Date, engine?: string, page?: string) {
@@ -339,7 +354,14 @@ export class Analytics {
       order by clicks desc, impressions desc
       limit 50
     `)
-    return rowsOf<{ engine: string, query: string, page: string, impressions: number, clicks: number, position: number | null }>(result)
+    return rowsOf<{
+      engine: string
+      query: string
+      page: string
+      impressions: number
+      clicks: number
+      position: number | null
+    }>(result)
   }
 
   static async events(from: Date, to: Date, type?: string) {
@@ -351,7 +373,7 @@ export class Analytics {
       group by event_type
       order by count desc
     `)
-    return rowsOf<{ type: string, count: number }>(result)
+    return rowsOf<{ type: string; count: number }>(result)
   }
 
   static async realtime(now = new Date()) {
@@ -431,26 +453,52 @@ export class Analytics {
   }
 
   static async hasRun(day: string, kind: string) {
-    const rows = await useDatabase().select({ day: analyticsRuns.day }).from(analyticsRuns).where(sql`${analyticsRuns.day} = ${day} and ${analyticsRuns.kind} = ${kind}`).limit(1)
+    const rows = await useDatabase()
+      .select({ day: analyticsRuns.day })
+      .from(analyticsRuns)
+      .where(sql`${analyticsRuns.day} = ${day} and ${analyticsRuns.kind} = ${kind}`)
+      .limit(1)
     return rows.length > 0
   }
 
   static async hasSearchRows(engine: string) {
-    const rows = await useDatabase().select({ day: analyticsSearchQueries.day }).from(analyticsSearchQueries).where(sql`${analyticsSearchQueries.engine} = ${engine}`).limit(1)
+    const rows = await useDatabase()
+      .select({ day: analyticsSearchQueries.day })
+      .from(analyticsSearchQueries)
+      .where(sql`${analyticsSearchQueries.engine} = ${engine}`)
+      .limit(1)
     return rows.length > 0
   }
 
-  static async replaceSearchRows(rows: Array<{ day: string, engine: string, page: string, query: string, impressions: number, clicks: number, position: number | null }>) {
+  static async replaceSearchRows(
+    rows: Array<{
+      day: string
+      engine: string
+      page: string
+      query: string
+      impressions: number
+      clicks: number
+      position: number | null
+    }>,
+  ) {
     if (!rows.length) {
       return
     }
-    await useDatabase().insert(analyticsSearchQueries).values(rows).onConflictDoUpdate({
-      target: [analyticsSearchQueries.day, analyticsSearchQueries.engine, analyticsSearchQueries.page, analyticsSearchQueries.query],
-      set: {
-        impressions: sql`excluded.impressions`,
-        clicks: sql`excluded.clicks`,
-        position: sql`excluded.position`,
-      },
-    })
+    await useDatabase()
+      .insert(analyticsSearchQueries)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: [
+          analyticsSearchQueries.day,
+          analyticsSearchQueries.engine,
+          analyticsSearchQueries.page,
+          analyticsSearchQueries.query,
+        ],
+        set: {
+          impressions: sql`excluded.impressions`,
+          clicks: sql`excluded.clicks`,
+          position: sql`excluded.position`,
+        },
+      })
   }
 }

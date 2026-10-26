@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Нужен файл' })
   }
   const licenseRaw = text('license')
-  const license = LICENSES.has(licenseRaw) ? licenseRaw as MediaLicense : null
+  const license = LICENSES.has(licenseRaw) ? (licenseRaw as MediaLicense) : null
   const result = await ingestImage({
     bytes: file.data,
     mime: file.type || 'application/octet-stream',

@@ -8,7 +8,8 @@
       v-if="product"
       class="meta-mark"
       :title="hint"
-    >*</sup>
+      >*</sup
+    >
   </a>
 </template>
 
@@ -28,7 +29,10 @@ const hint = computed(() => (product.value ? metaFootnote([product.value]) : '')
 
 // Synchronous: MetaFootnote sits later in the same render.
 noteHref(props.href)
-watch(() => props.href, (href) => noteHref(href))
+watch(
+  () => props.href,
+  (href) => noteHref(href),
+)
 
 const anchorAttrs = computed(() => ({
   ...attrs,

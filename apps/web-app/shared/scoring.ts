@@ -2,9 +2,25 @@ import type { FactFreshnessReasons } from '@k39/database'
 import type { LengthOverride } from './length-override'
 import { articleBody } from './address'
 import { articleTextLength } from './article-length'
-import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, lengthOverrideApplies, lengthOverrideIsStale, longPageFiller } from './length-override'
+import {
+  LENGTH_OVERRIDE_IGNORED,
+  LENGTH_OVERRIDE_STALE,
+  lengthOverrideApplies,
+  lengthOverrideIsStale,
+  longPageFiller,
+} from './length-override'
 import { haversineKm, HUBS, SECTION_LINKS } from './links'
-import { absoluteUrl, collectionDocument, faqFromBody, jsonLdTypes, pageFaq, placeDocument, placeSchemaType, venueDocument, venueSchemaType } from './seo'
+import {
+  absoluteUrl,
+  collectionDocument,
+  faqFromBody,
+  jsonLdTypes,
+  pageFaq,
+  placeDocument,
+  placeSchemaType,
+  venueDocument,
+  venueSchemaType,
+} from './seo'
 import { statusChecks } from './status-consistency'
 import { analyzeWriting, writingCopy } from './writing'
 
@@ -77,9 +93,9 @@ export interface ScoreSource {
   regionTitle: string | null
   latitude: number | null
   longitude: number | null
-  sources: Array<{ title: string, url: string }>
+  sources: Array<{ title: string; url: string }>
   /** Structured place FAQ. Empty falls back to a body «Частые вопросы» section. */
-  faq?: Array<{ question: string, answer: string }>
+  faq?: Array<{ question: string; answer: string }>
   publicationStatus: 'draft' | 'review' | 'published'
   noindex: boolean
   /** First publish. Null on a live indexable page means the goals are judged now. */
@@ -94,9 +110,9 @@ export interface ScoreSource {
   /** Places and venues: `scheduleHoursKnown` of the stored schedule. */
   hoursKnown?: boolean
   /** Structured practical rows of a place or route (ADR 0046). `schedule` is `hoursKnown` for a place. */
-  practical?: { schedule: boolean, admissionRows: number, freshAdmission: number, upcomingEvents: number }
+  practical?: { schedule: boolean; admissionRows: number; freshAdmission: number; upcomingEvents: number }
   // Collection stops only. city is the place region id. access is the item note plus the place address.
-  stops?: Array<{ city: string | null, access: string | null }>
+  stops?: Array<{ city: string | null; access: string | null }>
   photoCount: number
   inRoute: boolean
   inCollection: boolean
@@ -105,7 +121,7 @@ export interface ScoreSource {
   contentOutbound: number
   orphan: boolean
   passport: PassportFields | null
-  indexingHooks?: { yandex: boolean | null, google: boolean | null }
+  indexingHooks?: { yandex: boolean | null; google: boolean | null }
   results: ResultInput
 }
 
@@ -162,9 +178,9 @@ export interface LinkCatalog {
   routes: LinkGroup[]
   collections: LinkGroup[]
   quests: Array<LinkGroup & { routeSlug: string | null }>
-  hubs: Array<{ slug: string, title: string, description: string, body: string, noindex: boolean }>
+  hubs: Array<{ slug: string; title: string; description: string; body: string; noindex: boolean }>
   venues?: LinkVenue[]
-  related: Array<{ fromSlug: string, toSlug: string }>
+  related: Array<{ fromSlug: string; toSlug: string }>
 }
 
 export interface LinkStat {
@@ -325,7 +341,11 @@ function contentLinks(path: string, catalog: LinkCatalog) {
   }
   const hub = catalog.hubs.find((item) => `/${item.slug}` === path)
   if (hub) {
-    links.push(...catalog.places.filter((item) => item.published && item.categorySlug === hub.slug).map((item) => `/${item.slug}`))
+    links.push(
+      ...catalog.places
+        .filter((item) => item.published && item.categorySlug === hub.slug)
+        .map((item) => `/${item.slug}`),
+    )
     if (hub.slug === 'forty') {
       links.push(...catalog.routes.filter((item) => item.published).map((item) => `/marshruty/${item.slug}`))
     }
@@ -369,8 +389,12 @@ function contentLinks(path: string, catalog: LinkCatalog) {
       .sort((a, b) => a.title.localeCompare(b.title, 'ru'))
       .slice(0, 6)
     links.push(...featured.map((item) => `/${item.slug}`))
-    const firstRoute = catalog.routes.filter((item) => item.published).sort((a, b) => a.title.localeCompare(b.title, 'ru'))[0]
-    const firstQuest = catalog.quests.filter((item) => item.published).sort((a, b) => a.title.localeCompare(b.title, 'ru'))[0]
+    const firstRoute = catalog.routes
+      .filter((item) => item.published)
+      .sort((a, b) => a.title.localeCompare(b.title, 'ru'))[0]
+    const firstQuest = catalog.quests
+      .filter((item) => item.published)
+      .sort((a, b) => a.title.localeCompare(b.title, 'ru'))[0]
     if (firstRoute) {
       links.push(`/marshruty/${firstRoute.slug}`)
     }
@@ -384,11 +408,27 @@ function contentLinks(path: string, catalog: LinkCatalog) {
 export function linkStats(catalog: LinkCatalog) {
   const scored = [
     ...catalog.places.map((item) => ({ path: `/${item.slug}`, published: item.published, noindex: item.noindex })),
-    ...catalog.routes.map((item) => ({ path: `/marshruty/${item.slug}`, published: item.published, noindex: item.noindex })),
-    ...catalog.collections.map((item) => ({ path: `/podborki/${item.slug}`, published: item.published, noindex: item.noindex })),
-    ...catalog.quests.map((item) => ({ path: `/kvesty/${item.slug}`, published: item.published, noindex: item.noindex })),
+    ...catalog.routes.map((item) => ({
+      path: `/marshruty/${item.slug}`,
+      published: item.published,
+      noindex: item.noindex,
+    })),
+    ...catalog.collections.map((item) => ({
+      path: `/podborki/${item.slug}`,
+      published: item.published,
+      noindex: item.noindex,
+    })),
+    ...catalog.quests.map((item) => ({
+      path: `/kvesty/${item.slug}`,
+      published: item.published,
+      noindex: item.noindex,
+    })),
     ...catalog.hubs.map((item) => ({ path: `/${item.slug}`, published: true, noindex: item.noindex })),
-    ...(catalog.venues ?? []).map((item) => ({ path: `/zavedeniya/${item.slug}`, published: item.published, noindex: item.noindex })),
+    ...(catalog.venues ?? []).map((item) => ({
+      path: `/zavedeniya/${item.slug}`,
+      published: item.published,
+      noindex: item.noindex,
+    })),
   ]
   const sources = [
     '/',
@@ -440,8 +480,14 @@ function markdownHeadings(text: string) {
 
 // Route and collection articles use these headings instead of one exact line.
 const NOT_CYRILLIC = String.raw`\P{Script=Cyrillic}`
-const DIRECTION_HEADING = new RegExp(`как добраться|(?:^|${NOT_CYRILLIC})дорог[аеиу](?!\\p{Script=Cyrillic})|транспорт|без машины|как (?:ехать|доехать|передвигаться)|на машине`, 'iu')
-const PRICE_HEADING = new RegExp(`цены|цена|стоимость|режим работы|практическая информация|(?:^|${NOT_CYRILLIC})билеты?(?!\\p{Script=Cyrillic})|бюджет|сколько стоит|стоит денег`, 'iu')
+const DIRECTION_HEADING = new RegExp(
+  `как добраться|(?:^|${NOT_CYRILLIC})дорог[аеиу](?!\\p{Script=Cyrillic})|транспорт|без машины|как (?:ехать|доехать|передвигаться)|на машине`,
+  'iu',
+)
+const PRICE_HEADING = new RegExp(
+  `цены|цена|стоимость|режим работы|практическая информация|(?:^|${NOT_CYRILLIC})билеты?(?!\\p{Script=Cyrillic})|бюджет|сколько стоит|стоит денег`,
+  'iu',
+)
 const PRICE_AMOUNT = /₽|руб(?:\.|лей|ля|ль|ли)?(?!\p{Script=Cyrillic})/iu
 
 function hasDirections(text: string, howToGet: string | null) {
@@ -451,7 +497,8 @@ function hasDirections(text: string, howToGet: string | null) {
   return markdownHeadings(text).some((heading) => DIRECTION_HEADING.test(heading))
 }
 
-const ACCESS_LINE = /ул\.|улиц|проспект|пр-т|(?:^|[^\p{L}])пр\.|площад|переул|шоссе|набережн|автобус|трамва|электричка|поезд|такси|маршрутка|пешком|остановк|транспорт|как добраться/iu
+const ACCESS_LINE =
+  /ул\.|улиц|проспект|пр-т|(?:^|[^\p{L}])пр\.|площад|переул|шоссе|набережн|автобус|трамва|электричка|поезд|такси|маршрутка|пешком|остановк|транспорт|как добраться/iu
 
 function accessLine(value: string | null | undefined) {
   return ACCESS_LINE.test(value?.trim() ?? '')
@@ -492,7 +539,7 @@ function hasPractical(text: string, hours: string | null, price: string | null, 
   return PRICE_AMOUNT.test(text)
 }
 
-function lengthPoints(length: number, norm: { min: number, max: number | null }) {
+function lengthPoints(length: number, norm: { min: number; max: number | null }) {
   if (norm.max != null && length > norm.max) {
     return { points: 18, checks: [`body ${length} chars, above ${norm.max}`] }
   }
@@ -500,7 +547,7 @@ function lengthPoints(length: number, norm: { min: number, max: number | null })
     return { points: 25, checks: [] as string[] }
   }
   const need = norm.max != null ? `${norm.min}-${norm.max}` : String(norm.min)
-  return { points: Math.round(25 * length / norm.min), checks: [`body ${length} chars, need ${need}`] }
+  return { points: Math.round((25 * length) / norm.min), checks: [`body ${length} chars, need ${need}`] }
 }
 
 function faqQuestionCount(page: ScoreSource, text: string) {
@@ -529,15 +576,23 @@ function sectionPoints(page: ScoreSource, text: string) {
   }
   const checks: string[] = []
   let points = 0
-  const directions = page.kind === 'collection'
-    ? collectionDirections(page, text)
-    : hasDirections(text, page.kind === 'place' ? page.howToGet : null)
+  const directions =
+    page.kind === 'collection'
+      ? collectionDirections(page, text)
+      : hasDirections(text, page.kind === 'place' ? page.howToGet : null)
   if (directions) {
     points += 10
   } else {
     checks.push('no Как добраться')
   }
-  if (hasPractical(text, page.kind === 'place' ? page.hours : null, page.kind === 'place' ? page.price : null, page.practical)) {
+  if (
+    hasPractical(
+      text,
+      page.kind === 'place' ? page.hours : null,
+      page.kind === 'place' ? page.price : null,
+      page.practical,
+    )
+  ) {
     points += 10
   } else {
     checks.push('no prices')
@@ -561,8 +616,10 @@ function photoPoints(page: ScoreSource) {
   if (page.photoCount >= need) {
     return { points: 15, checks: [] as string[] }
   }
-  const points = Math.round(15 * page.photoCount / need)
-  const checks = [page.photoCount === 0 ? '0 photos' : `${page.photoCount} photo${page.photoCount === 1 ? '' : 's'}, need ${need}`]
+  const points = Math.round((15 * page.photoCount) / need)
+  const checks = [
+    page.photoCount === 0 ? '0 photos' : `${page.photoCount} photo${page.photoCount === 1 ? '' : 's'}, need ${need}`,
+  ]
   return { points, checks }
 }
 
@@ -631,14 +688,13 @@ function statusPoints(page: ScoreSource, text: string) {
 }
 
 function passportPoints(passport: PassportFields | null) {
-  const empty = !passport
-    || (
-      passport.targetQueries.every((query) => !query.trim())
-      && !passport.audience?.trim()
-      && !passport.primaryAction
-      && passport.goal30d == null
-      && passport.goal90d == null
-    )
+  const empty =
+    !passport ||
+    (passport.targetQueries.every((query) => !query.trim()) &&
+      !passport.audience?.trim() &&
+      !passport.primaryAction &&
+      passport.goal30d == null &&
+      passport.goal90d == null)
   if (empty) {
     return { points: 0, checks: ['passport empty'] }
   }
@@ -794,12 +850,13 @@ function rendered(page: ScoreSource) {
     })
     return doc
   }
-  const parents: Record<string, { name: string, href: string, crumb: string, kind: 'CollectionPage' | 'TouristTrip' }> = {
-    route: { name: 'Маршруты', href: '/marshruty', crumb: 'маршрут', kind: 'TouristTrip' },
-    collection: { name: 'Подборки', href: '/podborki', crumb: 'подборка', kind: 'CollectionPage' },
-    quest: { name: 'Квесты', href: '/kvesty', crumb: 'квест', kind: 'TouristTrip' },
-    hub: { name: 'Главная', href: '/', crumb: 'раздел', kind: 'CollectionPage' },
-  }
+  const parents: Record<string, { name: string; href: string; crumb: string; kind: 'CollectionPage' | 'TouristTrip' }> =
+    {
+      route: { name: 'Маршруты', href: '/marshruty', crumb: 'маршрут', kind: 'TouristTrip' },
+      collection: { name: 'Подборки', href: '/podborki', crumb: 'подборка', kind: 'CollectionPage' },
+      quest: { name: 'Квесты', href: '/kvesty', crumb: 'квест', kind: 'TouristTrip' },
+      hub: { name: 'Главная', href: '/', crumb: 'раздел', kind: 'CollectionPage' },
+    }
   const parent = parents[page.kind]!
   return collectionDocument({
     path: page.path,
@@ -935,7 +992,16 @@ function goalHold(page: ScoreSource, now: Date, windowDays: number) {
   return `${windowDays - age} days`
 }
 
-function scoreGoal(actual: number, goal: number | null, weight: number, label: string, missing: string, page: ScoreSource, now: Date, windowDays: number) {
+function scoreGoal(
+  actual: number,
+  goal: number | null,
+  weight: number,
+  label: string,
+  missing: string,
+  page: ScoreSource,
+  now: Date,
+  windowDays: number,
+) {
   const hold = goalHold(page, now, windowDays)
   if (hold) {
     // Already met: full weight. Half weight is the neutral point for a goal
@@ -952,7 +1018,7 @@ function scoreGoal(actual: number, goal: number | null, weight: number, label: s
     return { points: weight, checks: [] as string[], pending: false }
   }
   return {
-    points: Math.round(weight * actual / Math.max(goal, 1)),
+    points: Math.round((weight * actual) / Math.max(goal, 1)),
     checks: [`${label}: ${actual}, goal ${goal}`],
     pending: false,
   }
@@ -961,8 +1027,26 @@ function scoreGoal(actual: number, goal: number | null, weight: number, label: s
 function resultsPoints(page: ScoreSource, now: Date) {
   const row = page.results
   const checks: string[] = []
-  const month = scoreGoal(row.organic30d, page.passport?.goal30d ?? null, 35, 'organic 30d', 'no 30-day goal', page, now, 30)
-  const quarter = scoreGoal(row.organic90d, page.passport?.goal90d ?? null, 25, 'organic 90d', 'no 90-day goal', page, now, 90)
+  const month = scoreGoal(
+    row.organic30d,
+    page.passport?.goal30d ?? null,
+    35,
+    'organic 30d',
+    'no 30-day goal',
+    page,
+    now,
+    30,
+  )
+  const quarter = scoreGoal(
+    row.organic90d,
+    page.passport?.goal90d ?? null,
+    25,
+    'organic 90d',
+    'no 90-day goal',
+    page,
+    now,
+    90,
+  )
   for (const check of [...month.checks, ...quarter.checks]) {
     if (!checks.includes(check)) {
       checks.push(check)
@@ -1005,7 +1089,9 @@ function resultsPoints(page: ScoreSource, now: Date) {
 
 export function scorePage(page: ScoreSource, now = new Date()): PageScore {
   const text = articleText(page)
-  const writingChecks = analyzeWriting(writingCopy([text, page.faq])).advisories.map((hit) => `writing advisory: ${hit.match}`)
+  const writingChecks = analyzeWriting(writingCopy([text, page.faq])).advisories.map(
+    (hit) => `writing advisory: ${hit.match}`,
+  )
   if (page.kind === 'venue') {
     const quality = venueQuality(page, now)
     const linking = linkingPoints(page)
@@ -1017,7 +1103,12 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
       indexing: indexing.checks,
       results: results.checks,
     }
-    const blocks = { quality: quality.points, linking: linking.points, indexing: indexing.points, results: results.points }
+    const blocks = {
+      quality: quality.points,
+      linking: linking.points,
+      indexing: indexing.points,
+      results: results.points,
+    }
     return {
       pageType: page.kind,
       entityId: page.id,
@@ -1081,13 +1172,16 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
   const length = lengthPoints(bodyChars, { min: norm.min, max: applied?.ceiling ?? norm.max })
   const filler = norm.max != null && bodyChars > norm.max ? longPageFiller(text) : { points: 0, checks: [] as string[] }
   const ignored = page.passport?.lengthOverride && !applied ? [LENGTH_OVERRIDE_IGNORED] : []
-  const stale = applied && lengthOverrideIsStale(applied, now, page.results.searchImported, page.results.searchImpressions)
+  const stale =
+    applied && lengthOverrideIsStale(applied, now, page.results.searchImported, page.results.searchImpressions)
   const sections = sectionPoints(page, text)
   const photos = photoPoints(page)
   const fresh = freshPoints(page, now)
   const passport = passportPoints(page.passport)
   const status = statusPoints(page, text)
-  const quality = clamp(length.points + sections.points + photos.points + fresh.points + passport.points + status.points + filler.points)
+  const quality = clamp(
+    length.points + sections.points + photos.points + fresh.points + passport.points + status.points + filler.points,
+  )
   const linking = linkingPoints(page)
   const indexing = indexingPoints(page)
   const results = resultsPoints(page, now)
@@ -1096,7 +1190,17 @@ export function scorePage(page: ScoreSource, now = new Date()): PageScore {
     results.points = clamp(results.points - 10)
   }
   const checks: ScoreChecks = {
-    quality: [...length.checks, ...ignored, ...filler.checks, ...sections.checks, ...photos.checks, ...fresh.checks, ...passport.checks, ...status.checks, ...writingChecks],
+    quality: [
+      ...length.checks,
+      ...ignored,
+      ...filler.checks,
+      ...sections.checks,
+      ...photos.checks,
+      ...fresh.checks,
+      ...passport.checks,
+      ...status.checks,
+      ...writingChecks,
+    ],
     linking: linking.checks,
     indexing: indexing.checks,
     results: results.checks,
@@ -1234,20 +1338,26 @@ function lengthOverrideRows(current: WeeklyScore[]): LengthOverrideReportRow[] {
       setAt: typeof item.setAt === 'string' ? item.setAt : null,
     })
   }
-  return rows.sort((a, b) => Number(b.stale) - Number(a.stale) || Number(a.applied) - Number(b.applied) || a.path.localeCompare(b.path))
+  return rows.sort(
+    (a, b) =>
+      Number(b.stale) - Number(a.stale) || Number(a.applied) - Number(b.applied) || a.path.localeCompare(b.path),
+  )
 }
 
 function average(rows: WeeklyScore[]) {
   if (!rows.length) {
     return { total: 0, quality: 0, linking: 0, indexing: 0, results: 0 }
   }
-  const sum = rows.reduce((acc, row) => ({
-    total: acc.total + row.total,
-    quality: acc.quality + row.quality,
-    linking: acc.linking + row.linking,
-    indexing: acc.indexing + row.indexing,
-    results: acc.results + row.results,
-  }), { total: 0, quality: 0, linking: 0, indexing: 0, results: 0 })
+  const sum = rows.reduce(
+    (acc, row) => ({
+      total: acc.total + row.total,
+      quality: acc.quality + row.quality,
+      linking: acc.linking + row.linking,
+      indexing: acc.indexing + row.indexing,
+      results: acc.results + row.results,
+    }),
+    { total: 0, quality: 0, linking: 0, indexing: 0, results: 0 },
+  )
   const count = rows.length
   return {
     total: Math.round(sum.total / count),
@@ -1258,7 +1368,11 @@ function average(rows: WeeklyScore[]) {
   }
 }
 
-export function buildWeeklyReport(current: WeeklyScore[], previous: WeeklyScore[] | null, days: { current: string, previous: string | null }) {
+export function buildWeeklyReport(
+  current: WeeklyScore[],
+  previous: WeeklyScore[] | null,
+  days: { current: string; previous: string | null },
+) {
   const currentAverage = average(current)
   const previousAverage = previous ? average(previous) : null
   const delta = previousAverage
@@ -1272,30 +1386,36 @@ export function buildWeeklyReport(current: WeeklyScore[], previous: WeeklyScore[
     : null
   const top = [...current].sort((a, b) => b.total - a.total || a.path.localeCompare(b.path)).slice(0, 5)
   const bottom = [...current].sort((a, b) => a.total - b.total || a.path.localeCompare(b.path)).slice(0, 5)
-  const missingGoals = current.filter((row) => (
-    (row.goal30d != null && row.organic30d < row.goal30d && row.signals?.goal30Pending !== true)
-    || (row.goal90d != null && row.organic90d < row.goal90d && row.signals?.goal90Pending !== true)
-  )).map((row) => ({
-    path: row.path,
-    title: row.title,
-    pageType: row.pageType,
-    organic30d: row.organic30d,
-    goal30d: row.goal30d,
-    organic90d: row.organic90d,
-    goal90d: row.goal90d,
-  }))
+  const missingGoals = current
+    .filter(
+      (row) =>
+        (row.goal30d != null && row.organic30d < row.goal30d && row.signals?.goal30Pending !== true) ||
+        (row.goal90d != null && row.organic90d < row.goal90d && row.signals?.goal90Pending !== true),
+    )
+    .map((row) => ({
+      path: row.path,
+      title: row.title,
+      pageType: row.pageType,
+      organic30d: row.organic30d,
+      goal30d: row.goal30d,
+      organic90d: row.organic90d,
+      goal90d: row.goal90d,
+    }))
   const previousByPath = new Map((previous ?? []).map((row) => [row.path, row]))
-  const drops = current.flatMap((row) => {
-    const before = previousByPath.get(row.path)
-    if (!before) {
-      return []
-    }
-    const change = row.total - before.total
-    if (change >= 0) {
-      return []
-    }
-    return [{ path: row.path, title: row.title, total: row.total, previous: before.total, delta: change }]
-  }).sort((a, b) => a.delta - b.delta || a.path.localeCompare(b.path)).slice(0, 5)
+  const drops = current
+    .flatMap((row) => {
+      const before = previousByPath.get(row.path)
+      if (!before) {
+        return []
+      }
+      const change = row.total - before.total
+      if (change >= 0) {
+        return []
+      }
+      return [{ path: row.path, title: row.title, total: row.total, previous: before.total, delta: change }]
+    })
+    .sort((a, b) => a.delta - b.delta || a.path.localeCompare(b.path))
+    .slice(0, 5)
   return {
     currentDay: days.current,
     previousDay: days.previous,
@@ -1336,7 +1456,7 @@ export function filterScores<T extends WeeklyScore & { title: string }>(rows: T[
     if (sort === 'title' || sort === 'path') {
       return a[sort].localeCompare(b[sort], 'ru') * direction
     }
-    return ((a[sort] - b[sort]) || a.path.localeCompare(b.path)) * direction
+    return (a[sort] - b[sort] || a.path.localeCompare(b.path)) * direction
   })
 }
 

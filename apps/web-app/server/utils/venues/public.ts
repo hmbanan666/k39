@@ -45,12 +45,16 @@ export function sponsoredVenuesEnabled() {
   return process.env.FEATURE_SPONSORED_VENUES === 'true'
 }
 
-const LISTING_SUMMARY = 'Кафе, кофейни и рестораны Калининградской области: часы, средний чек, адрес и как дойти от места. Карточки публикуются после проверки.'
+const LISTING_SUMMARY =
+  'Кафе, кофейни и рестораны Калининградской области: часы, средний чек, адрес и как дойти от места. Карточки публикуются после проверки.'
 
 /** Venues a town page shows in «Где поесть рядом». */
 export const TOWN_EAT_LIMIT = 8
 
-export async function eatNearby(origins: Array<{ latitude: number | null, longitude: number | null }>, options: { limit?: number } = {}) {
+export async function eatNearby(
+  origins: Array<{ latitude: number | null; longitude: number | null }>,
+  options: { limit?: number } = {},
+) {
   const points = origins.flatMap((point) => {
     if (point.latitude == null || point.longitude == null) {
       return []
@@ -58,29 +62,46 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
     return [{ latitude: point.latitude, longitude: point.longitude }]
   })
   const found = await db.venues.nearby(points)
-  const facts = await readShownFacts('venue', found.map((row) => ({
-    id: row.id,
-    address: row.address,
-    phone: row.phone,
-    latitude: row.latitude,
-    longitude: row.longitude,
-  })))
+  const facts = await readShownFacts(
+    'venue',
+    found.map((row) => ({
+      id: row.id,
+      address: row.address,
+      phone: row.phone,
+      latitude: row.latitude,
+      longitude: row.longitude,
+    })),
+  )
   const located = found.flatMap((row) => {
     const shown = facts.get(row.id)
     if (!shown || shown.status === 'closed' || shown.latitude == null || shown.longitude == null) {
       return []
     }
-    const distanceKm = Math.min(...points.map((origin) => haversineKm(origin, { latitude: shown.latitude!, longitude: shown.longitude! })))
+    const distanceKm = Math.min(
+      ...points.map((origin) => haversineKm(origin, { latitude: shown.latitude!, longitude: shown.longitude! })),
+    )
     if (distanceKm > NEARBY_RADIUS_KM) {
       return []
     }
-    return [{ ...row, address: shown.address, phone: shown.phone, latitude: shown.latitude, longitude: shown.longitude, distanceKm }]
+    return [
+      {
+        ...row,
+        address: shown.address,
+        phone: shown.phone,
+        latitude: shown.latitude,
+        longitude: shown.longitude,
+        distanceKm,
+      },
+    ]
   })
   const ranked = rankNearby(located, { sponsoredSlot: sponsoredVenuesEnabled(), limit: options.limit ?? NEARBY_LIMIT })
   const covers = await db.venues.coversFor(ranked.map((row) => row.id))
   // Rules only: the browser computes «открыто сейчас» from them (ADR 0028).
   const schedules = await Promise.all(ranked.map((row) => loadSchedule('venue', row.id)))
-  const windows = await loadNoticeWindows('venue', ranked.map((row) => row.id))
+  const windows = await loadNoticeWindows(
+    'venue',
+    ranked.map((row) => row.id),
+  )
   const regionSlugs = new Map((ranked.length ? await db.editor.listRegions() : []).map((row) => [row.id, row.slug]))
   const now = new Date()
   return ranked.map((row, index) => {
@@ -105,7 +126,7 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
       media: cover ? toPublicMedia(cover) : null,
       schedule: schedules[index] ?? null,
       notices: windows.get(row.id) ?? [],
-      regionSlug: row.regionId ? regionSlugs.get(row.regionId) ?? null : null,
+      regionSlug: row.regionId ? (regionSlugs.get(row.regionId) ?? null) : null,
     }
   })
 }
@@ -114,7 +135,10 @@ export async function eatNearby(origins: Array<{ latitude: number | null, longit
 export const NEAR_PLACES_KM = 3
 
 function plainText(value: string) {
-  return value.replace(/[#*_>`[\]]/g, '').replace(/\s+/g, ' ').trim()
+  return value
+    .replace(/[#*_>`[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**
@@ -135,7 +159,7 @@ export function venueLead(seo: string | null, body: string, max = 180) {
 
 /** One or two sentences for the hero: the SEO description, else the start of the description. */
 export function venueSummary(seo: string | null, description: string, max = 180) {
-  const source = (seo?.trim() || description.replace(/[#*_>`[\]]/g, '').trim())
+  const source = seo?.trim() || description.replace(/[#*_>`[\]]/g, '').trim()
   if (source.length <= max) {
     return source
   }
@@ -181,7 +205,7 @@ async function loadVenue(slug: string) {
     return { type: 'gone' as const }
   }
   const region = venue.regionId
-    ? (await db.editor.listRegions()).find((item) => item.id === venue.regionId) ?? null
+    ? ((await db.editor.listRegions()).find((item) => item.id === venue.regionId) ?? null)
     : null
   const gallery = await db.venues.gallery(venue.id)
   const photos = gallery.map((item) => toPublicMedia(item.media))
@@ -195,14 +219,18 @@ async function loadVenue(slug: string) {
   const moduleSource = publicVenueModules(venue.modules, hourLines)
   const now = new Date()
   const stale = isStale(venue.lastVerifiedAt, now)
-  const shown = (await readShownFacts('venue', [{
-    id: venue.id,
-    phone: venue.phone,
-    address: venue.address,
-    latitude: venue.latitude,
-    longitude: venue.longitude,
-    status: venue.status,
-  }])).get(venue.id)!
+  const shown = (
+    await readShownFacts('venue', [
+      {
+        id: venue.id,
+        phone: venue.phone,
+        address: venue.address,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
+        status: venue.status,
+      },
+    ])
+  ).get(venue.id)!
   const operatingClosed = shown.status === 'closed'
   const closedNote = operatingClosed ? CLOSED_NOTE : shown.statusGap ? FACT_UNKNOWN : ''
   const closed = Boolean(closedNote)
@@ -305,11 +333,12 @@ async function loadVenue(slug: string) {
   const guests = await loadGuestItems('venue', venue.id)
   attachGuestReviews(`${absoluteUrl(`/zavedeniya/${venue.slug}`)}#venue`, guests, doc.jsonLd)
   const sponsored = await db.venues.sponsoredIds([venue.id])
-  const places = shown.latitude != null && shown.longitude != null
-    ? (await db.content.nearest(shown.latitude, shown.longitude, '', 6))
-        // The town itself is in the crumbs, not a sight «рядом».
-        .filter((place) => place.slug !== region?.slug)
-    : []
+  const places =
+    shown.latitude != null && shown.longitude != null
+      ? (await db.content.nearest(shown.latitude, shown.longitude, '', 6))
+          // The town itself is in the crumbs, not a sight «рядом».
+          .filter((place) => place.slug !== region?.slug)
+      : []
   const placeCovers = await db.content.coversFor(places.map((place) => place.place_id))
   return {
     type: 'venue' as const,
@@ -356,21 +385,27 @@ async function loadVenue(slug: string) {
     },
     photos,
     cover,
-    places: places.filter((place) => Number(place.distance_km) <= NEAR_PLACES_KM).slice(0, 4).map((place) => {
-      const media = placeCovers.get(place.place_id)
-      return {
+    places: places
+      .filter((place) => Number(place.distance_km) <= NEAR_PLACES_KM)
+      .slice(0, 4)
+      .map((place) => {
+        const media = placeCovers.get(place.place_id)
+        return {
+          href: `/${place.slug}`,
+          text: place.title,
+          distanceKm: Number(place.distance_km),
+          kind: place.category_slug,
+          media: media ? toPublicMedia(media) : null,
+        }
+      }),
+    farPlaces: places
+      .filter((place) => Number(place.distance_km) > NEAR_PLACES_KM)
+      .slice(0, 3)
+      .map((place) => ({
         href: `/${place.slug}`,
         text: place.title,
         distanceKm: Number(place.distance_km),
-        kind: place.category_slug,
-        media: media ? toPublicMedia(media) : null,
-      }
-    }),
-    farPlaces: places.filter((place) => Number(place.distance_km) > NEAR_PLACES_KM).slice(0, 3).map((place) => ({
-      href: `/${place.slug}`,
-      text: place.title,
-      distanceKm: Number(place.distance_km),
-    })),
+      })),
     guests,
   }
 }
@@ -378,9 +413,9 @@ async function loadVenue(slug: string) {
 async function loadListing(
   regionSlug: string | null,
   kind: string | null,
-  regionRows: Array<{ id: string, slug: string, title: string, shortTitle?: string | null }>,
+  regionRows: Array<{ id: string; slug: string; title: string; shortTitle?: string | null }>,
 ) {
-  const region = regionSlug ? regionRows.find((row) => row.slug === regionSlug) ?? null : null
+  const region = regionSlug ? (regionRows.find((row) => row.slug === regionSlug) ?? null) : null
   if (regionSlug && !region) {
     return null
   }
@@ -394,19 +429,24 @@ async function loadListing(
   })
   const food = kind ? catalog : catalog.filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
   const draftModules = toPublicListingModules(intro?.modules ?? [], renderMarkdown)
-  const situationSlugs = draftModules.flatMap((block) => block.type === 'situation' ? block.items.map((item) => item.placeSlug) : [])
+  const situationSlugs = draftModules.flatMap((block) =>
+    block.type === 'situation' ? block.items.map((item) => item.placeSlug) : [],
+  )
   const extraSlugs = [...new Set(situationSlugs.filter((slug) => !food.some((row) => row.slug === slug)))]
   const extras = (await Promise.all(extraSlugs.map((slug) => db.venues.bySlug(slug)))).flatMap((row) => {
     return row && row.status === 'published' ? [row] : []
   })
-  const facts = await readShownFacts('venue', [...food, ...extras].map((row) => ({
-    id: row.id,
-    phone: row.phone,
-    address: row.address,
-    latitude: row.latitude,
-    longitude: row.longitude,
-    status: row.status,
-  })))
+  const facts = await readShownFacts(
+    'venue',
+    [...food, ...extras].map((row) => ({
+      id: row.id,
+      phone: row.phone,
+      address: row.address,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      status: row.status,
+    })),
+  )
   const openFood = food.filter((row) => facts.get(row.id)?.status !== 'closed')
   const counts = new Map<string, number>()
   for (const row of openFood) {
@@ -450,25 +490,39 @@ async function loadListing(
     db.schedules.forEntities('venue', ids),
     loadNoticeWindows('venue', ids),
   ])
-  const scheduleById = new Map(scheduleRows.flatMap((row) => {
-    const rules = readRules(row.rules)
-    return rules ? [[row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }] as const] : []
-  }))
-  const cards = new Map(cardRows.map((row) => {
-    const cover = covers.get(row.id)
-    return [row.slug, {
-      href: `/zavedeniya/${row.slug}`,
-      slug: row.slug,
-      name: row.name,
-      kindLabel: kindLabel(row.kind),
-      media: cover ? toPublicMedia(cover) : null,
-      schedule: scheduleById.get(row.id) ?? null,
-      notices: windows.get(row.id) ?? [],
-      stale: isStale(row.lastVerifiedAt, now),
-      phone: facts.get(row.id)?.phone ?? null,
-      meta: [facts.get(row.id)?.address, cuisineLabels(row.cuisineTags).join(', '), priceMarks(row.priceLevel), formatAvgCheck(row.avgCheck)].filter(Boolean).join(' · '),
-    }] as const
-  }))
+  const scheduleById = new Map(
+    scheduleRows.flatMap((row) => {
+      const rules = readRules(row.rules)
+      return rules ? [[row.entityId, { rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt }] as const] : []
+    }),
+  )
+  const cards = new Map(
+    cardRows.map((row) => {
+      const cover = covers.get(row.id)
+      return [
+        row.slug,
+        {
+          href: `/zavedeniya/${row.slug}`,
+          slug: row.slug,
+          name: row.name,
+          kindLabel: kindLabel(row.kind),
+          media: cover ? toPublicMedia(cover) : null,
+          schedule: scheduleById.get(row.id) ?? null,
+          notices: windows.get(row.id) ?? [],
+          stale: isStale(row.lastVerifiedAt, now),
+          phone: facts.get(row.id)?.phone ?? null,
+          meta: [
+            facts.get(row.id)?.address,
+            cuisineLabels(row.cuisineTags).join(', '),
+            priceMarks(row.priceLevel),
+            formatAvgCheck(row.avgCheck),
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        },
+      ] as const
+    }),
+  )
   const modules = attachSituationCards(draftModules, cards)
   const faq = modules.find((block) => block.type === 'faq')
   if (faq?.type === 'faq' && !doc.robots.includes('noindex')) {
@@ -478,7 +532,13 @@ async function loadListing(
       'mainEntity': faq.items.map((item) => ({
         '@type': 'Question',
         'name': item.question,
-        'acceptedAnswer': { '@type': 'Answer', 'text': item.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() },
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': item.html
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim(),
+        },
       })),
     })
   }
@@ -536,7 +596,10 @@ async function loadListing(
 }
 
 function plainIntro(body: string | null | undefined) {
-  const text = (body || '').replace(/[#>*_`[\]]/g, ' ').replace(/\s+/g, ' ').trim()
+  const text = (body || '')
+    .replace(/[#>*_`[\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   return text.slice(0, 500)
 }
 
@@ -578,12 +641,14 @@ export async function loadEatNow(regionSlug: string | null) {
     const doc = collectionDocument({
       path: EAT_NOW_PATH,
       h1: 'Где поесть сейчас',
-      summary: 'Кафе, рестораны и пекарни Калининградской области с проверенными часами: что открыто прямо сейчас и что откроется позже, по территориям.',
+      summary:
+        'Кафе, рестораны и пекарни Калининградской области с проверенными часами: что открыто прямо сейчас и что откроется позже, по территориям.',
       crumbName: 'список',
       parent: { name: 'Еда', href: '/eda' },
       items: townLinks.map((town) => ({ name: `Где поесть сейчас ${inTown(town.slug, town.title)}`, url: town.href })),
       seoTitle: 'Где поесть сейчас: открытые кафе и рестораны по территориям',
-      seoDescription: 'Что открыто прямо сейчас в Калининграде, Светлогорске, Зеленоградске и окрестностях этих городов: кафе и рестораны с проверенными часами работы.',
+      seoDescription:
+        'Что открыто прямо сейчас в Калининграде, Светлогорске, Зеленоградске и окрестностях этих городов: кафе и рестораны с проверенными часами работы.',
       kind: 'CollectionPage',
     })
     return { type: 'index' as const, doc, towns: townLinks }
@@ -592,16 +657,20 @@ export async function loadEatNow(regionSlug: string | null) {
   if (!town) {
     return null
   }
-  const rows = (await db.venues.list({ regionId: town.id, status: 'published', foodOnly: true }))
-    .filter((row) => (FOOD_KINDS as readonly string[]).includes(row.kind))
-  const facts = await readShownFacts('venue', rows.map((row) => ({
-    id: row.id,
-    phone: row.phone,
-    address: row.address,
-    latitude: row.latitude,
-    longitude: row.longitude,
-    status: row.status,
-  })))
+  const rows = (await db.venues.list({ regionId: town.id, status: 'published', foodOnly: true })).filter((row) =>
+    (FOOD_KINDS as readonly string[]).includes(row.kind),
+  )
+  const facts = await readShownFacts(
+    'venue',
+    rows.map((row) => ({
+      id: row.id,
+      phone: row.phone,
+      address: row.address,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      status: row.status,
+    })),
+  )
   const openRows = rows.filter((row) => facts.get(row.id)?.status !== 'closed')
   const located = openRows.flatMap((row) => {
     const shown = facts.get(row.id)
@@ -610,46 +679,53 @@ export async function loadEatNow(regionSlug: string | null) {
     }
     return [{ latitude: shown.latitude, longitude: shown.longitude }]
   })
-  const centre = town.latitude != null && town.longitude != null
-    ? { latitude: town.latitude, longitude: town.longitude }
-    : located.length
-      ? {
-          latitude: located.reduce((sum, row) => sum + row.latitude, 0) / located.length,
-          longitude: located.reduce((sum, row) => sum + row.longitude, 0) / located.length,
-        }
-      : null
+  const centre =
+    town.latitude != null && town.longitude != null
+      ? { latitude: town.latitude, longitude: town.longitude }
+      : located.length
+        ? {
+            latitude: located.reduce((sum, row) => sum + row.latitude, 0) / located.length,
+            longitude: located.reduce((sum, row) => sum + row.longitude, 0) / located.length,
+          }
+        : null
   const [covers, schedules, windows] = await Promise.all([
     db.venues.coversFor(openRows.map((row) => row.id)),
     Promise.all(openRows.map((row) => loadSchedule('venue', row.id))),
-    loadNoticeWindows('venue', openRows.map((row) => row.id)),
+    loadNoticeWindows(
+      'venue',
+      openRows.map((row) => row.id),
+    ),
   ])
   const now = new Date()
-  const items = openRows.map((row, index) => {
-    const shown = facts.get(row.id)!
-    const distanceKm = centre && shown.latitude != null && shown.longitude != null
-      ? haversineKm(centre, { latitude: shown.latitude, longitude: shown.longitude })
-      : null
-    const cover = covers.get(row.id)
-    return {
-      href: `/zavedeniya/${row.slug}`,
-      slug: row.slug,
-      name: row.name,
-      kindLabel: kindLabel(row.kind),
-      cuisine: cuisineLabels(row.cuisineTags),
-      price: priceMarks(row.priceLevel),
-      check: row.avgCheck != null ? `~${new Intl.NumberFormat('ru-RU').format(row.avgCheck)} ₽` : '',
-      address: shown.address,
-      phone: shown.phone,
-      latitude: shown.latitude,
-      longitude: shown.longitude,
-      distanceKm,
-      distance: distanceKm != null ? formatVenueDistance(distanceKm) : '',
-      stale: isStale(row.lastVerifiedAt, now),
-      media: cover ? toPublicMedia(cover) : null,
-      schedule: schedules[index] ?? null,
-      notices: windows.get(row.id) ?? [],
-    }
-  }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+  const items = openRows
+    .map((row, index) => {
+      const shown = facts.get(row.id)!
+      const distanceKm =
+        centre && shown.latitude != null && shown.longitude != null
+          ? haversineKm(centre, { latitude: shown.latitude, longitude: shown.longitude })
+          : null
+      const cover = covers.get(row.id)
+      return {
+        href: `/zavedeniya/${row.slug}`,
+        slug: row.slug,
+        name: row.name,
+        kindLabel: kindLabel(row.kind),
+        cuisine: cuisineLabels(row.cuisineTags),
+        price: priceMarks(row.priceLevel),
+        check: row.avgCheck != null ? `~${new Intl.NumberFormat('ru-RU').format(row.avgCheck)} ₽` : '',
+        address: shown.address,
+        phone: shown.phone,
+        latitude: shown.latitude,
+        longitude: shown.longitude,
+        distanceKm,
+        distance: distanceKm != null ? formatVenueDistance(distanceKm) : '',
+        stale: isStale(row.lastVerifiedAt, now),
+        media: cover ? toPublicMedia(cover) : null,
+        schedule: schedules[index] ?? null,
+        notices: windows.get(row.id) ?? [],
+      }
+    })
+    .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
   const where = inTown(town.slug, town.label)
   const h1 = `Где поесть сейчас ${where}`
   const doc = collectionDocument({
@@ -658,7 +734,12 @@ export async function loadEatNow(regionSlug: string | null) {
     summary: `${items.length} кафе, ресторанов и пекарен ${where}: что открыто прямо сейчас, что откроется позже, сколько идти от центра и средний чек.`,
     crumbName: 'список',
     parent: { name: 'Где поесть сейчас', href: EAT_NOW_PATH },
-    items: items.map((item) => ({ name: item.name, url: item.href, latitude: item.latitude, longitude: item.longitude })),
+    items: items.map((item) => ({
+      name: item.name,
+      url: item.href,
+      latitude: item.latitude,
+      longitude: item.longitude,
+    })),
     seoTitle: `Где поесть сейчас ${where}: открытые кафе и рестораны`,
     seoDescription: `Кафе и рестораны ${where}, открытые прямо сейчас: часы работы проверены, расстояние от центра, кухня и средний чек. ${items.length} заведений.`,
     kind: 'CollectionPage',

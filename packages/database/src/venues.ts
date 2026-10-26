@@ -85,9 +85,39 @@ const OSM_DAY: Record<string, Weekday> = {
 }
 
 const RU: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y',
-  к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f',
-  х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'e',
+  ж: 'zh',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'h',
+  ц: 'ts',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'sch',
+  ъ: '',
+  ы: 'y',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
 }
 
 export interface VenueDayHours {
@@ -137,7 +167,7 @@ export interface OsmElement {
   id: number
   lat?: number
   lon?: number
-  center?: { lat?: number, lon?: number }
+  center?: { lat?: number; lon?: number }
   tags?: Record<string, string>
 }
 
@@ -246,7 +276,10 @@ export function venueSchemaType(kind: string) {
 
 export function transliterateVenueSlug(value: string) {
   const lowered = value.trim().toLowerCase()
-  const mapped = lowered.split('').map((char) => RU[char] ?? char).join('')
+  const mapped = lowered
+    .split('')
+    .map((char) => RU[char] ?? char)
+    .join('')
   return mapped.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
@@ -283,7 +316,10 @@ export function venueSlugCandidates(base: string, locality?: VenueLocality | nul
   }
   const suffixes = [locality?.town, locality?.district]
     .map((part) => (part ? transliterateVenueSlug(part) : ''))
-    .filter((suffix, index, all) => suffix.length > 0 && suffix !== root && !root.endsWith(`-${suffix}`) && all.indexOf(suffix) === index)
+    .filter(
+      (suffix, index, all) =>
+        suffix.length > 0 && suffix !== root && !root.endsWith(`-${suffix}`) && all.indexOf(suffix) === index,
+    )
   const stems = [root, ...suffixes.map((suffix) => `${root}-${suffix}`)]
   const candidates: string[] = []
   const push = (slug: string) => {
@@ -304,7 +340,12 @@ export function venueSlugCandidates(base: string, locality?: VenueLocality | nul
   return candidates
 }
 
-export function pickVenueSlug(base: string, taken: ReadonlySet<string>, reserved: ReadonlySet<string>, locality?: VenueLocality | null) {
+export function pickVenueSlug(
+  base: string,
+  taken: ReadonlySet<string>,
+  reserved: ReadonlySet<string>,
+  locality?: VenueLocality | null,
+) {
   for (const candidate of venueSlugCandidates(base, locality)) {
     if (taken.has(candidate) || isBlockedVenueSlug(candidate, reserved)) {
       continue
@@ -336,7 +377,7 @@ export function emptyHours(note: string | null = null): VenueHours {
 const CLOCK = /^(?:[01]\d|2[0-3]):[0-5]\d$/
 
 export function normalizeHours(value: unknown): VenueHours {
-  const raw = value && typeof value === 'object' ? value as { days?: unknown, note?: unknown } : {}
+  const raw = value && typeof value === 'object' ? (value as { days?: unknown; note?: unknown }) : {}
   const note = typeof raw.note === 'string' ? raw.note.trim() || null : null
   if (note && note.length > HOURS_NOTE_MAX) {
     throw new VenueInputError(HOURS_NOTE_TOO_LONG)
@@ -347,7 +388,7 @@ export function normalizeHours(value: unknown): VenueHours {
       if (!item || typeof item !== 'object') {
         continue
       }
-      const day = item as { weekday?: unknown, closed?: unknown, unknown?: unknown, opens?: unknown, closes?: unknown }
+      const day = item as { weekday?: unknown; closed?: unknown; unknown?: unknown; opens?: unknown; closes?: unknown }
       if (typeof day.weekday !== 'string' || !(WEEKDAYS as readonly string[]).includes(day.weekday)) {
         continue
       }
@@ -358,12 +399,18 @@ export function normalizeHours(value: unknown): VenueHours {
       }
       const closed = day.closed === true
       const opens = typeof day.opens === 'string' && CLOCK.test(day.opens) ? day.opens : null
-      const closes = typeof day.closes === 'string' && (CLOCK.test(day.closes) || day.closes === '24:00') ? day.closes : null
+      const closes =
+        typeof day.closes === 'string' && (CLOCK.test(day.closes) || day.closes === '24:00') ? day.closes : null
       // An opening time without a closing time is an open-ended day (ADR 0042).
       if (!closed && !opens) {
         throw new VenueInputError(`Часы ${weekday}: нужно opens, либо closed`)
       }
-      given.set(weekday, { weekday, closed: closed || !opens, opens: closed ? null : opens, closes: closed ? null : closes })
+      given.set(weekday, {
+        weekday,
+        closed: closed || !opens,
+        opens: closed ? null : opens,
+        closes: closed ? null : closes,
+      })
     }
   }
   return {
@@ -398,10 +445,19 @@ export function formatHoursLines(hours: VenueHours) {
       }
       end += 1
     }
-    const label = index === end
-      ? WEEKDAY_LABEL[day.weekday]
-      : `${WEEKDAY_LABEL[day.weekday]}-${WEEKDAY_LABEL[hours.days[end]!.weekday]}`
-    lines.push(day.unknown ? `${label}: часы уточняйте` : day.closed ? `${label} выходной` : day.closes ? `${label} ${day.opens}-${day.closes}` : `${label} с ${day.opens}, закрытие уточняйте`)
+    const label =
+      index === end
+        ? WEEKDAY_LABEL[day.weekday]
+        : `${WEEKDAY_LABEL[day.weekday]}-${WEEKDAY_LABEL[hours.days[end]!.weekday]}`
+    lines.push(
+      day.unknown
+        ? `${label}: часы уточняйте`
+        : day.closed
+          ? `${label} выходной`
+          : day.closes
+            ? `${label} ${day.opens}-${day.closes}`
+            : `${label} с ${day.opens}, закрытие уточняйте`,
+    )
     index = end + 1
   }
   if (hours.note?.trim()) {
@@ -447,7 +503,7 @@ export function formatVenueDistance(km: number) {
 }
 
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
-  const toRad = (value: number) => value * Math.PI / 180
+  const toRad = (value: number) => (value * Math.PI) / 180
   const dLat = toRad(bLat - aLat)
   const dLng = toRad(bLng - aLng)
   const lat1 = toRad(aLat)
@@ -456,13 +512,11 @@ export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: numb
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
 }
 
-export function rankNearby<T extends NearbyCandidate>(rows: T[], options: { sponsoredSlot: boolean, limit?: number }) {
+export function rankNearby<T extends NearbyCandidate>(rows: T[], options: { sponsoredSlot: boolean; limit?: number }) {
   const limit = options.limit ?? NEARBY_LIMIT
   const byDistance = [...rows].sort((a, b) => a.distanceKm - b.distanceKm || a.id.localeCompare(b.id))
   const sponsor = options.sponsoredSlot ? byDistance.find((row) => row.sponsored) : undefined
-  const ordered = sponsor
-    ? [sponsor, ...byDistance.filter((row) => row.id !== sponsor.id)]
-    : byDistance
+  const ordered = sponsor ? [sponsor, ...byDistance.filter((row) => row.id !== sponsor.id)] : byDistance
   return ordered.slice(0, limit).map((row) => ({
     ...row,
     partner: Boolean(sponsor && row.id === sponsor.id),
@@ -480,9 +534,9 @@ export function listingPath(regionSlug?: string | null, kind?: string | null) {
   return parts.join('/')
 }
 
-export type VenuePath
-  = | { type: 'listing', regionSlug: string | null, kind: string | null }
-    | { type: 'venue', slug: string }
+export type VenuePath =
+  | { type: 'listing'; regionSlug: string | null; kind: string | null }
+  | { type: 'venue'; slug: string }
 
 export function resolveVenuePath(segments: string[], regionSlugs: ReadonlySet<string>): VenuePath | null {
   if (segments.length === 0) {
@@ -554,7 +608,10 @@ export function parseOsmHours(raw: string | undefined): VenueHours {
     return hours
   }
   const hours = emptyHours()
-  const rules = text.split(';').map((part) => part.trim()).filter(Boolean)
+  const rules = text
+    .split(';')
+    .map((part) => part.trim())
+    .filter(Boolean)
   let parsed = 0
   for (const rule of rules) {
     const match = /^([A-Z][a-z])(?:-([A-Z][a-z]))?\s+(\d{2}:\d{2})-(\d{2}:\d{2})/.exec(rule)
@@ -590,7 +647,14 @@ function osmLocality(tags: Record<string, string>, keys: string[]) {
 }
 
 function cuisineTags(raw: string | undefined) {
-  return [...new Set((raw || '').split(/[;,]/).map((item) => item.trim().toLowerCase()).filter(Boolean))].slice(0, 12)
+  return [
+    ...new Set(
+      (raw || '')
+        .split(/[;,]/)
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ].slice(0, 12)
 }
 
 export function osmKind(tags: Record<string, string>) {
@@ -661,7 +725,10 @@ export function osmElementToDraft(element: OsmElement): OsmDraft | null {
     town,
     district,
     phone: null,
-    ...ownSiteAndSocials((tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null, osmSocials(tags)),
+    ...ownSiteAndSocials(
+      (tags.website || tags['contact:website'] || '').trim().slice(0, 300) || null,
+      osmSocials(tags),
+    ),
     contactEmail: osmEmail(tags.email || tags['contact:email']),
     menuUrl: osmUrl(tags['website:menu'] || tags['contact:menu'] || tags.menu),
     reservation: osmReservation(tags.reservation),
@@ -676,15 +743,26 @@ const AMENITY = 'cafe|restaurant|bar|fast_food|pub|ice_cream'
 
 export const OVERPASS_QUERY_TIMEOUT_SECONDS = 90
 
-export function overpassQuery(input: { latitude: number, longitude: number, radiusMeters: number } | { south: number, west: number, north: number, east: number }, timeoutSeconds = OVERPASS_QUERY_TIMEOUT_SECONDS) {
-  const clause = 'latitude' in input
-    ? `(around:${Math.round(input.radiusMeters)},${input.latitude},${input.longitude})`
-    : `(${input.south},${input.west},${input.north},${input.east})`
-  const timeout = Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? Math.round(timeoutSeconds) : OVERPASS_QUERY_TIMEOUT_SECONDS
+export function overpassQuery(
+  input:
+    | { latitude: number; longitude: number; radiusMeters: number }
+    | { south: number; west: number; north: number; east: number },
+  timeoutSeconds = OVERPASS_QUERY_TIMEOUT_SECONDS,
+) {
+  const clause =
+    'latitude' in input
+      ? `(around:${Math.round(input.radiusMeters)},${input.latitude},${input.longitude})`
+      : `(${input.south},${input.west},${input.north},${input.east})`
+  const timeout =
+    Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? Math.round(timeoutSeconds) : OVERPASS_QUERY_TIMEOUT_SECONDS
   return `[out:json][timeout:${timeout}];(node["amenity"~"^(${AMENITY})$"]${clause};way["amenity"~"^(${AMENITY})$"]${clause};node["shop"="bakery"]${clause};way["shop"="bakery"]${clause};);out center tags;`
 }
 
-export function assertOverpassArea(input: { latitude: number, longitude: number, radiusMeters: number } | { south: number, west: number, north: number, east: number }) {
+export function assertOverpassArea(
+  input:
+    | { latitude: number; longitude: number; radiusMeters: number }
+    | { south: number; west: number; north: number; east: number },
+) {
   if ('latitude' in input) {
     if (input.latitude < -90 || input.latitude > 90 || input.longitude < -180 || input.longitude > 180) {
       throw new VenueInputError('Координаты вне диапазона')
@@ -712,7 +790,7 @@ export function walkMinutes(km: number) {
   if (!Number.isFinite(km) || km < 0) {
     return null
   }
-  return Math.max(1, Math.round((km * WALK_DETOUR / WALK_KMH) * 60))
+  return Math.max(1, Math.round(((km * WALK_DETOUR) / WALK_KMH) * 60))
 }
 
 /** «~6 мин пешком», or '' when it is too far to call a walk. */
@@ -722,19 +800,59 @@ export function formatWalk(km: number) {
 }
 
 const CUISINE_LABEL: Record<string, string> = {
-  american: 'американская', arab: 'арабская', armenian: 'армянская', asian: 'азиатская',
-  baltic: 'балтийская', barbecue: 'барбекю', bavarian: 'баварская', breakfast: 'завтраки',
-  burger: 'бургеры', cake: 'десерты', caucasian: 'кавказская', chicken: 'курица',
-  chinese: 'китайская', coffee: 'кофе', coffee_shop: 'кофе', crepe: 'блины', czech: 'чешская',
-  european: 'европейская', fish: 'рыба', fish_and_chips: 'фиш-энд-чипс', french: 'французская',
-  georgian: 'грузинская', german: 'немецкая', greek: 'греческая', grill: 'гриль',
-  home: 'домашняя', ice_cream: 'мороженое', international: 'интернациональная',
-  italian: 'итальянская', italian_pizza: 'пицца', japanese: 'японская', kebab: 'шаурма',
-  korean: 'корейская', lithuanian: 'литовская', local: 'местная', mediterranean: 'средиземноморская',
-  mexican: 'мексиканская', pasta: 'паста', pie: 'пироги', pies: 'пироги', pizza: 'пицца',
-  prussian: 'прусская', pub: 'паб', regional: 'местная', russian: 'русская', seafood: 'морепродукты',
-  steak: 'стейки', steak_house: 'стейки', sushi: 'суши', tea: 'чай', turkish: 'турецкая',
-  ukrainian: 'украинская', uzbek: 'узбекская',
+  american: 'американская',
+  arab: 'арабская',
+  armenian: 'армянская',
+  asian: 'азиатская',
+  baltic: 'балтийская',
+  barbecue: 'барбекю',
+  bavarian: 'баварская',
+  breakfast: 'завтраки',
+  burger: 'бургеры',
+  cake: 'десерты',
+  caucasian: 'кавказская',
+  chicken: 'курица',
+  chinese: 'китайская',
+  coffee: 'кофе',
+  coffee_shop: 'кофе',
+  crepe: 'блины',
+  czech: 'чешская',
+  european: 'европейская',
+  fish: 'рыба',
+  fish_and_chips: 'фиш-энд-чипс',
+  french: 'французская',
+  georgian: 'грузинская',
+  german: 'немецкая',
+  greek: 'греческая',
+  grill: 'гриль',
+  home: 'домашняя',
+  ice_cream: 'мороженое',
+  international: 'интернациональная',
+  italian: 'итальянская',
+  italian_pizza: 'пицца',
+  japanese: 'японская',
+  kebab: 'шаурма',
+  korean: 'корейская',
+  lithuanian: 'литовская',
+  local: 'местная',
+  mediterranean: 'средиземноморская',
+  mexican: 'мексиканская',
+  pasta: 'паста',
+  pie: 'пироги',
+  pies: 'пироги',
+  pizza: 'пицца',
+  prussian: 'прусская',
+  pub: 'паб',
+  regional: 'местная',
+  russian: 'русская',
+  seafood: 'морепродукты',
+  steak: 'стейки',
+  steak_house: 'стейки',
+  sushi: 'суши',
+  tea: 'чай',
+  turkish: 'турецкая',
+  ukrainian: 'украинская',
+  uzbek: 'узбекская',
 }
 
 /** Russian cuisine labels in stored order, unknown tokens dropped, duplicates merged. */
@@ -795,7 +913,10 @@ function websiteHost(value: string) {
   }
   const withScheme = /^https?:\/\//i.test(text) ? text : `https://${text}`
   try {
-    return new URL(withScheme).hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+    return new URL(withScheme).hostname
+      .toLowerCase()
+      .replace(/\.$/, '')
+      .replace(/^www\./, '')
   } catch {
     return ''
   }
@@ -901,5 +1022,5 @@ export function osmYesNo(raw: string | undefined) {
 
 export function osmReservation(raw: string | undefined): VenueReservation | null {
   const value = raw?.trim().toLowerCase()
-  return (VENUE_RESERVATIONS as readonly string[]).includes(value ?? '') ? value as VenueReservation : null
+  return (VENUE_RESERVATIONS as readonly string[]).includes(value ?? '') ? (value as VenueReservation) : null
 }

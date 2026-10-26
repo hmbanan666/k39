@@ -4,7 +4,9 @@ import { getIconData } from '@iconify/utils'
 import { describe, expect, it } from 'vitest'
 import { TABLER_ICONS, tablerIcon, tablerIconList, tablerName } from '../shared/icons'
 
-const collection = JSON.parse(readFileSync(resolve(process.cwd(), 'node_modules/@iconify-json/tabler/icons.json'), 'utf8'))
+const collection = JSON.parse(
+  readFileSync(resolve(process.cwd(), 'node_modules/@iconify-json/tabler/icons.json'), 'utf8'),
+)
 
 describe('tabler icon map', () => {
   it('points every site key at a real Tabler icon', () => {

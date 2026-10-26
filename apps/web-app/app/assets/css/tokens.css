@@ -63,8 +63,8 @@
   --accent: var(--color-brick);
   --focus: var(--color-focus);
   --font-display: Alegreya, Georgia, serif;
-  --font-stamp: "Alegreya SC", Alegreya, serif;
-  --font-body: "Golos Text", Arial, sans-serif;
+  --font-stamp: 'Alegreya SC', Alegreya, serif;
+  --font-body: 'Golos Text', Arial, sans-serif;
   --step--1: clamp(0.78rem, 0.74rem + 0.15vw, 0.88rem);
   --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
   --step-1: clamp(1.25rem, 1.08rem + 0.7vw, 1.6rem);
@@ -112,7 +112,8 @@
   --header-pill: calc(0.875rem + 0.9rem + 2px);
   --header-pad-bottom: 0.7rem;
   --site-header-offset: calc(
-    var(--header-logo-row) + var(--header-row-gap) + var(--header-pill) + var(--header-pad-bottom) + var(--header-border)
+    var(--header-logo-row) + var(--header-row-gap) + var(--header-pill) + var(--header-pad-bottom) +
+      var(--header-border)
   );
   /* Space between the sticky header and an anchor target after a jump. */
   --anchor-gap: 1.5rem;
@@ -124,7 +125,7 @@
   }
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   --color-paper-2: #302923;
   --color-foam: #2a3c44;
   --color-sea-dark: #bed0d8;

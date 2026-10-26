@@ -24,7 +24,8 @@ const SOCIAL: Array<[string, string]> = [
   ['dzen.ru', 'social:other'],
 ]
 
-const BOT = /bot|crawl|spider|slurp|headless|phantom|selenium|wget|curl|python-requests|go-http|httpclient|scrapy|ahrefs|semrush|dotbot|petalbot|bytespider|gptbot|claudebot|facebookexternalhit|telegrambot|whatsapp|yandexbot|googlebot|bingbot|duckduckbot|applebot|preview/i
+const BOT =
+  /bot|crawl|spider|slurp|headless|phantom|selenium|wget|curl|python-requests|go-http|httpclient|scrapy|ahrefs|semrush|dotbot|petalbot|bytespider|gptbot|claudebot|facebookexternalhit|telegrambot|whatsapp|yandexbot|googlebot|bingbot|duckduckbot|applebot|preview/i
 
 export function isBotUserAgent(ua: string) {
   const value = ua.trim()
@@ -73,7 +74,11 @@ export function searchQueryFromReferrer(referrer: string) {
   return ''
 }
 
-export function classifyChannel(input: { referrer?: string | null, utmSource?: string | null, utmMedium?: string | null }) {
+export function classifyChannel(input: {
+  referrer?: string | null
+  utmSource?: string | null
+  utmMedium?: string | null
+}) {
   const referrer = input.referrer?.trim() || ''
   const host = hostOf(referrer)
   const medium = (input.utmMedium || '').toLowerCase()
@@ -85,13 +90,15 @@ export function classifyChannel(input: { referrer?: string | null, utmSource?: s
   if (medium === 'cpc' || medium === 'ppc' || medium === 'paid' || medium === 'cpm') {
     return { channel: 'paid', referrerHost: host, searchQuery: '' }
   }
-  const search = matchHost(host, SEARCH) || (source === 'yandex' ? 'organic:yandex' : source === 'google' ? 'organic:google' : '')
+  const search =
+    matchHost(host, SEARCH) || (source === 'yandex' ? 'organic:yandex' : source === 'google' ? 'organic:google' : '')
   if (search && (host || medium === 'organic' || source)) {
     const organic = search.startsWith('organic:') ? search : `organic:${search}`
     return { channel: organic, referrerHost: host, searchQuery: searchQueryFromReferrer(referrer) }
   }
-  const social = matchHost(host, SOCIAL)
-    || (source === 'vk' ? 'social:vk' : source === 'tg' || source === 'telegram' ? 'social:tg' : '')
+  const social =
+    matchHost(host, SOCIAL) ||
+    (source === 'vk' ? 'social:vk' : source === 'tg' || source === 'telegram' ? 'social:tg' : '')
   if (social || medium === 'social') {
     return { channel: social || 'social:other', referrerHost: host, searchQuery: '' }
   }
@@ -206,7 +213,16 @@ export function utmFromPath(path: string) {
   }
 }
 
-export const COLLECT_TYPES = ['pageview', 'engage', 'outbound', 'photo', 'impression', 'directions', 'pin_impression', 'pin_click'] as const
+export const COLLECT_TYPES = [
+  'pageview',
+  'engage',
+  'outbound',
+  'photo',
+  'impression',
+  'directions',
+  'pin_impression',
+  'pin_click',
+] as const
 
 export interface HitEntity {
   placeId: string | null

@@ -70,16 +70,20 @@ describe('dev editor session route', () => {
 
 describe('dev editor session cli', () => {
   it('refuses to run when NODE_ENV is production', () => {
-    expect(() => execFileSync(process.execPath, [cli], {
-      env: { ...process.env, NODE_ENV: 'production', DEV_EDITOR_SESSION: '1' },
-      encoding: 'utf8',
-    })).toThrow(/production/)
+    expect(() =>
+      execFileSync(process.execPath, [cli], {
+        env: { ...process.env, NODE_ENV: 'production', DEV_EDITOR_SESSION: '1' },
+        encoding: 'utf8',
+      }),
+    ).toThrow(/production/)
   })
 
   it('refuses to run without the flag', () => {
-    expect(() => execFileSync(process.execPath, [cli], {
-      env: { ...process.env, NODE_ENV: 'development', DEV_EDITOR_SESSION: '' },
-      encoding: 'utf8',
-    })).toThrow(/DEV_EDITOR_SESSION/)
+    expect(() =>
+      execFileSync(process.execPath, [cli], {
+        env: { ...process.env, NODE_ENV: 'development', DEV_EDITOR_SESSION: '' },
+        encoding: 'utf8',
+      }),
+    ).toThrow(/DEV_EDITOR_SESSION/)
   })
 })

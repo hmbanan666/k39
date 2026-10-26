@@ -31,9 +31,7 @@
       </Postcard>
       <div class="hero-copy">
         <p class="kicker">
-          {{ page.categoryTitle }}<template v-if="page.region">
-            · {{ regionLabel(page.region) }}
-          </template>
+          {{ page.categoryTitle }}<template v-if="page.region"> · {{ regionLabel(page.region) }} </template>
         </p>
         <h1>{{ page.doc.h1 }}</h1>
         <p class="lede">
@@ -89,7 +87,10 @@
               :key="row.key"
               :row="row"
             />
-            <TicketsFact :admission="page.admission" :legacy-price="page.place.price" />
+            <TicketsFact
+              :admission="page.admission"
+              :legacy-price="page.place.price"
+            />
             <GuideFactRow
               v-if="address"
               :row="{ key: 'address', label: 'Адрес', value: address }"
@@ -289,7 +290,7 @@ interface PlacePage {
   doc: SeoDocument
   html: string
   directionsHtml: string
-  faq: Array<{ question: string, answer: string }>
+  faq: Array<{ question: string; answer: string }>
   checkedAt: string | null
   place: {
     summary: string
@@ -309,15 +310,15 @@ interface PlacePage {
   upcoming: EventLine[]
   categoryTitle: string
   categorySlug: string
-  region: { slug: string, title: string, shortTitle?: string | null } | null
-  images: Array<{ src: string, url: string, alt: string, width: number | null, height: number | null }>
+  region: { slug: string; title: string; shortTitle?: string | null } | null
+  images: Array<{ src: string; url: string; alt: string; width: number | null; height: number | null }>
   gallery: PublicMedia[]
   cover: PublicMedia | null
-  groups: Array<{ title: string, links: PlaceLink[] }>
+  groups: Array<{ title: string; links: PlaceLink[] }>
   notices: PublicNotice[]
-  sources: Array<{ title: string, url: string }>
+  sources: Array<{ title: string; url: string }>
   guests?: GuestPublicItem[]
-  offers: Array<{ title: string, terms: string }>
+  offers: Array<{ title: string; terms: string }>
 
   eatNearby: Array<{
     href: string
@@ -336,12 +337,13 @@ interface PlacePage {
 const route = useRoute()
 const slug = String(route.params.slug || '')
 const pageQuery = Number(route.query.page ?? 1)
-const page = await fetchPublic<PlacePage>(`/api/public/places/${slug}`, { page: Number.isFinite(pageQuery) ? pageQuery : 1 })
+const page = await fetchPublic<PlacePage>(`/api/public/places/${slug}`, {
+  page: Number.isFinite(pageQuery) ? pageQuery : 1,
+})
 const heroSrc = page.cover?.src || illustrationFor(page.categorySlug, slug)
 const heroAlt = page.cover?.alt || page.doc.h1
-const photos = page.cover && !page.gallery.some((item) => item.id === page.cover?.id)
-  ? [page.cover, ...page.gallery]
-  : page.gallery
+const photos =
+  page.cover && !page.gallery.some((item) => item.id === page.cover?.id) ? [page.cover, ...page.gallery] : page.gallery
 const viewerOpen = ref(false)
 const viewerIndex = ref(0)
 function openPhoto(id: string) {
@@ -362,12 +364,12 @@ const checkedLabel = russianDay(page.checkedAt)
 const address = shortAddress(page.place.howToGet || '')
 const noticeWindows = statusWindows(page.notices)
 const hasFacts = Boolean(
-  rows.length
-  || page.admission.stored
-  || page.admission.extrasStored
-  || page.notices.length
-  || address
-  || (page.place.latitude != null && page.place.longitude != null),
+  rows.length ||
+  page.admission.stored ||
+  page.admission.extrasStored ||
+  page.notices.length ||
+  address ||
+  (page.place.latitude != null && page.place.longitude != null),
 )
 const hasCoords = page.place.latitude != null && page.place.longitude != null
 const nearby = page.groups.find((group) => group.title === 'Рядом')
@@ -396,24 +398,57 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
 </script>
 
 <style scoped>
-.place-map { margin: 1rem 0 0; }
-.directions { margin-top: 3rem; }
-.routes { margin-top: 3rem; }
-.routes h2 { margin-bottom: 0.8rem; }
-.routes ul { margin: 0; padding: 0; list-style: none; }
-.routes li { padding: 0.6rem 0; border-top: 1px solid var(--color-line); }
-.directions h2 { margin-bottom: 0.8rem; }
-.directions h2.with-sticker { display: flex; gap: 0.6rem; align-items: center; }
-.directions h2.with-sticker :deep(.sticker) { flex: none; width: 56px; margin: -0.6rem 0; transform: rotate(-6deg); }
-.directions-text { max-width: 65ch; line-height: 1.6; }
-.directions-text :deep(p) { margin: 0 0 0.6rem; }
+.place-map {
+  margin: 1rem 0 0;
+}
+.directions {
+  margin-top: 3rem;
+}
+.routes {
+  margin-top: 3rem;
+}
+.routes h2 {
+  margin-bottom: 0.8rem;
+}
+.routes ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.routes li {
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--color-line);
+}
+.directions h2 {
+  margin-bottom: 0.8rem;
+}
+.directions h2.with-sticker {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.directions h2.with-sticker :deep(.sticker) {
+  flex: none;
+  width: 56px;
+  margin: -0.6rem 0;
+  transform: rotate(-6deg);
+}
+.directions-text {
+  max-width: 65ch;
+  line-height: 1.6;
+}
+.directions-text :deep(p) {
+  margin: 0 0 0.6rem;
+}
 .hero {
   display: grid;
   gap: 1.6rem;
   align-items: center;
   padding-top: 0.4rem;
 }
-.hero-card { margin: 0.8rem 0.7rem 0.2rem 0.15rem; }
+.hero-card {
+  margin: 0.8rem 0.7rem 0.2rem 0.15rem;
+}
 .kicker {
   margin: 0 0 0.45rem;
   color: var(--color-brick);
@@ -434,20 +469,38 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   font-size: 1.12rem;
   line-height: 1.55;
 }
-.actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 1.1rem; }
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 1.1rem;
+}
 .closed-note {
   margin: 1rem 0 0;
   color: var(--color-brick-dark);
   font-weight: 700;
 }
-.place-body { margin-top: 2.4rem; }
-.offers { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.2rem; }
-.faq { margin-top: 3rem; }
-.faq h2 { margin: 0 0 0.9rem; }
+.place-body {
+  margin-top: 2.4rem;
+}
+.offers {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.2rem;
+}
+.faq {
+  margin-top: 3rem;
+}
+.faq h2 {
+  margin: 0 0 0.9rem;
+}
 .faq-item {
   border-top: 1px solid var(--color-line);
 }
-.faq-item:last-child { border-bottom: 1px solid var(--color-line); }
+.faq-item:last-child {
+  border-bottom: 1px solid var(--color-line);
+}
 .faq-item summary {
   padding: 0.9rem 0;
   font-weight: 600;
@@ -459,9 +512,15 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   max-width: 65ch;
   line-height: 1.6;
 }
-.sources-date { margin: 0 0 0.8rem; }
-.nearby-block { margin-top: 3rem; }
-.nearby-block h2 { margin-bottom: 1rem; }
+.sources-date {
+  margin: 0 0 0.8rem;
+}
+.nearby-block {
+  margin-top: 3rem;
+}
+.nearby-block h2 {
+  margin-bottom: 1rem;
+}
 .nearby {
   display: flex;
   gap: 0.8rem;
@@ -491,7 +550,9 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
   padding: 0;
   list-style: none;
 }
-.sources li { padding: 0.15rem 0; }
+.sources li {
+  padding: 0.15rem 0;
+}
 .sources :deep(a) {
   color: var(--muted);
   font-weight: 500;
@@ -503,10 +564,17 @@ onMounted(() => useTrack().track('page_view', { placeSlug: slug }))
     grid-template-columns: repeat(3, 1fr);
     overflow: visible;
   }
-  .nearby > * { flex: none; }
+  .nearby > * {
+    flex: none;
+  }
 }
 @media (min-width: 1000px) {
-  .hero { grid-template-columns: 1.2fr 0.95fr; gap: 3rem; }
-  .place-body { margin-top: 4rem; }
+  .hero {
+    grid-template-columns: 1.2fr 0.95fr;
+    gap: 3rem;
+  }
+  .place-body {
+    margin-top: 4rem;
+  }
 }
 </style>

@@ -12,14 +12,17 @@
       aria-label="Закрыть"
       @click="emit('close')"
     >
-      <Icon :name="tablerIcon('dismiss')" size="16" />
+      <Icon
+        :name="tablerIcon('dismiss')"
+        size="16"
+      />
     </button>
     <img
       class="photo"
       :class="{ art: !point.photo }"
       :src="point.photo || markerArt(point.marker)"
       alt=""
-    >
+    />
     <div class="copy">
       <p
         v-if="point.partner"
@@ -50,7 +53,8 @@
           :href="`tel:${item.e164}`"
           data-track="outbound"
           data-track-name="phone"
-        >{{ item.display }}</a>
+          >{{ item.display }}</a
+        >
       </p>
       <UiButton
         class="open"
@@ -123,7 +127,7 @@ function onEnd(event: TouchEvent) {
   border-radius: 18px 18px 0 0;
 }
 .sheet::before {
-  content: "";
+  content: '';
   display: block;
   width: 2.4rem;
   height: 0.28rem;
@@ -150,7 +154,10 @@ function onEnd(event: TouchEvent) {
   object-fit: contain;
   background: var(--color-sand);
 }
-.copy { min-width: 0; padding-right: 1.4rem; }
+.copy {
+  min-width: 0;
+  padding-right: 1.4rem;
+}
 .title {
   margin: 0;
   color: var(--color-ink);
@@ -159,7 +166,8 @@ function onEnd(event: TouchEvent) {
   font-weight: 700;
   line-height: 1.15;
 }
-.meta, .sum {
+.meta,
+.sum {
   margin: 0.2rem 0 0;
   color: var(--muted);
   font-size: 0.86rem;
@@ -180,8 +188,12 @@ function onEnd(event: TouchEvent) {
   font-size: 0.86rem;
   font-variant-numeric: tabular-nums;
 }
-.phones a { text-decoration: none; }
-.open { margin-top: 0.55rem; }
+.phones a {
+  text-decoration: none;
+}
+.open {
+  margin-top: 0.55rem;
+}
 .partner {
   display: inline-block;
   margin: 0 0 0.2rem;
@@ -189,7 +201,7 @@ function onEnd(event: TouchEvent) {
   border-radius: 3px;
   background: var(--color-amber-soft);
   color: var(--color-partner);
-  font-family: "Alegreya SC", serif;
+  font-family: 'Alegreya SC', serif;
   font-size: 0.78rem;
 }
 .x {
@@ -207,9 +219,19 @@ function onEnd(event: TouchEvent) {
   color: var(--muted);
   cursor: pointer;
 }
-.x svg { width: 0.9rem; height: 0.9rem; }
-.x:hover { color: var(--color-ink); background: var(--color-ink-wash); }
+.x svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.x:hover {
+  color: var(--color-ink);
+  background: var(--color-ink-wash);
+}
 @media (min-width: 721px) {
-  .card { left: 0.8rem; right: auto; width: min(24rem, calc(100% - 1.6rem)); }
+  .card {
+    left: 0.8rem;
+    right: auto;
+    width: min(24rem, calc(100% - 1.6rem));
+  }
 }
 </style>

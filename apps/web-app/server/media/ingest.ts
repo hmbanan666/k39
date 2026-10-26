@@ -7,7 +7,20 @@ import { processImage, uploadProblem, uploadStatus } from './process'
 import { withMediaSlot } from './semaphore'
 import { createLocalMediaStorage } from './storage'
 
-const VARIANT_FILES = ['master.webp', 'og.jpg', '320.avif', '320.webp', '640.avif', '640.webp', '960.avif', '960.webp', '1280.avif', '1280.webp', '1920.avif', '1920.webp']
+const VARIANT_FILES = [
+  'master.webp',
+  'og.jpg',
+  '320.avif',
+  '320.webp',
+  '640.avif',
+  '640.webp',
+  '960.avif',
+  '960.webp',
+  '1280.avif',
+  '1280.webp',
+  '1920.avif',
+  '1920.webp',
+]
 
 export function coverSizeWarning(sourceWidth: number, isCover: boolean) {
   if (!isCover || sourceWidth >= 1200) {

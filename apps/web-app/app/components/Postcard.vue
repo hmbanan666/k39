@@ -23,7 +23,7 @@
       alt=""
       width="260"
       height="140"
-    >
+    />
     <slot
       v-if="$slots.art"
       name="art"
@@ -37,7 +37,7 @@
       :height="height"
       :loading="priority ? 'eager' : 'lazy'"
       :fetchpriority="priority ? 'high' : undefined"
-    >
+    />
     <div
       v-if="caption || meta"
       class="cap"
@@ -63,43 +63,46 @@
 <script setup lang="ts">
 import { POSTMARK_SRC } from '~~/shared/illustrations'
 
-const props = withDefaults(defineProps<{
-  src: string
-  alt: string
-  caption?: string
-  meta?: string
-  captionTag?: 'p' | 'h3'
-  captionStyle?: 'script' | 'title'
-  metaPlace?: 'aside' | 'below'
-  href?: string
-  tilt?: string
-  stampSrc?: string
-  stampLabel?: string
-  stampSize?: 'sm' | 'md'
-  stampPlace?: 'in' | 'out'
-  postmark?: boolean
-  priority?: boolean
-  ratio?: string
-  width?: number
-  height?: number
-}>(), {
-  caption: '',
-  meta: '',
-  captionTag: 'p',
-  captionStyle: 'script',
-  metaPlace: 'aside',
-  href: '',
-  tilt: '',
-  stampSrc: '',
-  stampLabel: '',
-  stampSize: 'md',
-  stampPlace: 'out',
-  postmark: false,
-  priority: false,
-  ratio: '3 / 2',
-  width: 640,
-  height: 400,
-})
+const props = withDefaults(
+  defineProps<{
+    src: string
+    alt: string
+    caption?: string
+    meta?: string
+    captionTag?: 'p' | 'h3'
+    captionStyle?: 'script' | 'title'
+    metaPlace?: 'aside' | 'below'
+    href?: string
+    tilt?: string
+    stampSrc?: string
+    stampLabel?: string
+    stampSize?: 'sm' | 'md'
+    stampPlace?: 'in' | 'out'
+    postmark?: boolean
+    priority?: boolean
+    ratio?: string
+    width?: number
+    height?: number
+  }>(),
+  {
+    caption: '',
+    meta: '',
+    captionTag: 'p',
+    captionStyle: 'script',
+    metaPlace: 'aside',
+    href: '',
+    tilt: '',
+    stampSrc: '',
+    stampLabel: '',
+    stampSize: 'md',
+    stampPlace: 'out',
+    postmark: false,
+    priority: false,
+    ratio: '3 / 2',
+    width: 640,
+    height: 400,
+  },
+)
 
 const showStamp = computed(() => Boolean(props.stampSrc || props.stampLabel))
 const frameStyle = computed(() => ({
@@ -142,7 +145,9 @@ const frameStyle = computed(() => ({
   gap: 0.6rem;
   padding: 0.7rem 0.2rem 0.15rem;
 }
-.caption { margin: 0; }
+.caption {
+  margin: 0;
+}
 .script .caption {
   color: var(--color-brick-dark);
   font-family: var(--font-display);
@@ -188,12 +193,17 @@ const frameStyle = computed(() => ({
   text-align: left;
   text-transform: none;
 }
-.extra { padding: 0 0.15rem 0.2rem; }
+.extra {
+  padding: 0 0.15rem 0.2rem;
+}
 .corner {
   position: absolute;
   z-index: 2;
 }
-.in .corner { top: 0.85rem; left: 0.85rem; }
+.in .corner {
+  top: 0.85rem;
+  left: 0.85rem;
+}
 .out .corner {
   top: -1.15rem;
   right: -0.85rem;
@@ -214,8 +224,17 @@ const frameStyle = computed(() => ({
   transform: rotate(-8deg);
 }
 @media (max-width: 600px) {
-  .out .corner { top: -0.7rem; right: -0.35rem; }
-  .out .corner :deep(.md) { width: 4.6rem; }
-  .out .postmark { top: 0.15rem; right: -1rem; width: 7.2rem; }
+  .out .corner {
+    top: -0.7rem;
+    right: -0.35rem;
+  }
+  .out .corner :deep(.md) {
+    width: 4.6rem;
+  }
+  .out .postmark {
+    top: 0.15rem;
+    right: -1rem;
+    width: 7.2rem;
+  }
 }
 </style>

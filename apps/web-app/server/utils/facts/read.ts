@@ -65,7 +65,12 @@ export function omitFactGap(value: string | null | undefined) {
  * Resolve one subject. `cited` is the fact_refs batch for that consumer.
  * A missing kind uses the column. A gap does not.
  */
-export function projectShownFacts(subject: 'place' | 'venue', subjectId: string, columns: FactColumns, cited: CitedFact[]): ShownFacts {
+export function projectShownFacts(
+  subject: 'place' | 'venue',
+  subjectId: string,
+  columns: FactColumns,
+  cited: CitedFact[],
+): ShownFacts {
   const phone = textField(pick(cited, 'phone', subject, subjectId), columns.phone)
   const address = textField(pick(cited, 'address', subject, subjectId), columns.address)
   const point = pointField(pick(cited, 'coordinates', subject, subjectId), columns.latitude, columns.longitude)
@@ -108,7 +113,8 @@ function pick(rows: CitedFact[], kind: string, subject: string, subjectId: strin
     if (row.kind !== kind) {
       continue
     }
-    const score = (row.path === `short.${kind}` ? 2 : 0) + (row.subjectType === subject && row.subjectId === subjectId ? 1 : 0)
+    const score =
+      (row.path === `short.${kind}` ? 2 : 0) + (row.subjectType === subject && row.subjectId === subjectId ? 1 : 0)
     if (score > bestScore) {
       best = row
       bestScore = score
@@ -131,7 +137,11 @@ function textField(fact: CitedFact | undefined, column: string | null | undefine
   return value.text.trim() || null
 }
 
-function pointField(fact: CitedFact | undefined, latitude: number | null | undefined, longitude: number | null | undefined) {
+function pointField(
+  fact: CitedFact | undefined,
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+) {
   if (!fact) {
     return validPoint(latitude, longitude)
   }
@@ -142,7 +152,7 @@ function pointField(fact: CitedFact | undefined, latitude: number | null | undef
   if (!value || typeof value !== 'object') {
     return { latitude: null, longitude: null }
   }
-  const record = value as { latitude?: unknown, longitude?: unknown }
+  const record = value as { latitude?: unknown; longitude?: unknown }
   return validPoint(asNumber(record.latitude), asNumber(record.longitude))
 }
 
@@ -154,9 +164,7 @@ function statusField(subject: 'place' | 'venue', fact: CitedFact | undefined, co
     return { status: placeCode(column) ?? 'unknown', statusGap: false }
   }
   if (fact.confidence === 'gap') {
-    return subject === 'place'
-      ? { status: 'unknown', statusGap: true }
-      : { status: null, statusGap: true }
+    return subject === 'place' ? { status: 'unknown', statusGap: true } : { status: null, statusGap: true }
   }
   const code = statusCode(subject, fact.value)
   if (subject === 'place') {
@@ -169,7 +177,7 @@ function statusCode(subject: 'place' | 'venue', value: unknown) {
   if (!value || typeof value !== 'object') {
     return null
   }
-  const record = value as { scope?: unknown, status?: unknown }
+  const record = value as { scope?: unknown; status?: unknown }
   if (record.scope !== subject || typeof record.status !== 'string') {
     return null
   }

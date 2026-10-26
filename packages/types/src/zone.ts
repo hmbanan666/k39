@@ -4,15 +4,19 @@
 export const SCHEDULE_TZ = 'Europe/Kaliningrad'
 
 export function zoneParts(at: Date) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
-    timeZone: SCHEDULE_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(at).map((part) => [part.type, part.value]))
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: SCHEDULE_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(at)
+      .map((part) => [part.type, part.value]),
+  )
   return parts as Record<'year' | 'month' | 'day' | 'hour' | 'minute', string>
 }
 
@@ -28,7 +32,13 @@ export function zonedTime(date: string, time: string) {
   const [hour, minute] = time.split(':').map(Number)
   const guess = Date.UTC(year!, month! - 1, day!, hour!, minute!)
   const parts = zoneParts(new Date(guess))
-  const asLocal = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute))
+  const asLocal = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+  )
   return new Date(guess - (asLocal - guess))
 }
 

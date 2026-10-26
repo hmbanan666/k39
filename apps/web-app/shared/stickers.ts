@@ -479,7 +479,7 @@ export const STICKERS = {
     scene: 'Hugs a big red heart.',
     mood: 'warm',
     pageTypes: ['modal', 'auth', 'about'],
-    themes: ['favorites', 'thanks', 'saved places', 'dates', 'Valentine\'s'],
+    themes: ['favorites', 'thanks', 'saved places', 'dates', "Valentine's"],
     seasons: ['all'],
     width: 512,
     height: 682,

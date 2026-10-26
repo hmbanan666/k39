@@ -12,7 +12,7 @@ export const SOURCE_AUDIT_LIMITS = {
 
 interface AuditClient {
   connect: () => Promise<unknown>
-  query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[], command?: string }>
+  query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[]; command?: string }>
   end: () => Promise<unknown>
   on: (event: 'error', listener: () => void) => unknown
 }
@@ -73,16 +73,23 @@ async function bounded<T>(operation: Promise<T>, milliseconds: number): Promise<
 /** No database singleton, app boot, migrations, writers, or source payload output. */
 export async function auditSourceLists(
   databaseUrl: string | undefined,
-  createClient: (url: string) => AuditClient = (url) => new pg.Client({
-    connectionString: url,
-    connectionTimeoutMillis: SOURCE_AUDIT_LIMITS.connectMs,
-    query_timeout: SOURCE_AUDIT_LIMITS.queryMs,
-    application_name: 'k39-source-list-audit',
-  }),
+  createClient: (url: string) => AuditClient = (url) =>
+    new pg.Client({
+      connectionString: url,
+      connectionTimeoutMillis: SOURCE_AUDIT_LIMITS.connectMs,
+      query_timeout: SOURCE_AUDIT_LIMITS.queryMs,
+      application_name: 'k39-source-list-audit',
+    }),
 ): Promise<SourceAuditReport> {
   const report: SourceAuditReport = {
-    status: 'blocked', scanned: 0, problemCount: 0, problems: [],
-    problemsTruncated: false, readOnly: false, rollback: false, cleanup: false,
+    status: 'blocked',
+    scanned: 0,
+    problemCount: 0,
+    problems: [],
+    problemsTruncated: false,
+    readOnly: false,
+    rollback: false,
+    cleanup: false,
     limits: SOURCE_AUDIT_LIMITS,
   }
   if (!databaseUrl?.trim()) {
@@ -102,9 +109,9 @@ export async function auditSourceLists(
     phase = 'begin'
     await bounded(client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'), SOURCE_AUDIT_LIMITS.queryMs)
     // Server limits bound work even after a client-side timeout/disconnection.
-    await bounded(client.query('SET LOCAL statement_timeout = \'10s\''), SOURCE_AUDIT_LIMITS.queryMs)
-    await bounded(client.query('SET LOCAL lock_timeout = \'2s\''), SOURCE_AUDIT_LIMITS.queryMs)
-    await bounded(client.query('SET LOCAL idle_in_transaction_session_timeout = \'15s\''), SOURCE_AUDIT_LIMITS.queryMs)
+    await bounded(client.query("SET LOCAL statement_timeout = '10s'"), SOURCE_AUDIT_LIMITS.queryMs)
+    await bounded(client.query("SET LOCAL lock_timeout = '2s'"), SOURCE_AUDIT_LIMITS.queryMs)
+    await bounded(client.query("SET LOCAL idle_in_transaction_session_timeout = '15s'"), SOURCE_AUDIT_LIMITS.queryMs)
     phase = 'read_only_assertion'
     const readOnly = await bounded(client.query('SHOW transaction_read_only'), SOURCE_AUDIT_LIMITS.queryMs)
     report.readOnly = readOnly.rows[0]?.transaction_read_only === 'on'
@@ -112,7 +119,10 @@ export async function auditSourceLists(
       throw new Error('Read-only assertion failed')
     }
     phase = 'scan'
-    const result = await bounded(client.query(scanSql, [SOURCE_AUDIT_LIMITS.sourceBytes, SOURCE_AUDIT_LIMITS.records + 1]), SOURCE_AUDIT_LIMITS.queryMs)
+    const result = await bounded(
+      client.query(scanSql, [SOURCE_AUDIT_LIMITS.sourceBytes, SOURCE_AUDIT_LIMITS.records + 1]),
+      SOURCE_AUDIT_LIMITS.queryMs,
+    )
     if (result.rows.length > SOURCE_AUDIT_LIMITS.records) {
       report.failure = 'record_limit'
     }
@@ -124,7 +134,16 @@ export async function auditSourceLists(
         report.failure ??= 'source_byte_limit'
         problem = 'Source list exceeds audit byte limit; not validated'
       } else if (sources != null) {
-        if (!Array.isArray(sources) || sources.some((source) => !source || typeof source !== 'object' || typeof source.title !== 'string' || typeof source.url !== 'string')) {
+        if (
+          !Array.isArray(sources) ||
+          sources.some(
+            (source) =>
+              !source ||
+              typeof source !== 'object' ||
+              typeof source.title !== 'string' ||
+              typeof source.url !== 'string',
+          )
+        ) {
           problem = 'Invalid source list shape'
         } else {
           try {
@@ -142,10 +161,12 @@ export async function auditSourceLists(
         report.problemCount += 1
         if (report.problems.length < SOURCE_AUDIT_LIMITS.problems) {
           report.problems.push({
-            entity: String(row.entity).slice(0, 80), id: String(row.id).slice(0, 160),
+            entity: String(row.entity).slice(0, 80),
+            id: String(row.id).slice(0, 160),
             slug: row.slug == null ? null : String(row.slug).slice(0, 160),
             origin: String(row.origin).slice(0, 80),
-            ...(Array.isArray(sources) ? { rows: sources.length } : {}), problem,
+            ...(Array.isArray(sources) ? { rows: sources.length } : {}),
+            problem,
           })
         }
       }

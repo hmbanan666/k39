@@ -21,7 +21,7 @@ export interface GuestCreateInput {
 }
 
 function uniqueReason(error: unknown): GuestWriteReason | null {
-  const wrapped = error as { code?: string, constraint?: string, cause?: { code?: string, constraint?: string } }
+  const wrapped = error as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } }
   const code = wrapped.code ?? wrapped.cause?.code
   if (code !== '23505') {
     return null
@@ -41,7 +41,9 @@ export class Guests {
     await useDatabase().insert(guestAudits).values({ submissionId, actorUserId, action })
   }
 
-  static async create(input: GuestCreateInput): Promise<{ ok: true, id: string } | { ok: false, reason: GuestWriteReason }> {
+  static async create(
+    input: GuestCreateInput,
+  ): Promise<{ ok: true; id: string } | { ok: false; reason: GuestWriteReason }> {
     const db = useDatabase()
     const sameSubject = and(
       eq(guestSubmissions.userId, input.userId),
@@ -49,48 +51,68 @@ export class Guests {
       eq(guestSubmissions.subjectId, input.subjectId),
       eq(guestSubmissions.kind, input.kind),
     )
-    const [pending] = await db.select({ id: guestSubmissions.id }).from(guestSubmissions).where(and(sameSubject, eq(guestSubmissions.status, 'pending'))).limit(1)
+    const [pending] = await db
+      .select({ id: guestSubmissions.id })
+      .from(guestSubmissions)
+      .where(and(sameSubject, eq(guestSubmissions.status, 'pending')))
+      .limit(1)
     if (pending) {
       return { ok: false, reason: 'pending' }
     }
     if (input.kind === 'review' || input.kind === 'tip') {
-      const [accepted] = await db.select({ id: guestSubmissions.id }).from(guestSubmissions).where(and(sameSubject, eq(guestSubmissions.status, 'accepted'))).limit(1)
+      const [accepted] = await db
+        .select({ id: guestSubmissions.id })
+        .from(guestSubmissions)
+        .where(and(sameSubject, eq(guestSubmissions.status, 'accepted')))
+        .limit(1)
       if (accepted) {
         return { ok: false, reason: 'cap' }
       }
     }
     if (input.kind === 'photo') {
-      const rows = await db.select({ id: guestSubmissions.id }).from(guestSubmissions).where(and(sameSubject, eq(guestSubmissions.status, 'accepted')))
+      const rows = await db
+        .select({ id: guestSubmissions.id })
+        .from(guestSubmissions)
+        .where(and(sameSubject, eq(guestSubmissions.status, 'accepted')))
       if (rows.length >= 3) {
         return { ok: false, reason: 'cap' }
       }
     }
     if (input.bodyKey) {
-      const [dup] = await db.select({ id: guestSubmissions.id }).from(guestSubmissions).where(and(
-        eq(guestSubmissions.subjectType, input.subjectType),
-        eq(guestSubmissions.subjectId, input.subjectId),
-        eq(guestSubmissions.kind, input.kind),
-        eq(guestSubmissions.bodyKey, input.bodyKey),
-        inArray(guestSubmissions.status, ['pending', 'accepted']),
-      )).limit(1)
+      const [dup] = await db
+        .select({ id: guestSubmissions.id })
+        .from(guestSubmissions)
+        .where(
+          and(
+            eq(guestSubmissions.subjectType, input.subjectType),
+            eq(guestSubmissions.subjectId, input.subjectId),
+            eq(guestSubmissions.kind, input.kind),
+            eq(guestSubmissions.bodyKey, input.bodyKey),
+            inArray(guestSubmissions.status, ['pending', 'accepted']),
+          ),
+        )
+        .limit(1)
       if (dup) {
         return { ok: false, reason: 'duplicate' }
       }
     }
     try {
-      const [row] = await db.insert(guestSubmissions).values({
-        userId: input.userId,
-        subjectType: input.subjectType,
-        subjectId: input.subjectId,
-        kind: input.kind,
-        body: input.body,
-        alt: input.alt,
-        correctionKind: input.correctionKind,
-        correctionValue: input.correctionValue,
-        sourceUrl: input.sourceUrl,
-        mediaId: input.mediaId,
-        bodyKey: input.bodyKey,
-      }).returning({ id: guestSubmissions.id })
+      const [row] = await db
+        .insert(guestSubmissions)
+        .values({
+          userId: input.userId,
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+          kind: input.kind,
+          body: input.body,
+          alt: input.alt,
+          correctionKind: input.correctionKind,
+          correctionValue: input.correctionValue,
+          sourceUrl: input.sourceUrl,
+          mediaId: input.mediaId,
+          bodyKey: input.bodyKey,
+        })
+        .returning({ id: guestSubmissions.id })
       if (!row) {
         throw new Error('Guest insert failed')
       }
@@ -112,14 +134,18 @@ export class Guests {
 
   static async decide(id: string, actorUserId: string | null, status: 'accepted' | 'rejected', note: string | null) {
     const now = new Date().toISOString()
-    const [row] = await useDatabase().update(guestSubmissions).set({
-      status,
-      decidedBy: actorUserId,
-      decidedAt: now,
-      decisionNote: note,
-      updatedAt: now,
-      disputed: false,
-    }).where(and(eq(guestSubmissions.id, id), eq(guestSubmissions.status, 'pending'))).returning()
+    const [row] = await useDatabase()
+      .update(guestSubmissions)
+      .set({
+        status,
+        decidedBy: actorUserId,
+        decidedAt: now,
+        decisionNote: note,
+        updatedAt: now,
+        disputed: false,
+      })
+      .where(and(eq(guestSubmissions.id, id), eq(guestSubmissions.status, 'pending')))
+      .returning()
     if (row) {
       await Guests.audit(row.id, actorUserId, status === 'accepted' ? 'accept' : 'reject')
     }
@@ -128,10 +154,14 @@ export class Guests {
 
   static async flagDispute(id: string, actorUserId: string | null) {
     const now = new Date().toISOString()
-    const [row] = await useDatabase().update(guestSubmissions).set({
-      disputed: true,
-      updatedAt: now,
-    }).where(and(eq(guestSubmissions.id, id), eq(guestSubmissions.status, 'pending'))).returning()
+    const [row] = await useDatabase()
+      .update(guestSubmissions)
+      .set({
+        disputed: true,
+        updatedAt: now,
+      })
+      .where(and(eq(guestSubmissions.id, id), eq(guestSubmissions.status, 'pending')))
+      .returning()
     if (row) {
       await Guests.audit(row.id, actorUserId, 'dispute')
     }
@@ -145,17 +175,20 @@ export class Guests {
     }
     const mediaId = current.mediaId
     const now = new Date().toISOString()
-    await useDatabase().update(guestSubmissions).set({
-      status: 'removed',
-      body: null,
-      alt: null,
-      correctionValue: null,
-      sourceUrl: null,
-      decisionNote: null,
-      bodyKey: null,
-      mediaId: null,
-      updatedAt: now,
-    }).where(eq(guestSubmissions.id, id))
+    await useDatabase()
+      .update(guestSubmissions)
+      .set({
+        status: 'removed',
+        body: null,
+        alt: null,
+        correctionValue: null,
+        sourceUrl: null,
+        decisionNote: null,
+        bodyKey: null,
+        mediaId: null,
+        updatedAt: now,
+      })
+      .where(eq(guestSubmissions.id, id))
     await Guests.audit(id, actorUserId, action)
     return { mediaId }
   }
@@ -169,24 +202,32 @@ export class Guests {
   }
 
   static async clearUser(userId: string) {
-    const rows = await useDatabase().select({ id: guestSubmissions.id, mediaId: guestSubmissions.mediaId }).from(guestSubmissions).where(and(
-      eq(guestSubmissions.userId, userId),
-      ne(guestSubmissions.status, 'removed'),
-    ))
-    const mediaIds = rows.flatMap((row) => row.mediaId ? [row.mediaId] : [])
+    const rows = await useDatabase()
+      .select({ id: guestSubmissions.id, mediaId: guestSubmissions.mediaId })
+      .from(guestSubmissions)
+      .where(and(eq(guestSubmissions.userId, userId), ne(guestSubmissions.status, 'removed')))
+    const mediaIds = rows.flatMap((row) => (row.mediaId ? [row.mediaId] : []))
     const now = new Date().toISOString()
     if (rows.length) {
-      await useDatabase().update(guestSubmissions).set({
-        status: 'removed',
-        body: null,
-        alt: null,
-        correctionValue: null,
-        sourceUrl: null,
-        decisionNote: null,
-        bodyKey: null,
-        mediaId: null,
-        updatedAt: now,
-      }).where(inArray(guestSubmissions.id, rows.map((row) => row.id)))
+      await useDatabase()
+        .update(guestSubmissions)
+        .set({
+          status: 'removed',
+          body: null,
+          alt: null,
+          correctionValue: null,
+          sourceUrl: null,
+          decisionNote: null,
+          bodyKey: null,
+          mediaId: null,
+          updatedAt: now,
+        })
+        .where(
+          inArray(
+            guestSubmissions.id,
+            rows.map((row) => row.id),
+          ),
+        )
       for (const row of rows) {
         await Guests.audit(row.id, userId, 'clear')
       }
@@ -219,49 +260,68 @@ export class Guests {
   }
 
   static async pendingQueue() {
-    return useDatabase().select({
-      id: guestSubmissions.id,
-      createdAt: guestSubmissions.createdAt,
-      kind: guestSubmissions.kind,
-      body: guestSubmissions.body,
-      alt: guestSubmissions.alt,
-      correctionKind: guestSubmissions.correctionKind,
-      correctionValue: guestSubmissions.correctionValue,
-      sourceUrl: guestSubmissions.sourceUrl,
-      disputed: guestSubmissions.disputed,
-      mediaId: guestSubmissions.mediaId,
-      subjectType: guestSubmissions.subjectType,
-      subjectId: guestSubmissions.subjectId,
-      userName: users.name,
-      placeTitle: places.title,
-      placeSlug: places.slug,
-      venueName: venues.name,
-      venueSlug: venues.slug,
-    }).from(guestSubmissions).innerJoin(users, eq(users.id, guestSubmissions.userId)).leftJoin(places, and(eq(guestSubmissions.subjectType, 'place'), eq(places.id, guestSubmissions.subjectId))).leftJoin(venues, and(eq(guestSubmissions.subjectType, 'venue'), eq(venues.id, guestSubmissions.subjectId))).where(eq(guestSubmissions.status, 'pending')).orderBy(asc(guestSubmissions.createdAt))
+    return useDatabase()
+      .select({
+        id: guestSubmissions.id,
+        createdAt: guestSubmissions.createdAt,
+        kind: guestSubmissions.kind,
+        body: guestSubmissions.body,
+        alt: guestSubmissions.alt,
+        correctionKind: guestSubmissions.correctionKind,
+        correctionValue: guestSubmissions.correctionValue,
+        sourceUrl: guestSubmissions.sourceUrl,
+        disputed: guestSubmissions.disputed,
+        mediaId: guestSubmissions.mediaId,
+        subjectType: guestSubmissions.subjectType,
+        subjectId: guestSubmissions.subjectId,
+        userName: users.name,
+        placeTitle: places.title,
+        placeSlug: places.slug,
+        venueName: venues.name,
+        venueSlug: venues.slug,
+      })
+      .from(guestSubmissions)
+      .innerJoin(users, eq(users.id, guestSubmissions.userId))
+      .leftJoin(places, and(eq(guestSubmissions.subjectType, 'place'), eq(places.id, guestSubmissions.subjectId)))
+      .leftJoin(venues, and(eq(guestSubmissions.subjectType, 'venue'), eq(venues.id, guestSubmissions.subjectId)))
+      .where(eq(guestSubmissions.status, 'pending'))
+      .orderBy(asc(guestSubmissions.createdAt))
   }
 
   static async forUser(userId: string) {
-    return useDatabase().select({
-      id: guestSubmissions.id,
-      createdAt: guestSubmissions.createdAt,
-      decidedAt: guestSubmissions.decidedAt,
-      kind: guestSubmissions.kind,
-      status: guestSubmissions.status,
-      decisionNote: guestSubmissions.decisionNote,
-      subjectType: guestSubmissions.subjectType,
-      placeTitle: places.title,
-      placeSlug: places.slug,
-      venueName: venues.name,
-      venueSlug: venues.slug,
-    }).from(guestSubmissions).leftJoin(places, and(eq(guestSubmissions.subjectType, 'place'), eq(places.id, guestSubmissions.subjectId))).leftJoin(venues, and(eq(guestSubmissions.subjectType, 'venue'), eq(venues.id, guestSubmissions.subjectId))).where(and(eq(guestSubmissions.userId, userId), ne(guestSubmissions.status, 'removed'))).orderBy(desc(guestSubmissions.createdAt))
+    return useDatabase()
+      .select({
+        id: guestSubmissions.id,
+        createdAt: guestSubmissions.createdAt,
+        decidedAt: guestSubmissions.decidedAt,
+        kind: guestSubmissions.kind,
+        status: guestSubmissions.status,
+        decisionNote: guestSubmissions.decisionNote,
+        subjectType: guestSubmissions.subjectType,
+        placeTitle: places.title,
+        placeSlug: places.slug,
+        venueName: venues.name,
+        venueSlug: venues.slug,
+      })
+      .from(guestSubmissions)
+      .leftJoin(places, and(eq(guestSubmissions.subjectType, 'place'), eq(places.id, guestSubmissions.subjectId)))
+      .leftJoin(venues, and(eq(guestSubmissions.subjectType, 'venue'), eq(venues.id, guestSubmissions.subjectId)))
+      .where(and(eq(guestSubmissions.userId, userId), ne(guestSubmissions.status, 'removed')))
+      .orderBy(desc(guestSubmissions.createdAt))
   }
 
   static async openSectionSignals() {
-    return useDatabase().select().from(verificationQueue).where(and(
-      isNull(verificationQueue.resolvedAt),
-      eq(verificationQueue.reason, 'guest_report'),
-      eq(verificationQueue.target, 'section'),
-    )).orderBy(asc(verificationQueue.enqueuedAt))
+    return useDatabase()
+      .select()
+      .from(verificationQueue)
+      .where(
+        and(
+          isNull(verificationQueue.resolvedAt),
+          eq(verificationQueue.reason, 'guest_report'),
+          eq(verificationQueue.target, 'section'),
+        ),
+      )
+      .orderBy(asc(verificationQueue.enqueuedAt))
   }
 
   /**
@@ -278,19 +338,25 @@ export class Guests {
     url: string | null
     priority: number
   }) {
-    const live = input.correctionKind === 'other'
-      ? []
-      : await useDatabase().select({
-          id: facts.id,
-          kind: facts.kind,
-          slot: facts.slot,
-          value: facts.value,
-        }).from(facts).where(and(
-          eq(facts.subjectType, input.subjectType),
-          eq(facts.subjectId, input.subjectId),
-          eq(facts.kind, input.correctionKind),
-          isNull(facts.retiredAt),
-        ))
+    const live =
+      input.correctionKind === 'other'
+        ? []
+        : await useDatabase()
+            .select({
+              id: facts.id,
+              kind: facts.kind,
+              slot: facts.slot,
+              value: facts.value,
+            })
+            .from(facts)
+            .where(
+              and(
+                eq(facts.subjectType, input.subjectType),
+                eq(facts.subjectId, input.subjectId),
+                eq(facts.kind, input.correctionKind),
+                isNull(facts.retiredAt),
+              ),
+            )
     const hints = live.map((fact) => ({
       id: fact.id,
       kind: fact.kind,
@@ -301,12 +367,18 @@ export class Guests {
     const text = guestReportText(input.value, input.note)
     const proposalInput = { submissionId: input.submissionId, text, url: input.url }
     if (matched) {
-      const [existing] = await useDatabase().select().from(verificationQueue).where(and(
-        eq(verificationQueue.target, 'fact'),
-        eq(verificationQueue.factId, matched.id),
-        eq(verificationQueue.reason, 'guest_report'),
-        isNull(verificationQueue.resolvedAt),
-      )).limit(1)
+      const [existing] = await useDatabase()
+        .select()
+        .from(verificationQueue)
+        .where(
+          and(
+            eq(verificationQueue.target, 'fact'),
+            eq(verificationQueue.factId, matched.id),
+            eq(verificationQueue.reason, 'guest_report'),
+            isNull(verificationQueue.resolvedAt),
+          ),
+        )
+        .limit(1)
       return Facts.enqueue({
         target: 'fact',
         factId: matched.id,
@@ -319,14 +391,20 @@ export class Guests {
       })
     }
     const path = guestSectionPath(input.correctionKind)
-    const [existing] = await useDatabase().select().from(verificationQueue).where(and(
-      eq(verificationQueue.target, 'section'),
-      eq(verificationQueue.pageType, input.subjectType),
-      eq(verificationQueue.entityId, input.subjectId),
-      eq(verificationQueue.path, path),
-      eq(verificationQueue.reason, 'guest_report'),
-      isNull(verificationQueue.resolvedAt),
-    )).limit(1)
+    const [existing] = await useDatabase()
+      .select()
+      .from(verificationQueue)
+      .where(
+        and(
+          eq(verificationQueue.target, 'section'),
+          eq(verificationQueue.pageType, input.subjectType),
+          eq(verificationQueue.entityId, input.subjectId),
+          eq(verificationQueue.path, path),
+          eq(verificationQueue.reason, 'guest_report'),
+          isNull(verificationQueue.resolvedAt),
+        ),
+      )
+      .limit(1)
     return Facts.enqueue({
       target: 'section',
       pageType: input.subjectType,

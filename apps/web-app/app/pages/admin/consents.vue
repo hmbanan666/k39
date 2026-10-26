@@ -2,14 +2,11 @@
   <main class="admin">
     <h1>Согласия</h1>
     <p class="muted">
-      Запись появляется, когда человек нажимает кнопку входа. Эта кнопка и есть согласие, отдельной галочки нет. Отзыв не удаляет строку.
+      Запись появляется, когда человек нажимает кнопку входа. Эта кнопка и есть согласие, отдельной галочки нет. Отзыв
+      не удаляет строку.
     </p>
-    <p v-if="pending">
-      Загружаю…
-    </p>
-    <p v-else-if="!rows.length">
-      Записей согласия пока нет.
-    </p>
+    <p v-if="pending"> Загружаю… </p>
+    <p v-else-if="!rows.length"> Записей согласия пока нет. </p>
     <div
       v-else
       class="table"
@@ -109,10 +106,29 @@ async function withdraw(id: string) {
 </script>
 
 <style scoped>
-.admin { max-width: 64rem; margin: 0 auto; padding: 1.5rem; }
-.muted { color: var(--color-sea); }
-.table { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--color-line); text-align: left; vertical-align: top; }
-.warn { color: var(--color-brick-dark); }
+.admin {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+.muted {
+  color: var(--color-sea);
+}
+.table {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--color-line);
+  text-align: left;
+  vertical-align: top;
+}
+.warn {
+  color: var(--color-brick-dark);
+}
 </style>

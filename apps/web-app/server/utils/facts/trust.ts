@@ -14,15 +14,18 @@ export async function trustByPath() {
   const byPage = new Map<string, TrustCounts>()
   for (const page of pages) {
     const stored = reviewed.get(`${page.pageType}:${page.entityId}`) ?? []
-    byPage.set(`${page.pageType}:${page.entityId}`, trustOf({
-      staleFacts: stale.get(`${page.pageType}:${page.entityId}`) ?? 0,
-      unreviewed: unreviewedSections(page.sections, stored).length,
-    }))
+    byPage.set(
+      `${page.pageType}:${page.entityId}`,
+      trustOf({
+        staleFacts: stale.get(`${page.pageType}:${page.entityId}`) ?? 0,
+        unreviewed: unreviewedSections(page.sections, stored).length,
+      }),
+    )
   }
   return byPage
 }
 
-export async function withTrust<T extends { pageType: string, entityId: string }>(rows: T[]) {
+export async function withTrust<T extends { pageType: string; entityId: string }>(rows: T[]) {
   const trust = await trustByPath()
   return rows.map((row) => ({
     ...row,

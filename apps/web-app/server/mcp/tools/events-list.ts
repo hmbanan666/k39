@@ -6,7 +6,8 @@ import { practicalTarget } from '../../utils/practical/target'
 
 export default defineStrictMcpTool({
   name: 'events_list',
-  description: 'List events (ADR 0046), soonest first. Filter by a place or venue (subjectType with subjectId or slug), or set upcoming true for rows that are not cancelled, not expired, and not past. Each row names its subject.',
+  description:
+    'List events (ADR 0046), soonest first. Filter by a place or venue (subjectType with subjectId or slug), or set upcoming true for rows that are not cancelled, not expired, and not past. Each row names its subject.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     subjectType: z.enum(['place', 'venue']).optional(),
@@ -24,9 +25,12 @@ export default defineStrictMcpTool({
       upcomingAt: upcoming ? now.toISOString() : undefined,
       limit,
     })
-    const subjects = new Map<string, { slug: string, title: string, status: string }>()
+    const subjects = new Map<string, { slug: string; title: string; status: string }>()
     for (const type of ['place', 'venue']) {
-      const found = await db.practicalSubjects(type, rows.filter((row) => row.subjectType === type).map((row) => row.subjectId))
+      const found = await db.practicalSubjects(
+        type,
+        rows.filter((row) => row.subjectType === type).map((row) => row.subjectId),
+      )
       for (const [key, value] of found) {
         subjects.set(`${type}:${key}`, value)
       }

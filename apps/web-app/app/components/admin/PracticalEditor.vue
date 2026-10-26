@@ -2,8 +2,8 @@
   <section class="practical">
     <h2>Билеты{{ subjectType === 'route' ? '' : ' и события' }}</h2>
     <p class="live-note">
-      Билеты, допуслуги и события сохраняются отдельно от формы и сразу видны на опубликованной странице.
-      Сумма и дата берутся только с официального сайта.
+      Билеты, допуслуги и события сохраняются отдельно от формы и сразу видны на опубликованной странице. Сумма и дата
+      берутся только с официального сайта.
     </p>
 
     <h3>Билеты</h3>
@@ -11,7 +11,8 @@
       v-if="!tickets.length"
       class="muted"
     >
-      Строк нет. {{ subjectType === 'place' ? 'На странице показывается поле «Цена».' : 'Блока «Билеты» на странице нет.' }}
+      Строк нет.
+      {{ subjectType === 'place' ? 'На странице показывается поле «Цена».' : 'Блока «Билеты» на странице нет.' }}
     </p>
     <fieldset
       v-for="(row, index) in tickets"
@@ -23,7 +24,8 @@
         <span
           v-if="row.slot && !shownSlots.includes(row.slot)"
           class="stale"
-        >не показывается: проверка старше года или не сохранена</span>
+          >не показывается: проверка старше года или не сохранена</span
+        >
       </legend>
       <div class="grid">
         <UiField label="Слот (латиница)">
@@ -99,10 +101,16 @@
     <p class="muted">
       Платные услуги: аудиогид, экскурсия или отдельный сеанс. Входной билет сохраняется в «Билетах».
     </p>
-    <p v-if="!extrasWriteEnabled" class="muted">
+    <p
+      v-if="!extrasWriteEnabled"
+      class="muted"
+    >
       Сохранение допуслуг пока недоступно. Существующие строки доступны для просмотра.
     </p>
-    <p v-if="!extras.length" class="muted">
+    <p
+      v-if="!extras.length"
+      class="muted"
+    >
       Допуслуг нет.
     </p>
     <fieldset
@@ -113,7 +121,11 @@
     >
       <legend>
         {{ row.label || `Допуслуга ${index + 1}` }}
-        <span v-if="row.slot && !shownExtraSlots.includes(row.slot)" class="stale">не показывается: проверка старше года или не сохранена</span>
+        <span
+          v-if="row.slot && !shownExtraSlots.includes(row.slot)"
+          class="stale"
+          >не показывается: проверка старше года или не сохранена</span
+        >
       </legend>
       <div class="grid">
         <UiField label="Слот (латиница)">
@@ -124,30 +136,51 @@
           />
         </UiField>
         <UiField label="Название услуги">
-          <UiInput v-model="row.label" required />
+          <UiInput
+            v-model="row.label"
+            required
+          />
         </UiField>
         <UiField label="Цена, ₽">
-          <UiInput v-model="row.priceRub" type="number" />
+          <UiInput
+            v-model="row.priceRub"
+            type="number"
+          />
         </UiField>
         <UiField label="За что указана цена">
-          <UiSelect v-model="row.unit" :options="unitOptions" />
+          <UiSelect
+            v-model="row.unit"
+            :options="unitOptions"
+          />
         </UiField>
       </div>
       <UiField label="Условие">
-        <UiInput v-model="row.condition" placeholder="Для группы до 10 человек. Нужен входной билет." />
+        <UiInput
+          v-model="row.condition"
+          placeholder="Для группы до 10 человек. Нужен входной билет."
+        />
       </UiField>
       <div class="grid">
         <UiField label="Источник: ссылка на официальный сайт">
-          <UiInput v-model="row.sourceUrl" type="url" />
+          <UiInput
+            v-model="row.sourceUrl"
+            type="url"
+          />
         </UiField>
         <UiField label="Источник: название">
           <UiInput v-model="row.sourceTitle" />
         </UiField>
         <UiField label="Проверено">
-          <UiInput v-model="row.checkedAt" type="date" />
+          <UiInput
+            v-model="row.checkedAt"
+            type="date"
+          />
         </UiField>
       </div>
-      <UiButton variant="quiet" @click="extras.splice(index, 1)">
+      <UiButton
+        variant="quiet"
+        @click="extras.splice(index, 1)"
+      >
         Убрать допуслугу
       </UiButton>
     </fieldset>
@@ -159,7 +192,10 @@
       >
         Добавить допуслугу
       </UiButton>
-      <UiButton :disabled="!extrasWriteEnabled || busy" @click="saveExtras">
+      <UiButton
+        :disabled="!extrasWriteEnabled || busy"
+        @click="saveExtras"
+      >
         Сохранить допуслуги
       </UiButton>
     </div>
@@ -179,11 +215,13 @@
           <span
             v-if="item.cancelledAt"
             class="muted"
-          >отменено</span>
+            >отменено</span
+          >
           <span
             v-else-if="!item.shown"
             class="muted"
-          >прошло</span>
+            >прошло</span
+          >
           <template v-else>
             <UiButton
               variant="quiet"
@@ -304,7 +342,14 @@
 import type { FetchError } from 'ofetch'
 import type { AdmissionAudience, AdmissionExtraUnit } from '~~/shared/admission'
 import type { EventTiming } from '~~/shared/events'
-import { ADMISSION_AUDIENCES, ADMISSION_EXTRA_MAX_ROWS, ADMISSION_EXTRA_UNITS, ADMISSION_LABELS, ADMISSION_MAX_ROWS, ADMISSION_UNIT_LABELS } from '~~/shared/admission'
+import {
+  ADMISSION_AUDIENCES,
+  ADMISSION_EXTRA_MAX_ROWS,
+  ADMISSION_EXTRA_UNITS,
+  ADMISSION_LABELS,
+  ADMISSION_MAX_ROWS,
+  ADMISSION_UNIT_LABELS,
+} from '~~/shared/admission'
 import { eventWhen } from '~~/shared/events'
 import { localNow } from '~~/shared/schedule'
 
@@ -336,19 +381,34 @@ interface AdminEvent {
   shown: boolean
 }
 interface PracticalData {
-  admission: Array<Omit<TicketRow, 'condition' | 'label' | 'priceRub'> & { priceRub: number, condition: string | null, label: string | null }>
-  admissionExtras: Array<Omit<ExtraRow, 'condition' | 'priceRub' | 'unit'> & { priceRub: number, condition: string | null, unit: AdmissionExtraUnit | null }>
+  admission: Array<
+    Omit<TicketRow, 'condition' | 'label' | 'priceRub'> & {
+      priceRub: number
+      condition: string | null
+      label: string | null
+    }
+  >
+  admissionExtras: Array<
+    Omit<ExtraRow, 'condition' | 'priceRub' | 'unit'> & {
+      priceRub: number
+      condition: string | null
+      unit: AdmissionExtraUnit | null
+    }
+  >
   shownSlots: string[]
   shownExtraSlots: string[]
   extrasWriteEnabled: boolean
   events: AdminEvent[]
 }
 
-const props = defineProps<{ subjectType: 'place' | 'venue' | 'route', subjectId: string }>()
+const props = defineProps<{ subjectType: 'place' | 'venue' | 'route'; subjectId: string }>()
 const requestFetch = useRequestFetch()
 const base = `/api/admin/practical/${props.subjectType}/${props.subjectId}`
 const audienceOptions = ADMISSION_AUDIENCES.map((value) => ({ value, label: ADMISSION_LABELS[value] }))
-const unitOptions = [{ value: 'unstated', label: 'Не указано в источнике' }, ...ADMISSION_EXTRA_UNITS.map((value) => ({ value, label: ADMISSION_UNIT_LABELS[value] }))]
+const unitOptions = [
+  { value: 'unstated', label: 'Не указано в источнике' },
+  ...ADMISSION_EXTRA_UNITS.map((value) => ({ value, label: ADMISSION_UNIT_LABELS[value] })),
+]
 const today = () => localNow(new Date()).date
 
 const tickets = ref<TicketRow[]>([])
@@ -386,7 +446,11 @@ function fill(data: PracticalData, section?: 'rows' | 'extras' | 'events') {
     shownSlots.value = data.shownSlots
   }
   if (!section || section === 'extras') {
-    extras.value = (data.admissionExtras ?? []).map((row) => ({ ...row, condition: row.condition || '', unit: row.unit ?? 'unstated' }))
+    extras.value = (data.admissionExtras ?? []).map((row) => ({
+      ...row,
+      condition: row.condition || '',
+      unit: row.unit ?? 'unstated',
+    }))
     shownExtraSlots.value = data.shownExtraSlots ?? []
   }
   extrasWriteEnabled.value = data.extrasWriteEnabled ?? false
@@ -406,7 +470,16 @@ function failure(error: unknown, fallback: string) {
 }
 
 function addTicket() {
-  tickets.value.push({ slot: '', audience: 'general', priceRub: '', condition: '', label: '', sourceUrl: '', sourceTitle: '', checkedAt: today() })
+  tickets.value.push({
+    slot: '',
+    audience: 'general',
+    priceRub: '',
+    condition: '',
+    label: '',
+    sourceUrl: '',
+    sourceTitle: '',
+    checkedAt: today(),
+  })
 }
 
 async function saveTickets() {
@@ -426,7 +499,9 @@ async function saveTickets() {
     }))
     const saved = await $fetch<{ writingWarnings: string[] }>(`${base}/admission`, { method: 'PUT', body: { rows } })
     await reload('rows')
-    message.value = saved.writingWarnings.length ? `Билеты сохранены. Замечания: ${saved.writingWarnings.join('; ')}` : 'Билеты сохранены'
+    message.value = saved.writingWarnings.length
+      ? `Билеты сохранены. Замечания: ${saved.writingWarnings.join('; ')}`
+      : 'Билеты сохранены'
   } catch (error) {
     message.value = failure(error, 'Билеты не сохранились')
   } finally {
@@ -435,7 +510,16 @@ async function saveTickets() {
 }
 
 function addExtra() {
-  extras.value.push({ slot: '', unit: 'unstated', priceRub: '', condition: '', label: '', sourceUrl: '', sourceTitle: '', checkedAt: today() })
+  extras.value.push({
+    slot: '',
+    unit: 'unstated',
+    priceRub: '',
+    condition: '',
+    label: '',
+    sourceUrl: '',
+    sourceTitle: '',
+    checkedAt: today(),
+  })
 }
 
 async function saveExtras() {
@@ -443,13 +527,24 @@ async function saveExtras() {
   message.value = ''
   try {
     const rows = extras.value.map((row, index) => ({
-      slot: row.slot.trim(), label: row.label.trim(), priceRub: Number(row.priceRub), unit: row.unit === 'unstated' ? null : row.unit,
-      condition: row.condition.trim() || null, sourceUrl: row.sourceUrl.trim(), sourceTitle: row.sourceTitle.trim(),
-      checkedAt: row.checkedAt, sortOrder: index,
+      slot: row.slot.trim(),
+      label: row.label.trim(),
+      priceRub: Number(row.priceRub),
+      unit: row.unit === 'unstated' ? null : row.unit,
+      condition: row.condition.trim() || null,
+      sourceUrl: row.sourceUrl.trim(),
+      sourceTitle: row.sourceTitle.trim(),
+      checkedAt: row.checkedAt,
+      sortOrder: index,
     }))
-    const saved = await $fetch<{ writingWarnings: string[] }>(`${base}/admission`, { method: 'PUT', body: { extras: rows } })
+    const saved = await $fetch<{ writingWarnings: string[] }>(`${base}/admission`, {
+      method: 'PUT',
+      body: { extras: rows },
+    })
     await reload('extras')
-    message.value = saved.writingWarnings.length ? `Допуслуги сохранены. Замечания: ${saved.writingWarnings.join('; ')}` : 'Допуслуги сохранены'
+    message.value = saved.writingWarnings.length
+      ? `Допуслуги сохранены. Замечания: ${saved.writingWarnings.join('; ')}`
+      : 'Допуслуги сохранены'
   } catch (error) {
     message.value = failure(error, 'Допуслуги не сохранились')
   } finally {
@@ -525,19 +620,74 @@ async function cancelEvent(id: string) {
 </script>
 
 <style scoped>
-.practical { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--color-editor-line); }
-.practical h2, .practical h3 { margin: 0.4rem 0 0; }
-.live-note { margin: 0; padding: 0.6rem 0.8rem; border-left: 3px solid var(--color-brick); background: var(--color-surface); }
-.muted { color: var(--muted); }
-.row { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0.7rem 0.8rem; border: 1px solid var(--color-editor-line); border-radius: 8px; }
-.row legend { padding: 0 0.3rem; font-weight: 600; }
-.stale { margin-left: 0.5rem; color: var(--color-editor-warning); font-weight: 400; font-size: 0.88rem; }
-.grid { display: grid; gap: 0.5rem; }
-.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.events { margin: 0; padding: 0; list-style: none; }
-.events li { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; align-items: center; padding: 0.4rem 0; border-top: 1px solid var(--color-editor-line); }
-.events li.off { color: var(--muted); }
+.practical {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-editor-line);
+}
+.practical h2,
+.practical h3 {
+  margin: 0.4rem 0 0;
+}
+.live-note {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--color-brick);
+  background: var(--color-surface);
+}
+.muted {
+  color: var(--muted);
+}
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-editor-line);
+  border-radius: 8px;
+}
+.row legend {
+  padding: 0 0.3rem;
+  font-weight: 600;
+}
+.stale {
+  margin-left: 0.5rem;
+  color: var(--color-editor-warning);
+  font-weight: 400;
+  font-size: 0.88rem;
+}
+.grid {
+  display: grid;
+  gap: 0.5rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.events {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.events li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--color-editor-line);
+}
+.events li.off {
+  color: var(--muted);
+}
 @media (min-width: 640px) {
-  .grid { grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
+  .grid {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  }
 }
 </style>

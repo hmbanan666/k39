@@ -5,7 +5,8 @@
     <span
       v-if="count != null"
       class="field-count"
-    >{{ count }}<template v-if="max"> / {{ max }}</template></span>
+      >{{ count }}<template v-if="max"> / {{ max }}</template></span
+    >
     <p
       v-if="hint"
       class="field-hint"

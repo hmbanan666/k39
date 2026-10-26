@@ -169,9 +169,7 @@
             v-for="item in shots"
             :key="item.media.id"
           >
-            {{ item.media.alt }}<template v-if="item.isCover">
-              · обложка
-            </template>
+            {{ item.media.alt }}<template v-if="item.isCover"> · обложка </template>
           </li>
         </ul>
       </section>
@@ -216,9 +214,21 @@
 import type { FetchError } from 'ofetch'
 import type { PlaceDraftNotice } from '~~/shared/place-draft-diff'
 import { renderMarkdown } from '~~/shared/markdown'
-import { descriptionWarning, metaDescription, pageTitle, PLACE_SCHEMA_TYPES, slugError, titleWarning, transliterateSlug } from '~~/shared/seo'
+import {
+  descriptionWarning,
+  metaDescription,
+  pageTitle,
+  PLACE_SCHEMA_TYPES,
+  slugError,
+  titleWarning,
+  transliterateSlug,
+} from '~~/shared/seo'
 
-interface AdminCategory { id: string, slug: string, title: string }
+interface AdminCategory {
+  id: string
+  slug: string
+  title: string
+}
 interface AdminPlace {
   id: string
   categoryId: string | null
@@ -262,7 +272,7 @@ const schemaTypeOptions = [
   ...PLACE_SCHEMA_TYPES.map((type) => ({ value: type, label: `${SCHEMA_LABELS[type] ?? type} (${type})` })),
 ]
 const requestFetch = useRequestFetch()
-const shots = ref<Array<{ media: { id: string, alt: string }, isCover: boolean }>>([])
+const shots = ref<Array<{ media: { id: string; alt: string }; isCover: boolean }>>([])
 if (props.placeId) {
   shots.value = await requestFetch(`/api/admin/media?placeId=${props.placeId}`)
 }
@@ -335,11 +345,14 @@ async function loadPlace() {
 }
 
 await loadPlace()
-watch(() => form.title, (title) => {
-  if (!props.placeId && title && !form.slug) {
-    form.slug = transliterateSlug(title)
-  }
-})
+watch(
+  () => form.title,
+  (title) => {
+    if (!props.placeId && title && !form.slug) {
+      form.slug = transliterateSlug(title)
+    }
+  },
+)
 const categoryOptions = computed(() => meta.categories.map((item) => ({ value: item.slug, label: item.title })))
 const statusOptions = [
   { value: 'open', label: 'открыт' },
@@ -352,7 +365,7 @@ const publicationOptions = [
   { value: 'review', label: 'на проверке' },
   { value: 'published', label: 'опубликовано' },
 ]
-const slugProblem = computed(() => form.slug ? slugError(form.slug) : null)
+const slugProblem = computed(() => (form.slug ? slugError(form.slug) : null))
 const finalTitle = computed(() => pageTitle(form.title || 'Без названия', form.seoTitle))
 const finalDescription = computed(() => metaDescription(form.summary, form.seoDescription))
 const titleHint = computed(() => titleWarning(finalTitle.value))
@@ -474,11 +487,36 @@ async function onDiscard() {
 </script>
 
 <style scoped>
-.admin { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
-form { display: flex; flex-direction: column; gap: 0.7rem; }
-label { display: flex; flex-direction: column; gap: 0.25rem; }
-input, textarea, select { font: inherit; padding: 0.4rem 0.5rem; }
-.warn { color: var(--color-editor-warning); }
-.serp { border: 1px solid var(--color-editor-line); padding: 0.8rem; }
-.preview { border-top: 1px solid var(--color-editor-line); padding-top: 0.6rem; }
+.admin {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+input,
+textarea,
+select {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+}
+.warn {
+  color: var(--color-editor-warning);
+}
+.serp {
+  border: 1px solid var(--color-editor-line);
+  padding: 0.8rem;
+}
+.preview {
+  border-top: 1px solid var(--color-editor-line);
+  padding-top: 0.6rem;
+}
 </style>

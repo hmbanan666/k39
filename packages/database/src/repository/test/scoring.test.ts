@@ -2,7 +2,31 @@ import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDatabase } from '../../database'
 import { applyInitialContent } from '../../seed/apply'
-import { analyticsSearchQueries, categories, collectionItems, collections, contentImports, contentScoreDays, contentScores, media, offerCodes, offers, pagePassports, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, venueListingIntros, venueMedia, venues } from '../../tables'
+import {
+  analyticsSearchQueries,
+  categories,
+  collectionItems,
+  collections,
+  contentImports,
+  contentScoreDays,
+  contentScores,
+  media,
+  offerCodes,
+  offers,
+  pagePassports,
+  placeMedia,
+  places,
+  quests,
+  questSteps,
+  regions,
+  relatedLinks,
+  revisions,
+  routePoints,
+  routes,
+  venueListingIntros,
+  venueMedia,
+  venues,
+} from '../../tables'
 import { Analytics } from '../analytics'
 import { Editor } from '../content'
 import { Scoring } from '../scoring'
@@ -51,9 +75,12 @@ describe('content scores', () => {
     expect(new Set(fortStops.map((stop) => stop.regionId)).size).toBe(1)
     expect(fortStops.every((stop) => stop.regionId)).toBe(true)
     expect(fortStops.some((stop) => stop.access?.includes('транспорт'))).toBe(true)
-    await useDatabase().update(categories).set({
-      body: '## Частые вопросы\n\n### Можно ли зайти?\n\nДа, смотрите статус на странице форта.',
-    }).where(eq(categories.slug, 'forty'))
+    await useDatabase()
+      .update(categories)
+      .set({
+        body: '## Частые вопросы\n\n### Можно ли зайти?\n\nДа, смотрите статус на странице форта.',
+      })
+      .where(eq(categories.slug, 'forty'))
     const withBody = await Scoring.loadCatalog()
     expect(withBody.hubs.find((hub) => hub.slug === 'forty')?.body).toContain('### Можно ли зайти?')
     expect(catalog.routes.some((route) => route.slug === 'pyat-fortov')).toBe(true)
@@ -89,7 +116,7 @@ describe('content scores', () => {
       ceiling: 12_000,
       queries: ['форт 11'],
       search: { impressions: 40, position: 8 },
-      competitors: [] as Array<{ query: string, chars: number }>,
+      competitors: [] as Array<{ query: string; chars: number }>,
       sections: ['История', 'Как добраться'],
       setAt: '2026-08-01T00:00:00.000Z',
     }
@@ -117,10 +144,28 @@ describe('content scores', () => {
     expect(cleared?.lengthOverride).toBeNull()
     expect(cleared?.notes).toBe('заметка')
 
-    await useDatabase().insert(analyticsSearchQueries).values([
-      { day: '2026-10-01', engine: 'google', page: '/fort-11-denhoff', query: 'форт 11', impressions: 4, clicks: 1, position: 3 },
-      { day: '2026-10-02', engine: 'yandex', page: '/fort-11-denhoff', query: 'форт 11', impressions: 6, clicks: 2, position: 4 },
-    ])
+    await useDatabase()
+      .insert(analyticsSearchQueries)
+      .values([
+        {
+          day: '2026-10-01',
+          engine: 'google',
+          page: '/fort-11-denhoff',
+          query: 'форт 11',
+          impressions: 4,
+          clicks: 1,
+          position: 3,
+        },
+        {
+          day: '2026-10-02',
+          engine: 'yandex',
+          page: '/fort-11-denhoff',
+          query: 'форт 11',
+          impressions: 6,
+          clicks: 2,
+          position: 4,
+        },
+      ])
     const rows = await Scoring.searchQueriesSince('2026-09-01')
     expect(rows.find((row) => row.query === 'форт 11')).toMatchObject({ impressions: 10, clicks: 3 })
   })

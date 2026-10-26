@@ -10,7 +10,13 @@ import guestPhoto from '../server/api/guests/photo.post'
 import searchEvents from '../server/api/search/events.post'
 import { UPLOAD_BODY_MAX, UPLOAD_TOO_LARGE_MESSAGE } from '../server/media/process'
 import mcpAuth from '../server/middleware/10.mcp-auth'
-import { JSON_BODY_MAX, JSON_TOO_LARGE_MESSAGE, readCappedBody, readCappedJson, readUploadForm } from '../server/utils/request-body'
+import {
+  JSON_BODY_MAX,
+  JSON_TOO_LARGE_MESSAGE,
+  readCappedBody,
+  readCappedJson,
+  readUploadForm,
+} from '../server/utils/request-body'
 
 const CAP = 8
 
@@ -35,7 +41,10 @@ function openRequest(headers: Record<string, string> = {}) {
 
 async function settled<T>(pending: Promise<T>) {
   return Promise.race([
-    pending.then(() => 'accepted' as const, (error: { statusCode?: number }) => error.statusCode ?? 0),
+    pending.then(
+      () => 'accepted' as const,
+      (error: { statusCode?: number }) => error.statusCode ?? 0,
+    ),
     new Promise<'waited'>((resolve) => {
       setTimeout(() => resolve('waited'), 200)
     }),
@@ -70,7 +79,10 @@ describe('capped request body', () => {
   it('caps authenticated MCP POST requests with the shared JSON message', async () => {
     vi.stubEnv('CONTENT_API_TOKEN', 'test-editor')
     try {
-      const { req } = openRequest({ 'authorization': 'Bearer test-editor', 'content-length': String(JSON_BODY_MAX + 1) })
+      const { req } = openRequest({
+        'authorization': 'Bearer test-editor',
+        'content-length': String(JSON_BODY_MAX + 1),
+      })
       req.url = '/mcp'
       const nodeReq = req as unknown as IncomingMessage
       const event = createEvent(nodeReq, new NodeServerResponse(nodeReq))
@@ -80,21 +92,24 @@ describe('capped request body', () => {
     }
   })
 
-  it.each(['event', 'web', 'body', 'symbol', 'rawBody'] as const)('caps the %s body used by h3 without waiting on the node stream', async (source) => {
-    const { req, event, dataListeners } = openRequest({ 'transfer-encoding': 'chunked' })
-    const bytes = Buffer.alloc(CAP + 1)
-    if (source === 'event') {
-      event._requestBody = bytes as unknown as NonNullable<typeof event._requestBody>
-    } else if (source === 'web') {
-      event.web = { request: { body: bytes } } as unknown as typeof event.web
-    } else if (source === 'symbol') {
-      Object.assign(req, { [Symbol.for('h3RawBody')]: bytes })
-    } else {
-      Object.assign(req, { [source]: bytes })
-    }
-    await expect(settled(readCappedBody(event, CAP))).resolves.toBe(413)
-    expect(dataListeners()).toBe(0)
-  })
+  it.each(['event', 'web', 'body', 'symbol', 'rawBody'] as const)(
+    'caps the %s body used by h3 without waiting on the node stream',
+    async (source) => {
+      const { req, event, dataListeners } = openRequest({ 'transfer-encoding': 'chunked' })
+      const bytes = Buffer.alloc(CAP + 1)
+      if (source === 'event') {
+        event._requestBody = bytes as unknown as NonNullable<typeof event._requestBody>
+      } else if (source === 'web') {
+        event.web = { request: { body: bytes } } as unknown as typeof event.web
+      } else if (source === 'symbol') {
+        Object.assign(req, { [Symbol.for('h3RawBody')]: bytes })
+      } else {
+        Object.assign(req, { [source]: bytes })
+      }
+      await expect(settled(readCappedBody(event, CAP))).resolves.toBe(413)
+      expect(dataListeners()).toBe(0)
+    },
+  )
 
   it('leaves the capped stream readable by h3 without reading it twice', async () => {
     const { req, event } = openRequest({ 'transfer-encoding': 'chunked' })
@@ -107,7 +122,10 @@ describe('capped request body', () => {
 
   it('refuses a declared length over the cap before reading', async () => {
     const { event, dataListeners } = openRequest({ 'content-length': String(CAP + 1) })
-    await expect(readCappedBody(event, CAP)).rejects.toMatchObject({ statusCode: 413, statusMessage: 'Payload Too Large' })
+    await expect(readCappedBody(event, CAP)).rejects.toMatchObject({
+      statusCode: 413,
+      statusMessage: 'Payload Too Large',
+    })
     expect(dataListeners()).toBe(0)
   })
 
@@ -229,24 +247,33 @@ describe('upload route cap', () => {
         produced += chunk.length
       },
     })
-    const response = await post(guestPhoto, '/api/guests/photo', {
-      'content-type': 'multipart/form-data; boundary=b',
-      'transfer-encoding': 'chunked',
-    }, body)
+    const response = await post(
+      guestPhoto,
+      '/api/guests/photo',
+      {
+        'content-type': 'multipart/form-data; boundary=b',
+        'transfer-encoding': 'chunked',
+      },
+      body,
+    )
     expect(response.status).toBe(413)
     expect(response.body).toBe(UPLOAD_TOO_LARGE_MESSAGE)
     expect(produced).toBeLessThan(UPLOAD_BODY_MAX + slack)
   }, 20_000)
 
   it('parses a photo that fits and then asks for the rights confirmation', async () => {
-    const body = Buffer.from([
-      '--b\r\nContent-Disposition: form-data; name="consent"\r\n\r\n1\r\n',
-      '--b--\r\n',
-    ].join(''))
-    const response = await post(guestPhoto, '/api/guests/photo', {
-      'content-type': 'multipart/form-data; boundary=b',
-      'content-length': String(body.length),
-    }, body)
+    const body = Buffer.from(
+      ['--b\r\nContent-Disposition: form-data; name="consent"\r\n\r\n1\r\n', '--b--\r\n'].join(''),
+    )
+    const response = await post(
+      guestPhoto,
+      '/api/guests/photo',
+      {
+        'content-type': 'multipart/form-data; boundary=b',
+        'content-length': String(body.length),
+      },
+      body,
+    )
     expect(response.status).toBe(400)
     expect(response.body).toContain('прав')
   })
@@ -255,19 +282,29 @@ describe('upload route cap', () => {
 describe('beacon route caps', () => {
   it('answers 413 for an events body over its cap', async () => {
     const body = Buffer.alloc(3 * 1024, 0x61)
-    const response = await post(eventsHandler, '/api/events', {
-      'content-type': 'application/json',
-      'content-length': String(body.length),
-    }, body)
+    const response = await post(
+      eventsHandler,
+      '/api/events',
+      {
+        'content-type': 'application/json',
+        'content-length': String(body.length),
+      },
+      body,
+    )
     expect(response.status).toBe(413)
   })
 
   it('answers 413 for a search beacon over its cap', async () => {
     const body = Buffer.alloc(16 * 1024 + 1, 0x61)
-    const response = await post(searchEvents, '/api/search/events', {
-      'content-type': 'application/json',
-      'content-length': String(body.length),
-    }, body)
+    const response = await post(
+      searchEvents,
+      '/api/search/events',
+      {
+        'content-type': 'application/json',
+        'content-length': String(body.length),
+      },
+      body,
+    )
     expect(response.status).toBe(413)
   })
 })
@@ -280,14 +317,16 @@ function post(
 ) {
   const server = createServer((req, res) => {
     const event = createEvent(req, res)
-    Promise.resolve(handler(event)).catch((error: { statusCode?: number, statusMessage?: string, message?: string }) => {
-      if (!res.writableEnded) {
-        res.statusCode = error.statusCode || 500
-        res.end(error.statusMessage || error.message || '')
-      }
-    })
+    Promise.resolve(handler(event)).catch(
+      (error: { statusCode?: number; statusMessage?: string; message?: string }) => {
+        if (!res.writableEnded) {
+          res.statusCode = error.statusCode || 500
+          res.end(error.statusMessage || error.message || '')
+        }
+      },
+    )
   })
-  return new Promise<{ status: number, body: string }>((resolve, reject) => {
+  return new Promise<{ status: number; body: string }>((resolve, reject) => {
     let settled = false
     let status = 0
     const finish = (error?: unknown, nextStatus?: number, text?: string) => {
@@ -305,22 +344,25 @@ function post(
     server.listen(0, '127.0.0.1', () => {
       const address = server.address()
       const port = typeof address === 'object' && address ? address.port : 0
-      const req = httpRequest({
-        hostname: '127.0.0.1',
-        port,
-        path,
-        method: 'POST',
-        headers,
-      }, (res) => {
-        const chunks: Buffer[] = []
-        status = res.statusCode ?? 0
-        res.on('data', (chunk: Buffer) => {
-          chunks.push(Buffer.from(chunk))
-        })
-        res.on('end', () => {
-          finish(undefined, status, Buffer.concat(chunks).toString('utf8'))
-        })
-      })
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path,
+          method: 'POST',
+          headers,
+        },
+        (res) => {
+          const chunks: Buffer[] = []
+          status = res.statusCode ?? 0
+          res.on('data', (chunk: Buffer) => {
+            chunks.push(Buffer.from(chunk))
+          })
+          res.on('end', () => {
+            finish(undefined, status, Buffer.concat(chunks).toString('utf8'))
+          })
+        },
+      )
       req.on('error', (error) => {
         if (status) {
           finish(undefined, status, '')

@@ -16,84 +16,130 @@ const monthDay = z.string().regex(/^(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/)
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/)
 
-const daySchema = z.object({
-  days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
-  opens: clock,
-  /**
-   * Equal to or before `opens` means the interval runs past midnight.
-   * Missing means the source gives no closing time (ADR 0042): the day is
-   * open from `opens` and nothing is claimed after the end of that day.
-   */
-  closes: clock.optional(),
-  breaks: z.array(z.object({ from: clock, to: clock })).max(3).default([]),
-  /** Ticket desk or last entry, if earlier than closing. */
-  lastEntry: clock.optional(),
-}).superRefine((entry, ctx) => {
-  if (entry.closes) {
-    return
-  }
-  // Without a close the day ends at midnight, so breaks and the last entry
-  // must fall after opening on the same day.
-  for (const [index, pause] of (entry.breaks ?? []).entries()) {
-    if (!(entry.opens < pause.from && pause.from < pause.to)) {
-      ctx.addIssue({ code: 'custom', path: ['breaks', index], message: 'Without closes, a break must start after opens and end later the same day' })
+const daySchema = z
+  .object({
+    days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+    opens: clock,
+    /**
+     * Equal to or before `opens` means the interval runs past midnight.
+     * Missing means the source gives no closing time (ADR 0042): the day is
+     * open from `opens` and nothing is claimed after the end of that day.
+     */
+    closes: clock.optional(),
+    breaks: z
+      .array(z.object({ from: clock, to: clock }))
+      .max(3)
+      .default([]),
+    /** Ticket desk or last entry, if earlier than closing. */
+    lastEntry: clock.optional(),
+  })
+  .superRefine((entry, ctx) => {
+    if (entry.closes) {
+      return
     }
-  }
-  if (entry.lastEntry && entry.lastEntry <= entry.opens) {
-    ctx.addIssue({ code: 'custom', path: ['lastEntry'], message: 'Without closes, lastEntry must be after opens the same day' })
-  }
-})
+    // Without a close the day ends at midnight, so breaks and the last entry
+    // must fall after opening on the same day.
+    for (const [index, pause] of (entry.breaks ?? []).entries()) {
+      if (!(entry.opens < pause.from && pause.from < pause.to)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['breaks', index],
+          message: 'Without closes, a break must start after opens and end later the same day',
+        })
+      }
+    }
+    if (entry.lastEntry && entry.lastEntry <= entry.opens) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['lastEntry'],
+        message: 'Without closes, lastEntry must be after opens the same day',
+      })
+    }
+  })
 
 export const scheduleRulesSchema = z.object({
   mode: z.enum(['hours', 'always', 'appointment', 'closed', 'events', 'slots']).default('hours'),
-  seasons: z.array(z.object({
-    from: monthDay.optional(),
-    to: monthDay.optional(),
-    week: z.array(daySchema).max(7),
-    /**
-     * Weekdays the source gives no hours for (ADR 0044): neither open nor
-     * closed. A weekday in neither `week` nor this list is closed.
-     */
-    unknownDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
-  }).superRefine((season, ctx) => {
-    const listed = new Set(season.week.flatMap((entry) => entry.days))
-    for (const [index, day] of (season.unknownDays ?? []).entries()) {
-      if (listed.has(day)) {
-        ctx.addIssue({ code: 'custom', path: ['unknownDays', index], message: 'A day cannot have hours in week and be unknown' })
-      }
-      if (season.unknownDays!.indexOf(day) !== index) {
-        ctx.addIssue({ code: 'custom', path: ['unknownDays', index], message: 'Duplicate unknown day' })
-      }
-    }
-  })).max(6).default([]),
-  closures: z.array(z.object({
-    weekday: z.number().int().min(0).max(6),
-    /** 1..5, or -1 for the last one in the month. */
-    nth: z.number().int().min(-1).max(5).refine((value) => value !== 0),
-    label: z.string().trim().min(1).max(40).default('Санитарный день'),
-  })).max(4).default([]),
+  seasons: z
+    .array(
+      z
+        .object({
+          from: monthDay.optional(),
+          to: monthDay.optional(),
+          week: z.array(daySchema).max(7),
+          /**
+           * Weekdays the source gives no hours for (ADR 0044): neither open nor
+           * closed. A weekday in neither `week` nor this list is closed.
+           */
+          unknownDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
+        })
+        .superRefine((season, ctx) => {
+          const listed = new Set(season.week.flatMap((entry) => entry.days))
+          for (const [index, day] of (season.unknownDays ?? []).entries()) {
+            if (listed.has(day)) {
+              ctx.addIssue({
+                code: 'custom',
+                path: ['unknownDays', index],
+                message: 'A day cannot have hours in week and be unknown',
+              })
+            }
+            if (season.unknownDays!.indexOf(day) !== index) {
+              ctx.addIssue({ code: 'custom', path: ['unknownDays', index], message: 'Duplicate unknown day' })
+            }
+          }
+        }),
+    )
+    .max(6)
+    .default([]),
+  closures: z
+    .array(
+      z.object({
+        weekday: z.number().int().min(0).max(6),
+        /** 1..5, or -1 for the last one in the month. */
+        nth: z
+          .number()
+          .int()
+          .min(-1)
+          .max(5)
+          .refine((value) => value !== 0),
+        label: z.string().trim().min(1).max(40).default('Санитарный день'),
+      }),
+    )
+    .max(4)
+    .default([]),
   holidays: z.enum(['as-usual', 'closed', 'sunday']).default('as-usual'),
-  exceptions: z.array(z.object({
-    date: isoDate,
-    closed: z.boolean().default(true),
-    opens: clock.optional(),
-    closes: clock.optional(),
-    note: z.string().trim().max(80).optional(),
-  })).max(60).default([]),
-  occurrences: z.array(z.object({ start: localDateTime, end: localDateTime })).max(200).default([]),
+  exceptions: z
+    .array(
+      z.object({
+        date: isoDate,
+        closed: z.boolean().default(true),
+        opens: clock.optional(),
+        closes: clock.optional(),
+        note: z.string().trim().max(80).optional(),
+      }),
+    )
+    .max(60)
+    .default([]),
+  occurrences: z
+    .array(z.object({ start: localDateTime, end: localDateTime }))
+    .max(200)
+    .default([]),
   note: z.string().trim().max(HOURS_NOTE_MAX).optional(),
   /** Mode slots only: visits start at fixed times within the open hours (guided tours). */
-  slots: z.object({
-    times: z.array(clock).min(1).max(24),
-    minutes: z.number().int().min(5).max(480).default(60),
-    label: z.string().trim().min(1).max(30).default('Экскурсия'),
-  }).optional(),
+  slots: z
+    .object({
+      times: z.array(clock).min(1).max(24),
+      minutes: z.number().int().min(5).max(480).default(60),
+      label: z.string().trim().min(1).max(30).default('Экскурсия'),
+    })
+    .optional(),
   /** Mode closed only: why, until when, and whether the outside can be seen. */
-  closure: z.object({
-    reason: z.enum(['restoration', 'repair', 'season', 'military', 'private', 'other']).default('other'),
-    until: isoDate.optional(),
-    viewableOutside: z.boolean().default(false),
-  }).optional(),
+  closure: z
+    .object({
+      reason: z.enum(['restoration', 'repair', 'season', 'military', 'private', 'other']).default('other'),
+      until: isoDate.optional(),
+      viewableOutside: z.boolean().default(false),
+    })
+    .optional(),
   /** Set when the rules still need checking against an allowed source. */
   needsCheck: z.boolean().default(false),
 })
@@ -113,7 +159,7 @@ export function readRules(value: unknown): ScheduleRules | null {
 }
 
 /** Verified rules can report open or closed; anything else is «unknown». */
-export function isVerified(record: { rules: ScheduleRules | null, verifiedAt: string | null } | null) {
+export function isVerified(record: { rules: ScheduleRules | null; verifiedAt: string | null } | null) {
   return Boolean(record?.rules && record.verifiedAt && !record.rules.needsCheck)
 }
 
@@ -123,7 +169,7 @@ export function isVerified(record: { rules: ScheduleRules | null, verifiedAt: st
  * appointment, or closed mode). The `schedules` row is the only source; the
  * legacy `venues.hours` column is not read.
  */
-export function scheduleHoursKnown(record: { rules: ScheduleRules | null, verifiedAt: string | null } | null) {
+export function scheduleHoursKnown(record: { rules: ScheduleRules | null; verifiedAt: string | null } | null) {
   if (!record?.rules || !isVerified(record)) {
     return false
   }
@@ -138,19 +184,95 @@ export function scheduleHoursKnown(record: { rules: ScheduleRules | null, verifi
 }
 
 // Fixed Russian public holidays (MM-DD). Government day transfers are entered as exceptions.
-const RU_HOLIDAYS = new Set(['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '02-23', '03-08', '05-01', '05-09', '06-12', '11-04'])
+const RU_HOLIDAYS = new Set([
+  '01-01',
+  '01-02',
+  '01-03',
+  '01-04',
+  '01-05',
+  '01-06',
+  '01-07',
+  '01-08',
+  '02-23',
+  '03-08',
+  '05-01',
+  '05-09',
+  '06-12',
+  '11-04',
+])
 
 const SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
 const ACC = ['в воскресенье', 'в понедельник', 'во вторник', 'в среду', 'в четверг', 'в пятницу', 'в субботу']
 const NAMES = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
-const GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+const GEN = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+]
 const ORDINAL: Record<string, string[]> = {
-  '1': ['Первое воскресенье', 'Первый понедельник', 'Первый вторник', 'Первая среда', 'Первый четверг', 'Первая пятница', 'Первая суббота'],
-  '2': ['Второе воскресенье', 'Второй понедельник', 'Второй вторник', 'Вторая среда', 'Второй четверг', 'Вторая пятница', 'Вторая суббота'],
-  '3': ['Третье воскресенье', 'Третий понедельник', 'Третий вторник', 'Третья среда', 'Третий четверг', 'Третья пятница', 'Третья суббота'],
-  '4': ['Четвёртое воскресенье', 'Четвёртый понедельник', 'Четвёртый вторник', 'Четвёртая среда', 'Четвёртый четверг', 'Четвёртая пятница', 'Четвёртая суббота'],
-  '5': ['Пятое воскресенье', 'Пятый понедельник', 'Пятый вторник', 'Пятая среда', 'Пятый четверг', 'Пятая пятница', 'Пятая суббота'],
-  '-1': ['Последнее воскресенье', 'Последний понедельник', 'Последний вторник', 'Последняя среда', 'Последний четверг', 'Последняя пятница', 'Последняя суббота'],
+  '1': [
+    'Первое воскресенье',
+    'Первый понедельник',
+    'Первый вторник',
+    'Первая среда',
+    'Первый четверг',
+    'Первая пятница',
+    'Первая суббота',
+  ],
+  '2': [
+    'Второе воскресенье',
+    'Второй понедельник',
+    'Второй вторник',
+    'Вторая среда',
+    'Второй четверг',
+    'Вторая пятница',
+    'Вторая суббота',
+  ],
+  '3': [
+    'Третье воскресенье',
+    'Третий понедельник',
+    'Третий вторник',
+    'Третья среда',
+    'Третий четверг',
+    'Третья пятница',
+    'Третья суббота',
+  ],
+  '4': [
+    'Четвёртое воскресенье',
+    'Четвёртый понедельник',
+    'Четвёртый вторник',
+    'Четвёртая среда',
+    'Четвёртый четверг',
+    'Четвёртая пятница',
+    'Четвёртая суббота',
+  ],
+  '5': [
+    'Пятое воскресенье',
+    'Пятый понедельник',
+    'Пятый вторник',
+    'Пятая среда',
+    'Пятый четверг',
+    'Пятая пятница',
+    'Пятая суббота',
+  ],
+  '-1': [
+    'Последнее воскресенье',
+    'Последний понедельник',
+    'Последний вторник',
+    'Последняя среда',
+    'Последний четверг',
+    'Последняя пятница',
+    'Последняя суббота',
+  ],
 }
 const SCHEMA_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
@@ -178,8 +300,10 @@ function inSeason(season: ScheduleRules['seasons'][number], date: string) {
 
 /** The season that applies on a calendar day: a dated one first, then the all-year one. */
 export function seasonFor(rules: ScheduleRules, date: string) {
-  return rules.seasons.find((season) => season.from && season.to && inSeason(season, date))
-    ?? rules.seasons.find((season) => !season.from || !season.to)
+  return (
+    rules.seasons.find((season) => season.from && season.to && inSeason(season, date)) ??
+    rules.seasons.find((season) => !season.from || !season.to)
+  )
 }
 
 function closureOn(rules: ScheduleRules, date: string) {
@@ -187,18 +311,20 @@ function closureOn(rules: ScheduleRules, date: string) {
   const [year, month] = date.split('-').map(Number)
   const dom = Number(date.slice(8))
   const last = new Date(Date.UTC(year!, month!, 0)).getUTCDate()
-  return rules.closures.find((rule) => rule.weekday === day && (rule.nth === -1 ? dom > last - 7 : Math.ceil(dom / 7) === rule.nth))
+  return rules.closures.find(
+    (rule) => rule.weekday === day && (rule.nth === -1 ? dom > last - 7 : Math.ceil(dom / 7) === rule.nth),
+  )
 }
 
 export interface DayHours {
   opens: string
   /** Null: closing time unknown (ADR 0042). */
   closes: string | null
-  breaks: Array<{ from: string, to: string }>
+  breaks: Array<{ from: string; to: string }>
   lastEntry?: string
 }
 
-export type DayState = { kind: 'hours', hours: DayHours } | { kind: 'closed' } | { kind: 'unknown' }
+export type DayState = { kind: 'hours'; hours: DayHours } | { kind: 'closed' } | { kind: 'unknown' }
 
 const CLOSED_DAY: DayState = { kind: 'closed' }
 
@@ -212,7 +338,9 @@ export function dayStateOn(rules: ScheduleRules, date: string): DayState {
   }
   const exception = rules.exceptions.find((item) => item.date === date)
   if (exception) {
-    return exception.closed || !exception.opens || !exception.closes ? CLOSED_DAY : { kind: 'hours', hours: { opens: exception.opens, closes: exception.closes, breaks: [] } }
+    return exception.closed || !exception.opens || !exception.closes
+      ? CLOSED_DAY
+      : { kind: 'hours', hours: { opens: exception.opens, closes: exception.closes, breaks: [] } }
   }
   if (closureOn(rules, date)) {
     return CLOSED_DAY
@@ -229,7 +357,15 @@ export function dayStateOn(rules: ScheduleRules, date: string): DayState {
   const season = seasonFor(rules, date)
   const entry = season?.week.find((item) => item.days.includes(day))
   if (entry) {
-    return { kind: 'hours', hours: { opens: entry.opens, closes: entry.closes ?? null, breaks: entry.breaks ?? [], lastEntry: entry.lastEntry } }
+    return {
+      kind: 'hours',
+      hours: {
+        opens: entry.opens,
+        closes: entry.closes ?? null,
+        breaks: entry.breaks ?? [],
+        lastEntry: entry.lastEntry,
+      },
+    }
   }
   return season?.unknownDays?.includes(day) ? { kind: 'unknown' } : CLOSED_DAY
 }
@@ -259,7 +395,11 @@ export function expandIntervals(rules: ScheduleRules, from: string, days: number
     for (const item of rules.occurrences) {
       const date = item.start.slice(0, 10)
       if (date >= from && date < until) {
-        out.push({ start: zonedTime(date, item.start.slice(11)), end: zonedTime(item.end.slice(0, 10), item.end.slice(11)), lastEntry: null })
+        out.push({
+          start: zonedTime(date, item.start.slice(11)),
+          end: zonedTime(item.end.slice(0, 10), item.end.slice(11)),
+          lastEntry: null,
+        })
       }
     }
     return out.sort((a, b) => a.start.getTime() - b.start.getTime())
@@ -273,7 +413,10 @@ export function expandIntervals(rules: ScheduleRules, from: string, days: number
     if (rules.mode === 'slots' && rules.slots) {
       // Each start time inside the day's hours is one slot interval.
       for (const time of [...rules.slots.times].sort()) {
-        if (toMinutes(time) >= toMinutes(hours.opens) && (hours.closes == null || toMinutes(time) < toMinutes(hours.closes))) {
+        if (
+          toMinutes(time) >= toMinutes(hours.opens) &&
+          (hours.closes == null || toMinutes(time) < toMinutes(hours.closes))
+        ) {
           const start = zonedTime(date, time)
           out.push({ start, end: new Date(start.getTime() + rules.slots.minutes * 60_000), lastEntry: null })
         }
@@ -288,14 +431,21 @@ export function expandIntervals(rules: ScheduleRules, from: string, days: number
         out.push({ start, end: zonedTime(date, pause.from), lastEntry: null, openEnded: true })
         start = zonedTime(date, pause.to)
       }
-      out.push({ start, end: zonedTime(addDays(date, 1), '00:00'), lastEntry: hours.lastEntry ? zonedTime(date, hours.lastEntry) : null, openEnded: true })
+      out.push({
+        start,
+        end: zonedTime(addDays(date, 1), '00:00'),
+        lastEntry: hours.lastEntry ? zonedTime(date, hours.lastEntry) : null,
+        openEnded: true,
+      })
       continue
     }
     const overnight = toMinutes(hours.closes) <= toMinutes(hours.opens)
     const endDate = overnight ? addDays(date, 1) : date
     let start = zonedTime(date, hours.opens)
     const end = zonedTime(endDate, hours.closes)
-    const lastEntry = hours.lastEntry ? zonedTime(toMinutes(hours.lastEntry) < toMinutes(hours.opens) ? addDays(date, 1) : date, hours.lastEntry) : null
+    const lastEntry = hours.lastEntry
+      ? zonedTime(toMinutes(hours.lastEntry) < toMinutes(hours.opens) ? addDays(date, 1) : date, hours.lastEntry)
+      : null
     for (const pause of [...hours.breaks].sort((a, b) => a.from.localeCompare(b.from))) {
       const pauseStart = zonedTime(date, pause.from)
       out.push({ start, end: pauseStart, lastEntry: null })
@@ -321,7 +471,10 @@ export interface UnknownSpan {
  */
 export function unknownSpans(rules: ScheduleRules, from: string, days: number): UnknownSpan[] {
   const out: UnknownSpan[] = []
-  if ((rules.mode !== 'hours' && rules.mode !== 'slots') || !rules.seasons.some((season) => season.unknownDays?.length)) {
+  if (
+    (rules.mode !== 'hours' && rules.mode !== 'slots') ||
+    !rules.seasons.some((season) => season.unknownDays?.length)
+  ) {
     return out
   }
   for (let offset = 0; offset < days; offset++) {
@@ -381,15 +534,35 @@ export interface Availability {
 
 export const SOON_MINUTES = 60
 
-const BY_APPOINTMENT: Availability = { status: 'appointment', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null }
+const BY_APPOINTMENT: Availability = {
+  status: 'appointment',
+  closesAt: null,
+  opensAt: null,
+  minutesLeft: null,
+  minutesToOpen: null,
+}
 
-const CLOSURE_REASON = { restoration: ' на реставрацию', repair: ' на ремонт', season: ' до начала сезона', military: ': военный объект', private: ': частная территория', other: '' } as const
+const CLOSURE_REASON = {
+  restoration: ' на реставрацию',
+  repair: ' на ремонт',
+  season: ' до начала сезона',
+  military: ': военный объект',
+  private: ': частная территория',
+  other: '',
+} as const
 
 function temporarilyClosed(closure: ScheduleRules['closure']): Availability {
   return { status: 'closed', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, closure }
 }
 
-const UNKNOWN_DAY: Availability = { status: 'unknown', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, unknownDay: true }
+const UNKNOWN_DAY: Availability = {
+  status: 'unknown',
+  closesAt: null,
+  opensAt: null,
+  minutesLeft: null,
+  minutesToOpen: null,
+  unknownDay: true,
+}
 
 /** Slots: never «открыто до», only the next start, and never one across an unknown day. */
 function nextSlot(label: string, start: string | null, at: Date, unknownDays: UnknownSpan[] = []): Availability {
@@ -398,36 +571,79 @@ function nextSlot(label: string, start: string | null, at: Date, unknownDays: Un
     return UNKNOWN_DAY
   }
   if (gate === 'before-next') {
-    return { status: 'closed', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, slot: label, nextUnknown: true }
+    return {
+      status: 'closed',
+      closesAt: null,
+      opensAt: null,
+      minutesLeft: null,
+      minutesToOpen: null,
+      slot: label,
+      nextUnknown: true,
+    }
   }
   const minutesToOpen = start ? Math.round((new Date(start).getTime() - at.getTime()) / 60_000) : null
-  return { status: minutesToOpen != null && minutesToOpen <= SOON_MINUTES ? 'opening_soon' : 'closed', closesAt: null, opensAt: start, minutesLeft: null, minutesToOpen, slot: label }
+  return {
+    status: minutesToOpen != null && minutesToOpen <= SOON_MINUTES ? 'opening_soon' : 'closed',
+    closesAt: null,
+    opensAt: start,
+    minutesLeft: null,
+    minutesToOpen,
+    slot: label,
+  }
 }
 
 /** «Закрыто на реставрацию до 01.05.2027 · снаружи можно посмотреть». */
 export function closureText(closure: NonNullable<ScheduleRules['closure']>) {
-  const until = closure.until ? ` до ${closure.until.slice(8, 10)}.${closure.until.slice(5, 7)}.${closure.until.slice(0, 4)}` : ''
+  const until = closure.until
+    ? ` до ${closure.until.slice(8, 10)}.${closure.until.slice(5, 7)}.${closure.until.slice(0, 4)}`
+    : ''
   const reason = CLOSURE_REASON[closure.reason]
   const head = `Закрыто${reason}${until}`
   return closure.viewableOutside ? `${head} · снаружи можно посмотреть` : head
 }
 
-const ALWAYS_OPEN: Availability = { status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, alwaysOpen: true }
+const ALWAYS_OPEN: Availability = {
+  status: 'open',
+  closesAt: null,
+  opensAt: null,
+  minutesLeft: null,
+  minutesToOpen: null,
+  alwaysOpen: true,
+}
 
 /**
  * Status at `at` from sorted intervals. `verified` false always gives
  * unknown. Outside an interval, `unknown` days (ADR 0044) are neither open
  * nor closed, and no opening is named across one.
  */
-export function availabilityAt(intervals: OpenInterval[], at: Date, verified: boolean, unknownDays: UnknownSpan[] = []): Availability {
-  const unknown: Availability = { status: 'unknown', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null }
+export function availabilityAt(
+  intervals: OpenInterval[],
+  at: Date,
+  verified: boolean,
+  unknownDays: UnknownSpan[] = [],
+): Availability {
+  const unknown: Availability = {
+    status: 'unknown',
+    closesAt: null,
+    opensAt: null,
+    minutesLeft: null,
+    minutesToOpen: null,
+  }
   if (!verified) {
     return unknown
   }
   const now = at.getTime()
   const current = intervals.find((item) => item.start.getTime() <= now && now < item.end.getTime())
   if (current?.openEnded) {
-    return { status: 'open', closesAt: null, opensAt: null, minutesLeft: null, minutesToOpen: null, openEnded: true, openedAt: current.start.toISOString() }
+    return {
+      status: 'open',
+      closesAt: null,
+      opensAt: null,
+      minutesLeft: null,
+      minutesToOpen: null,
+      openEnded: true,
+      openedAt: current.start.toISOString(),
+    }
   }
   // An interval that runs past a week only ends at the materialised window
   // boundary: there is no real closing time to show.
@@ -436,7 +652,13 @@ export function availabilityAt(intervals: OpenInterval[], at: Date, verified: bo
   }
   if (current) {
     const minutesLeft = Math.round((current.end.getTime() - now) / 60_000)
-    return { status: minutesLeft <= SOON_MINUTES ? 'closing_soon' : 'open', closesAt: current.end.toISOString(), opensAt: null, minutesLeft, minutesToOpen: null }
+    return {
+      status: minutesLeft <= SOON_MINUTES ? 'closing_soon' : 'open',
+      closesAt: current.end.toISOString(),
+      opensAt: null,
+      minutesLeft,
+      minutesToOpen: null,
+    }
   }
   const next = intervals.find((item) => item.start.getTime() > now)
   const gate = unknownGate(unknownDays, at, next?.start ?? null)
@@ -450,7 +672,13 @@ export function availabilityAt(intervals: OpenInterval[], at: Date, verified: bo
     return { ...unknown, status: 'closed' }
   }
   const minutesToOpen = Math.round((next.start.getTime() - now) / 60_000)
-  return { status: minutesToOpen <= SOON_MINUTES ? 'opening_soon' : 'closed', closesAt: null, opensAt: next.start.toISOString(), minutesLeft: null, minutesToOpen }
+  return {
+    status: minutesToOpen <= SOON_MINUTES ? 'opening_soon' : 'closed',
+    closesAt: null,
+    opensAt: next.start.toISOString(),
+    minutesLeft: null,
+    minutesToOpen,
+  }
 }
 
 function clockOf(iso: string) {
@@ -491,7 +719,8 @@ export function availabilityText(value: Availability, at: Date) {
       const parts = zoneParts(new Date(value.closesAt))
       return `Открыто до ${parts.day}.${parts.month} ${parts.hour}:${parts.minute}`
     }
-    const rest = left >= 60 ? `ещё ${Math.floor(left / 60)} ч${left % 60 ? ` ${left % 60} мин` : ''}` : `ещё ${left} мин`
+    const rest =
+      left >= 60 ? `ещё ${Math.floor(left / 60)} ч${left % 60 ? ` ${left % 60} мин` : ''}` : `ещё ${left} мин`
     return `Открыто до ${clockOf(value.closesAt)} · ${rest}`
   }
   if (!value.opensAt) {
@@ -504,7 +733,10 @@ export function availabilityText(value: Availability, at: Date) {
 }
 
 /** Browser-side status straight from rules, for one page. */
-export function statusFromRules(record: { rules: ScheduleRules | null, verifiedAt: string | null } | null, at: Date): Availability {
+export function statusFromRules(
+  record: { rules: ScheduleRules | null; verifiedAt: string | null } | null,
+  at: Date,
+): Availability {
   if (!record?.rules || !isVerified(record)) {
     return availabilityAt([], at, false)
   }
@@ -543,7 +775,11 @@ function dayRange(days: number[]) {
       runs.push([day])
     }
   }
-  return runs.map((run) => run.length > 2 ? `${SHORT[run[0]!]}–${SHORT[run.at(-1)!]}` : run.map((day) => SHORT[day]).join(', ')).join(', ')
+  return runs
+    .map((run) =>
+      run.length > 2 ? `${SHORT[run[0]!]}–${SHORT[run.at(-1)!]}` : run.map((day) => SHORT[day]).join(', '),
+    )
+    .join(', ')
 }
 
 function mdLabel(value: string) {
@@ -552,7 +788,11 @@ function mdLabel(value: string) {
 }
 
 function dayLine(entry: ScheduleDay) {
-  const parts = [entry.closes ? `${dayRange(entry.days)} ${entry.opens}–${entry.closes}` : `${dayRange(entry.days)} с ${entry.opens}`]
+  const parts = [
+    entry.closes
+      ? `${dayRange(entry.days)} ${entry.opens}–${entry.closes}`
+      : `${dayRange(entry.days)} с ${entry.opens}`,
+  ]
   for (const pause of entry.breaks ?? []) {
     parts.push(`перерыв ${pause.from}–${pause.to}`)
   }
@@ -595,7 +835,9 @@ export function describeSchedule(rules: ScheduleRules | null): string[] {
         parts.push(`${off.map((day) => SHORT[day]).join(', ')} ${off.length > 1 ? 'выходные' : 'выходной'}`)
       }
       const text = parts.length ? parts.join('; ') : 'закрыто'
-      lines.push(season.from && season.to ? `С ${mdLabel(season.from)} по ${mdLabel(season.to)}: ${text}` : capitalize(text))
+      lines.push(
+        season.from && season.to ? `С ${mdLabel(season.from)} по ${mdLabel(season.to)}: ${text}` : capitalize(text),
+      )
     }
     for (const rule of rules.closures) {
       lines.push(`${ORDINAL[String(rule.nth)]![rule.weekday]} месяца: ${rule.label.toLowerCase()}, закрыто`)
@@ -630,7 +872,7 @@ export function upcomingClosedDays(rules: ScheduleRules | null, at: Date, count 
     return []
   }
   const start = localNow(at).date
-  const out: Array<{ date: string, label: string }> = []
+  const out: Array<{ date: string; label: string }> = []
   for (let offset = 0; offset <= horizon && out.length < count; offset++) {
     const date = addDays(start, offset)
     const exception = rules.exceptions.find((item) => item.date === date && item.closed)
@@ -649,7 +891,10 @@ export function nextClosedFact(rules: ScheduleRules | null, at: Date) {
     return null
   }
   const date = new Date(`${next.date}T00:00:00Z`)
-  return { label: `Ближайший ${next.label.toLowerCase()}`, value: `${NAMES[date.getUTCDay()]}, ${date.getUTCDate()} ${GEN[date.getUTCMonth()]}` }
+  return {
+    label: `Ближайший ${next.label.toLowerCase()}`,
+    value: `${NAMES[date.getUTCDay()]}, ${date.getUTCDate()} ${GEN[date.getUTCMonth()]}`,
+  }
 }
 
 function seasonBounds(season: ScheduleRules['seasons'][number], today: string) {
@@ -668,14 +913,24 @@ function seasonBounds(season: ScheduleRules['seasons'][number], today: string) {
 }
 
 /** schema.org opening hours; null for unverified or non-weekly schedules. */
-export function scheduleMarkup(record: { rules: ScheduleRules | null, verifiedAt: string | null } | null, at: Date) {
+export function scheduleMarkup(record: { rules: ScheduleRules | null; verifiedAt: string | null } | null, at: Date) {
   if (!record?.rules || !isVerified(record)) {
     return null
   }
   const rules = record.rules
   const today = localNow(at).date
   if (rules.mode === 'always') {
-    return { regular: [{ '@type': 'OpeningHoursSpecification', 'dayOfWeek': SCHEMA_DAYS.map((day) => `https://schema.org/${day}`), 'opens': '00:00', 'closes': '23:59' }], special: [] }
+    return {
+      regular: [
+        {
+          '@type': 'OpeningHoursSpecification',
+          'dayOfWeek': SCHEMA_DAYS.map((day) => `https://schema.org/${day}`),
+          'opens': '00:00',
+          'closes': '23:59',
+        },
+      ],
+      special: [],
+    }
   }
   if (rules.mode !== 'hours' || !rules.seasons.length) {
     return null
@@ -685,16 +940,32 @@ export function scheduleMarkup(record: { rules: ScheduleRules | null, verifiedAt
   if (rules.seasons.some((season) => season.week.some((entry) => !entry.closes))) {
     return { regular: [], special: [] }
   }
-  const regular = rules.seasons.flatMap((season) => season.week.map((entry) => ({
-    '@type': 'OpeningHoursSpecification',
-    'dayOfWeek': entry.days.map((day) => `https://schema.org/${SCHEMA_DAYS[day]}`),
-    'opens': entry.opens,
-    'closes': entry.closes,
-    ...seasonBounds(season, today),
-  })))
+  const regular = rules.seasons.flatMap((season) =>
+    season.week.map((entry) => ({
+      '@type': 'OpeningHoursSpecification',
+      'dayOfWeek': entry.days.map((day) => `https://schema.org/${SCHEMA_DAYS[day]}`),
+      'opens': entry.opens,
+      'closes': entry.closes,
+      ...seasonBounds(season, today),
+    })),
+  )
   const special = [
-    ...upcomingClosedDays(rules, at, 3).map((item) => ({ '@type': 'OpeningHoursSpecification', 'validFrom': item.date, 'validThrough': item.date, 'opens': '00:00', 'closes': '00:00' })),
-    ...rules.exceptions.filter((item) => item.date >= today && !item.closed && item.opens && item.closes).map((item) => ({ '@type': 'OpeningHoursSpecification', 'validFrom': item.date, 'validThrough': item.date, 'opens': item.opens, 'closes': item.closes })),
+    ...upcomingClosedDays(rules, at, 3).map((item) => ({
+      '@type': 'OpeningHoursSpecification',
+      'validFrom': item.date,
+      'validThrough': item.date,
+      'opens': '00:00',
+      'closes': '00:00',
+    })),
+    ...rules.exceptions
+      .filter((item) => item.date >= today && !item.closed && item.opens && item.closes)
+      .map((item) => ({
+        '@type': 'OpeningHoursSpecification',
+        'validFrom': item.date,
+        'validThrough': item.date,
+        'opens': item.opens,
+        'closes': item.closes,
+      })),
   ]
   return { regular, special }
 }
@@ -709,31 +980,68 @@ export function rulesFromText(text: string | null | undefined): ScheduleRules | 
   }
   const lastEntry = /(?:касса|кассы|вход)[^,;]*?до\s+(\d{1,2}:\d{2})/i.exec(text || '')?.[1]
   return scheduleRulesSchema.parse({
-    seasons: [{ week: [{ days: parsed.days, opens: parsed.opens, closes: parsed.closes === '23:59' ? '00:00' : parsed.closes, ...(lastEntry ? { lastEntry: lastEntry.padStart(5, '0') } : {}) }] }],
-    closures: parsed.monthlyClosure ? [{ weekday: parsed.monthlyClosure.weekday, nth: parsed.monthlyClosure.which === 'last' ? -1 : 1, label: parsed.monthlyClosure.label }] : [],
+    seasons: [
+      {
+        week: [
+          {
+            days: parsed.days,
+            opens: parsed.opens,
+            closes: parsed.closes === '23:59' ? '00:00' : parsed.closes,
+            ...(lastEntry ? { lastEntry: lastEntry.padStart(5, '0') } : {}),
+          },
+        ],
+      },
+    ],
+    closures: parsed.monthlyClosure
+      ? [
+          {
+            weekday: parsed.monthlyClosure.weekday,
+            nth: parsed.monthlyClosure.which === 'last' ? -1 : 1,
+            label: parsed.monthlyClosure.label,
+          },
+        ]
+      : [],
   })
 }
 
 const VENUE_DAY: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
 
 /** OSM-style venue hours as rules (unverified until checked). */
-export function rulesFromVenueHours(hours: { days: Array<{ weekday: string, closed: boolean, unknown?: boolean, opens: string | null, closes: string | null }>, note: string | null } | null): ScheduleRules | null {
+export function rulesFromVenueHours(
+  hours: {
+    days: Array<{ weekday: string; closed: boolean; unknown?: boolean; opens: string | null; closes: string | null }>
+    note: string | null
+  } | null,
+): ScheduleRules | null {
   // A day with an opening and no closing time is open-ended (ADR 0042).
-  const open = (hours?.days ?? []).filter((day) => !day.closed && !day.unknown && day.opens && VENUE_DAY[day.weekday] !== undefined)
+  const open = (hours?.days ?? []).filter(
+    (day) => !day.closed && !day.unknown && day.opens && VENUE_DAY[day.weekday] !== undefined,
+  )
   if (!open.length) {
     return null
   }
-  const unknownDays = (hours?.days ?? []).filter((day) => day.unknown && VENUE_DAY[day.weekday] !== undefined).map((day) => VENUE_DAY[day.weekday]!)
+  const unknownDays = (hours?.days ?? [])
+    .filter((day) => day.unknown && VENUE_DAY[day.weekday] !== undefined)
+    .map((day) => VENUE_DAY[day.weekday]!)
   const groups = new Map<string, number[]>()
   for (const day of open) {
     const key = `${day.opens}|${day.closes ?? ''}`
     groups.set(key, [...(groups.get(key) ?? []), VENUE_DAY[day.weekday]!])
   }
   const parsed = scheduleRulesSchema.safeParse({
-    seasons: [{ week: [...groups].map(([key, days]) => {
-      const [opens, closes] = key.split('|')
-      return { days, opens: opens === '24:00' ? '00:00' : opens, ...(closes ? { closes: closes === '24:00' ? '00:00' : closes } : {}) }
-    }), ...(unknownDays.length ? { unknownDays } : {}) }],
+    seasons: [
+      {
+        week: [...groups].map(([key, days]) => {
+          const [opens, closes] = key.split('|')
+          return {
+            days,
+            opens: opens === '24:00' ? '00:00' : opens,
+            ...(closes ? { closes: closes === '24:00' ? '00:00' : closes } : {}),
+          }
+        }),
+        ...(unknownDays.length ? { unknownDays } : {}),
+      },
+    ],
     note: hours?.note || undefined,
   })
   return parsed.success ? parsed.data : null
@@ -748,7 +1056,9 @@ export function weeklyTableRules(hours: Parameters<typeof rulesFromVenueHours>[0
   if (rules) {
     return rules
   }
-  const unknownDays = (hours?.days ?? []).filter((day) => day.unknown && VENUE_DAY[day.weekday] !== undefined).map((day) => VENUE_DAY[day.weekday]!)
+  const unknownDays = (hours?.days ?? [])
+    .filter((day) => day.unknown && VENUE_DAY[day.weekday] !== undefined)
+    .map((day) => VENUE_DAY[day.weekday]!)
   const parsed = scheduleRulesSchema.safeParse({
     seasons: [{ week: [], ...(unknownDays.length ? { unknownDays } : {}) }],
     note: hours?.note || undefined,
@@ -786,14 +1096,20 @@ export function weeklyTableFits(rules: ScheduleRules | null) {
  * true. Everything else in `current` stays. Call only when
  * `weeklyTableFits(current)`. Null when the result is not valid rules.
  */
-export function mergeWeeklyRules(current: ScheduleRules | null, table: ScheduleRules, options: { note: boolean }): ScheduleRules | null {
+export function mergeWeeklyRules(
+  current: ScheduleRules | null,
+  table: ScheduleRules,
+  options: { note: boolean },
+): ScheduleRules | null {
   if (!current) {
     return table
   }
   const season = table.seasons[0]
   const parsed = scheduleRulesSchema.safeParse({
     ...current,
-    seasons: [{ week: season?.week ?? [], ...(season?.unknownDays?.length ? { unknownDays: season.unknownDays } : {}) }],
+    seasons: [
+      { week: season?.week ?? [], ...(season?.unknownDays?.length ? { unknownDays: season.unknownDays } : {}) },
+    ],
     note: options.note ? table.note : current.note,
   })
   return parsed.success ? parsed.data : null
@@ -805,9 +1121,11 @@ export function mergeWeeklyRules(current: ScheduleRules | null, table: ScheduleR
  * empty week, which would read as closed every day. Null when not valid.
  */
 export function rulesWithNote(current: ScheduleRules | null, note: string | null): ScheduleRules | null {
-  const parsed = scheduleRulesSchema.safeParse(current
-    ? { ...current, note: note || undefined }
-    : { seasons: [{ week: [], unknownDays: [1, 2, 3, 4, 5, 6, 0] }], note: note || undefined })
+  const parsed = scheduleRulesSchema.safeParse(
+    current
+      ? { ...current, note: note || undefined }
+      : { seasons: [{ week: [], unknownDays: [1, 2, 3, 4, 5, 6, 0] }], note: note || undefined },
+  )
   return parsed.success ? parsed.data : null
 }
 
@@ -825,7 +1143,22 @@ export function weeklyTableKey(rules: ScheduleRules | null) {
 }
 
 /** Status from the materialised window: the interval open at `at`, if any, and the next start. */
-export function availabilityFromWindow(input: { currentEnd: string | null, currentStart?: string | null, currentOpenEnded?: boolean, nextStart: string | null, verified: boolean, alwaysOpen?: boolean, appointment?: boolean, closed?: boolean, closure?: ScheduleRules['closure'], slot?: string, unknownDays?: UnknownSpan[] }, at: Date): Availability {
+export function availabilityFromWindow(
+  input: {
+    currentEnd: string | null
+    currentStart?: string | null
+    currentOpenEnded?: boolean
+    nextStart: string | null
+    verified: boolean
+    alwaysOpen?: boolean
+    appointment?: boolean
+    closed?: boolean
+    closure?: ScheduleRules['closure']
+    slot?: string
+    unknownDays?: UnknownSpan[]
+  },
+  at: Date,
+): Availability {
   if (input.verified && input.appointment) {
     return BY_APPOINTMENT
   }
@@ -841,10 +1174,19 @@ export function availabilityFromWindow(input: { currentEnd: string | null, curre
   const intervals: OpenInterval[] = []
   if (input.currentEnd) {
     const start = input.currentStart ? new Date(input.currentStart) : new Date(at.getTime() - 1)
-    intervals.push({ start, end: new Date(input.currentEnd), lastEntry: null, openEnded: Boolean(input.currentOpenEnded) })
+    intervals.push({
+      start,
+      end: new Date(input.currentEnd),
+      lastEntry: null,
+      openEnded: Boolean(input.currentOpenEnded),
+    })
   }
   if (input.nextStart) {
-    intervals.push({ start: new Date(input.nextStart), end: new Date(new Date(input.nextStart).getTime() + 60_000), lastEntry: null })
+    intervals.push({
+      start: new Date(input.nextStart),
+      end: new Date(new Date(input.nextStart).getTime() + 60_000),
+      lastEntry: null,
+    })
   }
   return availabilityAt(intervals, at, input.verified, input.unknownDays)
 }

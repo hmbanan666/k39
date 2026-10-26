@@ -23,12 +23,13 @@ export interface RegionRow {
 export function resolveCenter(input: {
   coordinates?: RegionCenter | null
   center?: RegionCenter | null
-}): { latitude: number | null, longitude: number | null } | undefined {
+}): { latitude: number | null; longitude: number | null } | undefined {
   if (input.coordinates !== undefined && input.center !== undefined) {
     const left = input.coordinates
     const right = input.center
-    const same = (left === null && right === null)
-      || (left !== null && right !== null && left.latitude === right.latitude && left.longitude === right.longitude)
+    const same =
+      (left === null && right === null) ||
+      (left !== null && right !== null && left.latitude === right.latitude && left.longitude === right.longitude)
     if (!same) {
       throw createError({ statusCode: 400, statusMessage: 'coordinates и center должны совпадать' })
     }
@@ -47,9 +48,8 @@ export function resolveCenter(input: {
 }
 
 export function regionView(row: RegionRow) {
-  const center = row.latitude != null && row.longitude != null
-    ? { latitude: row.latitude, longitude: row.longitude }
-    : null
+  const center =
+    row.latitude != null && row.longitude != null ? { latitude: row.latitude, longitude: row.longitude } : null
   return {
     id: row.id,
     slug: row.slug,

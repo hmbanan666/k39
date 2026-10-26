@@ -27,12 +27,15 @@ describe('hub rendered fields', () => {
   it('returns renderedFields from the list, the update, and the admin save', async () => {
     enterContentScope('editor')
     const database = useDatabase()
-    const [created] = await database.insert(categories).values({
-      slug: 'hub-render-fields',
-      title: 'Раздел',
-      description: 'Короткое описание раздела.',
-      body: 'Старый текст раздела.',
-    }).returning()
+    const [created] = await database
+      .insert(categories)
+      .values({
+        slug: 'hub-render-fields',
+        title: 'Раздел',
+        description: 'Короткое описание раздела.',
+        body: 'Старый текст раздела.',
+      })
+      .returning()
     if (!created) {
       throw new Error('category insert failed')
     }

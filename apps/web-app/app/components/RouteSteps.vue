@@ -13,7 +13,7 @@
         alt=""
         width="640"
         height="400"
-      >
+      />
     </div>
     <div class="txt">
       <p
@@ -26,7 +26,8 @@
         <a
           v-if="href"
           :href="href"
-        >{{ title }}</a>
+          >{{ title }}</a
+        >
         <template v-else>
           {{ title }}
         </template>
@@ -49,7 +50,8 @@
             <span
               v-if="step.note"
               class="note"
-            >{{ step.note }}</span>
+              >{{ step.note }}</span
+            >
           </span>
         </li>
       </ol>
@@ -70,25 +72,28 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  title: string
-  steps: Array<{ href: string, text: string, note?: string | null, current?: boolean }>
-  summary?: string
-  kicker?: string
-  href?: string
-  action?: string
-  art?: string
-  variant?: 'track' | 'feature'
-  next?: { href: string, text: string } | null
-}>(), {
-  summary: '',
-  kicker: '',
-  href: '',
-  action: '',
-  art: '',
-  variant: 'track',
-  next: null,
-})
+withDefaults(
+  defineProps<{
+    title: string
+    steps: Array<{ href: string; text: string; note?: string | null; current?: boolean }>
+    summary?: string
+    kicker?: string
+    href?: string
+    action?: string
+    art?: string
+    variant?: 'track' | 'feature'
+    next?: { href: string; text: string } | null
+  }>(),
+  {
+    summary: '',
+    kicker: '',
+    href: '',
+    action: '',
+    art: '',
+    variant: 'track',
+    next: null,
+  },
+)
 </script>
 
 <style scoped>
@@ -103,7 +108,7 @@ withDefaults(defineProps<{
   color: var(--color-route-ink);
 }
 .route::after {
-  content: "";
+  content: '';
   position: absolute;
   top: -4rem;
   right: -4rem;
@@ -126,11 +131,29 @@ h2 {
   color: #fff;
   font-size: clamp(1.7rem, 1.2rem + 1.4vw, 2.5rem);
 }
-h2 a { color: inherit; text-decoration: none; }
-h2 a:hover { color: var(--color-amber-soft); }
-.sub { max-width: 56ch; margin: 0; color: var(--color-route-muted); }
-.steps { position: relative; z-index: 1; margin: 1.4rem 0 0; padding: 0; list-style: none; }
-.label { display: block; min-width: 0; }
+h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+h2 a:hover {
+  color: var(--color-amber-soft);
+}
+.sub {
+  max-width: 56ch;
+  margin: 0;
+  color: var(--color-route-muted);
+}
+.steps {
+  position: relative;
+  z-index: 1;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.label {
+  display: block;
+  min-width: 0;
+}
 .steps a {
   display: block;
   color: #fff;
@@ -172,7 +195,10 @@ h2 a:hover { color: var(--color-amber-soft); }
   align-items: center;
   margin: 1.4rem 0 0;
 }
-.actions span { color: var(--color-route-muted); font-size: 0.9rem; }
+.actions span {
+  color: var(--color-route-muted);
+  font-size: 0.9rem;
+}
 .track .steps {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
@@ -186,7 +212,7 @@ h2 a:hover { color: var(--color-amber-soft); }
   text-align: center;
 }
 .track li::before {
-  content: "";
+  content: '';
   position: absolute;
   z-index: 0;
   top: 21px;
@@ -217,15 +243,23 @@ h2 a:hover { color: var(--color-amber-soft); }
   height: 100%;
   object-fit: cover;
 }
-.feature .txt { padding: 1.5rem 1.2rem 1.4rem; }
-.feature .steps { display: grid; gap: 0.7rem; margin-top: 1.1rem; }
+.feature .txt {
+  padding: 1.5rem 1.2rem 1.4rem;
+}
+.feature .steps {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1.1rem;
+}
 .feature li {
   display: flex;
   gap: 0.75rem;
   align-items: center;
   min-width: 0;
 }
-.feature .label { flex: 1; }
+.feature .label {
+  flex: 1;
+}
 .feature .n {
   flex: none;
   width: 30px;
@@ -239,7 +273,7 @@ h2 a:hover { color: var(--color-amber-soft); }
     gap: 0.85rem;
   }
   .track .steps::before {
-    content: "";
+    content: '';
     position: absolute;
     top: 0.4rem;
     right: auto;
@@ -248,7 +282,9 @@ h2 a:hover { color: var(--color-amber-soft); }
     border-top: 0;
     border-left: 2px dashed var(--color-route-partner-line);
   }
-  .track li::before { content: none; }
+  .track li::before {
+    content: none;
+  }
   .track li {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr);
@@ -257,15 +293,27 @@ h2 a:hover { color: var(--color-amber-soft); }
     padding: 0;
     text-align: left;
   }
-  .track .n { margin: 0; }
-  .route { border-radius: 14px; }
+  .track .n {
+    margin: 0;
+  }
+  .route {
+    border-radius: 14px;
+  }
 }
 @media (min-width: 800px) {
-  .track { padding: 2.4rem 2.6rem; }
+  .track {
+    padding: 2.4rem 2.6rem;
+  }
 }
 @media (min-width: 900px) {
-  .feature { grid-template-columns: 1.05fr 1fr; }
-  .feature .art { min-height: 100%; }
-  .feature .txt { padding: 2.6rem 2.4rem; }
+  .feature {
+    grid-template-columns: 1.05fr 1fr;
+  }
+  .feature .art {
+    min-height: 100%;
+  }
+  .feature .txt {
+    padding: 2.6rem 2.4rem;
+  }
 }
 </style>

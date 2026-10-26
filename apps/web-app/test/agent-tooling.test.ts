@@ -1,6 +1,17 @@
 import { Buffer } from 'node:buffer'
 import { execFileSync } from 'node:child_process'
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -255,7 +266,7 @@ describe('boot self-check', () => {
       })
       return { status: 0, stdout }
     } catch (error) {
-      const failed = error as { status?: number, stdout?: string }
+      const failed = error as { status?: number; stdout?: string }
       return { status: failed.status ?? 1, stdout: failed.stdout ?? '' }
     }
   }
@@ -320,7 +331,7 @@ describe('dev database migrate', () => {
       })
       return { status: 0, stderr: '' }
     } catch (error) {
-      const failed = error as { status?: number, stderr?: string }
+      const failed = error as { status?: number; stderr?: string }
       return { status: failed.status ?? 1, stderr: failed.stderr ?? '' }
     }
   }

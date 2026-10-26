@@ -8,8 +8,43 @@ const COMPONENTS = join(ROOT, 'app/components')
 const STUB = join(ROOT, 'test/nuxt-stubs.ts')
 const AUTO_DIRS = [join(ROOT, 'app/composables'), join(ROOT, 'app/utils')]
 
-const VUE_APIS = ['computed', 'inject', 'nextTick', 'onBeforeMount', 'onBeforeUnmount', 'onMounted', 'onUnmounted', 'onUpdated', 'provide', 'reactive', 'readonly', 'ref', 'shallowRef', 'toRef', 'toRefs', 'unref', 'useAttrs', 'useId', 'useSlots', 'useTemplateRef', 'watch', 'watchEffect']
-const NUXT_APIS = ['definePageMeta', 'navigateTo', 'useFetch', 'useRequestFetch', 'useHead', 'useRoute', 'useRouter', 'useRuntimeConfig', 'useSeoMeta', 'useState', 'useUserSession']
+const VUE_APIS = [
+  'computed',
+  'inject',
+  'nextTick',
+  'onBeforeMount',
+  'onBeforeUnmount',
+  'onMounted',
+  'onUnmounted',
+  'onUpdated',
+  'provide',
+  'reactive',
+  'readonly',
+  'ref',
+  'shallowRef',
+  'toRef',
+  'toRefs',
+  'unref',
+  'useAttrs',
+  'useId',
+  'useSlots',
+  'useTemplateRef',
+  'watch',
+  'watchEffect',
+]
+const NUXT_APIS = [
+  'definePageMeta',
+  'navigateTo',
+  'useFetch',
+  'useRequestFetch',
+  'useHead',
+  'useRoute',
+  'useRouter',
+  'useRuntimeConfig',
+  'useSeoMeta',
+  'useState',
+  'useUserSession',
+]
 const STUB_COMPONENTS = ['ClientOnly', 'Icon', 'MapEmbed', 'NuxtLink']
 
 function walk(dir: string, extension: string, out: string[] = []) {
@@ -25,7 +60,10 @@ function walk(dir: string, extension: string, out: string[] = []) {
 }
 
 function splitByCase(value: string) {
-  return value.replace(/([a-z])([A-Z])/g, '$1 $2').split(/[\s/_-]+/).filter(Boolean)
+  return value
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .split(/[\s/_-]+/)
+    .filter(Boolean)
 }
 
 /** Same names Nuxt gives `app/components`, including the ui/ prefix collapse. */
@@ -114,7 +152,17 @@ function imported(script: string, name: string) {
 }
 
 function transformTypeScript(file: string, code: string) {
-  const needed = ['computed', 'ref', 'useRoute', 'useRouter', 'useState', 'useNuxtApp', 'useHead', 'useRuntimeConfig', 'navigateTo'].filter((name) => used(code, name) && !imported(code, name))
+  const needed = [
+    'computed',
+    'ref',
+    'useRoute',
+    'useRouter',
+    'useState',
+    'useNuxtApp',
+    'useHead',
+    'useRuntimeConfig',
+    'navigateTo',
+  ].filter((name) => used(code, name) && !imported(code, name))
   if (!needed.length) {
     return null
   }
@@ -216,7 +264,12 @@ export function serverNitroPreamble(file: string, code: string) {
     const local = binding.target.startsWith(`${SERVER_DIR}/`) || binding.target === SERVER_DIR
     const h3 = binding.target.includes('/node_modules/h3/')
     // nitropack and nuxt-auth-utils import virtual ids that exist only in the Nitro build.
-    if ((!local && !h3) || sameModule(file, binding.target) || imported(code, binding.name) || declaredLocally(code, binding.name)) {
+    if (
+      (!local && !h3) ||
+      sameModule(file, binding.target) ||
+      imported(code, binding.name) ||
+      declaredLocally(code, binding.name)
+    ) {
       continue
     }
     const call = new RegExp(`(?<![.\\w$])${binding.name}\\s*(?:\\(|<)`)

@@ -39,24 +39,30 @@ export interface CollectEvent {
 }
 
 function cappedString(max: number) {
-  return z.unknown().transform((value): string | undefined => {
-    if (typeof value !== 'string') {
-      return undefined
-    }
-    return value.slice(0, max)
-  }).optional()
+  return z
+    .unknown()
+    .transform((value): string | undefined => {
+      if (typeof value !== 'string') {
+        return undefined
+      }
+      return value.slice(0, max)
+    })
+    .optional()
 }
 
 function looseScalar(max: number) {
-  return z.unknown().transform((value): string | number | undefined => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value
-    }
-    if (typeof value === 'string') {
-      return value.slice(0, max)
-    }
-    return undefined
-  }).optional()
+  return z
+    .unknown()
+    .transform((value): string | number | undefined => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value
+      }
+      if (typeof value === 'string') {
+        return value.slice(0, max)
+      }
+      return undefined
+    })
+    .optional()
 }
 
 const collectEventSchema = z.object({
@@ -89,9 +95,9 @@ export function collectBodyDeclaredTooLarge(header: string | undefined) {
 export function normalizeCollectEvents(input: unknown): CollectEvent[] {
   const raw = Array.isArray(input)
     ? input
-    : (input && typeof input === 'object' && Array.isArray((input as { events?: unknown }).events)
-        ? (input as { events: unknown[] }).events
-        : [])
+    : input && typeof input === 'object' && Array.isArray((input as { events?: unknown }).events)
+      ? (input as { events: unknown[] }).events
+      : []
   const events: CollectEvent[] = []
   for (const item of raw) {
     if (events.length >= COLLECT_EVENT_CAP) {

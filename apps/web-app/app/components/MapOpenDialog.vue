@@ -9,9 +9,7 @@
     <DialogPortal>
       <DialogOverlay class="map-open-overlay" />
       <DialogContent class="map-open-sheet">
-        <DialogTitle class="map-open-title">
-          Открыть на карте
-        </DialogTitle>
+        <DialogTitle class="map-open-title"> Открыть на карте </DialogTitle>
         <DialogDescription class="map-open-desc">
           {{ name }}
         </DialogDescription>
@@ -27,7 +25,8 @@
               data-track="outbound"
               :data-track-name="`map-${link.id}`"
               :data-track-entity="entity"
-            >{{ link.label }}</a>
+              >{{ link.label }}</a
+            >
           </li>
           <li v-if="address">
             <button
@@ -50,7 +49,16 @@
 </template>
 
 <script setup lang="ts">
-import { DialogClose, DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, DialogTrigger } from 'reka-ui'
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger,
+} from 'reka-ui'
 import { mapPinLinks } from '~~/shared/embed-map'
 
 // Reka Dialog gives focus trap, Esc and focus return. Phones get a bottom sheet.
@@ -85,7 +93,9 @@ watch(open, (value) => {
 </script>
 
 <style>
-.map-open-trigger { margin: 0.2rem 0 0.6rem; }
+.map-open-trigger {
+  margin: 0.2rem 0 0.6rem;
+}
 .map-open-overlay {
   position: fixed;
   inset: 0;
@@ -115,8 +125,14 @@ watch(open, (value) => {
   color: var(--color-muted);
   font-size: var(--step--1);
 }
-.map-open-list { margin: 0 0 1rem; padding: 0; list-style: none; }
-.map-open-list li { border-top: 1px solid var(--color-line); }
+.map-open-list {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.map-open-list li {
+  border-top: 1px solid var(--color-line);
+}
 .map-open-list a,
 .map-open-list button {
   display: block;
@@ -131,8 +147,12 @@ watch(open, (value) => {
   cursor: pointer;
 }
 .map-open-list a:hover,
-.map-open-list button:hover { text-decoration: underline; }
-.map-open-close { width: 100%; }
+.map-open-list button:hover {
+  text-decoration: underline;
+}
+.map-open-close {
+  width: 100%;
+}
 @media (max-width: 720px) {
   .map-open-sheet {
     top: auto;

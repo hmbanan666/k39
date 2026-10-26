@@ -19,7 +19,7 @@
 import type { SeoDocument } from '~~/shared/seo'
 
 defineProps<{
-  page: { doc: SeoDocument, html: string, items: { href: string, text: string, note?: string | null }[] }
+  page: { doc: SeoDocument; html: string; items: { href: string; text: string; note?: string | null }[] }
   listTitle: string
   kicker?: string
 }>()

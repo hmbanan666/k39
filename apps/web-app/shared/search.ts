@@ -9,9 +9,9 @@ export interface SearchResponse {
   results: SearchHit[]
 }
 
-export type SearchClientEvent
-  = | { type: 'search', id: string, q: string, count: number, surface: string }
-    | { type: 'click', id: string, position: number, path: string }
+export type SearchClientEvent =
+  | { type: 'search'; id: string; q: string; count: number; surface: string }
+  | { type: 'click'; id: string; position: number; path: string }
 
 const SURFACES = new Set(['header', 'page', '404'])
 
@@ -53,5 +53,10 @@ export function sendSearchEvents(events: SearchClientEvent[]) {
   if (navigator.sendBeacon?.('/api/search/events', new Blob([body], { type: 'application/json' }))) {
     return
   }
-  fetch('/api/search/events', { method: 'POST', body, headers: { 'content-type': 'application/json' }, keepalive: true }).catch(() => {})
+  fetch('/api/search/events', {
+    method: 'POST',
+    body,
+    headers: { 'content-type': 'application/json' },
+    keepalive: true,
+  }).catch(() => {})
 }

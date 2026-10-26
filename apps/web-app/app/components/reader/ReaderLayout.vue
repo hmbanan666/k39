@@ -73,29 +73,43 @@
 <script setup lang="ts">
 import type { PageSection } from '~~/shared/page-sections'
 import type { ReaderPartner } from '~~/shared/reader-nav'
-import { activeHeadingId, HEADING_ALIASES, readerTree, showReaderToc, splitAfterFirstSection } from '~~/shared/reader-nav'
+import {
+  activeHeadingId,
+  HEADING_ALIASES,
+  readerTree,
+  showReaderToc,
+  splitAfterFirstSection,
+} from '~~/shared/reader-nav'
 
-const props = withDefaults(defineProps<{
-  html?: string
-  partner?: ReaderPartner | null
-  /** Page blocks before the body, from the shared section registry. */
-  sectionsBefore?: PageSection[]
-  /** Page blocks after the body, in page order. */
-  sectionsAfter?: PageSection[]
-}>(), {
-  html: '',
-  partner: null,
-  sectionsBefore: () => [],
-  sectionsAfter: () => [],
-})
+const props = withDefaults(
+  defineProps<{
+    html?: string
+    partner?: ReaderPartner | null
+    /** Page blocks before the body, from the shared section registry. */
+    sectionsBefore?: PageSection[]
+    /** Page blocks after the body, in page order. */
+    sectionsAfter?: PageSection[]
+  }>(),
+  {
+    html: '',
+    partner: null,
+    sectionsBefore: () => [],
+    sectionsAfter: () => [],
+  },
+)
 
 const slots = useSlots()
 const hasLead = computed(() => Boolean(slots.lead))
-const blockItems = (sections: PageSection[]) => sections.map((section) => ({ id: section.id, text: section.title, children: [] }))
-const tree = computed(() => [...blockItems(props.sectionsBefore), ...readerTree(props.html), ...blockItems(props.sectionsAfter)])
+const blockItems = (sections: PageSection[]) =>
+  sections.map((section) => ({ id: section.id, text: section.title, children: [] }))
+const tree = computed(() => [
+  ...blockItems(props.sectionsBefore),
+  ...readerTree(props.html),
+  ...blockItems(props.sectionsAfter),
+])
 const showToc = computed(() => showReaderToc(props.html, props.sectionsBefore.length + props.sectionsAfter.length))
 const showRail = computed(() => showToc.value || Boolean(props.partner))
-const parts = computed(() => props.partner ? splitAfterFirstSection(props.html) : { before: props.html, after: '' })
+const parts = computed(() => (props.partner ? splitAfterFirstSection(props.html) : { before: props.html, after: '' }))
 const activeId = ref('')
 const progress = ref(0)
 const bodyRef = ref<HTMLElement | null>(null)
@@ -189,16 +203,28 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 1.6rem;
 }
-.reader-note { grid-column: 1 / -1; }
+.reader-note {
+  grid-column: 1 / -1;
+}
 .reader-body {
   min-width: 0;
   max-width: 70ch;
 }
-.reader-side { display: contents; }
-.reader-lead { order: 1; }
-.reader-disclosure { order: 2; }
-.reader-body { order: 3; }
-.reader-rail { display: none; }
+.reader-side {
+  display: contents;
+}
+.reader-lead {
+  order: 1;
+}
+.reader-disclosure {
+  order: 2;
+}
+.reader-body {
+  order: 3;
+}
+.reader-rail {
+  display: none;
+}
 .reader-disclosure {
   border: 1px solid var(--color-line);
   border-radius: 14px;
@@ -211,8 +237,12 @@ onBeforeUnmount(() => {
   line-height: 1.4;
   cursor: pointer;
 }
-.reader-disclosure :deep(.toc) { padding: 0 0.85rem 0.9rem; }
-.partner-inline { margin: 0.2rem 0 0.4rem; }
+.reader-disclosure :deep(.toc) {
+  padding: 0 0.85rem 0.9rem;
+}
+.partner-inline {
+  margin: 0.2rem 0 0.4rem;
+}
 @media (min-width: 1000px) {
   .reader.has-lead:not(.with-rail) {
     display: grid;
@@ -257,8 +287,12 @@ onBeforeUnmount(() => {
     min-width: 0;
   }
   .reader.with-rail .reader-lead,
-  .reader.with-rail .reader-rail { order: 0; }
-  .reader.with-rail .reader-disclosure { display: none; }
+  .reader.with-rail .reader-rail {
+    order: 0;
+  }
+  .reader.with-rail .reader-disclosure {
+    display: none;
+  }
   .reader.with-rail .reader-rail {
     display: flex;
     flex-direction: column;
@@ -268,7 +302,9 @@ onBeforeUnmount(() => {
     max-height: calc(100dvh - var(--site-header-offset) - 2rem);
     overflow: auto;
   }
-  .reader.with-rail .partner-inline { display: none; }
+  .reader.with-rail .partner-inline {
+    display: none;
+  }
   .reader.with-rail .rail-toc {
     padding: 1rem 0.9rem 0.9rem;
     border: 1px solid var(--color-line);

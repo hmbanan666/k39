@@ -84,9 +84,15 @@ describe('map filters', () => {
     expect(counts.sights.muzei).toBe(1)
     expect(counts.sights.tserkvi).toBe(1)
     expect(counts.food.coffee).toBe(1)
-    expect(pointVisible(cathedral, { sights: ['muzei'], food: null, route: null, q: '', category: null, focus: null })).toBe(true)
-    expect(pointVisible(cathedral, { sights: ['tserkvi'], food: null, route: null, q: '', category: null, focus: null })).toBe(true)
-    expect(pointVisible(cathedral, { sights: ['forty'], food: null, route: null, q: '', category: null, focus: null })).toBe(false)
+    expect(
+      pointVisible(cathedral, { sights: ['muzei'], food: null, route: null, q: '', category: null, focus: null }),
+    ).toBe(true)
+    expect(
+      pointVisible(cathedral, { sights: ['tserkvi'], food: null, route: null, q: '', category: null, focus: null }),
+    ).toBe(true)
+    expect(
+      pointVisible(cathedral, { sights: ['forty'], food: null, route: null, q: '', category: null, focus: null }),
+    ).toBe(false)
     expect(pointVisible(fort, { sights: [], food: null, route: null, q: '', category: null, focus: null })).toBe(false)
   })
 
@@ -98,8 +104,13 @@ describe('map filters', () => {
     expect(state.q).toBe('форт')
     expect(mapQueryRecord(state)).toEqual({ s: 'forty,zamki', f: 'kofe,pekarnya', r: 'pyat-fortov', q: 'форт' })
     expect(parseMapQuery({ s: 'none', f: 'none' })).toMatchObject({ sights: [], food: [] })
-    expect(mapQueryRecord({ sights: [], food: [], route: null, q: '', category: null, focus: null })).toEqual({ s: 'none', f: 'none' })
-    expect(mapQueryRecord({ sights: null, food: null, route: null, q: '', category: 'food', focus: null })).toEqual({ c: 'food' })
+    expect(mapQueryRecord({ sights: [], food: [], route: null, q: '', category: null, focus: null })).toEqual({
+      s: 'none',
+      f: 'none',
+    })
+    expect(mapQueryRecord({ sights: null, food: null, route: null, q: '', category: 'food', focus: null })).toEqual({
+      c: 'food',
+    })
     expect(parseMapQuery({ c: 'beaches' }).category).toBe('beaches')
     expect(parseMapQuery({ c: 'nope' }).category).toBeNull()
     expect(parseMapQuery({ focus: '/zavedeniya/kofe' }).focus).toBe('zavedeniya/kofe')
@@ -108,7 +119,9 @@ describe('map filters', () => {
     expect(shownPoints(points, { ...parseMapQuery({}), focus: 'kofe' }).some((item) => item.id === 'kofe')).toBe(true)
     expect(pointVisible(coffee, { ...state, sights: null, food: state.food, q: '' })).toBe(true)
     expect(pointVisible(fort, { sights: null, food: null, route: null, q: 'кофе', category: null })).toBe(false)
-    expect(pointVisible(coffee, { sights: null, food: ['restaurant'], route: null, q: '', category: null, focus: null })).toBe(false)
+    expect(
+      pointVisible(coffee, { sights: null, food: ['restaurant'], route: null, q: '', category: null, focus: null }),
+    ).toBe(false)
   })
 
   it('drops one chip from the full set and sorts a partner first', () => {
@@ -138,9 +151,19 @@ describe('route geometry', () => {
   it('uses a dashed connector until a real line is stored', () => {
     const dashed = routeOverlay(route)
     expect(dashed?.dashed).toBe(true)
-    expect(dashed?.line).toEqual([[20.5, 54.7], [20.6, 54.8]])
+    expect(dashed?.line).toEqual([
+      [20.5, 54.7],
+      [20.6, 54.8],
+    ])
     expect(dashed?.stops.map((stop) => stop.position)).toEqual([1, 2])
-    const solid = routeOverlay({ ...route, path: [[20.5, 54.7], [20.55, 54.75], [20.6, 54.8]] })
+    const solid = routeOverlay({
+      ...route,
+      path: [
+        [20.5, 54.7],
+        [20.55, 54.75],
+        [20.6, 54.8],
+      ],
+    })
     expect(solid?.dashed).toBe(false)
     expect(solid?.line).toHaveLength(3)
     expect(routeOverlay({ ...route, path: [[200, 54]] })?.dashed).toBe(true)
@@ -157,10 +180,31 @@ describe('visitor layers', () => {
     expect(quiet[0]?.type === 'points' && quiet[0].points.find((point) => point.id === 'kofe')?.sponsored).toBe(true)
     const layers = visitorLayers([fort, coffee], {
       dashed: true,
-      line: [[20.5, 54.7], [20.6, 54.8]],
+      line: [
+        [20.5, 54.7],
+        [20.6, 54.8],
+      ],
       stops: [
-        { position: 1, title: 'Один', href: '/fort', latitude: 54.7, longitude: 20.5, summary: '', photo: null, id: 'stop:/fort' },
-        { position: 2, title: 'Два', href: '/b', latitude: 54.8, longitude: 20.6, summary: '', photo: null, id: 'stop:/b' },
+        {
+          position: 1,
+          title: 'Один',
+          href: '/fort',
+          latitude: 54.7,
+          longitude: 20.5,
+          summary: '',
+          photo: null,
+          id: 'stop:/fort',
+        },
+        {
+          position: 2,
+          title: 'Два',
+          href: '/b',
+          latitude: 54.8,
+          longitude: 20.6,
+          summary: '',
+          photo: null,
+          id: 'stop:/b',
+        },
       ],
     })
     expect(layers.map((layer) => layer.id)).toEqual(['route', 'places', 'route-stops'])
@@ -170,7 +214,15 @@ describe('visitor layers', () => {
 })
 
 describe('browse panel', () => {
-  const beach = point({ id: 'beach', title: 'Пляж', group: 'sight', category: 'plyazhi', marker: 'plyazhi', latitude: 55.1, longitude: 21.2 })
+  const beach = point({
+    id: 'beach',
+    title: 'Пляж',
+    group: 'sight',
+    category: 'plyazhi',
+    marker: 'plyazhi',
+    latitude: 55.1,
+    longitude: 21.2,
+  })
   const points = [fort, cathedral, coffee, beach]
   const idle = { sights: null, food: null, route: null, q: '', category: null, focus: null }
 

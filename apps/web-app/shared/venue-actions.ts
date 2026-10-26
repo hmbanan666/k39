@@ -23,7 +23,7 @@ export interface VenueAction {
   external: boolean
 }
 
-export function venueActions(input: VenueActionInput): { primary: VenueAction | null, secondary: VenueAction[] } {
+export function venueActions(input: VenueActionInput): { primary: VenueAction | null; secondary: VenueAction[] } {
   const all: VenueAction[] = []
   if (input.bookingUrl) {
     all.push({ key: 'booking', label: 'Забронировать столик', href: input.bookingUrl, external: true })
@@ -57,7 +57,11 @@ const RESERVATION_NOTE: Record<string, string> = {
 }
 
 /** Short service facts, only the known ones. */
-export function venueServiceNotes(input: { reservation?: string | null, takeaway?: boolean | null, delivery?: boolean | null }) {
+export function venueServiceNotes(input: {
+  reservation?: string | null
+  takeaway?: boolean | null
+  delivery?: boolean | null
+}) {
   const notes: string[] = []
   if (input.reservation && RESERVATION_NOTE[input.reservation]) {
     notes.push(RESERVATION_NOTE[input.reservation]!)

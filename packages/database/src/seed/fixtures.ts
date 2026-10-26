@@ -95,8 +95,17 @@ function seasonalRules(now: Date) {
   return {
     mode: 'hours',
     seasons: [
-      { from: '06-01', to: '08-31', week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '23:00', breaks: [] }] },
-      { week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }, { days: [6], opens: '11:00', closes: '17:00', breaks: [] }] },
+      {
+        from: '06-01',
+        to: '08-31',
+        week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '23:00', breaks: [] }],
+      },
+      {
+        week: [
+          { days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] },
+          { days: [6], opens: '11:00', closes: '17:00', breaks: [] },
+        ],
+      },
     ],
     closures: [{ weekday: 1, nth: -1, label: 'Санитарный день' }],
     holidays: 'as-usual',
@@ -126,7 +135,10 @@ function collectionModules(): StoredPageModule[] {
     {
       type: 'month-stats',
       title: 'Фикстура месяца',
-      tiles: [{ label: 'Дни', value: '30' }, { label: 'Точки', value: '1' }],
+      tiles: [
+        { label: 'Дни', value: '30' },
+        { label: 'Точки', value: '1' },
+      ],
       rows: [],
     },
     { type: 'picker', questions: ['interest', 'company'] },
@@ -137,29 +149,40 @@ function collectionModules(): StoredPageModule[] {
   ]
 }
 
-async function ensureCover(owner: { placeId?: string, venueId?: string }, alt: string) {
+async function ensureCover(owner: { placeId?: string; venueId?: string }, alt: string) {
   const db = useDatabase()
   if (owner.placeId) {
-    const [linked] = await db.select({ id: placeMedia.id }).from(placeMedia).where(eq(placeMedia.placeId, owner.placeId)).limit(1)
+    const [linked] = await db
+      .select({ id: placeMedia.id })
+      .from(placeMedia)
+      .where(eq(placeMedia.placeId, owner.placeId))
+      .limit(1)
     if (linked) {
       return
     }
   }
   if (owner.venueId) {
-    const [linked] = await db.select({ id: venueMedia.id }).from(venueMedia).where(eq(venueMedia.venueId, owner.venueId)).limit(1)
+    const [linked] = await db
+      .select({ id: venueMedia.id })
+      .from(venueMedia)
+      .where(eq(venueMedia.venueId, owner.venueId))
+      .limit(1)
     if (linked) {
       return
     }
   }
-  const [photo] = await db.insert(media).values({
-    filename: 'fixture.webp',
-    mime: 'image/webp',
-    bytes: 1,
-    width: 800,
-    height: 500,
-    alt,
-    variants: [{ format: 'webp', width: 800, height: 500, bytes: 1, file: '800.webp' }],
-  }).returning()
+  const [photo] = await db
+    .insert(media)
+    .values({
+      filename: 'fixture.webp',
+      mime: 'image/webp',
+      bytes: 1,
+      width: 800,
+      height: 500,
+      alt,
+      variants: [{ format: 'webp', width: 800, height: 500, bytes: 1, file: '800.webp' }],
+    })
+    .returning()
   if (!photo) {
     return
   }
@@ -167,7 +190,9 @@ async function ensureCover(owner: { placeId?: string, venueId?: string }, alt: s
     await db.insert(placeMedia).values({ placeId: owner.placeId, mediaId: photo.id, isCover: true, sortOrder: 0 })
   }
   if (owner.venueId) {
-    await db.insert(venueMedia).values({ venueId: owner.venueId, mediaId: photo.id, isCover: true, sortOrder: 0, origin: 'own' })
+    await db
+      .insert(venueMedia)
+      .values({ venueId: owner.venueId, mediaId: photo.id, isCover: true, sortOrder: 0, origin: 'own' })
   }
 }
 
@@ -177,7 +202,7 @@ async function ensureVenue(input: {
   regionId: string
   latitude: number | null
   longitude: number | null
-  socials?: Array<{ network: string, url: string }>
+  socials?: Array<{ network: string; url: string }>
   modules?: unknown[]
 }) {
   const description = fixtureProse(input.name)
@@ -199,9 +224,7 @@ async function ensureVenue(input: {
     menuUrl: MENU_URL,
     sources: [{ title: 'Меню фикстуры', url: MENU_URL }],
   }
-  const row = existing
-    ? await Venues.update(existing.id, write)
-    : await Venues.create(write)
+  const row = existing ? await Venues.update(existing.id, write) : await Venues.create(write)
   if (!row) {
     throw new Error(`Fixture venue missing: ${input.slug}`)
   }
@@ -219,19 +242,79 @@ async function applyPracticalFixtures(placeId: string, staleId: string, now: Dat
   const source = { sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: day }
   await Admission.replace('place', placeId, [
     { slot: 'adult', audience: 'general', priceRub: 400, condition: null, label: null, sortOrder: 0, ...source },
-    { slot: 'reduced', audience: 'reduced', priceRub: 200, condition: 'Школьники, студенты очной формы, пенсионеры', label: null, sortOrder: 1, ...source },
-    { slot: 'family', audience: 'family', priceRub: 900, condition: 'Двое взрослых и до трёх детей', label: null, sortOrder: 2, ...source },
+    {
+      slot: 'reduced',
+      audience: 'reduced',
+      priceRub: 200,
+      condition: 'Школьники, студенты очной формы, пенсионеры',
+      label: null,
+      sortOrder: 1,
+      ...source,
+    },
+    {
+      slot: 'family',
+      audience: 'family',
+      priceRub: 900,
+      condition: 'Двое взрослых и до трёх детей',
+      label: null,
+      sortOrder: 2,
+      ...source,
+    },
     { slot: 'kids', audience: 'free', priceRub: 0, condition: 'Дети до 7 лет', label: null, sortOrder: 3, ...source },
   ])
   await Admission.replace('place', staleId, [
-    { slot: 'adult', audience: 'general', priceRub: 300, condition: null, label: null, sortOrder: 0, sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: addDays(day, -400) },
+    {
+      slot: 'adult',
+      audience: 'general',
+      priceRub: 300,
+      condition: null,
+      label: null,
+      sortOrder: 0,
+      sourceUrl: TICKETS_URL,
+      sourceTitle: 'Цены фикстуры',
+      checkedAt: addDays(day, -400),
+    },
   ])
   await CalendarEvents.removeForSubject('place', placeId)
-  const event = { subjectType: 'place' as const, subjectId: placeId, sourceUrl: AFISHA_URL, sourceTitle: 'Афиша фикстуры', checkedAt: day }
-  await CalendarEvents.insert({ ...event, title: 'Фикстура: вечерний концерт', startsAt: localAt(now, 3, '19:00'), endsAt: localAt(now, 3, '21:00'), allDay: false, ticketUrl: TICKETS_URL })
-  await CalendarEvents.insert({ ...event, title: 'Фикстура: день открытых дверей', startsAt: localAt(now, 10, '00:00'), endsAt: localAt(now, 12, '00:00'), allDay: true, ticketUrl: null })
-  await CalendarEvents.insert({ ...event, title: 'Фикстура: прошедший концерт', startsAt: localAt(now, -2, '19:00'), endsAt: null, allDay: false, ticketUrl: TICKETS_URL })
-  const cancelled = await CalendarEvents.insert({ ...event, title: 'Фикстура: отменённый концерт', startsAt: localAt(now, 5, '18:00'), endsAt: null, allDay: false, ticketUrl: null })
+  const event = {
+    subjectType: 'place' as const,
+    subjectId: placeId,
+    sourceUrl: AFISHA_URL,
+    sourceTitle: 'Афиша фикстуры',
+    checkedAt: day,
+  }
+  await CalendarEvents.insert({
+    ...event,
+    title: 'Фикстура: вечерний концерт',
+    startsAt: localAt(now, 3, '19:00'),
+    endsAt: localAt(now, 3, '21:00'),
+    allDay: false,
+    ticketUrl: TICKETS_URL,
+  })
+  await CalendarEvents.insert({
+    ...event,
+    title: 'Фикстура: день открытых дверей',
+    startsAt: localAt(now, 10, '00:00'),
+    endsAt: localAt(now, 12, '00:00'),
+    allDay: true,
+    ticketUrl: null,
+  })
+  await CalendarEvents.insert({
+    ...event,
+    title: 'Фикстура: прошедший концерт',
+    startsAt: localAt(now, -2, '19:00'),
+    endsAt: null,
+    allDay: false,
+    ticketUrl: TICKETS_URL,
+  })
+  const cancelled = await CalendarEvents.insert({
+    ...event,
+    title: 'Фикстура: отменённый концерт',
+    startsAt: localAt(now, 5, '18:00'),
+    endsAt: null,
+    allDay: false,
+    ticketUrl: null,
+  })
   await CalendarEvents.cancel(cancelled.id, now.toISOString())
 }
 
@@ -366,44 +449,77 @@ export async function applyFixtures(now = new Date()) {
   ]
   for (const row of priced) {
     await Prices.setForVenue(row.venue.id, [
-      { item: 'cappuccino', priceRub: row.cappuccino, checkedAt: day, sourceKind: 'official', sourceTitle: 'Меню фикстуры', sourceUrl: MENU_URL },
-      { item: 'americano', priceRub: row.americano, checkedAt: day, sourceKind: 'official', sourceTitle: 'Меню фикстуры', sourceUrl: MENU_URL },
-      { item: 'latte', priceRub: row.latte, checkedAt: day, sourceKind: 'official', sourceTitle: 'Меню фикстуры', sourceUrl: MENU_URL },
+      {
+        item: 'cappuccino',
+        priceRub: row.cappuccino,
+        checkedAt: day,
+        sourceKind: 'official',
+        sourceTitle: 'Меню фикстуры',
+        sourceUrl: MENU_URL,
+      },
+      {
+        item: 'americano',
+        priceRub: row.americano,
+        checkedAt: day,
+        sourceKind: 'official',
+        sourceTitle: 'Меню фикстуры',
+        sourceUrl: MENU_URL,
+      },
+      {
+        item: 'latte',
+        priceRub: row.latte,
+        checkedAt: day,
+        sourceKind: 'official',
+        sourceTitle: 'Меню фикстуры',
+        sourceUrl: MENU_URL,
+      },
     ])
     await Venues.setPriceBand(row.venue.id, { level: row.band, basis: 3, computedAt: now.toISOString() })
   }
 
   const rules = scheduleRules()
   for (const venue of [photo, quiet]) {
-    await Schedules.save({
+    await Schedules.save(
+      {
+        entityType: 'venue',
+        entityId: venue.id,
+        rules,
+        sourceUrl: HOURS_URL,
+        verifiedAt: day,
+      },
+      [],
+    )
+  }
+  await Schedules.save(
+    {
       entityType: 'venue',
-      entityId: venue.id,
-      rules,
+      entityId: openEnded.id,
+      rules: openEndedRules(),
       sourceUrl: HOURS_URL,
       verifiedAt: day,
-    }, [])
-  }
-  await Schedules.save({
-    entityType: 'venue',
-    entityId: openEnded.id,
-    rules: openEndedRules(),
-    sourceUrl: HOURS_URL,
-    verifiedAt: day,
-  }, [])
-  await Schedules.save({
-    entityType: 'venue',
-    entityId: unknownDays.id,
-    rules: unknownDaysRules(),
-    sourceUrl: HOURS_URL,
-    verifiedAt: day,
-  }, [])
-  await Schedules.save({
-    entityType: 'venue',
-    entityId: seasons.id,
-    rules: seasonalRules(now),
-    sourceUrl: HOURS_URL,
-    verifiedAt: day,
-  }, [])
+    },
+    [],
+  )
+  await Schedules.save(
+    {
+      entityType: 'venue',
+      entityId: unknownDays.id,
+      rules: unknownDaysRules(),
+      sourceUrl: HOURS_URL,
+      verifiedAt: day,
+    },
+    [],
+  )
+  await Schedules.save(
+    {
+      entityType: 'venue',
+      entityId: seasons.id,
+      rules: seasonalRules(now),
+      sourceUrl: HOURS_URL,
+      verifiedAt: day,
+    },
+    [],
+  )
 
   const tickets = await Editor.savePlace({
     slug: FIXTURE_SLUGS.placeTickets,
@@ -449,15 +565,44 @@ export async function applyFixtures(now = new Date()) {
   })
   const route = await Editor.routeBySlug(FIXTURE_SLUGS.route)
   await Admission.replace('route', route!.id, [
-    { slot: 'tour', audience: 'general', priceRub: 1200, condition: 'Экскурсия с гидом, группа до 15 человек', label: 'Экскурсия', sourceUrl: TICKETS_URL, sourceTitle: 'Цены фикстуры', checkedAt: localNow(now).date, sortOrder: 0 },
+    {
+      slot: 'tour',
+      audience: 'general',
+      priceRub: 1200,
+      condition: 'Экскурсия с гидом, группа до 15 человек',
+      label: 'Экскурсия',
+      sourceUrl: TICKETS_URL,
+      sourceTitle: 'Цены фикстуры',
+      checkedAt: localNow(now).date,
+      sortOrder: 0,
+    },
   ])
   // Dated notices (ADR 0049), relative to the seed day so each one stays in its window state.
   const noticeDay = localNow(now).date
   const shift = (days: number) => addDays(noticeDay, days)
-  const notice = { openEndedReason: null, address: null, sourceUrl: NEWS_URL, sourceTitle: 'Новости фикстуры', checkedAt: noticeDay }
+  const notice = {
+    openEndedReason: null,
+    address: null,
+    sourceUrl: NEWS_URL,
+    sourceTitle: 'Новости фикстуры',
+    checkedAt: noticeDay,
+  }
   await Notices.replace('venue', photo.id, [
-    { ...notice, kind: 'relocation', startsOn: shift(-1), endsOn: shift(12), text: 'Фикстура: кафе работает по другому адресу.', address: 'Фикстура, улица Временная, 5А' },
-    { ...notice, kind: 'other', startsOn: shift(-30), endsOn: shift(-10), text: 'Фикстура: прошедшее объявление, на странице его нет.' },
+    {
+      ...notice,
+      kind: 'relocation',
+      startsOn: shift(-1),
+      endsOn: shift(12),
+      text: 'Фикстура: кафе работает по другому адресу.',
+      address: 'Фикстура, улица Временная, 5А',
+    },
+    {
+      ...notice,
+      kind: 'other',
+      startsOn: shift(-30),
+      endsOn: shift(-10),
+      text: 'Фикстура: прошедшее объявление, на странице его нет.',
+    },
   ])
   await Notices.replace('venue', quiet.id, [
     { ...notice, kind: 'closed', startsOn: shift(7), endsOn: shift(9), text: 'Фикстура: кафе не работает в эти дни.' },
@@ -465,8 +610,20 @@ export async function applyFixtures(now = new Date()) {
   const contact = await Editor.placeBySlug(FIXTURE_SLUGS.placeContact)
   if (contact) {
     await Notices.replace('place', contact.id, [
-      { ...notice, kind: 'closed', startsOn: shift(-2), endsOn: shift(5), text: 'Фикстура: место закрыто для посетителей.' },
-      { ...notice, kind: 'renovation', startsOn: shift(20), endsOn: shift(80), text: 'Фикстура: в здании идёт реконструкция, снаружи можно посмотреть.' },
+      {
+        ...notice,
+        kind: 'closed',
+        startsOn: shift(-2),
+        endsOn: shift(5),
+        text: 'Фикстура: место закрыто для посетителей.',
+      },
+      {
+        ...notice,
+        kind: 'renovation',
+        startsOn: shift(20),
+        endsOn: shift(80),
+        text: 'Фикстура: в здании идёт реконструкция, снаружи можно посмотреть.',
+      },
     ])
   }
 
@@ -477,7 +634,11 @@ export async function applyFixtures(now = new Date()) {
     body: 'Фикстура подборки.',
     publicationStatus: 'published',
     noindex: true,
-    items: [{ placeSlug: FIXTURE_SLUGS.placeStop }, { placeSlug: FIXTURE_SLUGS.placeHub }, { placeSlug: FIXTURE_SLUGS.placeTickets }],
+    items: [
+      { placeSlug: FIXTURE_SLUGS.placeStop },
+      { placeSlug: FIXTURE_SLUGS.placeHub },
+      { placeSlug: FIXTURE_SLUGS.placeTickets },
+    ],
     modules: collectionModules(),
   })
 

@@ -46,7 +46,10 @@ function isLoopbackAddress(address: string | undefined) {
   if (!address) {
     return false
   }
-  let bare = address.trim().toLowerCase().replace(/^\[|\]$/g, '')
+  let bare = address
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '')
   const zone = bare.indexOf('%')
   if (zone !== -1) {
     bare = bare.slice(0, zone)

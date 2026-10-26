@@ -27,13 +27,16 @@ export const OWNER_FIELDS = [
 
 export type OwnerField = (typeof OWNER_FIELDS)[number]
 
-const emptyToNull = z.union([z.string(), z.null()]).optional().transform((value) => {
-  if (value == null) {
-    return null
-  }
-  const trimmed = value.trim()
-  return trimmed || null
-})
+const emptyToNull = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((value) => {
+    if (value == null) {
+      return null
+    }
+    const trimmed = value.trim()
+    return trimmed || null
+  })
 
 const day = z.object({
   weekday: z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']),
@@ -44,37 +47,51 @@ const day = z.object({
   closes: z.string().nullable().optional(),
 })
 
-export const ownerVenueSchema = z.object({
-  name: z.string().trim().min(1).max(160).optional(),
-  description: z.string().max(8000).optional(),
-  cuisineTags: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
-  address: emptyToNull,
-  phone: emptyToNull,
-  website: emptyToNull,
-  socials: z.array(z.object({
-    network: z.string().trim().min(1).max(24),
-    url: z.string().trim().min(1).max(300),
-  })).max(8).optional(),
-  bookingUrl: emptyToNull,
-  orderUrl: emptyToNull,
-  deliveryUrl: emptyToNull,
-  menuUrl: emptyToNull,
-  reservation: z.enum(['yes', 'no', 'required', 'recommended']).nullable().optional(),
-  takeaway: z.boolean().nullable().optional(),
-  delivery: z.boolean().nullable().optional(),
-  signatureDishes: z.array(z.object({
-    name: z.string().trim().min(1).max(80),
-    note: z.string().trim().max(160).nullable().optional(),
-    priceRub: z.number().int().min(0).max(1_000_000).nullable().optional(),
-  })).max(5).optional(),
-  priceLevel: z.number().int().min(1).max(4).nullable().optional(),
-  avgCheck: z.number().int().min(0).max(1_000_000).nullable().optional(),
-  modules: venueModulesSchema.optional(),
-  hours: z.object({
-    days: z.array(day).max(7).optional(),
-    note: z.string().trim().max(HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG).nullable().optional(),
-  }).optional(),
-}).strict()
+export const ownerVenueSchema = z
+  .object({
+    name: z.string().trim().min(1).max(160).optional(),
+    description: z.string().max(8000).optional(),
+    cuisineTags: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
+    address: emptyToNull,
+    phone: emptyToNull,
+    website: emptyToNull,
+    socials: z
+      .array(
+        z.object({
+          network: z.string().trim().min(1).max(24),
+          url: z.string().trim().min(1).max(300),
+        }),
+      )
+      .max(8)
+      .optional(),
+    bookingUrl: emptyToNull,
+    orderUrl: emptyToNull,
+    deliveryUrl: emptyToNull,
+    menuUrl: emptyToNull,
+    reservation: z.enum(['yes', 'no', 'required', 'recommended']).nullable().optional(),
+    takeaway: z.boolean().nullable().optional(),
+    delivery: z.boolean().nullable().optional(),
+    signatureDishes: z
+      .array(
+        z.object({
+          name: z.string().trim().min(1).max(80),
+          note: z.string().trim().max(160).nullable().optional(),
+          priceRub: z.number().int().min(0).max(1_000_000).nullable().optional(),
+        }),
+      )
+      .max(5)
+      .optional(),
+    priceLevel: z.number().int().min(1).max(4).nullable().optional(),
+    avgCheck: z.number().int().min(0).max(1_000_000).nullable().optional(),
+    modules: venueModulesSchema.optional(),
+    hours: z
+      .object({
+        days: z.array(day).max(7).optional(),
+        note: z.string().trim().max(HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG).nullable().optional(),
+      })
+      .optional(),
+  })
+  .strict()
 
 export type OwnerVenueInput = z.infer<typeof ownerVenueSchema>
 
@@ -121,8 +138,8 @@ export function emailCanReceiveCode(email: string | null | undefined) {
 }
 
 export interface ClaimChannelPlan {
-  email: { present: boolean, transport: boolean, mask: string | null }
-  phone: { present: boolean, transport: boolean, mask: string | null }
+  email: { present: boolean; transport: boolean; mask: string | null }
+  phone: { present: boolean; transport: boolean; mask: string | null }
 }
 
 export function claimChannelPlan(input: {
@@ -146,7 +163,13 @@ export function claimChannelPlan(input: {
 }
 
 export function safeInternalPath(value: unknown, fallback = '/') {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\') || value.includes('://')) {
+  if (
+    typeof value !== 'string' ||
+    !value.startsWith('/') ||
+    value.startsWith('//') ||
+    value.includes('\\') ||
+    value.includes('://')
+  ) {
     return fallback
   }
   return value

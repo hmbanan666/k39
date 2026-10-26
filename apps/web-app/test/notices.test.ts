@@ -6,16 +6,46 @@ import { nextTick } from 'vue'
 import OpeningLive from '../app/components/OpeningLive.vue'
 import TemporaryNotices from '../app/components/TemporaryNotices.vue'
 import VenuePage from '../app/components/VenuePage.vue'
-import { liveStatus, liveStatusText, normalizeNotice, noticeDateLine, noticeInputSchema, noticeLines, noticeNeedsCheck, noticeOverlapProblem, noticeState, noticeTextProblem, noticeToday, statusWindows, visibleNotices } from '../shared/notices'
+import {
+  liveStatus,
+  liveStatusText,
+  normalizeNotice,
+  noticeDateLine,
+  noticeInputSchema,
+  noticeLines,
+  noticeNeedsCheck,
+  noticeOverlapProblem,
+  noticeState,
+  noticeTextProblem,
+  noticeToday,
+  statusWindows,
+  visibleNotices,
+} from '../shared/notices'
 import { scheduleDetails, scheduleRulesSchema } from '../shared/schedule'
 import { renderPage } from './helpers/render-page'
 
-const rules = scheduleRulesSchema.parse({ seasons: [{ week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '21:00' }] }] })
+const rules = scheduleRulesSchema.parse({
+  seasons: [{ week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '21:00' }] }],
+})
 const schedule = { rules, sourceUrl: 'https://fixture.k39.test/hours', verifiedAt: '2026-10-14' }
 const source = { sourceUrl: 'https://fixture.k39.test/news', sourceTitle: 'Новости фикстуры' }
 
-const relocation = { kind: 'relocation' as const, from: '2026-11-01', to: '2026-11-13', text: 'Кафе работает по этому адресу.', address: 'ул. Ленина, 5А', ...source }
-const closed = { kind: 'closed' as const, from: '2026-11-20', to: '2026-11-21', text: 'Кафе не работает.', address: null, ...source }
+const relocation = {
+  kind: 'relocation' as const,
+  from: '2026-11-01',
+  to: '2026-11-13',
+  text: 'Кафе работает по этому адресу.',
+  address: 'ул. Ленина, 5А',
+  ...source,
+}
+const closed = {
+  kind: 'closed' as const,
+  from: '2026-11-20',
+  to: '2026-11-21',
+  text: 'Кафе не работает.',
+  address: null,
+  ...source,
+}
 
 describe('notice windows', () => {
   it('compares the dates with today in Kaliningrad', () => {
@@ -32,13 +62,22 @@ describe('notice windows', () => {
     const other = { ...closed, kind: 'other' as const, from: '2026-11-02', to: '2026-11-03' }
     const renovation = { ...closed, kind: 'renovation' as const, from: '2026-10-01', to: '2026-10-31' }
     const shown = visibleNotices([other, closed, relocation, renovation], '2026-11-02')
-    expect(shown.map((row) => [row.kind, row.state])).toEqual([['relocation', 'current'], ['other', 'current'], ['closed', 'upcoming']])
+    expect(shown.map((row) => [row.kind, row.state])).toEqual([
+      ['relocation', 'current'],
+      ['other', 'current'],
+      ['closed', 'upcoming'],
+    ])
   })
 
   it('prints exact Russian dates with no em dash', () => {
     expect(noticeDateLine(relocation)).toBe('с 1 ноября 2026 по 13 ноября 2026')
     expect(noticeDateLine({ from: '2026-11-01', to: null })).toBe('с 1 ноября 2026')
-    expect(noticeLines(relocation)).toEqual({ dates: 'с 1 ноября 2026 по 13 ноября 2026', label: 'Другой адрес', text: relocation.text, address: 'ул. Ленина, 5А' })
+    expect(noticeLines(relocation)).toEqual({
+      dates: 'с 1 ноября 2026 по 13 ноября 2026',
+      label: 'Другой адрес',
+      text: relocation.text,
+      address: 'ул. Ленина, 5А',
+    })
     expect(noticeLines({ ...closed, kind: 'other' }).label).toBeNull()
     expect(noticeLines({ ...closed, address: 'ул. Ленина, 1' }).address).toBeNull()
   })
@@ -51,7 +90,8 @@ describe('notice windows', () => {
 })
 
 describe('notice input', () => {
-  const parse = (value: Record<string, unknown>) => normalizeNotice(noticeInputSchema.parse({ ...relocation, checkedAt: '2026-10-20', ...value }), '2026-10-22')
+  const parse = (value: Record<string, unknown>) =>
+    normalizeNotice(noticeInputSchema.parse({ ...relocation, checkedAt: '2026-10-20', ...value }), '2026-10-22')
 
   it('rejects relative words, a clock, and a price as whole words only', () => {
     for (const word of ['пока', 'Сейчас', 'скоро', 'временно', 'сегодня', 'завтра', 'вчера', 'на  днях']) {
@@ -76,9 +116,19 @@ describe('notice input', () => {
   it('refuses overlapping closed and renovation, and two rows of one kind', () => {
     const renovation = { kind: 'renovation' as const, from: '2026-11-21', to: '2026-12-01' }
     expect(noticeOverlapProblem([closed, renovation], '2026-10-22')).toMatch(/не могут пересекаться/)
-    expect(noticeOverlapProblem([closed, { ...closed, from: '2026-11-21', to: '2026-11-25' }], '2026-10-22')).toMatch(/пересекаются/)
+    expect(noticeOverlapProblem([closed, { ...closed, from: '2026-11-21', to: '2026-11-25' }], '2026-10-22')).toMatch(
+      /пересекаются/,
+    )
     expect(noticeOverlapProblem([closed, relocation], '2026-10-22')).toBeNull()
-    expect(noticeOverlapProblem([{ ...closed, from: '2026-01-01', to: '2026-01-31' }, { ...closed, from: '2026-01-10', to: '2026-12-31' }], '2026-10-22')).toBeNull()
+    expect(
+      noticeOverlapProblem(
+        [
+          { ...closed, from: '2026-01-01', to: '2026-01-31' },
+          { ...closed, from: '2026-01-10', to: '2026-12-31' },
+        ],
+        '2026-10-22',
+      ),
+    ).toBeNull()
   })
 })
 
@@ -88,7 +138,10 @@ describe('closed notice status', () => {
   })
 
   it('overrides an open schedule only inside a closed window', () => {
-    const windows = statusWindows([{ ...closed, state: 'upcoming' }, { ...relocation, state: 'current' }] as PublicNotice[])
+    const windows = statusWindows([
+      { ...closed, state: 'upcoming' },
+      { ...relocation, state: 'current' },
+    ] as PublicNotice[])
     expect(windows).toEqual([{ kind: 'closed', from: '2026-11-20', to: '2026-11-21' }])
     const inside = new Date('2026-11-20T10:00:00+02:00')
     const value = liveStatus(schedule, windows, inside)
@@ -104,7 +157,14 @@ describe('closed notice status', () => {
   it('shows the closed date line on the hydrated chip', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-20T12:00:00+02:00'))
-    const wrapper = mount(OpeningLive, { props: { schedule, notices: [{ kind: 'closed', from: '2026-11-20', to: '2026-11-21' }], compact: true, showUnknown: true } })
+    const wrapper = mount(OpeningLive, {
+      props: {
+        schedule,
+        notices: [{ kind: 'closed', from: '2026-11-20', to: '2026-11-21' }],
+        compact: true,
+        showUnknown: true,
+      },
+    })
     await nextTick()
     expect(wrapper.text()).toBe('Закрыто с 20 ноября 2026 по 21 ноября 2026')
     wrapper.unmount()
@@ -112,7 +172,10 @@ describe('closed notice status', () => {
 })
 
 describe('notice render', () => {
-  const shown: PublicNotice[] = [{ ...relocation, state: 'current' }, { ...closed, state: 'upcoming' }]
+  const shown: PublicNotice[] = [
+    { ...relocation, state: 'current' },
+    { ...closed, state: 'upcoming' },
+  ]
 
   it('renders the hero aside and «Коротко» rows from one helper', async () => {
     const hero = await renderPage(TemporaryNotices, { notices: shown, variant: 'hero' })

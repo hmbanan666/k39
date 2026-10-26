@@ -1,8 +1,6 @@
 <template>
   <main class="page frame cabinet">
-    <p class="kicker">
-      Заявка
-    </p>
+    <p class="kicker"> Заявка </p>
     <p
       v-if="pending"
       class="muted"
@@ -25,18 +23,14 @@
       </p>
       <p v-if="preview.membership">
         Вы уже можете править эту страницу.
-        <UiLink :href="`/kabinet/zavedeniya/${preview.venue.id}`">
-          Открыть редактор
-        </UiLink>
+        <UiLink :href="`/kabinet/zavedeniya/${preview.venue.id}`"> Открыть редактор </UiLink>
       </p>
       <section
         v-else
         class="card"
       >
         <h2>Это моё заведение</h2>
-        <p class="muted">
-          Страница откроется для правок после проверки. Сами себя назначить владельцем нельзя.
-        </p>
+        <p class="muted"> Страница откроется для правок после проверки. Сами себя назначить владельцем нельзя. </p>
         <form @submit.prevent="submit">
           <fieldset>
             <legend>Как проверить</legend>
@@ -46,17 +40,19 @@
                 type="radio"
                 value="email"
                 :disabled="!preview.channels.email.present || !preview.channels.email.transport"
-              >
+              />
               Код на почту заведения
               <span v-if="preview.channels.email.mask">{{ preview.channels.email.mask }}</span>
               <span
                 v-else-if="!preview.channels.email.present"
                 class="muted"
-              >почты в карточке нет</span>
+                >почты в карточке нет</span
+              >
               <span
                 v-else
                 class="muted"
-              >отправка кода пока не подключена</span>
+                >отправка кода пока не подключена</span
+              >
             </label>
             <label>
               <input
@@ -64,24 +60,26 @@
                 type="radio"
                 value="phone"
                 :disabled="!preview.channels.phone.present || !preview.channels.phone.transport"
-              >
+              />
               Код на телефон заведения
               <span v-if="preview.channels.phone.mask">{{ preview.channels.phone.mask }}</span>
               <span
                 v-else-if="!preview.channels.phone.present"
                 class="muted"
-              >телефона в карточке нет</span>
+                >телефона в карточке нет</span
+              >
               <span
                 v-else
                 class="muted"
-              >отправка кода пока не подключена</span>
+                >отправка кода пока не подключена</span
+              >
             </label>
             <label>
               <input
                 v-model="channel"
                 type="radio"
                 value="manual"
-              >
+              />
               Проверка редакцией
             </label>
           </fieldset>
@@ -123,9 +121,7 @@
             />
           </UiField>
           <div class="row">
-            <UiButton type="submit">
-              Подтвердить
-            </UiButton>
+            <UiButton type="submit"> Подтвердить </UiButton>
             <UiButton
               type="button"
               variant="line"
@@ -154,16 +150,21 @@ const slug = computed(() => String(route.params.slug || ''))
 useSeoMeta({ title: 'Заявка на заведение | K39', robots: 'noindex, nofollow' })
 
 interface Preview {
-  venue: { id: string, name: string, slug: string, address: string | null }
+  venue: { id: string; name: string; slug: string; address: string | null }
   channels: {
-    email: { present: boolean, transport: boolean, mask: string | null }
-    phone: { present: boolean, transport: boolean, mask: string | null }
+    email: { present: boolean; transport: boolean; mask: string | null }
+    phone: { present: boolean; transport: boolean; mask: string | null }
   }
   membership: string | null
-  claim: { id: string, status: string, channel: string, mask: string | null, expiresAt: string | null } | null
+  claim: { id: string; status: string; channel: string; mask: string | null; expiresAt: string | null } | null
 }
 
-const { data: preview, pending, error, refresh } = await useFetch<Preview>('/api/cabinet/claim', {
+const {
+  data: preview,
+  pending,
+  error,
+  refresh,
+} = await useFetch<Preview>('/api/cabinet/claim', {
   query: { slug },
 })
 const channel = ref<'email' | 'phone' | 'manual'>('manual')
@@ -173,21 +174,25 @@ const formError = ref('')
 const busy = ref(false)
 const claim = computed(() => preview.value?.claim ?? null)
 
-watch(preview, (value) => {
-  if (!value) {
-    return
-  }
-  if (value.channels.email.present && value.channels.email.transport) {
-    channel.value = 'email'
-  } else if (value.channels.phone.present && value.channels.phone.transport) {
-    channel.value = 'phone'
-  } else {
-    channel.value = 'manual'
-  }
-}, { immediate: true })
+watch(
+  preview,
+  (value) => {
+    if (!value) {
+      return
+    }
+    if (value.channels.email.present && value.channels.email.transport) {
+      channel.value = 'email'
+    } else if (value.channels.phone.present && value.channels.phone.transport) {
+      channel.value = 'phone'
+    } else {
+      channel.value = 'manual'
+    }
+  },
+  { immediate: true },
+)
 
 function problem(reason: unknown, fallback: string) {
-  const item = reason as { data?: { message?: string, statusMessage?: string }, statusMessage?: string }
+  const item = reason as { data?: { message?: string; statusMessage?: string }; statusMessage?: string }
   return item.data?.statusMessage || item.data?.message || item.statusMessage || fallback
 }
 
@@ -238,7 +243,9 @@ async function resend() {
 </script>
 
 <style scoped>
-.cabinet { padding-bottom: 3rem; }
+.cabinet {
+  padding-bottom: 3rem;
+}
 .kicker {
   margin: 0;
   color: var(--color-brick);
@@ -247,7 +254,10 @@ async function resend() {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-h1 { margin: 0.3rem 0 0.4rem; font-size: clamp(2rem, 1.2rem + 2vw, 2.6rem); }
+h1 {
+  margin: 0.3rem 0 0.4rem;
+  font-size: clamp(2rem, 1.2rem + 2vw, 2.6rem);
+}
 .card {
   margin-top: 1rem;
   padding: 1rem;
@@ -255,11 +265,36 @@ h1 { margin: 0.3rem 0 0.4rem; font-size: clamp(2rem, 1.2rem + 2vw, 2.6rem); }
   border-radius: 14px;
   background: var(--color-surface);
 }
-.card h2 { margin: 0 0 0.4rem; font-size: 1.25rem; }
-fieldset { margin: 0.8rem 0; padding: 0; border: 0; }
-label { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; align-items: center; margin: 0.45rem 0; }
-.muted { color: var(--muted); }
-.error { color: var(--color-danger, var(--color-brick)); }
-.row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-.code { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px dashed var(--color-line); }
+.card h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.25rem;
+}
+fieldset {
+  margin: 0.8rem 0;
+  padding: 0;
+  border: 0;
+}
+label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  align-items: center;
+  margin: 0.45rem 0;
+}
+.muted {
+  color: var(--muted);
+}
+.error {
+  color: var(--color-danger, var(--color-brick));
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.code {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--color-line);
+}
 </style>

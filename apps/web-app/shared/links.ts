@@ -103,9 +103,7 @@ export function findOrphans(pages: GraphPage[]) {
       inbound.set(path, (inbound.get(path) ?? 0) + 1)
     }
   }
-  return [...inbound.entries()]
-    .filter(([path, count]) => path !== '/' && count === 0)
-    .map(([path]) => path)
+  return [...inbound.entries()].filter(([path, count]) => path !== '/' && count === 0).map(([path]) => path)
 }
 
 export function formatDistance(km: number) {
@@ -125,7 +123,7 @@ export function formatDistance(km: number) {
 }
 
 export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
-  const toRad = (value: number) => value * Math.PI / 180
+  const toRad = (value: number) => (value * Math.PI) / 180
   const dLat = toRad(bLat - aLat)
   const dLng = toRad(bLng - aLng)
   const lat1 = toRad(aLat)

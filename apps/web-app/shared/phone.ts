@@ -67,7 +67,7 @@ export function parsePhones(raw: string | null | undefined): ParsedPhone[] {
   if (!text) {
     return []
   }
-  const hits: Array<{ start: number, end: number, national: string }> = []
+  const hits: Array<{ start: number; end: number; national: string }> = []
   for (const match of text.matchAll(phonePattern())) {
     const national = nationalDigits(match[0])
     if (!national) {
@@ -115,7 +115,7 @@ export function formatPhoneDisplay(raw: string | null | undefined) {
 
 /** E.164 numbers only. Fragments and «уточняйте» are omitted. */
 export function phoneE164List(raw: string | null | undefined) {
-  return parsePhones(raw).flatMap((item) => item.e164 ? [item.e164] : [])
+  return parsePhones(raw).flatMap((item) => (item.e164 ? [item.e164] : []))
 }
 
 /** `tel:` of the first complete number. Several numbers are separate links. */

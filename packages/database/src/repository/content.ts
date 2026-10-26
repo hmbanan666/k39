@@ -1,13 +1,46 @@
 import type { BodySection } from '../body-sections'
 import type { PlaceDraft } from '../types'
-import type { CollectionKind, MediaLicense, MediaStatus, MediaVariant, PublicationStatus, SourceLink, StoredPageModule, VisitStatus } from '../types/entities'
+import type {
+  CollectionKind,
+  MediaLicense,
+  MediaStatus,
+  MediaVariant,
+  PublicationStatus,
+  SourceLink,
+  StoredPageModule,
+  VisitStatus,
+} from '../types/entities'
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { composeBody, readSections, splitBody } from '../body-sections'
 import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
 import { REDIRECT_HOP_LIMIT } from '../redirects'
 import { prepareSourceLinks, SourceInputError } from '../sources'
-import { admissionPrices, categories, collectionItems, collectionMedia, collections, contentDrafts, facts, mcpAudits, media, offers, placeMedia, places, quests, questSteps, regions, relatedLinks, revisions, routePoints, routes, slugRedirects, venueListingIntros, venueMedia, venues } from '../tables'
+import {
+  admissionPrices,
+  categories,
+  collectionItems,
+  collectionMedia,
+  collections,
+  contentDrafts,
+  facts,
+  mcpAudits,
+  media,
+  offers,
+  placeMedia,
+  places,
+  quests,
+  questSteps,
+  regions,
+  relatedLinks,
+  revisions,
+  routePoints,
+  routes,
+  slugRedirects,
+  venueListingIntros,
+  venueMedia,
+  venues,
+} from '../tables'
 import { descriptionLength, isFoodKind, kindPath, LISTING_INTRO_MIN } from '../venues'
 
 const published = 'published' as const
@@ -16,7 +49,7 @@ const published = 'published' as const
  * Keeps body and sections in step (ADR 0027): given sections, the body is
  * composed from them; given only a body, it is split into sections.
  */
-function syncedBody(data: { body?: string, sections?: unknown }): { body?: string, sections?: BodySection[] } {
+function syncedBody(data: { body?: string; sections?: unknown }): { body?: string; sections?: BodySection[] } {
   if (data.sections !== undefined) {
     const sections = readSections(data.sections)
     return { sections, body: composeBody(sections) }
@@ -92,10 +125,12 @@ async function withPendingDraft<T>(
   apply: (tx: ContentTx, draft: typeof contentDrafts.$inferSelect) => Promise<T | null>,
 ) {
   return useDatabase().transaction(async (tx) => {
-    const [draft] = await tx.select().from(contentDrafts).where(and(
-      eq(contentDrafts.entityType, entityType),
-      eq(contentDrafts.entityId, entityId),
-    )).limit(1).for('update')
+    const [draft] = await tx
+      .select()
+      .from(contentDrafts)
+      .where(and(eq(contentDrafts.entityType, entityType), eq(contentDrafts.entityId, entityId)))
+      .limit(1)
+      .for('update')
     if (!draft) {
       return null
     }
@@ -156,7 +191,7 @@ export class Content {
    */
   static async redirectChain(startPath: string, hopLimit = REDIRECT_HOP_LIMIT) {
     const hops = Math.min(REDIRECT_HOP_LIMIT, Math.max(1, Math.floor(hopLimit)))
-    const rows: Array<{ fromPath: string, toPath: string | null, statusCode: number }> = []
+    const rows: Array<{ fromPath: string; toPath: string | null; statusCode: number }> = []
     const seen = new Set<string>()
     let current = startPath
     for (let hop = 0; hop < hops; hop++) {
@@ -187,18 +222,20 @@ export class Content {
   }
 
   static async publishedPlacesByCategory(categoryId: string) {
-    return useDatabase().select().from(places).where(and(
-      eq(places.categoryId, categoryId),
-      eq(places.publicationStatus, published),
-    )).orderBy(asc(places.title))
+    return useDatabase()
+      .select()
+      .from(places)
+      .where(and(eq(places.categoryId, categoryId), eq(places.publicationStatus, published)))
+      .orderBy(asc(places.title))
   }
 
   static async publishedPlace(slug: string) {
     const db = useDatabase()
-    const [place] = await db.select().from(places).where(and(
-      eq(places.slug, slug),
-      eq(places.publicationStatus, published),
-    )).limit(1)
+    const [place] = await db
+      .select()
+      .from(places)
+      .where(and(eq(places.slug, slug), eq(places.publicationStatus, published)))
+      .limit(1)
     if (!place) {
       return null
     }
@@ -210,37 +247,64 @@ export class Content {
       : []
     const gallery = await Content.galleryFor(place.id)
     const images = gallery.map((item) => item.media)
-    const nearest = place.latitude != null && place.longitude != null
-      ? await this.nearest(place.latitude, place.longitude, place.slug, 6)
-      : []
+    const nearest =
+      place.latitude != null && place.longitude != null
+        ? await this.nearest(place.latitude, place.longitude, place.slug, 6)
+        : []
     const sameRegion = place.regionId
-      ? await db.select({ slug: places.slug, title: places.title }).from(places).where(and(
-          eq(places.regionId, place.regionId),
-          eq(places.publicationStatus, published),
-          ne(places.id, place.id),
-        )).orderBy(asc(places.title)).limit(6)
+      ? await db
+          .select({ slug: places.slug, title: places.title })
+          .from(places)
+          .where(
+            and(eq(places.regionId, place.regionId), eq(places.publicationStatus, published), ne(places.id, place.id)),
+          )
+          .orderBy(asc(places.title))
+          .limit(6)
       : []
-    const routeRows = await db.select({ slug: routes.slug, title: routes.title }).from(routePoints).innerJoin(routes, eq(routePoints.routeId, routes.id)).where(and(eq(routePoints.placeId, place.id), eq(routes.publicationStatus, published)))
-    const collectionRows = await db.select({ slug: collections.slug, title: collections.title }).from(collectionItems).innerJoin(collections, eq(collectionItems.collectionId, collections.id)).where(and(eq(collectionItems.placeId, place.id), eq(collections.publicationStatus, published)))
-    const related = await db.select({ slug: places.slug, title: places.title, anchor: relatedLinks.anchor }).from(relatedLinks).innerJoin(places, eq(relatedLinks.toPlaceId, places.id)).where(and(eq(relatedLinks.fromPlaceId, place.id), eq(places.publicationStatus, published))).orderBy(asc(relatedLinks.position))
+    const routeRows = await db
+      .select({ slug: routes.slug, title: routes.title })
+      .from(routePoints)
+      .innerJoin(routes, eq(routePoints.routeId, routes.id))
+      .where(and(eq(routePoints.placeId, place.id), eq(routes.publicationStatus, published)))
+    const collectionRows = await db
+      .select({ slug: collections.slug, title: collections.title })
+      .from(collectionItems)
+      .innerJoin(collections, eq(collectionItems.collectionId, collections.id))
+      .where(and(eq(collectionItems.placeId, place.id), eq(collections.publicationStatus, published)))
+    const related = await db
+      .select({ slug: places.slug, title: places.title, anchor: relatedLinks.anchor })
+      .from(relatedLinks)
+      .innerJoin(places, eq(relatedLinks.toPlaceId, places.id))
+      .where(and(eq(relatedLinks.fromPlaceId, place.id), eq(places.publicationStatus, published)))
+      .orderBy(asc(relatedLinks.position))
     return { place, category, region, images, gallery, nearest, sameRegion, routeRows, collectionRows, related }
   }
 
   static async collectionGallery(collectionId: string) {
-    return useDatabase().select({
-      sortOrder: collectionMedia.sortOrder,
-      isCover: collectionMedia.isCover,
-      media,
-    }).from(collectionMedia).innerJoin(media, eq(collectionMedia.mediaId, media.id)).where(and(eq(collectionMedia.collectionId, collectionId), eq(media.status, 'ready'))).orderBy(desc(collectionMedia.isCover), asc(collectionMedia.sortOrder))
+    return useDatabase()
+      .select({
+        sortOrder: collectionMedia.sortOrder,
+        isCover: collectionMedia.isCover,
+        media,
+      })
+      .from(collectionMedia)
+      .innerJoin(media, eq(collectionMedia.mediaId, media.id))
+      .where(and(eq(collectionMedia.collectionId, collectionId), eq(media.status, 'ready')))
+      .orderBy(desc(collectionMedia.isCover), asc(collectionMedia.sortOrder))
   }
 
   static async galleryFor(placeId: string) {
     const db = useDatabase()
-    const linked = await db.select({
-      sortOrder: placeMedia.sortOrder,
-      isCover: placeMedia.isCover,
-      media,
-    }).from(placeMedia).innerJoin(media, eq(placeMedia.mediaId, media.id)).where(eq(placeMedia.placeId, placeId)).orderBy(desc(placeMedia.isCover), asc(placeMedia.sortOrder))
+    const linked = await db
+      .select({
+        sortOrder: placeMedia.sortOrder,
+        isCover: placeMedia.isCover,
+        media,
+      })
+      .from(placeMedia)
+      .innerJoin(media, eq(placeMedia.mediaId, media.id))
+      .where(eq(placeMedia.placeId, placeId))
+      .orderBy(desc(placeMedia.isCover), asc(placeMedia.sortOrder))
     if (linked.length) {
       return linked
     }
@@ -259,11 +323,13 @@ export class Content {
       return map
     }
     const db = useDatabase()
-    const links = await db.select().from(placeMedia).where(inArray(placeMedia.placeId, ids)).orderBy(desc(placeMedia.isCover), asc(placeMedia.sortOrder))
+    const links = await db
+      .select()
+      .from(placeMedia)
+      .where(inArray(placeMedia.placeId, ids))
+      .orderBy(desc(placeMedia.isCover), asc(placeMedia.sortOrder))
     const mediaIds = [...new Set(links.map((link) => link.mediaId))]
-    const rows = mediaIds.length
-      ? await db.select().from(media).where(inArray(media.id, mediaIds))
-      : []
+    const rows = mediaIds.length ? await db.select().from(media).where(inArray(media.id, mediaIds)) : []
     const byId = new Map(rows.map((row) => [row.id, row]))
     for (const link of links) {
       const row = byId.get(link.mediaId)
@@ -323,9 +389,7 @@ export class Content {
       image_width: number | null
       image_height: number | null
     }
-    const rows = Array.isArray(result)
-      ? result as NearestRow[]
-      : (result as unknown as { rows?: NearestRow[] }).rows
+    const rows = Array.isArray(result) ? (result as NearestRow[]) : (result as unknown as { rows?: NearestRow[] }).rows
     return rows ?? []
   }
 
@@ -335,92 +399,137 @@ export class Content {
 
   static async publishedRoute(slug: string) {
     const db = useDatabase()
-    const [route] = await db.select().from(routes).where(and(eq(routes.slug, slug), eq(routes.publicationStatus, published))).limit(1)
+    const [route] = await db
+      .select()
+      .from(routes)
+      .where(and(eq(routes.slug, slug), eq(routes.publicationStatus, published)))
+      .limit(1)
     if (!route) {
       return null
     }
-    const points = await db.select({
-      id: places.id,
-      slug: places.slug,
-      title: places.title,
-      note: routePoints.note,
-      position: routePoints.position,
-      latitude: places.latitude,
-      longitude: places.longitude,
-    }).from(routePoints).innerJoin(places, eq(routePoints.placeId, places.id)).where(and(eq(routePoints.routeId, route.id), eq(places.publicationStatus, published))).orderBy(asc(routePoints.position))
+    const points = await db
+      .select({
+        id: places.id,
+        slug: places.slug,
+        title: places.title,
+        note: routePoints.note,
+        position: routePoints.position,
+        latitude: places.latitude,
+        longitude: places.longitude,
+      })
+      .from(routePoints)
+      .innerJoin(places, eq(routePoints.placeId, places.id))
+      .where(and(eq(routePoints.routeId, route.id), eq(places.publicationStatus, published)))
+      .orderBy(asc(routePoints.position))
     return { route, points }
   }
 
   static async mapPlaces() {
-    const latitude = () => sql<number>`case when ${facts.id} is not null then (${facts.value}->>'latitude')::float8 else ${places.latitude} end`
-    const longitude = () => sql<number>`case when ${facts.id} is not null then (${facts.value}->>'longitude')::float8 else ${places.longitude} end`
-    return useDatabase().select({
-      id: places.id,
-      slug: places.slug,
-      title: places.title,
-      summary: places.summary,
-      latitude: latitude(),
-      longitude: longitude(),
-      categorySlug: categories.slug,
-      categoryTitle: categories.title,
-      hours: places.hours,
-    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(facts, and(
-      eq(facts.subjectType, 'place'),
-      eq(facts.subjectId, places.id),
-      eq(facts.kind, 'coordinates'),
-      eq(facts.slot, 'coordinates'),
-      isNull(facts.retiredAt),
-    )).where(and(
-      eq(places.publicationStatus, published),
-      eq(places.noindex, false),
-      sql`${latitude()} is not null`,
-      sql`${longitude()} is not null`,
-    )).orderBy(asc(places.title))
+    const latitude = () =>
+      sql<number>`case when ${facts.id} is not null then (${facts.value}->>'latitude')::float8 else ${places.latitude} end`
+    const longitude = () =>
+      sql<number>`case when ${facts.id} is not null then (${facts.value}->>'longitude')::float8 else ${places.longitude} end`
+    return useDatabase()
+      .select({
+        id: places.id,
+        slug: places.slug,
+        title: places.title,
+        summary: places.summary,
+        latitude: latitude(),
+        longitude: longitude(),
+        categorySlug: categories.slug,
+        categoryTitle: categories.title,
+        hours: places.hours,
+      })
+      .from(places)
+      .leftJoin(categories, eq(places.categoryId, categories.id))
+      .leftJoin(
+        facts,
+        and(
+          eq(facts.subjectType, 'place'),
+          eq(facts.subjectId, places.id),
+          eq(facts.kind, 'coordinates'),
+          eq(facts.slot, 'coordinates'),
+          isNull(facts.retiredAt),
+        ),
+      )
+      .where(
+        and(
+          eq(places.publicationStatus, published),
+          eq(places.noindex, false),
+          sql`${latitude()} is not null`,
+          sql`${longitude()} is not null`,
+        ),
+      )
+      .orderBy(asc(places.title))
   }
 
   static async mapRouteStops() {
-    return useDatabase().select({
-      routeSlug: routes.slug,
-      routeTitle: routes.title,
-      routeSummary: routes.summary,
-      path: routes.path,
-      position: routePoints.position,
-      placeId: places.id,
-      slug: places.slug,
-      title: places.title,
-      summary: places.summary,
-      latitude: places.latitude,
-      longitude: places.longitude,
-    }).from(routePoints).innerJoin(routes, eq(routePoints.routeId, routes.id)).innerJoin(places, eq(routePoints.placeId, places.id)).where(and(
-      eq(routes.publicationStatus, published),
-      eq(routes.noindex, false),
-      eq(places.publicationStatus, published),
-    )).orderBy(asc(routes.title), asc(routePoints.position))
+    return useDatabase()
+      .select({
+        routeSlug: routes.slug,
+        routeTitle: routes.title,
+        routeSummary: routes.summary,
+        path: routes.path,
+        position: routePoints.position,
+        placeId: places.id,
+        slug: places.slug,
+        title: places.title,
+        summary: places.summary,
+        latitude: places.latitude,
+        longitude: places.longitude,
+      })
+      .from(routePoints)
+      .innerJoin(routes, eq(routePoints.routeId, routes.id))
+      .innerJoin(places, eq(routePoints.placeId, places.id))
+      .where(
+        and(
+          eq(routes.publicationStatus, published),
+          eq(routes.noindex, false),
+          eq(places.publicationStatus, published),
+        ),
+      )
+      .orderBy(asc(routes.title), asc(routePoints.position))
   }
 
   static async listPublishedCollections() {
-    return useDatabase().select().from(collections).where(eq(collections.publicationStatus, published)).orderBy(asc(collections.title))
+    return useDatabase()
+      .select()
+      .from(collections)
+      .where(eq(collections.publicationStatus, published))
+      .orderBy(asc(collections.title))
   }
 
   static async publishedCollection(slug: string) {
     const db = useDatabase()
-    const [collection] = await db.select().from(collections).where(and(eq(collections.slug, slug), eq(collections.publicationStatus, published))).limit(1)
+    const [collection] = await db
+      .select()
+      .from(collections)
+      .where(and(eq(collections.slug, slug), eq(collections.publicationStatus, published)))
+      .limit(1)
     if (!collection) {
       return null
     }
-    const items = await db.select({
-      id: places.id,
-      slug: places.slug,
-      title: places.title,
-      summary: places.summary,
-      note: collectionItems.note,
-      position: collectionItems.position,
-      categorySlug: categories.slug,
-      categoryTitle: categories.title,
-      regionTitle: regions.title,
-      regionSlug: regions.slug,
-      regionShortTitle: regions.shortTitle,
-    }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id)).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(and(eq(collectionItems.collectionId, collection.id), eq(places.publicationStatus, published))).orderBy(asc(collectionItems.position))
+    const items = await db
+      .select({
+        id: places.id,
+        slug: places.slug,
+        title: places.title,
+        summary: places.summary,
+        note: collectionItems.note,
+        position: collectionItems.position,
+        categorySlug: categories.slug,
+        categoryTitle: categories.title,
+        regionTitle: regions.title,
+        regionSlug: regions.slug,
+        regionShortTitle: regions.shortTitle,
+      })
+      .from(collectionItems)
+      .innerJoin(places, eq(collectionItems.placeId, places.id))
+      .leftJoin(categories, eq(places.categoryId, categories.id))
+      .leftJoin(regions, eq(places.regionId, regions.id))
+      .where(and(eq(collectionItems.collectionId, collection.id), eq(places.publicationStatus, published)))
+      .orderBy(asc(collectionItems.position))
     return { collection, items }
   }
 
@@ -430,24 +539,35 @@ export class Content {
 
   static async publishedQuest(slug: string) {
     const db = useDatabase()
-    const [quest] = await db.select().from(quests).where(and(eq(quests.slug, slug), eq(quests.publicationStatus, published))).limit(1)
+    const [quest] = await db
+      .select()
+      .from(quests)
+      .where(and(eq(quests.slug, slug), eq(quests.publicationStatus, published)))
+      .limit(1)
     if (!quest) {
       return null
     }
-    const steps = await db.select({
-      slug: places.slug,
-      title: questSteps.title,
-      prompt: questSteps.prompt,
-      position: questSteps.position,
-      placeId: places.id,
-      categorySlug: categories.slug,
-    }).from(questSteps).innerJoin(places, eq(questSteps.placeId, places.id)).leftJoin(categories, eq(places.categoryId, categories.id)).where(and(eq(questSteps.questId, quest.id), eq(places.publicationStatus, published))).orderBy(asc(questSteps.position))
-    let route: { slug: string, title: string } | null = null
+    const steps = await db
+      .select({
+        slug: places.slug,
+        title: questSteps.title,
+        prompt: questSteps.prompt,
+        position: questSteps.position,
+        placeId: places.id,
+        categorySlug: categories.slug,
+      })
+      .from(questSteps)
+      .innerJoin(places, eq(questSteps.placeId, places.id))
+      .leftJoin(categories, eq(places.categoryId, categories.id))
+      .where(and(eq(questSteps.questId, quest.id), eq(places.publicationStatus, published)))
+      .orderBy(asc(questSteps.position))
+    let route: { slug: string; title: string } | null = null
     if (quest.routeId) {
-      const [linked] = await db.select({ slug: routes.slug, title: routes.title }).from(routes).where(and(
-        eq(routes.id, quest.routeId),
-        eq(routes.publicationStatus, published),
-      )).limit(1)
+      const [linked] = await db
+        .select({ slug: routes.slug, title: routes.title })
+        .from(routes)
+        .where(and(eq(routes.id, quest.routeId), eq(routes.publicationStatus, published)))
+        .limit(1)
       route = linked ?? null
     }
     return { quest, steps, route }
@@ -456,34 +576,54 @@ export class Content {
   static async sitemapRows() {
     const db = useDatabase()
     const visible = and(eq(places.publicationStatus, published), eq(places.noindex, false))
-    const placeRows = await db.select({
-      slug: places.slug,
-      updatedAt: places.updatedAt,
-      title: places.title,
-      id: places.id,
-    }).from(places).where(visible)
+    const placeRows = await db
+      .select({
+        slug: places.slug,
+        updatedAt: places.updatedAt,
+        title: places.title,
+        id: places.id,
+      })
+      .from(places)
+      .where(visible)
     const images = await db.select().from(media)
     const links = await db.select().from(placeMedia)
-    const routeRows = await db.select({ slug: routes.slug, updatedAt: routes.updatedAt }).from(routes).where(and(eq(routes.publicationStatus, published), eq(routes.noindex, false)))
-    const collectionRows = await db.select({ slug: collections.slug, updatedAt: collections.updatedAt }).from(collections).where(and(eq(collections.publicationStatus, published), eq(collections.noindex, false)))
-    const questRows = await db.select({ slug: quests.slug, updatedAt: quests.updatedAt }).from(quests).where(and(eq(quests.publicationStatus, published), eq(quests.noindex, false)))
-    const venueRows = await db.select({
-      id: venues.id,
-      slug: venues.slug,
-      updatedAt: venues.updatedAt,
-      description: venues.description,
-      noindex: venues.noindex,
-    }).from(venues).where(eq(venues.status, 'published'))
-    const venuePhotoLinks = await db.select({
-      venueId: venueMedia.venueId,
-      mediaId: venueMedia.mediaId,
-    }).from(venueMedia)
-    const introRows = await db.select({
-      body: venueListingIntros.body,
-      updatedAt: venueListingIntros.updatedAt,
-      kind: venueListingIntros.kind,
-      regionSlug: regions.slug,
-    }).from(venueListingIntros).leftJoin(regions, eq(venueListingIntros.regionId, regions.id))
+    const routeRows = await db
+      .select({ slug: routes.slug, updatedAt: routes.updatedAt })
+      .from(routes)
+      .where(and(eq(routes.publicationStatus, published), eq(routes.noindex, false)))
+    const collectionRows = await db
+      .select({ slug: collections.slug, updatedAt: collections.updatedAt })
+      .from(collections)
+      .where(and(eq(collections.publicationStatus, published), eq(collections.noindex, false)))
+    const questRows = await db
+      .select({ slug: quests.slug, updatedAt: quests.updatedAt })
+      .from(quests)
+      .where(and(eq(quests.publicationStatus, published), eq(quests.noindex, false)))
+    const venueRows = await db
+      .select({
+        id: venues.id,
+        slug: venues.slug,
+        updatedAt: venues.updatedAt,
+        description: venues.description,
+        noindex: venues.noindex,
+      })
+      .from(venues)
+      .where(eq(venues.status, 'published'))
+    const venuePhotoLinks = await db
+      .select({
+        venueId: venueMedia.venueId,
+        mediaId: venueMedia.mediaId,
+      })
+      .from(venueMedia)
+    const introRows = await db
+      .select({
+        body: venueListingIntros.body,
+        updatedAt: venueListingIntros.updatedAt,
+        kind: venueListingIntros.kind,
+        regionSlug: regions.slug,
+      })
+      .from(venueListingIntros)
+      .leftJoin(regions, eq(venueListingIntros.regionId, regions.id))
     return {
       places: placeRows.map((row) => ({
         loc: `/${row.slug}`,
@@ -502,7 +642,10 @@ export class Content {
         .map((row) => ({
           loc: `/zavedeniya/${row.slug}`,
           lastmod: row.updatedAt,
-          images: imagesForIds(venuePhotoLinks.filter((link) => link.venueId === row.id).map((link) => link.mediaId), images).map((image) => ({
+          images: imagesForIds(
+            venuePhotoLinks.filter((link) => link.venueId === row.id).map((link) => link.mediaId),
+            images,
+          ).map((image) => ({
             loc: mediaPublicPath(image),
             title: image.alt,
           })),
@@ -529,21 +672,26 @@ export class Content {
   }
 
   static async relatedFor(placeId: string) {
-    return useDatabase().select({
-      slug: places.slug,
-      title: places.title,
-      anchor: relatedLinks.anchor,
-    }).from(relatedLinks).innerJoin(places, eq(relatedLinks.toPlaceId, places.id)).where(and(
-      eq(relatedLinks.fromPlaceId, placeId),
-      eq(places.publicationStatus, published),
-    )).orderBy(asc(relatedLinks.position))
+    return useDatabase()
+      .select({
+        slug: places.slug,
+        title: places.title,
+        anchor: relatedLinks.anchor,
+      })
+      .from(relatedLinks)
+      .innerJoin(places, eq(relatedLinks.toPlaceId, places.id))
+      .where(and(eq(relatedLinks.fromPlaceId, placeId), eq(places.publicationStatus, published)))
+      .orderBy(asc(relatedLinks.position))
   }
 
   static async activeOffers(placeId: string) {
-    return useDatabase().select({
-      title: offers.title,
-      terms: offers.terms,
-    }).from(offers).where(and(eq(offers.placeId, placeId), eq(offers.status, 'active')))
+    return useDatabase()
+      .select({
+        title: offers.title,
+        terms: offers.terms,
+      })
+      .from(offers)
+      .where(and(eq(offers.placeId, placeId), eq(offers.status, 'active')))
   }
 }
 
@@ -577,45 +725,68 @@ export class Editor {
     }
     if (input.query) {
       const safe = `%${input.query.replace(/[%_\\]/g, '\\$&')}%`
-      filters.push(sql`(${places.title} ilike ${safe} or ${places.slug} ilike ${safe} or ${places.summary} ilike ${safe})`)
+      filters.push(
+        sql`(${places.title} ilike ${safe} or ${places.slug} ilike ${safe} or ${places.summary} ilike ${safe})`,
+      )
     }
     const where = filters.length ? and(...filters) : undefined
-    const rows = await db.select({
-      id: places.id,
-      slug: places.slug,
-      title: places.title,
-      summary: places.summary,
-      status: places.status,
-      publicationStatus: places.publicationStatus,
-      categorySlug: categories.slug,
-      regionSlug: regions.slug,
-    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(where).orderBy(asc(places.title)).limit(input.pageSize).offset((input.page - 1) * input.pageSize)
-    const [countRow] = await db.select({ value: sql<number>`count(*)::int` }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).leftJoin(regions, eq(places.regionId, regions.id)).where(where)
+    const rows = await db
+      .select({
+        id: places.id,
+        slug: places.slug,
+        title: places.title,
+        summary: places.summary,
+        status: places.status,
+        publicationStatus: places.publicationStatus,
+        categorySlug: categories.slug,
+        regionSlug: regions.slug,
+      })
+      .from(places)
+      .leftJoin(categories, eq(places.categoryId, categories.id))
+      .leftJoin(regions, eq(places.regionId, regions.id))
+      .where(where)
+      .orderBy(asc(places.title))
+      .limit(input.pageSize)
+      .offset((input.page - 1) * input.pageSize)
+    const [countRow] = await db
+      .select({ value: sql<number>`count(*)::int` })
+      .from(places)
+      .leftJoin(categories, eq(places.categoryId, categories.id))
+      .leftJoin(regions, eq(places.regionId, regions.id))
+      .where(where)
     return { items: rows, total: countRow?.value ?? 0 }
   }
 
   static async contentDraft(entityType: string, entityId: string, tx?: ContentTx) {
-    const [row] = await (tx ?? useDatabase()).select().from(contentDrafts).where(and(
-      eq(contentDrafts.entityType, entityType),
-      eq(contentDrafts.entityId, entityId),
-    )).limit(1)
+    const [row] = await (tx ?? useDatabase())
+      .select()
+      .from(contentDrafts)
+      .where(and(eq(contentDrafts.entityType, entityType), eq(contentDrafts.entityId, entityId)))
+      .limit(1)
     return row ?? null
   }
 
-  static async saveContentDraft(input: {
-    entityType: string
-    entityId: string
-    publicationStatus: 'draft' | 'review'
-    payload: Record<string, unknown>
-  }, tx?: ContentTx) {
+  static async saveContentDraft(
+    input: {
+      entityType: string
+      entityId: string
+      publicationStatus: 'draft' | 'review'
+      payload: Record<string, unknown>
+    },
+    tx?: ContentTx,
+  ) {
     const db = tx ?? useDatabase()
     const existing = await this.contentDraft(input.entityType, input.entityId, tx)
     if (existing) {
-      const [row] = await db.update(contentDrafts).set({
-        publicationStatus: input.publicationStatus,
-        payload: input.payload,
-        updatedAt: new Date(Math.max(Date.now(), Date.parse(existing.updatedAt) + 1)).toISOString(),
-      }).where(eq(contentDrafts.id, existing.id)).returning()
+      const [row] = await db
+        .update(contentDrafts)
+        .set({
+          publicationStatus: input.publicationStatus,
+          payload: input.payload,
+          updatedAt: new Date(Math.max(Date.now(), Date.parse(existing.updatedAt) + 1)).toISOString(),
+        })
+        .where(eq(contentDrafts.id, existing.id))
+        .returning()
       return row ?? existing
     }
     const [row] = await db.insert(contentDrafts).values(input).returning()
@@ -626,14 +797,16 @@ export class Editor {
   }
 
   static async deleteContentDraft(entityType: string, entityId: string) {
-    await useDatabase().delete(contentDrafts).where(and(
-      eq(contentDrafts.entityType, entityType),
-      eq(contentDrafts.entityId, entityId),
-    ))
+    await useDatabase()
+      .delete(contentDrafts)
+      .where(and(eq(contentDrafts.entityType, entityType), eq(contentDrafts.entityId, entityId)))
   }
 
   static async contentDraftEntityIds(entityType: string) {
-    const rows = await useDatabase().select({ entityId: contentDrafts.entityId }).from(contentDrafts).where(eq(contentDrafts.entityType, entityType))
+    const rows = await useDatabase()
+      .select({ entityId: contentDrafts.entityId })
+      .from(contentDrafts)
+      .where(eq(contentDrafts.entityType, entityType))
     return rows.map((row) => row.entityId)
   }
 
@@ -673,18 +846,21 @@ export class Editor {
    * commit or roll back with the row. `afterWrite` runs after the row update
    * and before the draft delete.
    */
-  static async applyPendingPlace(id: string, hooks?: {
-    beforeWrite?: (
-      tx: ContentTx,
-      draft: typeof contentDrafts.$inferSelect,
-      existing: typeof places.$inferSelect,
-    ) => Promise<{ phone?: boolean } | void>
-    afterWrite?: (
-      tx: ContentTx,
-      updated: typeof places.$inferSelect,
-      existing: typeof places.$inferSelect,
-    ) => Promise<void>
-  }) {
+  static async applyPendingPlace(
+    id: string,
+    hooks?: {
+      beforeWrite?: (
+        tx: ContentTx,
+        draft: typeof contentDrafts.$inferSelect,
+        existing: typeof places.$inferSelect,
+      ) => Promise<{ phone?: boolean } | void>
+      afterWrite?: (
+        tx: ContentTx,
+        updated: typeof places.$inferSelect,
+        existing: typeof places.$inferSelect,
+      ) => Promise<void>
+    },
+  ) {
     return withPendingDraft('place', id, async (tx, draft) => {
       const [existing] = await tx.select().from(places).where(eq(places.id, id)).limit(1)
       if (!existing) {
@@ -701,12 +877,16 @@ export class Editor {
       if (existing.slug !== next.slug) {
         await upsertRedirect(`/${existing.slug}`, `/${next.slug}`, tx)
       }
-      const [updated] = await tx.update(places).set({
-        ...next,
-        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
-        updatedBy: null,
-        updatedAt: new Date().toISOString(),
-      }).where(eq(places.id, existing.id)).returning()
+      const [updated] = await tx
+        .update(places)
+        .set({
+          ...next,
+          firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
+          updatedBy: null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(places.id, existing.id))
+        .returning()
       const row = updated ?? null
       if (!row) {
         return null
@@ -740,16 +920,18 @@ export class Editor {
       if (existing.slug !== next.slug) {
         await upsertRedirect(`/marshruty/${existing.slug}`, `/marshruty/${next.slug}`, tx)
       }
-      const path = Object.hasOwn(draft.payload, 'path')
-        ? { path: draft.payload.path as [number, number][] | null }
-        : {}
-      const [updated] = await tx.update(routes).set({
-        ...next,
-        ...path,
-        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
-        updatedBy: null,
-        updatedAt: new Date().toISOString(),
-      }).where(eq(routes.id, existing.id)).returning()
+      const path = Object.hasOwn(draft.payload, 'path') ? { path: draft.payload.path as [number, number][] | null } : {}
+      const [updated] = await tx
+        .update(routes)
+        .set({
+          ...next,
+          ...path,
+          firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
+          updatedBy: null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(routes.id, existing.id))
+        .returning()
       if (!updated) {
         return null
       }
@@ -782,12 +964,16 @@ export class Editor {
       if (existing.slug !== next.slug) {
         await upsertRedirect(`/podborki/${existing.slug}`, `/podborki/${next.slug}`, tx)
       }
-      const [updated] = await tx.update(collections).set({
-        ...next,
-        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
-        updatedBy: null,
-        updatedAt: new Date().toISOString(),
-      }).where(eq(collections.id, existing.id)).returning()
+      const [updated] = await tx
+        .update(collections)
+        .set({
+          ...next,
+          firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
+          updatedBy: null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(collections.id, existing.id))
+        .returning()
       if (!updated) {
         return null
       }
@@ -800,13 +986,16 @@ export class Editor {
     })
   }
 
-  static async recordMcpAudit(data: { tool: string, entityType?: string | null, entityId?: string | null }) {
-    const [row] = await useDatabase().insert(mcpAudits).values({
-      actor: 'mcp',
-      tool: data.tool,
-      entityType: data.entityType ?? null,
-      entityId: data.entityId ?? null,
-    }).returning({ id: mcpAudits.id })
+  static async recordMcpAudit(data: { tool: string; entityType?: string | null; entityId?: string | null }) {
+    const [row] = await useDatabase()
+      .insert(mcpAudits)
+      .values({
+        actor: 'mcp',
+        tool: data.tool,
+        entityType: data.entityType ?? null,
+        entityId: data.entityId ?? null,
+      })
+      .returning({ id: mcpAudits.id })
     return row
   }
 
@@ -840,19 +1029,26 @@ export class Editor {
         await upsertRedirect(`/${existing.slug}`, `/${data.slug}`, tx)
       }
       const status = data.publicationStatus ?? existing.publicationStatus
-      const [updated] = await db.update(places).set({
-        ...data,
-        firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, status),
-        updatedBy: userId ?? null,
-        updatedAt: new Date().toISOString(),
-      }).where(eq(places.id, existing.id)).returning()
+      const [updated] = await db
+        .update(places)
+        .set({
+          ...data,
+          firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, status),
+          updatedBy: userId ?? null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(places.id, existing.id))
+        .returning()
       return updated ?? existing
     }
-    const [created] = await db.insert(places).values({
-      ...data,
-      firstPublishedAt: firstPublishedStamp(null, data.publicationStatus ?? 'draft'),
-      updatedBy: userId ?? null,
-    }).returning()
+    const [created] = await db
+      .insert(places)
+      .values({
+        ...data,
+        firstPublishedAt: firstPublishedStamp(null, data.publicationStatus ?? 'draft'),
+        updatedBy: userId ?? null,
+      })
+      .returning()
     if (!created) {
       throw new Error('Place insert failed')
     }
@@ -875,7 +1071,11 @@ export class Editor {
 
   /** The route that owns a stop. A missing point is null. */
   static async routeForPoint(pointId: string) {
-    const [point] = await useDatabase().select({ routeId: routePoints.routeId }).from(routePoints).where(eq(routePoints.id, pointId)).limit(1)
+    const [point] = await useDatabase()
+      .select({ routeId: routePoints.routeId })
+      .from(routePoints)
+      .where(eq(routePoints.id, pointId))
+      .limit(1)
     if (!point) {
       return null
     }
@@ -883,12 +1083,17 @@ export class Editor {
   }
 
   static async routePoints(routeId: string) {
-    return useDatabase().select({
-      placeSlug: places.slug,
-      title: places.title,
-      note: routePoints.note,
-      position: routePoints.position,
-    }).from(routePoints).innerJoin(places, eq(routePoints.placeId, places.id)).where(eq(routePoints.routeId, routeId)).orderBy(asc(routePoints.position))
+    return useDatabase()
+      .select({
+        placeSlug: places.slug,
+        title: places.title,
+        note: routePoints.note,
+        position: routePoints.position,
+      })
+      .from(routePoints)
+      .innerJoin(places, eq(routePoints.placeId, places.id))
+      .where(eq(routePoints.routeId, routeId))
+      .orderBy(asc(routePoints.position))
   }
 
   static async listQuests() {
@@ -906,12 +1111,17 @@ export class Editor {
   }
 
   static async questStepsFor(questId: string) {
-    return useDatabase().select({
-      slug: places.slug,
-      title: questSteps.title,
-      prompt: questSteps.prompt,
-      position: questSteps.position,
-    }).from(questSteps).innerJoin(places, eq(questSteps.placeId, places.id)).where(eq(questSteps.questId, questId)).orderBy(asc(questSteps.position))
+    return useDatabase()
+      .select({
+        slug: places.slug,
+        title: questSteps.title,
+        prompt: questSteps.prompt,
+        position: questSteps.position,
+      })
+      .from(questSteps)
+      .innerJoin(places, eq(questSteps.placeId, places.id))
+      .where(eq(questSteps.questId, questId))
+      .orderBy(asc(questSteps.position))
   }
 
   static async listCollections() {
@@ -932,20 +1142,25 @@ export class Editor {
    * False when a newer write has replaced that row.
    */
   static async deleteContentDraftIfUnchanged(id: string, updatedAt: string, tx: ContentTx) {
-    const rows = await tx.delete(contentDrafts).where(and(
-      eq(contentDrafts.id, id),
-      eq(contentDrafts.updatedAt, updatedAt),
-    )).returning({ id: contentDrafts.id })
+    const rows = await tx
+      .delete(contentDrafts)
+      .where(and(eq(contentDrafts.id, id), eq(contentDrafts.updatedAt, updatedAt)))
+      .returning({ id: contentDrafts.id })
     return rows.length > 0
   }
 
   static async collectionItems(collectionId: string) {
-    return useDatabase().select({
-      placeSlug: places.slug,
-      title: places.title,
-      note: collectionItems.note,
-      position: collectionItems.position,
-    }).from(collectionItems).innerJoin(places, eq(collectionItems.placeId, places.id)).where(eq(collectionItems.collectionId, collectionId)).orderBy(asc(collectionItems.position))
+    return useDatabase()
+      .select({
+        placeSlug: places.slug,
+        title: places.title,
+        note: collectionItems.note,
+        position: collectionItems.position,
+      })
+      .from(collectionItems)
+      .innerJoin(places, eq(collectionItems.placeId, places.id))
+      .where(eq(collectionItems.collectionId, collectionId))
+      .orderBy(asc(collectionItems.position))
   }
 
   static async listRegions() {
@@ -963,17 +1178,36 @@ export class Editor {
     if (!unique.length) {
       return []
     }
-    return useDatabase().select({
-      id: places.id,
-      slug: places.slug,
-      categorySlug: categories.slug,
-    }).from(places).leftJoin(categories, eq(places.categoryId, categories.id)).where(and(
-      inArray(places.slug, unique),
-      eq(places.publicationStatus, published),
-    ))
+    return useDatabase()
+      .select({
+        id: places.id,
+        slug: places.slug,
+        categorySlug: categories.slug,
+      })
+      .from(places)
+      .leftJoin(categories, eq(places.categoryId, categories.id))
+      .where(and(inArray(places.slug, unique), eq(places.publicationStatus, published)))
   }
 
-  static async saveRoute(input: { id?: string, slug: string, title: string, summary?: string | null, body?: string, sections?: unknown, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, points?: OrderedStop[], path?: [number, number][] | null }, userId?: string | null, tx?: ContentTx) {
+  static async saveRoute(
+    input: {
+      id?: string
+      slug: string
+      title: string
+      summary?: string | null
+      body?: string
+      sections?: unknown
+      publicationStatus?: PublicationStatus
+      seoTitle?: string | null
+      seoDescription?: string | null
+      ogImage?: string | null
+      noindex?: boolean
+      points?: OrderedStop[]
+      path?: [number, number][] | null
+    },
+    userId?: string | null,
+    tx?: ContentTx,
+  ) {
     const data = { ...input, ...syncedBody(input) }
     const resolvedPoints = data.points ? await resolveStops(data.points, tx) : null
     const db = tx ?? useDatabase()
@@ -990,7 +1224,10 @@ export class Editor {
       body: data.body ?? existing?.body ?? '',
       ...(data.sections !== undefined ? { sections: data.sections as BodySection[] } : {}),
       publicationStatus: data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
-      firstPublishedAt: firstPublishedStamp(existing?.firstPublishedAt, data.publicationStatus ?? existing?.publicationStatus ?? 'draft'),
+      firstPublishedAt: firstPublishedStamp(
+        existing?.firstPublishedAt,
+        data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
+      ),
       seoTitle: data.seoTitle ?? existing?.seoTitle ?? null,
       seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,
       ogImage: data.ogImage ?? existing?.ogImage ?? null,
@@ -1000,7 +1237,7 @@ export class Editor {
       ...(data.path !== undefined ? { path: data.path } : {}),
     }
     const row = existing
-      ? (await db.update(routes).set(values).where(eq(routes.id, existing.id)).returning())[0] ?? existing
+      ? ((await db.update(routes).set(values).where(eq(routes.id, existing.id)).returning())[0] ?? existing)
       : (await db.insert(routes).values(values).returning())[0]
     if (!row) {
       throw new Error('Route insert failed')
@@ -1012,7 +1249,27 @@ export class Editor {
     return row
   }
 
-  static async saveCollection(data: { id?: string, slug: string, title: string, summary?: string | null, body?: string, publicationStatus?: PublicationStatus, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean, items?: OrderedStop[], kind?: CollectionKind, month?: number | null, sources?: SourceLink[], modules?: StoredPageModule[] }, userId?: string | null, tx?: ContentTx) {
+  static async saveCollection(
+    data: {
+      id?: string
+      slug: string
+      title: string
+      summary?: string | null
+      body?: string
+      publicationStatus?: PublicationStatus
+      seoTitle?: string | null
+      seoDescription?: string | null
+      ogImage?: string | null
+      noindex?: boolean
+      items?: OrderedStop[]
+      kind?: CollectionKind
+      month?: number | null
+      sources?: SourceLink[]
+      modules?: StoredPageModule[]
+    },
+    userId?: string | null,
+    tx?: ContentTx,
+  ) {
     const sources = data.sources === undefined ? undefined : pageSources(data.sources)
     const resolvedItems = data.items ? await resolveStops(data.items, tx) : null
     const db = tx ?? useDatabase()
@@ -1028,20 +1285,23 @@ export class Editor {
       summary: data.summary ?? existing?.summary ?? null,
       body: data.body ?? existing?.body ?? '',
       publicationStatus: data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
-      firstPublishedAt: firstPublishedStamp(existing?.firstPublishedAt, data.publicationStatus ?? existing?.publicationStatus ?? 'draft'),
+      firstPublishedAt: firstPublishedStamp(
+        existing?.firstPublishedAt,
+        data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
+      ),
       seoTitle: data.seoTitle ?? existing?.seoTitle ?? null,
       seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,
       ogImage: data.ogImage ?? existing?.ogImage ?? null,
       noindex: data.noindex ?? existing?.noindex ?? false,
       kind: data.kind ?? existing?.kind ?? 'theme',
-      month: data.month !== undefined ? data.month : existing?.month ?? null,
-      sources: sources === undefined ? existing?.sources ?? [] : sources,
+      month: data.month !== undefined ? data.month : (existing?.month ?? null),
+      sources: sources === undefined ? (existing?.sources ?? []) : sources,
       modules: data.modules ?? existing?.modules ?? [],
       updatedBy: userId ?? null,
       updatedAt: new Date().toISOString(),
     }
     const row = existing
-      ? (await db.update(collections).set(values).where(eq(collections.id, existing.id)).returning())[0] ?? existing
+      ? ((await db.update(collections).set(values).where(eq(collections.id, existing.id)).returning())[0] ?? existing)
       : (await db.insert(collections).values(values).returning())[0]
     if (!row) {
       throw new Error('Collection insert failed')
@@ -1068,14 +1328,20 @@ export class Editor {
       if (offer) {
         throw new Error('Cannot delete: an offer still links this route')
       }
-      await db.delete(admissionPrices).where(and(eq(admissionPrices.subjectType, 'route'), eq(admissionPrices.subjectId, row.id)))
+      await db
+        .delete(admissionPrices)
+        .where(and(eq(admissionPrices.subjectType, 'route'), eq(admissionPrices.subjectId, row.id)))
       await db.delete(routes).where(eq(routes.id, row.id))
       return { action: 'deleted' as const, id: row.id, slug: row.slug, publicationStatus: null }
     }
-    const [updated] = await db.update(routes).set({
-      publicationStatus: 'archived',
-      updatedAt: new Date().toISOString(),
-    }).where(eq(routes.id, row.id)).returning()
+    const [updated] = await db
+      .update(routes)
+      .set({
+        publicationStatus: 'archived',
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(routes.id, row.id))
+      .returning()
     await markGone(`/marshruty/${row.slug}`)
     return {
       action: 'archived' as const,
@@ -1095,10 +1361,14 @@ export class Editor {
       await db.delete(collections).where(eq(collections.id, row.id))
       return { action: 'deleted' as const, id: row.id, slug: row.slug, publicationStatus: null }
     }
-    const [updated] = await db.update(collections).set({
-      publicationStatus: 'archived',
-      updatedAt: new Date().toISOString(),
-    }).where(eq(collections.id, row.id)).returning()
+    const [updated] = await db
+      .update(collections)
+      .set({
+        publicationStatus: 'archived',
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(collections.id, row.id))
+      .returning()
     await markGone(`/podborki/${row.slug}`)
     return {
       action: 'archived' as const,
@@ -1108,20 +1378,23 @@ export class Editor {
     }
   }
 
-  static async saveQuest(data: {
-    id?: string
-    slug: string
-    title: string
-    summary?: string | null
-    body?: string
-    publicationStatus?: PublicationStatus
-    seoTitle?: string | null
-    seoDescription?: string | null
-    ogImage?: string | null
-    noindex?: boolean
-    routeId?: string | null
-    steps?: Array<{ placeSlug: string, title: string, prompt?: string | null }>
-  }, userId?: string | null) {
+  static async saveQuest(
+    data: {
+      id?: string
+      slug: string
+      title: string
+      summary?: string | null
+      body?: string
+      publicationStatus?: PublicationStatus
+      seoTitle?: string | null
+      seoDescription?: string | null
+      ogImage?: string | null
+      noindex?: boolean
+      routeId?: string | null
+      steps?: Array<{ placeSlug: string; title: string; prompt?: string | null }>
+    },
+    userId?: string | null,
+  ) {
     const db = useDatabase()
     const [existing] = data.id
       ? await db.select().from(quests).where(eq(quests.id, data.id)).limit(1)
@@ -1135,17 +1408,20 @@ export class Editor {
       summary: data.summary ?? existing?.summary ?? null,
       body: data.body ?? existing?.body ?? '',
       publicationStatus: data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
-      firstPublishedAt: firstPublishedStamp(existing?.firstPublishedAt, data.publicationStatus ?? existing?.publicationStatus ?? 'draft'),
+      firstPublishedAt: firstPublishedStamp(
+        existing?.firstPublishedAt,
+        data.publicationStatus ?? existing?.publicationStatus ?? 'draft',
+      ),
       seoTitle: data.seoTitle ?? existing?.seoTitle ?? null,
       seoDescription: data.seoDescription ?? existing?.seoDescription ?? null,
       ogImage: data.ogImage ?? existing?.ogImage ?? null,
       noindex: data.noindex ?? existing?.noindex ?? false,
-      routeId: data.routeId === undefined ? existing?.routeId ?? null : data.routeId,
+      routeId: data.routeId === undefined ? (existing?.routeId ?? null) : data.routeId,
       updatedBy: userId ?? null,
       updatedAt: new Date().toISOString(),
     }
     const row = existing
-      ? (await db.update(quests).set(values).where(eq(quests.id, existing.id)).returning())[0] ?? existing
+      ? ((await db.update(quests).set(values).where(eq(quests.id, existing.id)).returning())[0] ?? existing)
       : (await db.insert(quests).values(values).returning())[0]
     if (!row) {
       throw new Error('Quest insert failed')
@@ -1171,26 +1447,45 @@ export class Editor {
     return row
   }
 
-  static async saveCategory(id: string, data: { title: string, description: string, body?: string, seoTitle?: string | null, seoDescription?: string | null, ogImage?: string | null, noindex?: boolean }) {
-    const [updated] = await useDatabase().update(categories).set({
-      title: data.title,
-      description: data.description,
-      ...(data.body !== undefined ? { body: data.body } : {}),
-      ...(data.seoTitle !== undefined ? { seoTitle: data.seoTitle } : {}),
-      ...(data.seoDescription !== undefined ? { seoDescription: data.seoDescription } : {}),
-      ...(data.ogImage !== undefined ? { ogImage: data.ogImage } : {}),
-      ...(data.noindex !== undefined ? { noindex: data.noindex } : {}),
-      updatedAt: new Date().toISOString(),
-    }).where(eq(categories.id, id)).returning()
+  static async saveCategory(
+    id: string,
+    data: {
+      title: string
+      description: string
+      body?: string
+      seoTitle?: string | null
+      seoDescription?: string | null
+      ogImage?: string | null
+      noindex?: boolean
+    },
+  ) {
+    const [updated] = await useDatabase()
+      .update(categories)
+      .set({
+        title: data.title,
+        description: data.description,
+        ...(data.body !== undefined ? { body: data.body } : {}),
+        ...(data.seoTitle !== undefined ? { seoTitle: data.seoTitle } : {}),
+        ...(data.seoDescription !== undefined ? { seoDescription: data.seoDescription } : {}),
+        ...(data.ogImage !== undefined ? { ogImage: data.ogImage } : {}),
+        ...(data.noindex !== undefined ? { noindex: data.noindex } : {}),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(categories.id, id))
+      .returning()
     return updated
   }
 
-  static async saveRegion(id: string, data: { title: string, description?: string | null }) {
-    const [updated] = await useDatabase().update(regions).set({
-      title: data.title,
-      description: data.description ?? null,
-      updatedAt: new Date().toISOString(),
-    }).where(eq(regions.id, id)).returning()
+  static async saveRegion(id: string, data: { title: string; description?: string | null }) {
+    const [updated] = await useDatabase()
+      .update(regions)
+      .set({
+        title: data.title,
+        description: data.description ?? null,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(regions.id, id))
+      .returning()
     return updated
   }
 
@@ -1207,27 +1502,34 @@ export class Editor {
     const [existing] = await db.select().from(regions).where(eq(regions.slug, data.slug)).limit(1)
     const title = data.title.trim()
     if (!existing) {
-      const [created] = await db.insert(regions).values({
-        slug: data.slug,
-        title,
-        shortTitle: data.shortTitle?.trim() || null,
-        description: data.description ?? null,
-        latitude: data.latitude ?? null,
-        longitude: data.longitude ?? null,
-      }).returning()
+      const [created] = await db
+        .insert(regions)
+        .values({
+          slug: data.slug,
+          title,
+          shortTitle: data.shortTitle?.trim() || null,
+          description: data.description ?? null,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
+        })
+        .returning()
       if (!created) {
         throw new Error('Region insert failed')
       }
       return created
     }
-    const [updated] = await db.update(regions).set({
-      title: title || existing.title,
-      shortTitle: data.shortTitle === undefined ? existing.shortTitle : data.shortTitle?.trim() || null,
-      description: data.description === undefined ? existing.description : data.description,
-      latitude: data.latitude === undefined ? existing.latitude : data.latitude,
-      longitude: data.longitude === undefined ? existing.longitude : data.longitude,
-      updatedAt: new Date().toISOString(),
-    }).where(eq(regions.id, existing.id)).returning()
+    const [updated] = await db
+      .update(regions)
+      .set({
+        title: title || existing.title,
+        shortTitle: data.shortTitle === undefined ? existing.shortTitle : data.shortTitle?.trim() || null,
+        description: data.description === undefined ? existing.description : data.description,
+        latitude: data.latitude === undefined ? existing.latitude : data.latitude,
+        longitude: data.longitude === undefined ? existing.longitude : data.longitude,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(regions.id, existing.id))
+      .returning()
     return updated ?? existing
   }
 
@@ -1240,10 +1542,12 @@ export class Editor {
     if (!wanted.length) {
       return undefined
     }
-    const [row] = await useDatabase().select({ media }).from(placeMedia).innerJoin(media, eq(placeMedia.mediaId, media.id)).where(and(
-      eq(placeMedia.placeId, placeId),
-      inArray(media.sourceUrl, wanted),
-    )).limit(1)
+    const [row] = await useDatabase()
+      .select({ media })
+      .from(placeMedia)
+      .innerJoin(media, eq(placeMedia.mediaId, media.id))
+      .where(and(eq(placeMedia.placeId, placeId), inArray(media.sourceUrl, wanted)))
+      .limit(1)
     return row?.media
   }
 
@@ -1252,31 +1556,38 @@ export class Editor {
     return row
   }
 
-  static async updateMedia(id: string, data: Partial<{
-    filename: string
-    mime: string
-    bytes: number
-    width: number | null
-    height: number | null
-    alt: string
-    credit: string | null
-    sourceUrl: string | null
-    placeId: string | null
-    sortOrder: number
-    status: MediaStatus
-    variants: MediaVariant[]
-    lqip: string | null
-    dominantColor: string | null
-    focalX: number
-    focalY: number
-    license: MediaLicense | null
-    author: string | null
-    caption: string | null
-  }>) {
-    const [row] = await useDatabase().update(media).set({
-      ...data,
-      updatedAt: new Date().toISOString(),
-    }).where(eq(media.id, id)).returning()
+  static async updateMedia(
+    id: string,
+    data: Partial<{
+      filename: string
+      mime: string
+      bytes: number
+      width: number | null
+      height: number | null
+      alt: string
+      credit: string | null
+      sourceUrl: string | null
+      placeId: string | null
+      sortOrder: number
+      status: MediaStatus
+      variants: MediaVariant[]
+      lqip: string | null
+      dominantColor: string | null
+      focalX: number
+      focalY: number
+      license: MediaLicense | null
+      author: string | null
+      caption: string | null
+    }>,
+  ) {
+    const [row] = await useDatabase()
+      .update(media)
+      .set({
+        ...data,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(media.id, id))
+      .returning()
     return row
   }
 
@@ -1289,29 +1600,46 @@ export class Editor {
    * A missing master on a real photo stays failed (media-rebuild) and is kept.
    */
   static async deleteFailedUploads() {
-    return useDatabase().delete(media).where(and(eq(media.status, 'failed'), eq(media.bytes, 0))).returning({ id: media.id })
+    return useDatabase()
+      .delete(media)
+      .where(and(eq(media.status, 'failed'), eq(media.bytes, 0)))
+      .returning({ id: media.id })
   }
 
-  static async attachMedia(placeId: string, mediaId: string, options?: { sortOrder?: number, isCover?: boolean }) {
+  static async attachMedia(placeId: string, mediaId: string, options?: { sortOrder?: number; isCover?: boolean }) {
     const db = useDatabase()
-    const existing = await db.select().from(placeMedia).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId))).limit(1)
+    const existing = await db
+      .select()
+      .from(placeMedia)
+      .where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId)))
+      .limit(1)
     if (options?.isCover) {
       await db.update(placeMedia).set({ isCover: false }).where(eq(placeMedia.placeId, placeId))
     }
     if (existing[0]) {
-      const [row] = await db.update(placeMedia).set({
-        sortOrder: options?.sortOrder ?? existing[0].sortOrder,
-        isCover: options?.isCover ?? existing[0].isCover,
-      }).where(eq(placeMedia.id, existing[0].id)).returning()
+      const [row] = await db
+        .update(placeMedia)
+        .set({
+          sortOrder: options?.sortOrder ?? existing[0].sortOrder,
+          isCover: options?.isCover ?? existing[0].isCover,
+        })
+        .where(eq(placeMedia.id, existing[0].id))
+        .returning()
       return row
     }
-    const [countRow] = await db.select({ value: sql<number>`count(*)::int` }).from(placeMedia).where(eq(placeMedia.placeId, placeId))
-    const [row] = await db.insert(placeMedia).values({
-      placeId,
-      mediaId,
-      sortOrder: options?.sortOrder ?? countRow?.value ?? 0,
-      isCover: options?.isCover ?? (countRow?.value ?? 0) === 0,
-    }).returning()
+    const [countRow] = await db
+      .select({ value: sql<number>`count(*)::int` })
+      .from(placeMedia)
+      .where(eq(placeMedia.placeId, placeId))
+    const [row] = await db
+      .insert(placeMedia)
+      .values({
+        placeId,
+        mediaId,
+        sortOrder: options?.sortOrder ?? countRow?.value ?? 0,
+        isCover: options?.isCover ?? (countRow?.value ?? 0) === 0,
+      })
+      .returning()
     await db.update(media).set({ placeId, updatedAt: new Date().toISOString() }).where(eq(media.id, mediaId))
     return row
   }
@@ -1319,7 +1647,10 @@ export class Editor {
   static async reorderGallery(placeId: string, orderedIds: string[]) {
     const db = useDatabase()
     for (const [index, mediaId] of orderedIds.entries()) {
-      await db.update(placeMedia).set({ sortOrder: index }).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId)))
+      await db
+        .update(placeMedia)
+        .set({ sortOrder: index })
+        .where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId)))
     }
   }
 
@@ -1328,43 +1659,71 @@ export class Editor {
     if (!wanted.length) {
       return undefined
     }
-    const [row] = await useDatabase().select({ media }).from(collectionMedia).innerJoin(media, eq(collectionMedia.mediaId, media.id)).where(and(
-      eq(collectionMedia.collectionId, collectionId),
-      inArray(media.sourceUrl, wanted),
-    )).limit(1)
+    const [row] = await useDatabase()
+      .select({ media })
+      .from(collectionMedia)
+      .innerJoin(media, eq(collectionMedia.mediaId, media.id))
+      .where(and(eq(collectionMedia.collectionId, collectionId), inArray(media.sourceUrl, wanted)))
+      .limit(1)
     return row?.media
   }
 
   /** Links a stored photo to a collection. The first photo becomes the cover unless told otherwise. */
-  static async attachCollectionMedia(collectionId: string, mediaId: string, options?: { sortOrder?: number, isCover?: boolean }) {
+  static async attachCollectionMedia(
+    collectionId: string,
+    mediaId: string,
+    options?: { sortOrder?: number; isCover?: boolean },
+  ) {
     const db = useDatabase()
-    const [existing] = await db.select().from(collectionMedia).where(and(eq(collectionMedia.collectionId, collectionId), eq(collectionMedia.mediaId, mediaId))).limit(1)
+    const [existing] = await db
+      .select()
+      .from(collectionMedia)
+      .where(and(eq(collectionMedia.collectionId, collectionId), eq(collectionMedia.mediaId, mediaId)))
+      .limit(1)
     if (options?.isCover) {
       await db.update(collectionMedia).set({ isCover: false }).where(eq(collectionMedia.collectionId, collectionId))
     }
     if (existing) {
-      const [row] = await db.update(collectionMedia).set({
-        sortOrder: options?.sortOrder ?? existing.sortOrder,
-        isCover: options?.isCover ?? existing.isCover,
-      }).where(eq(collectionMedia.id, existing.id)).returning()
+      const [row] = await db
+        .update(collectionMedia)
+        .set({
+          sortOrder: options?.sortOrder ?? existing.sortOrder,
+          isCover: options?.isCover ?? existing.isCover,
+        })
+        .where(eq(collectionMedia.id, existing.id))
+        .returning()
       return row
     }
-    const [countRow] = await db.select({ value: sql<number>`count(*)::int` }).from(collectionMedia).where(eq(collectionMedia.collectionId, collectionId))
+    const [countRow] = await db
+      .select({ value: sql<number>`count(*)::int` })
+      .from(collectionMedia)
+      .where(eq(collectionMedia.collectionId, collectionId))
     const count = countRow?.value ?? 0
-    const [row] = await db.insert(collectionMedia).values({
-      collectionId,
-      mediaId,
-      sortOrder: options?.sortOrder ?? count,
-      isCover: options?.isCover ?? count === 0,
-    }).returning()
+    const [row] = await db
+      .insert(collectionMedia)
+      .values({
+        collectionId,
+        mediaId,
+        sortOrder: options?.sortOrder ?? count,
+        isCover: options?.isCover ?? count === 0,
+      })
+      .returning()
     return row
   }
 
   static async detachCollectionMedia(collectionId: string, mediaId: string) {
     const db = useDatabase()
-    const [removed] = await db.delete(collectionMedia).where(and(eq(collectionMedia.collectionId, collectionId), eq(collectionMedia.mediaId, mediaId))).returning()
+    const [removed] = await db
+      .delete(collectionMedia)
+      .where(and(eq(collectionMedia.collectionId, collectionId), eq(collectionMedia.mediaId, mediaId)))
+      .returning()
     if (removed?.isCover) {
-      const [next] = await db.select().from(collectionMedia).where(eq(collectionMedia.collectionId, collectionId)).orderBy(asc(collectionMedia.sortOrder)).limit(1)
+      const [next] = await db
+        .select()
+        .from(collectionMedia)
+        .where(eq(collectionMedia.collectionId, collectionId))
+        .orderBy(asc(collectionMedia.sortOrder))
+        .limit(1)
       if (next) {
         await db.update(collectionMedia).set({ isCover: true }).where(eq(collectionMedia.id, next.id))
       }
@@ -1375,7 +1734,10 @@ export class Editor {
   static async setCover(placeId: string, mediaId: string) {
     const db = useDatabase()
     await db.update(placeMedia).set({ isCover: false }).where(eq(placeMedia.placeId, placeId))
-    await db.update(placeMedia).set({ isCover: true }).where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId)))
+    await db
+      .update(placeMedia)
+      .set({ isCover: true })
+      .where(and(eq(placeMedia.placeId, placeId), eq(placeMedia.mediaId, mediaId)))
   }
 
   static async saveMedia(data: {
@@ -1400,28 +1762,31 @@ export class Editor {
     author?: string | null
     caption?: string | null
   }) {
-    const [row] = await useDatabase().insert(media).values({
-      ...(data.id ? { id: data.id } : {}),
-      filename: data.filename,
-      mime: data.mime,
-      bytes: data.bytes,
-      width: data.width,
-      height: data.height,
-      alt: data.alt,
-      credit: data.credit ?? data.author ?? null,
-      sourceUrl: data.sourceUrl ?? null,
-      placeId: data.placeId ?? null,
-      sortOrder: data.sortOrder ?? 0,
-      status: data.status ?? 'ready',
-      variants: data.variants ?? [],
-      lqip: data.lqip ?? null,
-      dominantColor: data.dominantColor ?? null,
-      focalX: data.focalX ?? 0.5,
-      focalY: data.focalY ?? 0.5,
-      license: data.license ?? null,
-      author: data.author ?? data.credit ?? null,
-      caption: data.caption ?? null,
-    }).returning()
+    const [row] = await useDatabase()
+      .insert(media)
+      .values({
+        ...(data.id ? { id: data.id } : {}),
+        filename: data.filename,
+        mime: data.mime,
+        bytes: data.bytes,
+        width: data.width,
+        height: data.height,
+        alt: data.alt,
+        credit: data.credit ?? data.author ?? null,
+        sourceUrl: data.sourceUrl ?? null,
+        placeId: data.placeId ?? null,
+        sortOrder: data.sortOrder ?? 0,
+        status: data.status ?? 'ready',
+        variants: data.variants ?? [],
+        lqip: data.lqip ?? null,
+        dominantColor: data.dominantColor ?? null,
+        focalX: data.focalX ?? 0.5,
+        focalY: data.focalY ?? 0.5,
+        license: data.license ?? null,
+        author: data.author ?? data.credit ?? null,
+        caption: data.caption ?? null,
+      })
+      .returning()
     if (!row) {
       throw new Error('Media insert failed')
     }
@@ -1429,7 +1794,7 @@ export class Editor {
   }
 }
 
-function mediaPublicPath(image: { id: string, filename: string, variants: MediaVariant[] | null }) {
+function mediaPublicPath(image: { id: string; filename: string; variants: MediaVariant[] | null }) {
   const variants = image.variants ?? []
   if (variants.some((item) => item.file === 'og.jpg')) {
     return `/media/${image.id}/og.jpg`
@@ -1442,7 +1807,11 @@ function imagesForIds(ids: string[], images: Array<typeof media.$inferSelect>) {
   return images.filter((image) => wanted.has(image.id))
 }
 
-function galleryImages(placeId: string, images: Array<typeof media.$inferSelect>, links: Array<typeof placeMedia.$inferSelect>) {
+function galleryImages(
+  placeId: string,
+  images: Array<typeof media.$inferSelect>,
+  links: Array<typeof placeMedia.$inferSelect>,
+) {
   const linkedIds = links.filter((link) => link.placeId === placeId).map((link) => link.mediaId)
   const fromJoin = images.filter((image) => linkedIds.includes(image.id))
   if (fromJoin.length) {
@@ -1451,8 +1820,8 @@ function galleryImages(placeId: string, images: Array<typeof media.$inferSelect>
   return images.filter((image) => image.placeId === placeId)
 }
 
-type OrderedStop = { placeSlug: string, note?: string | null }
-type ResolvedStop = { placeId: string, note: string | null }
+type OrderedStop = { placeSlug: string; note?: string | null }
+type ResolvedStop = { placeId: string; note: string | null }
 
 function blankNote(note: string | null | undefined) {
   const text = note?.trim()
@@ -1479,12 +1848,14 @@ async function writeRoutePoints(routeId: string, stops: ResolvedStop[], tx?: Con
       return
     }
     // Position is the array index so the saved order matches the request.
-    await db.insert(routePoints).values(stops.map((stop, position) => ({
-      routeId,
-      placeId: stop.placeId,
-      position,
-      note: stop.note,
-    })))
+    await db.insert(routePoints).values(
+      stops.map((stop, position) => ({
+        routeId,
+        placeId: stop.placeId,
+        position,
+        note: stop.note,
+      })),
+    )
   }
   if (tx) {
     await write(tx)
@@ -1499,12 +1870,14 @@ async function writeCollectionItems(collectionId: string, stops: ResolvedStop[],
     if (!stops.length) {
       return
     }
-    await db.insert(collectionItems).values(stops.map((stop, position) => ({
-      collectionId,
-      placeId: stop.placeId,
-      position,
-      note: stop.note,
-    })))
+    await db.insert(collectionItems).values(
+      stops.map((stop, position) => ({
+        collectionId,
+        placeId: stop.placeId,
+        position,
+        note: stop.note,
+      })),
+    )
   }
   if (tx) {
     await write(tx)

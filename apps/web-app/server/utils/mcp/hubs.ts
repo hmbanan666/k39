@@ -45,18 +45,22 @@ export async function updateHub(input: HubUpdateInput) {
   const body = input.body === undefined ? current.body : input.body
   const seoTitle = input.seoTitle === undefined ? current.seoTitle : input.seoTitle
   const seoDescription = input.seoDescription === undefined ? current.seoDescription : input.seoDescription
-  const { row, writingWarnings } = await saveHubContent(current.id, {
-    title,
-    description,
-    body,
-    seoTitle,
-    seoDescription,
-    ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
-    noindex: input.noindex ?? current.noindex,
-  }, {
-    prose: [title, description, body, seoTitle, seoDescription],
-    publishing: true,
-  })
+  const { row, writingWarnings } = await saveHubContent(
+    current.id,
+    {
+      title,
+      description,
+      body,
+      seoTitle,
+      seoDescription,
+      ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
+      noindex: input.noindex ?? current.noindex,
+    },
+    {
+      prose: [title, description, body, seoTitle, seoDescription],
+      publishing: true,
+    },
+  )
   await auditMcp('hub_update', 'hub', current.id)
   return {
     id: row?.id,

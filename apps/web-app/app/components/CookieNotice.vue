@@ -15,9 +15,7 @@
     />
     <p>
       Мы используем cookie, чтобы сайт работал корректно.
-      <NuxtLink to="/privacy">
-        Подробнее
-      </NuxtLink>
+      <NuxtLink to="/privacy"> Подробнее </NuxtLink>
     </p>
     <button
       type="button"
@@ -130,7 +128,9 @@ button {
   font: 700 0.875rem/1 var(--font-body);
   cursor: pointer;
 }
-button:hover { background: var(--color-brick-dark); }
+button:hover {
+  background: var(--color-brick-dark);
+}
 @keyframes notice-in {
   from {
     opacity: 0;
@@ -148,23 +148,27 @@ button:hover { background: var(--color-brick-dark); }
     flex-wrap: nowrap;
     max-width: none;
   }
-  .notice-sticker { width: 2.75rem; }
+  .notice-sticker {
+    width: 2.75rem;
+  }
   p {
     flex: 1 1 0;
     min-width: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .notice { animation: none; }
+  .notice {
+    animation: none;
+  }
 }
 </style>
 
 <style>
-html:has([aria-label="Уведомление о cookie"]) {
+html:has([aria-label='Уведомление о cookie']) {
   --cookie-notice-offset: calc(7.5rem + env(safe-area-inset-bottom, 0px));
 }
 @media (min-width: 721px) {
-  html:has([aria-label="Уведомление о cookie"]) {
+  html:has([aria-label='Уведомление о cookie']) {
     --cookie-notice-offset: 5.75rem;
   }
 }

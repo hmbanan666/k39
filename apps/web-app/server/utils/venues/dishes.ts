@@ -8,7 +8,11 @@ import { dishLinks, dishPhotoProblem, stampDishModules } from '../../../shared/v
  * An editor may attach only `own` or `commons`. An id that is already on
  * that dish is kept, so one side does not strip the other's photo.
  */
-export async function normalizeDishModules(venueId: string | null, modules: VenueModule[], actor: 'owner' | 'editorial') {
+export async function normalizeDishModules(
+  venueId: string | null,
+  modules: VenueModule[],
+  actor: 'owner' | 'editorial',
+) {
   for (const mod of modules) {
     if (mod.type !== 'dishes') {
       continue

@@ -13,17 +13,17 @@
         <source
           type="image/webp"
           srcset="/logo/moose-head.webp 1x, /logo/moose-head@2x.webp 2x"
-        >
+        />
         <source
           type="image/png"
           srcset="/logo/moose-head.png 1x, /logo/moose-head@2x.png 2x"
-        >
+        />
         <img
           src="/logo/moose-head.png"
           alt=""
           width="108"
           height="96"
-        >
+        />
       </picture>
       <span class="logo-word">
         K39
@@ -65,15 +65,14 @@
             </UiButton>
           </div>
           <p class="consent">
-            Нажимая кнопку входа, вы даёте <a href="/soglasie">Согласие на обработку персональных данных</a> и принимаете <a href="/privacy">Политику конфиденциальности</a>.
+            Нажимая кнопку входа, вы даёте <a href="/soglasie">Согласие на обработку персональных данных</a> и
+            принимаете <a href="/privacy">Политику конфиденциальности</a>.
           </p>
         </template>
       </div>
 
       <p class="back">
-        <UiLink :href="redirectTo">
-          Вернуться
-        </UiLink>
+        <UiLink :href="redirectTo"> Вернуться </UiLink>
       </p>
     </main>
 
@@ -83,10 +82,11 @@
         alt="Иммануил Кант"
         width="96"
         height="96"
-      >
+      />
       <blockquote>
         <p>
-          «Такой город, как Кенигсберг на Прегеле, можно признать подходящим местом для расширения знания и человека, и света.<span class="quote-more"> Здесь и без путешествия можно приобрести такое знание.</span>»
+          «Такой город, как Кенигсберг на Прегеле, можно признать подходящим местом для расширения знания и человека, и
+          света.<span class="quote-more"> Здесь и без путешествия можно приобрести такое знание.</span>»
         </p>
       </blockquote>
       <figcaption>Иммануил Кант</figcaption>
@@ -103,9 +103,13 @@ definePageMeta({
 })
 
 const route = useRoute()
-const redirectTo = computed(() => typeof route.query.redirectTo === 'string' && route.query.redirectTo.startsWith('/') && !route.query.redirectTo.startsWith('//')
-  ? route.query.redirectTo
-  : '/')
+const redirectTo = computed(() =>
+  typeof route.query.redirectTo === 'string' &&
+  route.query.redirectTo.startsWith('/') &&
+  !route.query.redirectTo.startsWith('//')
+    ? route.query.redirectTo
+    : '/',
+)
 const consentError = computed(() => route.query.error === 'consent')
 const { data, pending } = await useFetch<{ providers: string[] }>('/api/auth/providers')
 
@@ -132,9 +136,9 @@ useSeoMeta({ title: 'Вход | K39', robots: 'noindex, nofollow' })
 .signin {
   display: grid;
   grid-template-areas:
-    "map"
-    "sheet"
-    "quote";
+    'map'
+    'sheet'
+    'quote';
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
   max-width: 100%;
@@ -227,7 +231,7 @@ h1 {
 }
 
 h1::after {
-  content: "";
+  content: '';
   display: block;
   width: 3rem;
   height: 3px;
@@ -285,8 +289,8 @@ h1::after {
   grid-area: quote;
   min-width: 0;
   grid-template-areas:
-    "portrait text"
-    "portrait byline";
+    'portrait text'
+    'portrait byline';
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.35rem var(--space-4);
   align-items: start;
@@ -345,7 +349,7 @@ h1::after {
 
 @media (min-width: 900px) {
   .signin {
-    grid-template-areas: "map sheet";
+    grid-template-areas: 'map sheet';
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
     height: 100vh;

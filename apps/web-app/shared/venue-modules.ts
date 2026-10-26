@@ -8,8 +8,21 @@ import { z } from 'zod'
 import { priceBadgeFromBand, priceCompareLead, sharedPriceSource } from './price-compare'
 
 /** Audience card icons (Tabler line icons via shared/icons.ts `aud-*`). Default: `group`. */
-export const AUDIENCE_ICONS = ['group', 'family', 'kids', 'couple', 'solo', 'friends', 'beach', 'day-trip', 'tourist', 'local', 'pets', 'work'] as const
-export type AudienceIcon = typeof AUDIENCE_ICONS[number]
+export const AUDIENCE_ICONS = [
+  'group',
+  'family',
+  'kids',
+  'couple',
+  'solo',
+  'friends',
+  'beach',
+  'day-trip',
+  'tourist',
+  'local',
+  'pets',
+  'work',
+] as const
+export type AudienceIcon = (typeof AUDIENCE_ICONS)[number]
 
 /** Curated «Что заказать» list. Not a full menu. */
 export const DISH_SHOWCASE_MAX = 8
@@ -39,32 +52,43 @@ export const venueModuleSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('dishes'),
     title: title.optional(),
-    items: z.array(z.object({
-      /** Stable across edits and reordering. Not a review key. Assigned on write when missing. */
-      id: z.string().trim().regex(DISH_ID).optional(),
-      name: short,
-      /** Short text. `note` is the previous field and is accepted on input. */
-      description: z.string().trim().max(200).nullable().optional(),
-      note: z.string().trim().max(200).nullable().optional(),
-      priceRub: z.number().int().min(0).nullable().optional(),
-      /** media.id already attached to this venue. */
-      mediaId: z.string().trim().min(1).max(40).nullable().optional(),
-      /** When the price was last set or confirmed. ISO timestamp. */
-      updatedAt: z.string().trim().min(10).max(40).optional(),
-      /** Owner confirms the same price is still right. Not stored. */
-      refreshPrice: z.boolean().optional(),
-    })).min(1).max(DISH_SHOWCASE_MAX),
+    items: z
+      .array(
+        z.object({
+          /** Stable across edits and reordering. Not a review key. Assigned on write when missing. */
+          id: z.string().trim().regex(DISH_ID).optional(),
+          name: short,
+          /** Short text. `note` is the previous field and is accepted on input. */
+          description: z.string().trim().max(200).nullable().optional(),
+          note: z.string().trim().max(200).nullable().optional(),
+          priceRub: z.number().int().min(0).nullable().optional(),
+          /** media.id already attached to this venue. */
+          mediaId: z.string().trim().min(1).max(40).nullable().optional(),
+          /** When the price was last set or confirmed. ISO timestamp. */
+          updatedAt: z.string().trim().min(10).max(40).optional(),
+          /** Owner confirms the same price is still right. Not stored. */
+          refreshPrice: z.boolean().optional(),
+        }),
+      )
+      .min(1)
+      .max(DISH_SHOWCASE_MAX),
     note: z.string().trim().max(300).optional(),
   }),
   z.object({
     type: z.literal('audience'),
     title: title.optional(),
-    items: z.array(z.object({ who: short, icon: z.enum(AUDIENCE_ICONS).optional(), text: z.string().trim().min(1).max(400) })).min(1).max(5),
+    items: z
+      .array(z.object({ who: short, icon: z.enum(AUDIENCE_ICONS).optional(), text: z.string().trim().min(1).max(400) }))
+      .min(1)
+      .max(5),
   }),
   z.object({
     type: z.literal('practical'),
     title: title.optional(),
-    items: z.array(z.object({ key: z.enum(PRACTICAL_KEYS), label: short, value: z.string().trim().min(1).max(300) })).min(1).max(10),
+    items: z
+      .array(z.object({ key: z.enum(PRACTICAL_KEYS), label: short, value: z.string().trim().min(1).max(300) }))
+      .min(1)
+      .max(10),
   }),
   z.object({
     type: z.literal('best-time'),
@@ -88,31 +112,37 @@ export const venueModuleSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('faq'),
     title: title.optional(),
-    items: z.array(z.object({ question: short, answer: z.string().trim().min(1).max(800) })).min(1).max(8),
+    items: z
+      .array(z.object({ question: short, answer: z.string().trim().min(1).max(800) }))
+      .min(1)
+      .max(8),
   }),
 ])
 
-export const venueModulesSchema = z.array(venueModuleSchema).max(16).superRefine((modules, ctx) => {
-  for (const unique of ['prices', 'dishes', 'audience', 'practical', 'best-time', 'how-to-get', 'faq'] as const) {
-    if (modules.filter((item) => item.type === unique).length > 1) {
-      ctx.addIssue({ code: 'custom', message: `At most one ${unique} module` })
-    }
-  }
-  modules.forEach((mod, index) => {
-    if (mod.type !== 'dishes') {
-      return
-    }
-    mod.items.forEach((item, itemIndex) => {
-      if (priceInName(item.name)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: priceInNameMessage(),
-          path: [index, 'items', itemIndex, 'name'],
-        })
+export const venueModulesSchema = z
+  .array(venueModuleSchema)
+  .max(16)
+  .superRefine((modules, ctx) => {
+    for (const unique of ['prices', 'dishes', 'audience', 'practical', 'best-time', 'how-to-get', 'faq'] as const) {
+      if (modules.filter((item) => item.type === unique).length > 1) {
+        ctx.addIssue({ code: 'custom', message: `At most one ${unique} module` })
       }
+    }
+    modules.forEach((mod, index) => {
+      if (mod.type !== 'dishes') {
+        return
+      }
+      mod.items.forEach((item, itemIndex) => {
+        if (priceInName(item.name)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: priceInNameMessage(),
+            path: [index, 'items', itemIndex, 'name'],
+          })
+        }
+      })
     })
   })
-})
 
 export type VenueModule = z.infer<typeof venueModuleSchema>
 
@@ -141,15 +171,23 @@ export const VENUE_MODULE_IDS: Record<VenueModule['type'], string> = {
   'faq': 'voprosy',
 }
 
-export type PublicVenueModule
-  = | { type: 'text', id: string, title: string, variant: 'lead' | 'plain', html: string }
-    | { type: 'dishes', id: string, title: string, items: PublicDish[], note: string | null }
-    | { type: 'audience', id: string, title: string, items: { who: string, icon: AudienceIcon, html: string }[] }
-    | { type: 'practical', id: string, title: string, items: { key: string, label: string, value: string }[] }
-    | { type: 'best-time', id: string, title: string, html: string }
-    | { type: 'tips', id: string, title: string, items: string[] }
-    | { type: 'faq', id: string, title: string, items: { question: string, html: string }[] }
-    | { type: 'prices', id: string, title: string, lead: string, items: PublicPriceCard[], summary: PriceSummary | null, source: SharedPriceSource | null }
+export type PublicVenueModule =
+  | { type: 'text'; id: string; title: string; variant: 'lead' | 'plain'; html: string }
+  | { type: 'dishes'; id: string; title: string; items: PublicDish[]; note: string | null }
+  | { type: 'audience'; id: string; title: string; items: { who: string; icon: AudienceIcon; html: string }[] }
+  | { type: 'practical'; id: string; title: string; items: { key: string; label: string; value: string }[] }
+  | { type: 'best-time'; id: string; title: string; html: string }
+  | { type: 'tips'; id: string; title: string; items: string[] }
+  | { type: 'faq'; id: string; title: string; items: { question: string; html: string }[] }
+  | {
+      type: 'prices'
+      id: string
+      title: string
+      lead: string
+      items: PublicPriceCard[]
+      summary: PriceSummary | null
+      source: SharedPriceSource | null
+    }
 
 export interface PublicDish {
   /** Persisted id, or a display key when a reverted snapshot has none yet. */
@@ -202,7 +240,12 @@ export interface VenueModuleView {
 }
 
 /** Validates and renders stored modules. Invalid or empty input yields null. */
-export function toPublicVenueModules(stored: unknown, render: (markdown: string) => string, prices: PublicPriceCard[] = [], view: VenueModuleView = {}): PublicVenueModules | null {
+export function toPublicVenueModules(
+  stored: unknown,
+  render: (markdown: string) => string,
+  prices: PublicPriceCard[] = [],
+  view: VenueModuleView = {},
+): PublicVenueModules | null {
   const parsed = venueModulesSchema.safeParse(stored)
   if (!parsed.success || !parsed.data.length) {
     return null
@@ -223,7 +266,13 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
         howToGetHtml = render(module.text)
         break
       case 'text':
-        blocks.push({ type: 'text', id: idFor('text'), title: heading, variant: module.variant, html: render(module.text) })
+        blocks.push({
+          type: 'text',
+          id: idFor('text'),
+          title: heading,
+          variant: module.variant,
+          html: render(module.text),
+        })
         break
       case 'dishes':
         blocks.push({
@@ -235,7 +284,12 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
         })
         break
       case 'audience':
-        blocks.push({ type: 'audience', id: idFor('audience'), title: heading, items: module.items.map((item) => ({ who: item.who, icon: item.icon ?? 'group', html: render(item.text) })) })
+        blocks.push({
+          type: 'audience',
+          id: idFor('audience'),
+          title: heading,
+          items: module.items.map((item) => ({ who: item.who, icon: item.icon ?? 'group', html: render(item.text) })),
+        })
         break
       case 'practical':
         blocks.push({ type: 'practical', id: idFor('practical'), title: heading, items: module.items })
@@ -261,7 +315,12 @@ export function toPublicVenueModules(stored: unknown, render: (markdown: string)
         }
         break
       case 'faq':
-        blocks.push({ type: 'faq', id: idFor('faq'), title: heading, items: module.items.map((item) => ({ question: item.question, html: render(item.answer) })) })
+        blocks.push({
+          type: 'faq',
+          id: idFor('faq'),
+          title: heading,
+          items: module.items.map((item) => ({ question: item.question, html: render(item.answer) })),
+        })
         break
     }
   }
@@ -279,7 +338,7 @@ interface StoredDish {
   refreshPrice?: boolean
 }
 
-function dishText(item: { description?: string | null, note?: string | null }) {
+function dishText(item: { description?: string | null; note?: string | null }) {
   return (item.description ?? item.note ?? '').trim() || null
 }
 
@@ -303,7 +362,7 @@ function readStoredDishes(stored: unknown): StoredDish[] {
     if (!module || typeof module !== 'object') {
       continue
     }
-    const row = module as { type?: string, items?: unknown }
+    const row = module as { type?: string; items?: unknown }
     if (row.type !== 'dishes' || !Array.isArray(row.items)) {
       continue
     }
@@ -324,7 +383,7 @@ function presentDish(item: StoredDish, index: number, view: VenueModuleView): Pu
     name: item.name?.trim() || '',
     description: dishText(item),
     priceRub: price != null && price > 0 && dishPriceIsFresh(item.updatedAt, view.now) ? price : null,
-    media: mediaId ? view.mediaById?.get(mediaId) ?? null : null,
+    media: mediaId ? (view.mediaById?.get(mediaId) ?? null) : null,
   }
 }
 
@@ -351,9 +410,7 @@ export function stampDishModules(modules: VenueModule[], previous: unknown, now 
       const priceRub = typeof item.priceRub === 'number' ? item.priceRub : null
       const before = prior.get(id)
       const priceSame = !!before && (before.priceRub ?? null) === priceRub
-      const updatedAt = priceSame && !item.refreshPrice && before.updatedAt
-        ? before.updatedAt
-        : now.toISOString()
+      const updatedAt = priceSame && !item.refreshPrice && before.updatedAt ? before.updatedAt : now.toISOString()
       return {
         id,
         name: item.name,
@@ -418,8 +475,8 @@ export function dishLinks(stored: unknown): DishPhotoLink[] {
 
 /** schema.org Menu for the showcase. Prices that the page hides are omitted. */
 export function dishMenuNode(
-  block: { title: string, items: PublicDish[] },
-  options?: { menuUrl?: string | null, absolute?: (path: string) => string },
+  block: { title: string; items: PublicDish[] },
+  options?: { menuUrl?: string | null; absolute?: (path: string) => string },
 ) {
   if (!block.items.length) {
     return null

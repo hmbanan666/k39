@@ -8,7 +8,27 @@ import { findOrphans, haversineKm, homeLinks, HUBS, indexableHubs, SECTION_LINKS
 import { renderMarkdown } from '../shared/markdown'
 import { lcpPreload, openGraphFile } from '../shared/media'
 import { decideRedirect } from '../shared/redirects'
-import { accessibleForFree, BRAND_ICON_VERSION, brandHeadLinks, collectionDocument, countH1, headFromDocument, homeDocument, imageCredit, jsonLdTypes, pageTitle, placeDocument, placeNodeTypes, placeSchemaType, schemaOpeningHours, schemaProblems, tuneRobots, venueDocument, venueSchemaType, verificationMeta } from '../shared/seo'
+import {
+  accessibleForFree,
+  BRAND_ICON_VERSION,
+  brandHeadLinks,
+  collectionDocument,
+  countH1,
+  headFromDocument,
+  homeDocument,
+  imageCredit,
+  jsonLdTypes,
+  pageTitle,
+  placeDocument,
+  placeNodeTypes,
+  placeSchemaType,
+  schemaOpeningHours,
+  schemaProblems,
+  tuneRobots,
+  venueDocument,
+  venueSchemaType,
+  verificationMeta,
+} from '../shared/seo'
 
 function assertDocument(doc: ReturnType<typeof homeDocument>, htmlBody: string) {
   expect(doc.title.length).toBeGreaterThan(10)
@@ -220,7 +240,9 @@ describe('seo documents', () => {
       kind: 'CollectionPage',
       body: hubArticle,
     })
-    const questions = hubFaq.jsonLd.find((node) => node['@type'] === 'FAQPage') as { mainEntity?: Array<{ name: string, acceptedAnswer?: { text: string } }> }
+    const questions = hubFaq.jsonLd.find((node) => node['@type'] === 'FAQPage') as {
+      mainEntity?: Array<{ name: string; acceptedAnswer?: { text: string } }>
+    }
     expect(questions?.mainEntity?.map((item) => item.name)).toEqual([
       'Какой форт выбрать, если время только на один?',
       'Можно ли зайти в заброшенные форты?',
@@ -232,7 +254,9 @@ describe('seo documents', () => {
     expect(homeDocument().title).toBe('Куда сходить в Калининградской области | K39')
     const place = placeDocument({ ...placeInput() })
     expect(place.title).toBe('Форт № 11 «Дёнхофф»: часы и как добраться | K39')
-    expect(placeDocument({ ...placeInput(), seoTitle: 'Форт Дёнхофф: часы и дорога' }).title).toBe('Форт Дёнхофф: часы и дорога | K39')
+    expect(placeDocument({ ...placeInput(), seoTitle: 'Форт Дёнхофф: часы и дорога' }).title).toBe(
+      'Форт Дёнхофф: часы и дорога | K39',
+    )
     expect(pageTitle('Форт', 'Форт Дёнхофф | K39')).toBe('Форт Дёнхофф | K39')
 
     const titled = [
@@ -259,14 +283,18 @@ describe('seo documents', () => {
       expect(doc.title.endsWith('| K39')).toBe(true)
       expect(doc.title.split('| K39')).toHaveLength(2)
     }
-    expect(collectionDocument({
-      path: '/kvesty/pyat-fortov',
-      h1: 'Квест: 5 фортов',
-      summary: 'Пять фортов, куда по источникам можно попасть.',
-      crumbName: 'квест',
-      items: [],
-      kind: 'TouristTrip',
-    }).title.toLowerCase().match(/квест/g)).toEqual(['квест'])
+    expect(
+      collectionDocument({
+        path: '/kvesty/pyat-fortov',
+        h1: 'Квест: 5 фортов',
+        summary: 'Пять фортов, куда по источникам можно попасть.',
+        crumbName: 'квест',
+        items: [],
+        kind: 'TouristTrip',
+      })
+        .title.toLowerCase()
+        .match(/квест/g),
+    ).toEqual(['квест'])
   })
 
   it('lists ordered places with coordinates on a tourist trip', () => {
@@ -290,7 +318,7 @@ describe('seo documents', () => {
         'itemListElement'?: Array<{
           position?: number
           description?: string
-          item?: { '@type'?: string, 'url'?: string, 'geo'?: { latitude: number, longitude: number } }
+          item?: { '@type'?: string; 'url'?: string; 'geo'?: { latitude: number; longitude: number } }
         }>
       }
     }
@@ -313,7 +341,9 @@ describe('seo documents', () => {
       items: [{ name: 'Форт № 11 «Дёнхофф»', url: '/fort-11-denhoff', latitude: 54.65, longitude: 20.56 }],
       kind: 'CollectionPage',
     })
-    const page = hub.jsonLd.find((node) => node['@type'] === 'CollectionPage') as { mainEntity?: { itemListElement?: Array<{ item?: unknown }> } }
+    const page = hub.jsonLd.find((node) => node['@type'] === 'CollectionPage') as {
+      mainEntity?: { itemListElement?: Array<{ item?: unknown }> }
+    }
     expect(page.mainEntity?.itemListElement?.[0]?.item).toBeUndefined()
   })
 })
@@ -371,42 +401,50 @@ describe('image credit', () => {
     expect(place?.creditText).toBe('Irina Yakubovskaya, CC BY 4.0')
     expect(place?.copyrightNotice).toBe('© Irina Yakubovskaya')
 
-    const publicDomain = imagesOf(placeDocument({
-      ...placeInput(),
-      images: [{ ...commons, author: null, license: 'pd' }],
-    }).jsonLd)[0]
+    const publicDomain = imagesOf(
+      placeDocument({
+        ...placeInput(),
+        images: [{ ...commons, author: null, license: 'pd' }],
+      }).jsonLd,
+    )[0]
     expect(publicDomain?.creditText).toBe('Wikimedia Commons')
     expect(publicDomain).not.toHaveProperty('copyrightNotice')
 
-    const venue = imagesOf(venueDocument({
-      slug: 'kofeynya-u-forta',
-      name: 'Кофейня у форта',
-      kind: 'coffee',
-      description: 'Кофейня у форта варит эспрессо и кормит обедом. '.repeat(8),
-      image: commons,
-    }).jsonLd)[0]
+    const venue = imagesOf(
+      venueDocument({
+        slug: 'kofeynya-u-forta',
+        name: 'Кофейня у форта',
+        kind: 'coffee',
+        description: 'Кофейня у форта варит эспрессо и кормит обедом. '.repeat(8),
+        image: commons,
+      }).jsonLd,
+    )[0]
     expect(venue?.creditText).toBe('Irina Yakubovskaya, CC BY 4.0')
     expect(venue?.copyrightNotice).toBe('© Irina Yakubovskaya')
 
-    const route = imagesOf(collectionDocument({
-      path: '/marshruty/koltso-fortov',
-      h1: 'Кольцо фортов',
-      summary: 'Маршрут по фортам.',
-      items: [],
-      kind: 'TouristTrip',
-      images: [{ ...commons, license: 'cc0' }],
-    }).jsonLd)[0]
+    const route = imagesOf(
+      collectionDocument({
+        path: '/marshruty/koltso-fortov',
+        h1: 'Кольцо фортов',
+        summary: 'Маршрут по фортам.',
+        items: [],
+        kind: 'TouristTrip',
+        images: [{ ...commons, license: 'cc0' }],
+      }).jsonLd,
+    )[0]
     expect(route?.creditText).toBe('Irina Yakubovskaya')
     expect(route).not.toHaveProperty('copyrightNotice')
 
-    const collection = imagesOf(collectionDocument({
-      path: '/podborki/forty',
-      h1: 'Форты',
-      summary: 'Подборка фортов.',
-      items: [],
-      kind: 'CollectionPage',
-      images: [commons],
-    }).jsonLd)[0]
+    const collection = imagesOf(
+      collectionDocument({
+        path: '/podborki/forty',
+        h1: 'Форты',
+        summary: 'Подборка фортов.',
+        items: [],
+        kind: 'CollectionPage',
+        images: [commons],
+      }).jsonLd,
+    )[0]
     expect(collection?.creditText).toBe('Irina Yakubovskaya, CC BY 4.0')
     expect(collection?.copyrightNotice).toBe('© Irina Yakubovskaya')
   })
@@ -441,17 +479,35 @@ describe('schema facts', () => {
     expect(schemaProblems(daily.jsonLd)).toEqual([])
 
     const vague = placeDocument({ ...placeInput(), hours: '10:00-18:00', price: 'уточняйте' })
-    const vagueNode = vague.jsonLd.find((item) => jsonLdTypes(item).includes('TouristAttraction')) as Record<string, unknown>
+    const vagueNode = vague.jsonLd.find((item) => jsonLdTypes(item).includes('TouristAttraction')) as Record<
+      string,
+      unknown
+    >
     expect(vagueNode.openingHours).toBeUndefined()
     expect(vagueNode.isAccessibleForFree).toBeUndefined()
     expect(JSON.stringify(vagueNode)).not.toContain('Castle')
 
     const paid = placeDocument({ ...placeInput(), categorySlug: 'muzei', categoryTitle: 'Музеи', price: '500 ₽' })
-    expect(jsonLdTypes(paid.jsonLd.find((item) => jsonLdTypes(item).includes('Museum')) || {})).toEqual(['TouristAttraction', 'Museum'])
-    expect((paid.jsonLd.find((item) => jsonLdTypes(item).includes('Museum')) as { isAccessibleForFree?: boolean }).isAccessibleForFree).toBe(false)
+    expect(jsonLdTypes(paid.jsonLd.find((item) => jsonLdTypes(item).includes('Museum')) || {})).toEqual([
+      'TouristAttraction',
+      'Museum',
+    ])
+    expect(
+      (paid.jsonLd.find((item) => jsonLdTypes(item).includes('Museum')) as { isAccessibleForFree?: boolean })
+        .isAccessibleForFree,
+    ).toBe(false)
 
-    const beach = placeDocument({ ...placeInput(), categorySlug: 'plyazhi', categoryTitle: 'Пляжи', hours: null, price: null })
-    expect(jsonLdTypes(beach.jsonLd.find((item) => jsonLdTypes(item).includes('Beach')) || {})).toEqual(['TouristAttraction', 'Beach'])
+    const beach = placeDocument({
+      ...placeInput(),
+      categorySlug: 'plyazhi',
+      categoryTitle: 'Пляжи',
+      hours: null,
+      price: null,
+    })
+    expect(jsonLdTypes(beach.jsonLd.find((item) => jsonLdTypes(item).includes('Beach')) || {})).toEqual([
+      'TouristAttraction',
+      'Beach',
+    ])
 
     const cafe = venueDocument({
       slug: 'kofe',
@@ -525,8 +581,8 @@ describe('schema facts', () => {
   it('sets html lang to ru', () => {
     const app = readFileSync(resolve(process.cwd(), 'apps/web-app/app/app.vue'), 'utf8')
     const config = readFileSync(resolve(process.cwd(), 'apps/web-app/nuxt.config.ts'), 'utf8')
-    expect(app).toContain('lang: \'ru\'')
-    expect(config).toContain('lang: \'ru\'')
+    expect(app).toContain("lang: 'ru'")
+    expect(config).toContain("lang: 'ru'")
   })
 })
 
@@ -548,26 +604,34 @@ describe('redirects', () => {
     })
     expect(quest).toEqual({ kind: 'redirect', location: 'https://k39.online/kvesty/pyat-fortov' })
 
-    expect(decideRedirect({
-      hostHeader: 'k39.online',
-      protoHeader: 'https',
-      path: '/map',
-    }).kind).toBe('none')
-    expect(decideRedirect({
-      hostHeader: 'k39.online',
-      protoHeader: 'https',
-      path: '/map/forty',
-    }).kind).toBe('none')
-    expect(decideRedirect({
-      hostHeader: 'k39.online',
-      protoHeader: 'https',
-      path: '/karta',
-    }).kind).toBe('none')
-    expect(decideRedirect({
-      hostHeader: 'k39.online',
-      protoHeader: 'https',
-      path: '/map/kaliningrad',
-    }).kind).toBe('none')
+    expect(
+      decideRedirect({
+        hostHeader: 'k39.online',
+        protoHeader: 'https',
+        path: '/map',
+      }).kind,
+    ).toBe('none')
+    expect(
+      decideRedirect({
+        hostHeader: 'k39.online',
+        protoHeader: 'https',
+        path: '/map/forty',
+      }).kind,
+    ).toBe('none')
+    expect(
+      decideRedirect({
+        hostHeader: 'k39.online',
+        protoHeader: 'https',
+        path: '/karta',
+      }).kind,
+    ).toBe('none')
+    expect(
+      decideRedirect({
+        hostHeader: 'k39.online',
+        protoHeader: 'https',
+        path: '/map/kaliningrad',
+      }).kind,
+    ).toBe('none')
 
     const gone = decideRedirect({
       hostHeader: 'k39.online',
@@ -578,10 +642,12 @@ describe('redirects', () => {
     expect(gone.kind).toBe('gone')
 
     expect(decideRedirect({ hostHeader: 'localhost:3000', path: '/' }).kind).toBe('none')
-    expect(decideRedirect({
-      hostHeader: 'localhost:3000',
-      path: '/place/fort-11-denhoff',
-    })).toEqual({ kind: 'redirect', location: 'http://localhost:3000/fort-11-denhoff' })
+    expect(
+      decideRedirect({
+        hostHeader: 'localhost:3000',
+        path: '/place/fort-11-denhoff',
+      }),
+    ).toEqual({ kind: 'redirect', location: 'http://localhost:3000/fort-11-denhoff' })
 
     const chain = decideRedirect({
       hostHeader: 'k39.online',
@@ -687,9 +753,7 @@ describe('default social image', () => {
 
     const collapsed = createHead()
     collapsed.push({
-      link: brandHeadLinks
-        .filter((link) => link.href === icoHref)
-        .map(({ key: _key, ...link }) => link),
+      link: brandHeadLinks.filter((link) => link.href === icoHref).map(({ key: _key, ...link }) => link),
     })
     const withoutKeys = await renderSSRHead(collapsed)
     expect([...withoutKeys.headTags.matchAll(/href="\/favicon\.ico/g)]).toHaveLength(1)
@@ -739,7 +803,7 @@ describe('default social image', () => {
     expect(frame48.format).toBe('png')
 
     const manifest = JSON.parse(readFileSync(resolve(pub, 'site.webmanifest'), 'utf8')) as {
-      icons: Array<{ src: string, sizes: string, purpose?: string }>
+      icons: Array<{ src: string; sizes: string; purpose?: string }>
     }
     expect(manifest.icons.map((icon) => icon.src)).toEqual([
       `/icon-192.png?v=${BRAND_ICON_VERSION}`,
@@ -751,7 +815,7 @@ describe('default social image', () => {
   })
 })
 
-function metaContent(meta: ReadonlyArray<{ property?: string, name?: string, content: string }>, key: string) {
+function metaContent(meta: ReadonlyArray<{ property?: string; name?: string; content: string }>, key: string) {
   return meta.find((tag) => tag.property === key || tag.name === key)?.content
 }
 
@@ -760,7 +824,9 @@ describe('verification meta', () => {
     expect(verificationMeta('', '')).toEqual([])
     expect(verificationMeta('   ', undefined)).toEqual([])
     expect(verificationMeta('ya-token', '')).toEqual([{ name: 'yandex-verification', content: 'ya-token' }])
-    expect(verificationMeta(null, 'google-token')).toEqual([{ name: 'google-site-verification', content: 'google-token' }])
+    expect(verificationMeta(null, 'google-token')).toEqual([
+      { name: 'google-site-verification', content: 'google-token' },
+    ])
   })
 })
 
@@ -805,33 +871,69 @@ describe('sitemap and orphans', () => {
         .slice(0, 5)
     }
     const pages = [
-      { path: '/', outbound: homeLinks(places.slice(0, 6).map((item) => ({ href: `/${item.slug}`, text: item.title }))) },
+      {
+        path: '/',
+        outbound: homeLinks(places.slice(0, 6).map((item) => ({ href: `/${item.slug}`, text: item.title }))),
+      },
       ...HUBS.map((hub) => ({
         path: hub.href,
-        outbound: places.filter((item) => `/${item.categorySlug}` === hub.href).map((item) => ({ href: `/${item.slug}`, text: item.title })),
+        outbound: places
+          .filter((item) => `/${item.categorySlug}` === hub.href)
+          .map((item) => ({ href: `/${item.slug}`, text: item.title })),
       })),
-      ...SECTION_LINKS.map((link) => ({ path: link.href, outbound: [] as { href: string, text: string }[] })),
-      { path: '/about', outbound: [{ href: '/privacy', text: 'политика' }, { href: '/terms', text: 'соглашение' }] },
-      { path: '/privacy', outbound: [{ href: '/soglasie', text: 'согласие' }, { href: '/gostevye-materialy', text: 'материалы гостя' }] },
+      ...SECTION_LINKS.map((link) => ({ path: link.href, outbound: [] as { href: string; text: string }[] })),
+      {
+        path: '/about',
+        outbound: [
+          { href: '/privacy', text: 'политика' },
+          { href: '/terms', text: 'соглашение' },
+        ],
+      },
+      {
+        path: '/privacy',
+        outbound: [
+          { href: '/soglasie', text: 'согласие' },
+          { href: '/gostevye-materialy', text: 'материалы гостя' },
+        ],
+      },
       { path: '/soglasie', outbound: [{ href: '/privacy', text: 'политика' }] },
       { path: '/gostevye-materialy', outbound: [{ href: '/privacy', text: 'политика' }] },
       { path: '/terms', outbound: [{ href: '/privacy', text: 'политика' }] },
-      { path: `/marshruty/${seed.route.slug}`, outbound: seed.route.placeSlugs.map((slug) => ({ href: `/${slug}`, text: slug })) },
-      { path: `/podborki/${seed.collection.slug}`, outbound: seed.collection.placeSlugs.map((slug) => ({ href: `/${slug}`, text: slug })) },
-      { path: `/kvesty/${seed.quest.slug}`, outbound: seed.quest.placeSlugs.map((slug) => ({ href: `/${slug}`, text: slug })) },
+      {
+        path: `/marshruty/${seed.route.slug}`,
+        outbound: seed.route.placeSlugs.map((slug) => ({ href: `/${slug}`, text: slug })),
+      },
+      {
+        path: `/podborki/${seed.collection.slug}`,
+        outbound: seed.collection.placeSlugs.map((slug) => ({ href: `/${slug}`, text: slug })),
+      },
+      {
+        path: `/kvesty/${seed.quest.slug}`,
+        outbound: seed.quest.placeSlugs.map((slug) => ({ href: `/${slug}`, text: slug })),
+      },
       ...places.map((place) => ({
         path: `/${place.slug}`,
         outbound: [
           { href: `/${place.categorySlug}`, text: place.categorySlug },
           ...nearestOf(place.slug).map((item) => ({ href: `/${item.slug}`, text: item.title })),
-          ...(seed.route.placeSlugs.includes(place.slug) ? [{ href: `/marshruty/${seed.route.slug}`, text: seed.route.title }] : []),
-          ...(seed.collection.placeSlugs.includes(place.slug) ? [{ href: `/podborki/${seed.collection.slug}`, text: seed.collection.title }] : []),
+          ...(seed.route.placeSlugs.includes(place.slug)
+            ? [{ href: `/marshruty/${seed.route.slug}`, text: seed.route.title }]
+            : []),
+          ...(seed.collection.placeSlugs.includes(place.slug)
+            ? [{ href: `/podborki/${seed.collection.slug}`, text: seed.collection.title }]
+            : []),
         ],
       })),
     ]
-    pages.find((page) => page.path === '/marshruty')?.outbound.push({ href: `/marshruty/${seed.route.slug}`, text: seed.route.title })
-    pages.find((page) => page.path === '/podborki')?.outbound.push({ href: `/podborki/${seed.collection.slug}`, text: seed.collection.title })
-    pages.find((page) => page.path === '/kvesty')?.outbound.push({ href: `/kvesty/${seed.quest.slug}`, text: seed.quest.title })
+    pages
+      .find((page) => page.path === '/marshruty')
+      ?.outbound.push({ href: `/marshruty/${seed.route.slug}`, text: seed.route.title })
+    pages
+      .find((page) => page.path === '/podborki')
+      ?.outbound.push({ href: `/podborki/${seed.collection.slug}`, text: seed.collection.title })
+    pages
+      .find((page) => page.path === '/kvesty')
+      ?.outbound.push({ href: `/kvesty/${seed.quest.slug}`, text: seed.quest.title })
     expect(findOrphans(pages)).toEqual([])
   })
 })

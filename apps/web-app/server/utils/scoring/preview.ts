@@ -19,12 +19,42 @@ export interface CatalogPageHit {
  */
 export function findCatalogPage(catalog: ContentCatalog, path: string): CatalogPageHit | null {
   const pages: CatalogPageHit[] = [
-    ...catalog.places.map((row) => ({ pageType: 'place' as const, entityId: row.id, path: `/${row.slug}`, publicationStatus: row.publicationStatus })),
-    ...catalog.routes.map((row) => ({ pageType: 'route' as const, entityId: row.id, path: `/marshruty/${row.slug}`, publicationStatus: row.publicationStatus })),
-    ...catalog.collections.map((row) => ({ pageType: 'collection' as const, entityId: row.id, path: `/podborki/${row.slug}`, publicationStatus: row.publicationStatus })),
-    ...catalog.quests.map((row) => ({ pageType: 'quest' as const, entityId: row.id, path: `/kvesty/${row.slug}`, publicationStatus: row.publicationStatus })),
-    ...catalog.hubs.map((row) => ({ pageType: 'hub' as const, entityId: row.id, path: `/${row.slug}`, publicationStatus: 'published' as const })),
-    ...catalog.venues.map((row) => ({ pageType: 'venue' as const, entityId: row.id, path: `/zavedeniya/${row.slug}`, publicationStatus: row.publicationStatus })),
+    ...catalog.places.map((row) => ({
+      pageType: 'place' as const,
+      entityId: row.id,
+      path: `/${row.slug}`,
+      publicationStatus: row.publicationStatus,
+    })),
+    ...catalog.routes.map((row) => ({
+      pageType: 'route' as const,
+      entityId: row.id,
+      path: `/marshruty/${row.slug}`,
+      publicationStatus: row.publicationStatus,
+    })),
+    ...catalog.collections.map((row) => ({
+      pageType: 'collection' as const,
+      entityId: row.id,
+      path: `/podborki/${row.slug}`,
+      publicationStatus: row.publicationStatus,
+    })),
+    ...catalog.quests.map((row) => ({
+      pageType: 'quest' as const,
+      entityId: row.id,
+      path: `/kvesty/${row.slug}`,
+      publicationStatus: row.publicationStatus,
+    })),
+    ...catalog.hubs.map((row) => ({
+      pageType: 'hub' as const,
+      entityId: row.id,
+      path: `/${row.slug}`,
+      publicationStatus: 'published' as const,
+    })),
+    ...catalog.venues.map((row) => ({
+      pageType: 'venue' as const,
+      entityId: row.id,
+      path: `/zavedeniya/${row.slug}`,
+      publicationStatus: row.publicationStatus,
+    })),
   ]
   return pages.find((page) => page.path === path) ?? null
 }
@@ -117,8 +147,10 @@ export function catalogWithPendingPlace(
   }
 }
 
-const DRAFT_NOTE = 'Preview of the draft row. Not written to content_scores. Traffic results are not applicable. HTTP status and the sitemap check are not applicable until the page is published, and those points are left out of the average.'
-const PENDING_NOTE = 'Preview of the pending payload. Not written to content_scores. Traffic results are not applicable.'
+const DRAFT_NOTE =
+  'Preview of the draft row. Not written to content_scores. Traffic results are not applicable. HTTP status and the sitemap check are not applicable until the page is published, and those points are left out of the average.'
+const PENDING_NOTE =
+  'Preview of the pending payload. Not written to content_scores. Traffic results are not applicable.'
 const LIVE_NOTE = 'Preview of the live row. Not written to content_scores.'
 
 type UnpublishedIndexing = 'not 200' | 'not in sitemap'
@@ -163,7 +195,7 @@ export function scorePreview(input: {
   source: ScorePreviewSource
   publicationStatus: CatalogPageHit['publicationStatus']
   metrics?: PageMetric[]
-  queries?: Array<{ page: string, query: string }>
+  queries?: Array<{ page: string; query: string }>
   searchImported?: boolean
   now?: Date
   factRefs?: Map<string, ScoreFactRefs>
@@ -183,17 +215,16 @@ export function scorePreview(input: {
     return null
   }
   const resultsApplicable = input.source === 'live'
-  const indexing = input.source === 'draft'
-    ? draftIndexing(score.checks.indexing, score.indexing)
-    : { indexing: score.indexing, checks: score.checks.indexing, waived: [] as string[] }
+  const indexing =
+    input.source === 'draft'
+      ? draftIndexing(score.checks.indexing, score.indexing)
+      : { indexing: score.indexing, checks: score.checks.indexing, waived: [] as string[] }
   const checks = {
     ...score.checks,
     indexing: indexing.checks,
     results: resultsApplicable ? score.checks.results : ['not applicable'],
   }
-  const total = resultsApplicable
-    ? score.total
-    : Math.round((score.quality + score.linking + indexing.indexing) / 3)
+  const total = resultsApplicable ? score.total : Math.round((score.quality + score.linking + indexing.indexing) / 3)
   let note = LIVE_NOTE
   if (input.source === 'pending') {
     note = PENDING_NOTE
@@ -215,21 +246,21 @@ export function scorePreview(input: {
     indexing: indexing.indexing,
     results: resultsApplicable ? score.results : null,
     checks,
-    notApplicable: [
-      ...(resultsApplicable ? [] : ['results']),
-      ...indexing.waived,
-    ],
+    notApplicable: [...(resultsApplicable ? [] : ['results']), ...indexing.waived],
     signals: score.signals,
-    topIssue: topIssue({
-      ...checks,
-      indexing: checks.indexing.filter((check) => !check.endsWith('not applicable')),
-      results: resultsApplicable ? checks.results : [],
-    }, {
-      quality: score.quality,
-      linking: score.linking,
-      indexing: indexing.indexing,
-      results: resultsApplicable ? score.results : 100,
-    }),
+    topIssue: topIssue(
+      {
+        ...checks,
+        indexing: checks.indexing.filter((check) => !check.endsWith('not applicable')),
+        results: resultsApplicable ? checks.results : [],
+      },
+      {
+        quality: score.quality,
+        linking: score.linking,
+        indexing: indexing.indexing,
+        results: resultsApplicable ? score.results : 100,
+      },
+    ),
     note,
   }
 }

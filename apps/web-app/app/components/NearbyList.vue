@@ -18,12 +18,16 @@ import { formatDistance } from '~~/shared/links'
 
 defineProps<{
   title: string
-  links: Array<{ href: string, text: string, distanceKm?: number | null }>
+  links: Array<{ href: string; text: string; distanceKm?: number | null }>
 }>()
 </script>
 
 <style scoped>
-ul { margin: 0; padding: 0; list-style: none; }
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 li {
   display: flex;
   justify-content: space-between;
@@ -31,5 +35,8 @@ li {
   padding: 0.55rem 0;
   border-top: 1px solid var(--color-line);
 }
-span { color: var(--muted); font-size: var(--step--1); }
+span {
+  color: var(--muted);
+  font-size: var(--step--1);
+}
 </style>

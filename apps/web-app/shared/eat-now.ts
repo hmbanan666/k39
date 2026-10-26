@@ -8,7 +8,7 @@ export const EAT_NOW_PATH = '/gde-poest-seychas'
 
 export type EatNowGroup = 'open' | 'later' | 'unknown'
 
-export const EAT_NOW_GROUPS: Array<{ key: EatNowGroup, title: string }> = [
+export const EAT_NOW_GROUPS: Array<{ key: EatNowGroup; title: string }> = [
   { key: 'open', title: 'Открыто сейчас' },
   { key: 'later', title: 'Откроется позже' },
   { key: 'unknown', title: 'Часы не проверены' },
@@ -23,7 +23,7 @@ export function eatNowPath(regionSlug?: string | null) {
   return regionSlug ? `${EAT_NOW_PATH}/${regionSlug}` : EAT_NOW_PATH
 }
 
-export function haversineKm(a: { latitude: number, longitude: number }, b: { latitude: number, longitude: number }) {
+export function haversineKm(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
   const rad = Math.PI / 180
   const dLat = (b.latitude - a.latitude) * rad
   const dLng = (b.longitude - a.longitude) * rad
@@ -34,9 +34,10 @@ export function haversineKm(a: { latitude: number, longitude: number }, b: { lat
 /** Group by live status, keep distance order inside each group. */
 export function groupEatNow<T extends { distanceKm: number | null }>(items: T[], groupOf: (item: T) => EatNowGroup) {
   const sorted = [...items].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
-  return EAT_NOW_GROUPS
-    .map((group) => ({ ...group, items: sorted.filter((item) => groupOf(item) === group.key) }))
-    .filter((group) => group.items.length)
+  return EAT_NOW_GROUPS.map((group) => ({
+    ...group,
+    items: sorted.filter((item) => groupOf(item) === group.key),
+  })).filter((group) => group.items.length)
 }
 
 // Browser copies of formatVenueDistance/formatWalk from @k39/database, used
@@ -52,6 +53,6 @@ export function clientDistance(km: number) {
 }
 
 export function clientWalk(km: number) {
-  const minutes = Math.max(1, Math.round((km * 1.3 / 4.5) * 60))
+  const minutes = Math.max(1, Math.round(((km * 1.3) / 4.5) * 60))
   return minutes <= 30 ? `~${minutes} мин пешком` : ''
 }

@@ -6,7 +6,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'venue_listing_intro_set',
-  description: 'Set the intro for a venue listing. regionSlug and kind are optional; null means all regions or all kinds. An intro of at least 300 characters makes /zavedeniya/{region}/{kind} indexable. Writes an mcp_audits row.',
+  description:
+    'Set the intro for a venue listing. regionSlug and kind are optional; null means all regions or all kinds. An intro of at least 300 characters makes /zavedeniya/{region}/{kind} indexable. Writes an mcp_audits row.',
   inputSchema: {
     regionSlug: z.string().nullable().optional(),
     kind: z.string().nullable().optional(),

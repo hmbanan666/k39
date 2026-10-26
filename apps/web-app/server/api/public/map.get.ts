@@ -11,13 +11,15 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const scoped = one(query.scope) || one(query.lat) || one(query.lng) || one(query.route) || one(query.radius)
   if (scoped) {
-    return loadEmbedMap(parseEmbedQuery({
-      scope: one(query.scope),
-      lat: one(query.lat),
-      lng: one(query.lng),
-      route: one(query.route),
-      radius: one(query.radius),
-    }))
+    return loadEmbedMap(
+      parseEmbedQuery({
+        scope: one(query.scope),
+        lat: one(query.lat),
+        lng: one(query.lng),
+        route: one(query.route),
+        radius: one(query.radius),
+      }),
+    )
   }
   return loadMap()
 })

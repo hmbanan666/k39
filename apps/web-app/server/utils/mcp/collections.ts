@@ -5,7 +5,12 @@ import { COLLECTION_BODY_REJECTED, collectionWritePlan } from '../../../shared/p
 import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
 import { liveWriteRow, withEditorLiveWrite } from '../content/pending-guard'
-import { applyPendingCollectionContent, contentGate, saveCollectionContent, savePendingDraftContent } from '../content/save'
+import {
+  applyPendingCollectionContent,
+  contentGate,
+  saveCollectionContent,
+  savePendingDraftContent,
+} from '../content/save'
 import { auditMcp } from './audit'
 import { rethrowContentWrite } from './content-error'
 import { resolvePublication } from './draft'
@@ -51,7 +56,7 @@ export function collectionView(row: Collection, items: CollectionStop[]) {
   }
 }
 
-type CollectionStopInput = { placeSlug: string, note?: string | null }
+type CollectionStopInput = { placeSlug: string; note?: string | null }
 
 export interface CollectionWriteInput {
   id?: string
@@ -66,7 +71,7 @@ export interface CollectionWriteInput {
   noindex?: boolean
   kind?: 'theme' | 'month'
   month?: number | null
-  sources?: Array<{ title: string, url: string }>
+  sources?: Array<{ title: string; url: string }>
   items?: CollectionStopInput[]
   modules?: StoredPageModule[]
 }
@@ -86,7 +91,12 @@ const COLLECTION_CONTENT_KEYS = [
   'modules',
 ] as const
 
-function collectionMonth(kind: string, input: CollectionWriteInput, base: Record<string, unknown>, current: number | null) {
+function collectionMonth(
+  kind: string,
+  input: CollectionWriteInput,
+  base: Record<string, unknown>,
+  current: number | null,
+) {
   if (kind === 'theme') {
     return null
   }
@@ -101,18 +111,27 @@ function pendingCollectionSources(input: CollectionWriteInput, base: Record<stri
     return parsed.data ?? []
   }
   const issue = parsed.error.issues[0]!
-  const message = issue.code === 'invalid_type'
-    ? typeof issue.path[0] === 'number'
-      ? `Источник ${issue.path[0] + 1}: подпись и ссылка должны быть строками`
-      : 'Источники: нужен список'
-    : issue.message
-  const inherited = input.sources === undefined
-    ? `${Array.isArray(rows) ? `Унаследовано ${rows.length} строк источников` : 'Унаследованы источники'} из ${Object.hasOwn(base, 'sources') ? 'ожидающего черновика' : 'опубликованной версии'}. `
-    : ''
-  throw createError({ statusCode: 400, statusMessage: `${inherited}${message}${inherited ? '. Передайте исправленный список sources.' : ''}` })
+  const message =
+    issue.code === 'invalid_type'
+      ? typeof issue.path[0] === 'number'
+        ? `Источник ${issue.path[0] + 1}: подпись и ссылка должны быть строками`
+        : 'Источники: нужен список'
+      : issue.message
+  const inherited =
+    input.sources === undefined
+      ? `${Array.isArray(rows) ? `Унаследовано ${rows.length} строк источников` : 'Унаследованы источники'} из ${Object.hasOwn(base, 'sources') ? 'ожидающего черновика' : 'опубликованной версии'}. `
+      : ''
+  throw createError({
+    statusCode: 400,
+    statusMessage: `${inherited}${message}${inherited ? '. Передайте исправленный список sources.' : ''}`,
+  })
 }
 
-export async function saveCollectionDraft(input: CollectionWriteInput, auditTool = 'collection_save', options?: { create?: boolean }) {
+export async function saveCollectionDraft(
+  input: CollectionWriteInput,
+  auditTool = 'collection_save',
+  options?: { create?: boolean },
+) {
   const rows = await db.editor.listCollections()
   const current = input.id
     ? rows.find((item) => item.id === input.id)
@@ -125,14 +144,23 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
   const scope = contentScope()
   const pending = current ? await db.editor.contentDraft('collection', current.id) : null
   const publicationStatus = resolvePublication(input.publicationStatus, current?.publicationStatus, scope)
-  if (current && scope === 'editor' && publicationStatus === 'published' && pending && isPublicationOnly(input, COLLECTION_CONTENT_KEYS, current.slug)) {
+  if (
+    current &&
+    scope === 'editor' &&
+    publicationStatus === 'published' &&
+    pending &&
+    isPublicationOnly(input, COLLECTION_CONTENT_KEYS, current.slug)
+  ) {
     const payload = pending.payload
     const plan = collectionWritePlan({
       sentBody: undefined,
       currentBody: typeof payload.body === 'string' ? payload.body : current.body,
       modules: payload.modules,
     })
-    const applied = await applyPendingCollectionContent(current.id, contentGate('collection', { ...payload, copy: plan.copy }, true))
+    const applied = await applyPendingCollectionContent(
+      current.id,
+      contentGate('collection', { ...payload, copy: plan.copy }, true),
+    )
     const row = applied.row
     if (row) {
       await auditMcp(auditTool, 'collection', current.id)
@@ -203,12 +231,15 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
       if (items.set) {
         await db.editor.assertOrderedStops(items.value ?? [])
       }
-      const stored = await savePendingDraftContent({
-        entityType: 'collection',
-        entityId: current.id,
-        publicationStatus: pendingStatus,
-        payload,
-      }, contentGate('collection', { ...payload, copy: plan.copy }, false))
+      const stored = await savePendingDraftContent(
+        {
+          entityType: 'collection',
+          entityId: current.id,
+          publicationStatus: pendingStatus,
+          payload,
+        },
+        contentGate('collection', { ...payload, copy: plan.copy }, false),
+      )
       await auditMcp(auditTool, 'collection', current.id)
       return {
         id: current.id,
@@ -262,21 +293,28 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
       sources: input.sources,
       modules: input.modules,
     }
-    const gate = contentGate('collection', {
-      title: input.title ?? current?.title,
-      summary: input.summary === undefined ? current?.summary : input.summary,
-      copy: plan.copy,
-      seoTitle: input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
-      seoDescription: input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
-      items: input.items,
-      sources: input.sources === undefined ? current?.sources : input.sources,
-    }, publicationStatus === 'published')
-    const saved = scope === 'editor' && current
-      ? await withEditorLiveWrite('collection', current.id, async (tx) => {
-          const written = await saveCollectionContent(write, null, gate, tx)
-          return liveWriteRow(written.row, written.writingWarnings)
-        })
-      : await saveCollectionContent(write, null, gate).then((written) => liveWriteRow(written.row, written.writingWarnings))
+    const gate = contentGate(
+      'collection',
+      {
+        title: input.title ?? current?.title,
+        summary: input.summary === undefined ? current?.summary : input.summary,
+        copy: plan.copy,
+        seoTitle: input.seoTitle === undefined ? current?.seoTitle : input.seoTitle,
+        seoDescription: input.seoDescription === undefined ? current?.seoDescription : input.seoDescription,
+        items: input.items,
+        sources: input.sources === undefined ? current?.sources : input.sources,
+      },
+      publicationStatus === 'published',
+    )
+    const saved =
+      scope === 'editor' && current
+        ? await withEditorLiveWrite('collection', current.id, async (tx) => {
+            const written = await saveCollectionContent(write, null, gate, tx)
+            return liveWriteRow(written.row, written.writingWarnings)
+          })
+        : await saveCollectionContent(write, null, gate).then((written) =>
+            liveWriteRow(written.row, written.writingWarnings),
+          )
     await auditMcp(auditTool, 'collection', saved.id)
     return {
       id: saved.id,
@@ -300,7 +338,7 @@ export async function saveCollectionDraft(input: CollectionWriteInput, auditTool
   }
 }
 
-export async function readCollection(input: { id?: string, slug?: string }) {
+export async function readCollection(input: { id?: string; slug?: string }) {
   const rows = await db.editor.listCollections()
   const row = rows.find((item) => item.id === input.id || item.slug === input.slug)
   if (!row) {

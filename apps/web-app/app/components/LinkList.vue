@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import type { TextLink } from '~~/shared/links'
 
-defineProps<{ title: string, links: TextLink[] }>()
+defineProps<{ title: string; links: TextLink[] }>()
 </script>
 
 <style scoped>

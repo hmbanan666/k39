@@ -7,8 +7,7 @@ export function skillErrors(root, files) {
   const errors = []
   const skillsRoot = '.agents/skills'
   const oldRoot = ['.cursor', 'skills'].join('/')
-  const skills = readdirSync(join(root, skillsRoot), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+  const skills = readdirSync(join(root, skillsRoot), { withFileTypes: true }).filter((entry) => entry.isDirectory())
   if (!skills.length) {
     errors.push(`${skillsRoot}: no skills found`)
   }
@@ -58,8 +57,13 @@ export function skillErrors(root, files) {
     if (typeof data.compatibility === 'string' && data.compatibility.length > 500) {
       errors.push(`${file}: compatibility must be at most 500 characters`)
     }
-    if (data.metadata !== undefined && (!data.metadata || typeof data.metadata !== 'object'
-      || Array.isArray(data.metadata) || Object.values(data.metadata).some((value) => typeof value !== 'string'))) {
+    if (
+      data.metadata !== undefined &&
+      (!data.metadata ||
+        typeof data.metadata !== 'object' ||
+        Array.isArray(data.metadata) ||
+        Object.values(data.metadata).some((value) => typeof value !== 'string'))
+    ) {
       errors.push(`${file}: metadata must map strings to strings`)
     }
 
@@ -86,7 +90,11 @@ export function skillErrors(root, files) {
   }
 
   for (const file of new Set(files)) {
-    if (!/\.(?:md|mdc|[cm]?[jt]sx?|json|ya?ml)$/.test(file) || !existsSync(join(root, file)) || !statSync(join(root, file)).isFile()) {
+    if (
+      !/\.(?:md|mdc|[cm]?[jt]sx?|json|ya?ml)$/.test(file) ||
+      !existsSync(join(root, file)) ||
+      !statSync(join(root, file)).isFile()
+    ) {
       continue
     }
     const text = readFileSync(join(root, file), 'utf8')

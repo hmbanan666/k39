@@ -6,7 +6,7 @@ export const SEARCH_SURFACES = ['header', 'page', '404'] as const
 export type SearchSurface = (typeof SEARCH_SURFACES)[number]
 
 const LATIN = /[a-z]/
-const EN_KEYS = 'qwertyuiop[]asdfghjkl;\'zxcvbnm,.`'
+const EN_KEYS = "qwertyuiop[]asdfghjkl;'zxcvbnm,.`"
 const RU_KEYS = 'йцукенгшщзхъфывапролджэячсмитьбюё'
 const LAYOUT = new Map([...EN_KEYS].map((key, index) => [key, RU_KEYS[index]!]))
 
@@ -76,7 +76,10 @@ export function normalizeSearchQuery(input: unknown) {
 
 /** The same keys typed on the Russian layout. */
 export function swapKeyboardLayout(text: string) {
-  return [...text].map((char) => LAYOUT.get(char) ?? char).join('').replace(/ё/g, 'е')
+  return [...text]
+    .map((char) => LAYOUT.get(char) ?? char)
+    .join('')
+    .replace(/ё/g, 'е')
 }
 
 export function transliterate(text: string) {
@@ -103,7 +106,9 @@ export function transliterate(text: string) {
 export function searchVariants(input: unknown) {
   const normalized = normalizeSearchQuery(input)
   const variants = normalized ? [normalized] : []
-  const raw = foldSearchMarks(String(input ?? '')).trim().slice(0, SEARCH_QUERY_MAX)
+  const raw = foldSearchMarks(String(input ?? ''))
+    .trim()
+    .slice(0, SEARCH_QUERY_MAX)
   if (LATIN.test(normalized)) {
     variants.push(normalizeSearchQuery(swapKeyboardLayout(raw)))
     variants.push(normalizeSearchQuery(transliterate(normalized)))

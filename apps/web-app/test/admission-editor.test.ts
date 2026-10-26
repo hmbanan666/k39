@@ -10,23 +10,30 @@ afterEach(() => {
   mounted.splice(0).forEach((wrapper) => wrapper.unmount())
   vi.unstubAllGlobals()
 })
-const button = (wrapper: ReturnType<typeof mount>, text: string) => wrapper.findAll('button').find((item) => item.text() === text)!
-async function setup(options: { enabled?: boolean, fail?: boolean } = {}) {
+const button = (wrapper: ReturnType<typeof mount>, text: string) =>
+  wrapper.findAll('button').find((item) => item.text() === text)!
+async function setup(options: { enabled?: boolean; fail?: boolean } = {}) {
   const fixture = admissionEditorFixture()
   fixture.extrasWriteEnabled = options.enabled ?? true
   const calls: Array<Record<string, unknown>> = []
-  const fetch = vi.fn(async (_url: string, request?: { method?: string, body: Record<string, unknown> }) => {
+  const fetch = vi.fn(async (_url: string, request?: { method?: string; body: Record<string, unknown> }) => {
     if (request?.method === 'PUT') {
       calls.push(request.body)
       if (options.fail) {
-        throw Object.assign(new Error('fixture error'), { data: { statusMessage: 'Фикстура: источник временно недоступен' } })
+        throw Object.assign(new Error('fixture error'), {
+          data: { statusMessage: 'Фикстура: источник временно недоступен' },
+        })
       }
       return { writingWarnings: [] }
     }
     return structuredClone(fixture)
   })
   vi.stubGlobal('$fetch', fetch)
-  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(Editor, { subjectType: 'place', subjectId: 'fixture' }) }) }))
+  const wrapper = mount(
+    defineComponent({
+      render: () => h(Suspense, null, { default: () => h(Editor, { subjectType: 'place', subjectId: 'fixture' }) }),
+    }),
+  )
   mounted.push(wrapper)
   await flushPromises()
   return { wrapper, calls, fetch }
@@ -36,7 +43,10 @@ describe('independent admission editor saves', () => {
   it('preserves unsaved extra input when only entry tickets are saved', async () => {
     const { wrapper, calls } = await setup()
     const extra = wrapper.findAll('fieldset').find((item) => item.find('legend').text().includes('аудиогид'))!
-    const name = extra.findAll('label').find((item) => item.text().startsWith('Название услуги'))!.find('input')
+    const name = extra
+      .findAll('label')
+      .find((item) => item.text().startsWith('Название услуги'))!
+      .find('input')
     await name.setValue('Фикстура: несохранённая экскурсия')
     await button(wrapper, 'Сохранить билеты').trigger('click')
     await flushPromises()
@@ -82,7 +92,10 @@ describe('independent admission editor saves', () => {
 
   it('server-renders the two lists and source fields', async () => {
     const fixture = admissionEditorFixture()
-    vi.stubGlobal('$fetch', vi.fn(async () => fixture))
+    vi.stubGlobal(
+      '$fetch',
+      vi.fn(async () => fixture),
+    )
     const html = await renderPage(Editor, { subjectType: 'route', subjectId: 'fixture' })
     expect(html).toContain('Фикстура: аудиогид')
     expect(html).toContain('За что указана цена')

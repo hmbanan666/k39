@@ -27,10 +27,13 @@ import { AccordionContent, AccordionHeader, AccordionItem, AccordionRoot, Accord
 
 defineProps<{
   defaultValue: string[]
-  items: Array<{ value: string, title: string, html: string }>
+  items: Array<{ value: string; title: string; html: string }>
 }>()
 </script>
 
 <style scoped>
-.accordion-content { padding-bottom: var(--space-4); color: var(--text); }
+.accordion-content {
+  padding-bottom: var(--space-4);
+  color: var(--text);
+}
 </style>

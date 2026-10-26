@@ -14,10 +14,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
   }
   const gallery = await db.venues.gallery(venue.id)
-  const [prices, catalog] = await Promise.all([
-    db.prices.forVenue(venue.id),
-    db.prices.items(),
-  ])
+  const [prices, catalog] = await Promise.all([db.prices.forVenue(venue.id), db.prices.items()])
   return {
     role: member.role,
     venue: {
@@ -29,12 +26,19 @@ export default defineEventHandler(async (event) => {
       description: venue.description,
       cuisineTags: venue.cuisineTags,
       address: venue.address,
-      phone: shownText((await readShownFacts('venue', [{
-        id: venue.id,
-        phone: venue.phone,
-        address: venue.address,
-        status: venue.status,
-      }])).get(venue.id)?.phone, venue.phone),
+      phone: shownText(
+        (
+          await readShownFacts('venue', [
+            {
+              id: venue.id,
+              phone: venue.phone,
+              address: venue.address,
+              status: venue.status,
+            },
+          ])
+        ).get(venue.id)?.phone,
+        venue.phone,
+      ),
       website: venue.website,
       socials: venue.socials,
       bookingUrl: venue.bookingUrl,

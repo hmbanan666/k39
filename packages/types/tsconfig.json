@@ -1,12 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": [
-      "ESNext",
-      "DOM",
-      "DOM.Iterable",
-      "WebWorker"
-    ],
+    "lib": ["ESNext", "DOM", "DOM.Iterable", "WebWorker"],
     "moduleDetection": "force",
     "useDefineForClassFields": true,
     "module": "preserve",
@@ -25,8 +20,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "exclude": [
-    "./dist",
-    "./node_modules"
-  ]
+  "exclude": ["./dist", "./node_modules"]
 }

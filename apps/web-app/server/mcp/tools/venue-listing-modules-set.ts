@@ -7,7 +7,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'venue_listing_modules_set',
-  description: 'Replace the content modules of a venue listing (/zavedeniya, a catalogue area, a kind, or both). regionSlug and kind are optional; null means all regions or all kinds. An empty array clears the modules. Does not change the intro text. Each situation placeSlug must be a published venue. Writes an mcp_audits row. See docs/venue-modules.md.',
+  description:
+    'Replace the content modules of a venue listing (/zavedeniya, a catalogue area, a kind, or both). regionSlug and kind are optional; null means all regions or all kinds. An empty array clears the modules. Does not change the intro text. Each situation placeSlug must be a published venue. Writes an mcp_audits row. See docs/venue-modules.md.',
   inputSchema: {
     regionSlug: z.string().nullable().optional(),
     kind: z.string().nullable().optional(),
@@ -23,7 +24,9 @@ export default defineStrictMcpTool({
     if (!parsed.success) {
       throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]?.message || 'Неверные модули' })
     }
-    const slugs = parsed.data.flatMap((module) => module.type === 'situation' ? module.items.map((item) => item.placeSlug) : [])
+    const slugs = parsed.data.flatMap((module) =>
+      module.type === 'situation' ? module.items.map((item) => item.placeSlug) : [],
+    )
     for (const slug of slugs) {
       const venue = await db.venues.bySlug(slug)
       if (!venue || venue.status !== 'published') {

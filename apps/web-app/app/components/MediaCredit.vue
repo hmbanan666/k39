@@ -36,5 +36,7 @@ const href = computed(() => licenseHref(props.media.license))
   gap: 0 0.4rem;
   font-size: 0.8rem;
 }
-.credit a { color: inherit; }
+.credit a {
+  color: inherit;
+}
 </style>

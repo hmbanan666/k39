@@ -5,9 +5,22 @@ import { slugError } from '../../../shared/seo'
 import { contentScope } from '../access'
 import { liveWriteRow, withEditorLiveWrite } from '../content/pending-guard'
 import { phoneCheckedAt, placePhoneSource, resolvePlaceContact } from '../content/place-contact'
-import { applyPendingPlaceContent, contentGate, savePendingDraftContent, savePlaceContent, syncSavedPage } from '../content/save'
+import {
+  applyPendingPlaceContent,
+  contentGate,
+  savePendingDraftContent,
+  savePlaceContent,
+  syncSavedPage,
+} from '../content/save'
 import { syncCoordinates, syncPlacePhone, syncPlaceStatus } from '../facts/sync'
-import { applyStagedNotices, onlyNoticesStaged, stagedForApply, stagedNoticeKeys, toNoticeValue, toNoticeWrite } from '../notices/write'
+import {
+  applyStagedNotices,
+  onlyNoticesStaged,
+  stagedForApply,
+  stagedNoticeKeys,
+  toNoticeValue,
+  toNoticeWrite,
+} from '../notices/write'
 import { practicalTarget } from '../practical/target'
 import { auditMcp } from './audit'
 import { resolvePublication } from './draft'
@@ -36,14 +49,14 @@ export interface PlaceDraftInput extends PlaceContactInput {
   seoDescription?: string | null
   ogImage?: string | null
   noindex?: boolean
-  sources?: Array<{ title: string, url: string }>
+  sources?: Array<{ title: string; url: string }>
   factsCheckedAt?: string | null
   visitDuration?: string | null
   bestTime?: string | null
-  faq?: Array<{ question: string, answer: string }>
+  faq?: Array<{ question: string; answer: string }>
 }
 
-function cleanFaq(items: Array<{ question: string, answer: string }>) {
+function cleanFaq(items: Array<{ question: string; answer: string }>) {
   return items
     .map((item) => ({ question: item.question.replace(/\s+/g, ' ').trim(), answer: item.answer.trim() }))
     .filter((item) => item.question && item.answer)
@@ -196,7 +209,10 @@ function storedDraftResponse(
   }
 }
 
-export function placeWriteFromBody(body: Record<string, unknown>, current: { id: string, slug: string }): PlaceDraftInput {
+export function placeWriteFromBody(
+  body: Record<string, unknown>,
+  current: { id: string; slug: string },
+): PlaceDraftInput {
   return {
     id: current.id,
     slug: typeof body.slug === 'string' && body.slug ? body.slug : current.slug,
@@ -221,11 +237,11 @@ export function placeWriteFromBody(body: Record<string, unknown>, current: { id:
     seoDescription: body.seoDescription as string | null | undefined,
     ogImage: body.ogImage as string | null | undefined,
     noindex: body.noindex as boolean | undefined,
-    sources: Array.isArray(body.sources) ? body.sources as PlaceDraftInput['sources'] : undefined,
+    sources: Array.isArray(body.sources) ? (body.sources as PlaceDraftInput['sources']) : undefined,
     factsCheckedAt: body.factsCheckedAt as string | null | undefined,
     visitDuration: body.visitDuration as string | null | undefined,
     bestTime: body.bestTime as string | null | undefined,
-    faq: Array.isArray(body.faq) ? body.faq as PlaceDraftInput['faq'] : undefined,
+    faq: Array.isArray(body.faq) ? (body.faq as PlaceDraftInput['faq']) : undefined,
   }
 }
 
@@ -242,52 +258,60 @@ export async function createPlaceDraft(input: PlaceDraftInput) {
   const checked = parseFactsCheckedAt(input.factsCheckedAt)
   const status = (VISIT.has(input.status || '') ? input.status : 'unknown') as VisitStatus
   const contact = await resolvePlaceContact(input, { placeId: null, phone: null, website: null, schemaType: null })
-  const { row, writingWarnings } = await savePlaceContent({
-    slug,
-    title: input.title.trim(),
-    summary: input.summary || '',
-    body: input.body || '',
-    ...(input.sections ? { sections: input.sections as never } : {}),
-    status,
-    hours: input.hours || null,
-    price: input.price || null,
-    phone: contact.phone,
-    website: contact.website,
-    schemaType: contact.schemaType,
-    howToGet: input.howToGet || null,
-    latitude: input.latitude ?? null,
-    longitude: input.longitude ?? null,
-    categoryId: await categoryId(input.categorySlug || 'forty', null),
-    regionId: await regionIdOf(input.regionSlug, null),
-    sources: input.sources || [],
-    seoTitle: input.seoTitle || null,
-    seoDescription: input.seoDescription || null,
-    ogImage: input.ogImage || null,
-    publicationStatus,
-    noindex: Boolean(input.noindex),
-    authorKind: 'ai',
-    visitDuration: cleanText(input.visitDuration),
-    bestTime: cleanText(input.bestTime),
-    faq: cleanFaq(input.faq ?? []),
-    ...(checked !== undefined ? { lastVerifiedAt: checked } : {}),
-  }, null, contentGate('place', {
-    title: input.title,
-    summary: input.summary,
-    body: input.body,
-    sections: input.sections,
-    hours: input.hours,
-    price: input.price,
-    howToGet: input.howToGet,
-    seoTitle: input.seoTitle,
-    seoDescription: input.seoDescription,
-    visitDuration: input.visitDuration,
-    bestTime: input.bestTime,
-    faq: input.faq,
-    sources: input.sources,
-    phone: contact.phone,
-    phoneSourceUrl: contact.phoneSourceUrl,
-    website: contact.website,
-  }, publicationStatus === 'published'))
+  const { row, writingWarnings } = await savePlaceContent(
+    {
+      slug,
+      title: input.title.trim(),
+      summary: input.summary || '',
+      body: input.body || '',
+      ...(input.sections ? { sections: input.sections as never } : {}),
+      status,
+      hours: input.hours || null,
+      price: input.price || null,
+      phone: contact.phone,
+      website: contact.website,
+      schemaType: contact.schemaType,
+      howToGet: input.howToGet || null,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      categoryId: await categoryId(input.categorySlug || 'forty', null),
+      regionId: await regionIdOf(input.regionSlug, null),
+      sources: input.sources || [],
+      seoTitle: input.seoTitle || null,
+      seoDescription: input.seoDescription || null,
+      ogImage: input.ogImage || null,
+      publicationStatus,
+      noindex: Boolean(input.noindex),
+      authorKind: 'ai',
+      visitDuration: cleanText(input.visitDuration),
+      bestTime: cleanText(input.bestTime),
+      faq: cleanFaq(input.faq ?? []),
+      ...(checked !== undefined ? { lastVerifiedAt: checked } : {}),
+    },
+    null,
+    contentGate(
+      'place',
+      {
+        title: input.title,
+        summary: input.summary,
+        body: input.body,
+        sections: input.sections,
+        hours: input.hours,
+        price: input.price,
+        howToGet: input.howToGet,
+        seoTitle: input.seoTitle,
+        seoDescription: input.seoDescription,
+        visitDuration: input.visitDuration,
+        bestTime: input.bestTime,
+        faq: input.faq,
+        sources: input.sources,
+        phone: contact.phone,
+        phoneSourceUrl: contact.phoneSourceUrl,
+        website: contact.website,
+      },
+      publicationStatus === 'published',
+    ),
+  )
   await syncCoordinates({
     subjectType: 'place',
     subjectId: row.id,
@@ -334,76 +358,95 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     if (onlyNoticesStaged(payload)) {
       const saved = await applyStagedNotices(noticeTarget, pending)
       await auditMcp(auditTool, 'place', current.id)
-      return { ...compactPlace(current), pendingReview: false, bodyLength: current.body.length, writingWarnings: saved?.writingWarnings ?? [], notices: (saved?.rows ?? []).map(toNoticeValue) }
+      return {
+        ...compactPlace(current),
+        pendingReview: false,
+        bodyLength: current.body.length,
+        writingWarnings: saved?.writingWarnings ?? [],
+        notices: (saved?.rows ?? []).map(toNoticeValue),
+      }
     }
     const notices = await stagedForApply(noticeTarget, payload)
-    const applied = await applyPendingPlaceContent(current.id, contentGate('place', {
-      title: payload.title,
-      summary: payload.summary,
-      body: payload.body,
-      sections: payload.sections,
-      hours: payload.hours,
-      price: payload.price,
-      howToGet: payload.howToGet,
-      seoTitle: payload.seoTitle,
-      seoDescription: payload.seoDescription,
-      visitDuration: payload.visitDuration,
-      bestTime: payload.bestTime,
-      faq: payload.faq,
-      sources: payload.sources,
-      phone: payload.phone,
-      phoneSourceUrl: payload.phoneSourceUrl,
-      website: payload.website,
-    }, true), {
-      beforeWrite: async (tx, draft) => {
-        const body = draft.payload
-        if (body.phone === undefined) {
-          return
-        }
-        const pendingPhone = typeof body.phone === 'string' ? body.phone : null
-        const phone = await syncPlacePhone({
-          placeId: current.id,
-          actor: 'mcp',
-          pageStatus: 'published',
-          phone: pendingPhone,
-          sourceUrl: !pendingPhone
-            ? null
-            : typeof body.phoneSourceUrl === 'string'
-              ? body.phoneSourceUrl
-              : await placePhoneSource(current.id, tx),
-          checkedAt: draft.updatedAt,
-          tx,
-        })
-        return { phone: phone.skipped }
+    const applied = await applyPendingPlaceContent(
+      current.id,
+      contentGate(
+        'place',
+        {
+          title: payload.title,
+          summary: payload.summary,
+          body: payload.body,
+          sections: payload.sections,
+          hours: payload.hours,
+          price: payload.price,
+          howToGet: payload.howToGet,
+          seoTitle: payload.seoTitle,
+          seoDescription: payload.seoDescription,
+          visitDuration: payload.visitDuration,
+          bestTime: payload.bestTime,
+          faq: payload.faq,
+          sources: payload.sources,
+          phone: payload.phone,
+          phoneSourceUrl: payload.phoneSourceUrl,
+          website: payload.website,
+        },
+        true,
+      ),
+      {
+        beforeWrite: async (tx, draft) => {
+          const body = draft.payload
+          if (body.phone === undefined) {
+            return
+          }
+          const pendingPhone = typeof body.phone === 'string' ? body.phone : null
+          const phone = await syncPlacePhone({
+            placeId: current.id,
+            actor: 'mcp',
+            pageStatus: 'published',
+            phone: pendingPhone,
+            sourceUrl: !pendingPhone
+              ? null
+              : typeof body.phoneSourceUrl === 'string'
+                ? body.phoneSourceUrl
+                : await placePhoneSource(current.id, tx),
+            checkedAt: draft.updatedAt,
+            tx,
+          })
+          return { phone: phone.skipped }
+        },
+        afterWrite: async (tx, row, existing) => {
+          await syncCoordinates({
+            subjectType: 'place',
+            subjectId: current.id,
+            actor: 'mcp',
+            pageStatus: 'published',
+            latitude: row.latitude,
+            longitude: row.longitude,
+            previous: { latitude: existing.latitude, longitude: existing.longitude },
+            tx,
+          })
+          await syncPlaceStatus({
+            placeId: current.id,
+            actor: 'mcp',
+            pageStatus: 'published',
+            status: row.status,
+            previous: existing.status,
+            tx,
+          })
+          if (notices) {
+            await db.notices.replace('place', current.id, notices.rows.map(toNoticeWrite), tx)
+          }
+        },
       },
-      afterWrite: async (tx, row, existing) => {
-        await syncCoordinates({
-          subjectType: 'place',
-          subjectId: current.id,
-          actor: 'mcp',
-          pageStatus: 'published',
-          latitude: row.latitude,
-          longitude: row.longitude,
-          previous: { latitude: existing.latitude, longitude: existing.longitude },
-          tx,
-        })
-        await syncPlaceStatus({
-          placeId: current.id,
-          actor: 'mcp',
-          pageStatus: 'published',
-          status: row.status,
-          previous: existing.status,
-          tx,
-        })
-        if (notices) {
-          await db.notices.replace('place', current.id, notices.rows.map(toNoticeWrite), tx)
-        }
-      },
-    })
+    )
     const row = applied.row
     if (row) {
       await auditMcp(auditTool, 'place', current.id)
-      return { ...compactPlace(row), pendingReview: false, bodyLength: row.body.length, writingWarnings: [...new Set([...applied.writingWarnings, ...(notices?.writingWarnings ?? [])])] }
+      return {
+        ...compactPlace(row),
+        pendingReview: false,
+        bodyLength: row.body.length,
+        writingWarnings: [...new Set([...applied.writingWarnings, ...(notices?.writingWarnings ?? [])])],
+      }
     }
   }
   if (publicationStatus === 'pending') {
@@ -419,8 +462,12 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
     }
     const checked = parseFactsCheckedAt(input.factsCheckedAt)
     // Preserve an omitted value exactly, including an explicit pending clear and legacy field name.
-    const previousCheckedAt = mergedField<string | null>(undefined, base, 'factsCheckedAt',
-      mergedField<string | null>(undefined, base, 'lastVerifiedAt', current.lastVerifiedAt))
+    const previousCheckedAt = mergedField<string | null>(
+      undefined,
+      base,
+      'factsCheckedAt',
+      mergedField<string | null>(undefined, base, 'lastVerifiedAt', current.lastVerifiedAt),
+    )
     const pendingStatus = pendingPublication(input.publicationStatus)
     const contact = await resolvePlaceContact(input, {
       placeId: current.id,
@@ -435,56 +482,75 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       summary: input.summary ?? (base.summary as string | undefined) ?? current.summary,
       body: input.body ?? (base.body as string | undefined) ?? current.body,
       ...(input.sections ? { sections: input.sections } : base.sections ? { sections: base.sections } : {}),
-      status: input.status && VISIT.has(input.status) ? input.status : (base.status as string | undefined) ?? current.status,
+      status:
+        input.status && VISIT.has(input.status)
+          ? input.status
+          : ((base.status as string | undefined) ?? current.status),
       hours: text('hours', input.hours, current.hours),
       price: text('price', input.price, current.price),
       ...contact,
       howToGet: text('howToGet', input.howToGet, current.howToGet),
-      latitude: input.latitude === undefined ? (base.latitude as number | null | undefined) ?? current.latitude : input.latitude,
-      longitude: input.longitude === undefined ? (base.longitude as number | null | undefined) ?? current.longitude : input.longitude,
-      categoryId: await categoryId(input.categorySlug, (base.categoryId as string | null | undefined) ?? current.categoryId),
+      latitude:
+        input.latitude === undefined
+          ? ((base.latitude as number | null | undefined) ?? current.latitude)
+          : input.latitude,
+      longitude:
+        input.longitude === undefined
+          ? ((base.longitude as number | null | undefined) ?? current.longitude)
+          : input.longitude,
+      categoryId: await categoryId(
+        input.categorySlug,
+        (base.categoryId as string | null | undefined) ?? current.categoryId,
+      ),
       regionId: await regionIdOf(input.regionSlug, (base.regionId as string | null | undefined) ?? current.regionId),
       sources: input.sources ?? (base.sources as PlaceDraftInput['sources']) ?? current.sources ?? [],
       seoTitle: text('seoTitle', input.seoTitle, current.seoTitle),
       seoDescription: text('seoDescription', input.seoDescription, current.seoDescription),
       ogImage: text('ogImage', input.ogImage, current.ogImage),
       noindex: input.noindex ?? (base.noindex as boolean | undefined) ?? current.noindex,
-      visitDuration: input.visitDuration === undefined
-        ? (base.visitDuration as string | null | undefined) ?? current.visitDuration
-        : cleanText(input.visitDuration),
-      bestTime: input.bestTime === undefined
-        ? (base.bestTime as string | null | undefined) ?? current.bestTime
-        : cleanText(input.bestTime),
-      faq: input.faq === undefined
-        ? (base.faq as PlaceDraftInput['faq']) ?? current.faq
-        : cleanFaq(input.faq),
+      visitDuration:
+        input.visitDuration === undefined
+          ? ((base.visitDuration as string | null | undefined) ?? current.visitDuration)
+          : cleanText(input.visitDuration),
+      bestTime:
+        input.bestTime === undefined
+          ? ((base.bestTime as string | null | undefined) ?? current.bestTime)
+          : cleanText(input.bestTime),
+      faq: input.faq === undefined ? ((base.faq as PlaceDraftInput['faq']) ?? current.faq) : cleanFaq(input.faq),
       lastVerifiedAt: checked === undefined ? previousCheckedAt : checked,
       authorKind: current.authorKind,
       ...stagedNoticeKeys(base),
     }
-    const storedDraft = await savePendingDraftContent({
-      entityType: 'place',
-      entityId: current.id,
-      publicationStatus: pendingStatus,
-      payload,
-    }, contentGate('place', {
-      title: payload.title,
-      summary: payload.summary,
-      body: payload.body,
-      sections: payload.sections,
-      hours: payload.hours,
-      price: payload.price,
-      howToGet: payload.howToGet,
-      seoTitle: payload.seoTitle,
-      seoDescription: payload.seoDescription,
-      visitDuration: payload.visitDuration,
-      bestTime: payload.bestTime,
-      faq: payload.faq,
-      sources: payload.sources,
-      phone: payload.phone,
-      phoneSourceUrl: payload.phoneSourceUrl,
-      website: payload.website,
-    }, false))
+    const storedDraft = await savePendingDraftContent(
+      {
+        entityType: 'place',
+        entityId: current.id,
+        publicationStatus: pendingStatus,
+        payload,
+      },
+      contentGate(
+        'place',
+        {
+          title: payload.title,
+          summary: payload.summary,
+          body: payload.body,
+          sections: payload.sections,
+          hours: payload.hours,
+          price: payload.price,
+          howToGet: payload.howToGet,
+          seoTitle: payload.seoTitle,
+          seoDescription: payload.seoDescription,
+          visitDuration: payload.visitDuration,
+          bestTime: payload.bestTime,
+          faq: payload.faq,
+          sources: payload.sources,
+          phone: payload.phone,
+          phoneSourceUrl: payload.phoneSourceUrl,
+          website: payload.website,
+        },
+        false,
+      ),
+    )
     const stored = storedDraft.row
     const writingWarnings = storedDraft.writingWarnings
     await auditMcp(auditTool, 'place', current.id)
@@ -505,24 +571,28 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   })
   const category = await categoryId(input.categorySlug, current.categoryId)
   const region = await regionIdOf(input.regionSlug, current.regionId)
-  const gate = contentGate('place', {
-    title: input.title ?? current.title,
-    summary: input.summary ?? current.summary,
-    body: input.body ?? current.body,
-    sections: input.sections,
-    hours: input.hours === undefined ? current.hours : input.hours,
-    price: input.price === undefined ? current.price : input.price,
-    howToGet: input.howToGet === undefined ? current.howToGet : input.howToGet,
-    seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-    seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-    visitDuration: input.visitDuration === undefined ? current.visitDuration : input.visitDuration,
-    bestTime: input.bestTime === undefined ? current.bestTime : input.bestTime,
-    faq: input.faq === undefined ? current.faq : input.faq,
-    sources: input.sources ?? current.sources,
-    phone: contact.phone,
-    phoneSourceUrl: contact.phoneSourceUrl,
-    website: contact.website,
-  }, publicationStatus === 'published')
+  const gate = contentGate(
+    'place',
+    {
+      title: input.title ?? current.title,
+      summary: input.summary ?? current.summary,
+      body: input.body ?? current.body,
+      sections: input.sections,
+      hours: input.hours === undefined ? current.hours : input.hours,
+      price: input.price === undefined ? current.price : input.price,
+      howToGet: input.howToGet === undefined ? current.howToGet : input.howToGet,
+      seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+      seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+      visitDuration: input.visitDuration === undefined ? current.visitDuration : input.visitDuration,
+      bestTime: input.bestTime === undefined ? current.bestTime : input.bestTime,
+      faq: input.faq === undefined ? current.faq : input.faq,
+      sources: input.sources ?? current.sources,
+      phone: contact.phone,
+      phoneSourceUrl: contact.phoneSourceUrl,
+      website: contact.website,
+    },
+    publicationStatus === 'published',
+  )
   const writeLive = async (tx: ContentTx) => {
     const point = await syncCoordinates({
       subjectType: 'place',
@@ -551,41 +621,47 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
       checkedAt: phoneCheckedAt(checked),
       tx,
     })
-    const saved = await savePlaceContent({
-      id: current.id,
-      slug,
-      title: input.title ?? current.title,
-      summary: input.summary ?? current.summary,
-      body: input.body ?? current.body,
-      ...(input.sections ? { sections: input.sections as never } : {}),
-      status: visit.skipped ? current.status : status,
-      hours: input.hours === undefined ? current.hours : input.hours,
-      price: input.price === undefined ? current.price : input.price,
-      phone: phone.skipped ? current.phone : contact.phone,
-      website: contact.website,
-      schemaType: contact.schemaType,
-      howToGet: input.howToGet === undefined ? current.howToGet : input.howToGet,
-      latitude: point.skipped || input.latitude === undefined ? current.latitude : input.latitude,
-      longitude: point.skipped || input.longitude === undefined ? current.longitude : input.longitude,
-      categoryId: category,
-      regionId: region,
-      sources: input.sources ?? current.sources ?? [],
-      seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-      seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-      ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
-      publicationStatus,
-      noindex: input.noindex ?? current.noindex,
-      authorKind: current.authorKind,
-      visitDuration: input.visitDuration === undefined ? current.visitDuration : cleanText(input.visitDuration),
-      bestTime: input.bestTime === undefined ? current.bestTime : cleanText(input.bestTime),
-      faq: input.faq === undefined ? current.faq : cleanFaq(input.faq),
-      lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
-    }, null, gate, tx)
+    const saved = await savePlaceContent(
+      {
+        id: current.id,
+        slug,
+        title: input.title ?? current.title,
+        summary: input.summary ?? current.summary,
+        body: input.body ?? current.body,
+        ...(input.sections ? { sections: input.sections as never } : {}),
+        status: visit.skipped ? current.status : status,
+        hours: input.hours === undefined ? current.hours : input.hours,
+        price: input.price === undefined ? current.price : input.price,
+        phone: phone.skipped ? current.phone : contact.phone,
+        website: contact.website,
+        schemaType: contact.schemaType,
+        howToGet: input.howToGet === undefined ? current.howToGet : input.howToGet,
+        latitude: point.skipped || input.latitude === undefined ? current.latitude : input.latitude,
+        longitude: point.skipped || input.longitude === undefined ? current.longitude : input.longitude,
+        categoryId: category,
+        regionId: region,
+        sources: input.sources ?? current.sources ?? [],
+        seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+        seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+        ogImage: input.ogImage === undefined ? current.ogImage : input.ogImage,
+        publicationStatus,
+        noindex: input.noindex ?? current.noindex,
+        authorKind: current.authorKind,
+        visitDuration: input.visitDuration === undefined ? current.visitDuration : cleanText(input.visitDuration),
+        bestTime: input.bestTime === undefined ? current.bestTime : cleanText(input.bestTime),
+        faq: input.faq === undefined ? current.faq : cleanFaq(input.faq),
+        lastVerifiedAt: checked === undefined ? current.lastVerifiedAt : checked,
+      },
+      null,
+      gate,
+      tx,
+    )
     return liveWriteRow(saved.row, saved.writingWarnings)
   }
-  const saved = scope === 'editor'
-    ? await withEditorLiveWrite('place', current.id, writeLive)
-    : await db.editor.transaction(writeLive)
+  const saved =
+    scope === 'editor'
+      ? await withEditorLiveWrite('place', current.id, writeLive)
+      : await db.editor.transaction(writeLive)
   if (scope !== 'editor') {
     await syncSavedPage('place', saved.id)
   }
@@ -599,7 +675,7 @@ export async function updatePlaceDraft(input: PlaceDraftInput, auditTool = 'plac
   }
 }
 
-export async function submitPlaceReview(input: { id?: string, slug?: string }) {
+export async function submitPlaceReview(input: { id?: string; slug?: string }) {
   const current = input.id
     ? await db.editor.placeById(input.id)
     : input.slug
@@ -608,42 +684,53 @@ export async function submitPlaceReview(input: { id?: string, slug?: string }) {
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Место не найдено' })
   }
-  if (contentScope() === 'draft' && (current.publicationStatus === 'published' || current.publicationStatus === 'archived')) {
+  if (
+    contentScope() === 'draft' &&
+    (current.publicationStatus === 'published' || current.publicationStatus === 'archived')
+  ) {
     return updatePlaceDraft({ id: current.id, publicationStatus: 'review' }, 'place_submit_review')
   }
-  const { row } = await savePlaceContent({
-    id: current.id,
-    slug: current.slug,
-    title: current.title,
-    summary: current.summary,
-    body: current.body,
-    status: current.status,
-    hours: current.hours,
-    price: current.price,
-    howToGet: current.howToGet,
-    latitude: current.latitude,
-    longitude: current.longitude,
-    categoryId: current.categoryId,
-    regionId: current.regionId,
-    sources: current.sources ?? [],
-    seoTitle: current.seoTitle,
-    seoDescription: current.seoDescription,
-    ogImage: current.ogImage,
-    noindex: current.noindex,
-    publicationStatus: 'review',
-    authorKind: current.authorKind,
-    lastVerifiedAt: current.lastVerifiedAt,
-  }, null, contentGate('place', {
-    title: current.title,
-    summary: current.summary,
-    body: current.body,
-    hours: current.hours,
-    price: current.price,
-    howToGet: current.howToGet,
-    seoTitle: current.seoTitle,
-    seoDescription: current.seoDescription,
-    sources: current.sources,
-  }, false))
+  const { row } = await savePlaceContent(
+    {
+      id: current.id,
+      slug: current.slug,
+      title: current.title,
+      summary: current.summary,
+      body: current.body,
+      status: current.status,
+      hours: current.hours,
+      price: current.price,
+      howToGet: current.howToGet,
+      latitude: current.latitude,
+      longitude: current.longitude,
+      categoryId: current.categoryId,
+      regionId: current.regionId,
+      sources: current.sources ?? [],
+      seoTitle: current.seoTitle,
+      seoDescription: current.seoDescription,
+      ogImage: current.ogImage,
+      noindex: current.noindex,
+      publicationStatus: 'review',
+      authorKind: current.authorKind,
+      lastVerifiedAt: current.lastVerifiedAt,
+    },
+    null,
+    contentGate(
+      'place',
+      {
+        title: current.title,
+        summary: current.summary,
+        body: current.body,
+        hours: current.hours,
+        price: current.price,
+        howToGet: current.howToGet,
+        seoTitle: current.seoTitle,
+        seoDescription: current.seoDescription,
+        sources: current.sources,
+      },
+      false,
+    ),
+  )
   await auditMcp('place_submit_review', 'place', current.id)
   return compactPlace(row)
 }

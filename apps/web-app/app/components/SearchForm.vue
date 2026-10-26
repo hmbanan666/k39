@@ -9,7 +9,8 @@
     <label
       class="visually-hidden"
       :for="inputId"
-    >Поиск по сайту</label>
+      >Поиск по сайту</label
+    >
     <Icon
       class="icon"
       :name="tablerIcon('search')"
@@ -26,12 +27,12 @@
       enterkeyhint="search"
       maxlength="100"
       required
-    >
+    />
     <input
       type="hidden"
       name="s"
       :value="surface"
-    >
+    />
     <button
       v-if="size === 'large'"
       type="submit"
@@ -46,16 +47,19 @@
 import { tablerIcon } from '~~/shared/icons'
 
 // A plain GET form (ADR 0030): works without JavaScript and lands on /poisk.
-withDefaults(defineProps<{
-  surface: 'header' | 'page' | '404'
-  size?: 'compact' | 'large'
-  query?: string
-  placeholder?: string
-}>(), {
-  size: 'compact',
-  query: '',
-  placeholder: 'Форт, замок, кафе…',
-})
+withDefaults(
+  defineProps<{
+    surface: 'header' | 'page' | '404'
+    size?: 'compact' | 'large'
+    query?: string
+    placeholder?: string
+  }>(),
+  {
+    size: 'compact',
+    query: '',
+    placeholder: 'Форт, замок, кафе…',
+  },
+)
 
 const inputId = useId()
 </script>
@@ -92,9 +96,15 @@ input[type='search']:focus-visible {
   height: 3rem;
   font-size: 1.05rem;
 }
-.search-form-large .icon { left: 0.9rem; }
-.search-form-large input[type='search'] { padding-left: 2.5rem; }
-.search-form-large .btn { flex: none; }
+.search-form-large .icon {
+  left: 0.9rem;
+}
+.search-form-large input[type='search'] {
+  padding-left: 2.5rem;
+}
+.search-form-large .btn {
+  flex: none;
+}
 .visually-hidden {
   position: absolute;
   width: 1px;

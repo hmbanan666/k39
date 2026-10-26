@@ -1,4 +1,11 @@
-import type { AdmissionValue, EventValue, FactConfidence, FactKind, FactSubject, SourceKind } from '../../../shared/facts'
+import type {
+  AdmissionValue,
+  EventValue,
+  FactConfidence,
+  FactKind,
+  FactSubject,
+  SourceKind,
+} from '../../../shared/facts'
 import type { PracticalSubjectType } from '../practical/target'
 import { db } from '@k39/database'
 import { createError } from 'h3'
@@ -46,16 +53,26 @@ export async function refuseLiveFact(subjectType: string, subjectId: string) {
 }
 
 /** Admission and event facts sit beside a row. The row writer keeps both in step. */
-async function updatePracticalFact(current: { kind: string, subjectType: string, subjectId: string, slot: string }, input: { value: unknown, sourceUrl?: string | null, sourceTitle?: string | null, checkedAt?: string | null }) {
+async function updatePracticalFact(
+  current: { kind: string; subjectType: string; subjectId: string; slot: string },
+  input: { value: unknown; sourceUrl?: string | null; sourceTitle?: string | null; checkedAt?: string | null },
+) {
   const value = parseFactValue(current.kind, input.value)
   if (!value) {
     throw createError({ statusCode: 400, statusMessage: 'Значение факта не подходит к его типу' })
   }
   const target = await practicalTarget(current.subjectType as PracticalSubjectType, current.subjectId)
-  const source = { sourceUrl: input.sourceUrl ?? null, sourceTitle: input.sourceTitle ?? null, checkedAt: input.checkedAt ?? null }
-  const conflicts = current.kind === 'admission'
-    ? (await updateAdmissionFact(target, current.slot, value as AdmissionValue, source)).ownerConflicts
-    : [(await updateEventFact(target, current.slot, value as EventValue, source)).ownerConflict].filter((id): id is string => Boolean(id))
+  const source = {
+    sourceUrl: input.sourceUrl ?? null,
+    sourceTitle: input.sourceTitle ?? null,
+    checkedAt: input.checkedAt ?? null,
+  }
+  const conflicts =
+    current.kind === 'admission'
+      ? (await updateAdmissionFact(target, current.slot, value as AdmissionValue, source)).ownerConflicts
+      : [(await updateEventFact(target, current.slot, value as EventValue, source)).ownerConflict].filter(
+          (id): id is string => Boolean(id),
+        )
   const fact = await db.facts.liveSlot(current.subjectType, current.subjectId, current.slot)
   if (conflicts[0] && fact) {
     return { conflict: true as const, queueId: conflicts[0], fact }
@@ -88,7 +105,10 @@ export async function updateFact(input: {
     subjectId: current.subjectId,
     slot: current.slot,
     value: input.value,
-    sourceUrl: input.confidence === 'owner' || input.sourceKind === 'owner' || input.sourceKind === 'none' ? null : input.sourceUrl ?? null,
+    sourceUrl:
+      input.confidence === 'owner' || input.sourceKind === 'owner' || input.sourceKind === 'none'
+        ? null
+        : (input.sourceUrl ?? null),
     sourceTitle: input.sourceTitle ?? null,
     sourceKind: input.confidence === 'owner' ? 'owner' : input.sourceKind,
     checkedAt: input.checkedAt === undefined ? new Date().toISOString() : input.checkedAt,

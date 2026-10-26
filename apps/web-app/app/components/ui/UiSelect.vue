@@ -24,9 +24,18 @@
 </template>
 
 <script setup lang="ts">
-import { SelectContent, SelectItem, SelectItemText, SelectPortal, SelectRoot, SelectTrigger, SelectValue, SelectViewport } from 'reka-ui'
+import {
+  SelectContent,
+  SelectItem,
+  SelectItemText,
+  SelectPortal,
+  SelectRoot,
+  SelectTrigger,
+  SelectValue,
+  SelectViewport,
+} from 'reka-ui'
 
-const props = defineProps<{ options: Array<{ value: string, label: string }> }>()
+const props = defineProps<{ options: Array<{ value: string; label: string }> }>()
 const model = defineModel<string>({ required: true })
 const currentLabel = computed(() => props.options.find((option) => option.value === model.value)?.label || '')
 </script>

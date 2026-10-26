@@ -338,11 +338,7 @@ export interface MenuVenueLinks {
  * `vkCommunityId` is the numeric id of a screen-name link (ADR 0048), so an
  * `album-<id>` or `wall-<id>` price matches `vk.com/<name>`.
  */
-function isComparableVkMenu(
-  sourceKind: string,
-  sourceUrl: string | null,
-  venue: MenuVenueLinks,
-) {
+function isComparableVkMenu(sourceKind: string, sourceUrl: string | null, venue: MenuVenueLinks) {
   if (venue.website?.trim()) {
     return false
   }
@@ -378,7 +374,7 @@ function readFactPrice(value: unknown) {
   if (!value || typeof value !== 'object') {
     return null
   }
-  const record = value as { priceRub?: unknown, variant?: unknown }
+  const record = value as { priceRub?: unknown; variant?: unknown }
   const priceRub = typeof record.priceRub === 'number' && record.priceRub > 0 ? Math.round(record.priceRub) : null
   if (priceRub == null) {
     return null
@@ -403,7 +399,7 @@ export function resolveMenuPrice<T extends MenuColumn>(
   fact: MenuFact | null | undefined,
   cutoff: string,
   venue?: MenuVenueLinks,
-): { row: T, comparable: boolean } | null {
+): { row: T; comparable: boolean } | null {
   if (fact?.confidence === 'gap') {
     return null
   }
@@ -508,7 +504,12 @@ function byCheaperPrice(a: CheaperSample, b: CheaperSample) {
 }
 
 function latestCheck(points: Array<{ checkedAt: string }>) {
-  return points.map((point) => point.checkedAt.slice(0, 10)).sort().at(-1) ?? null
+  return (
+    points
+      .map((point) => point.checkedAt.slice(0, 10))
+      .sort()
+      .at(-1) ?? null
+  )
 }
 
 function itemGroup(slug: string, points: CheaperSample[]): CheaperItemGroup {
@@ -560,22 +561,26 @@ export function groupCheaperSamples(samples: CheaperSample[]) {
       perItem.set(point.itemSlug, list)
     }
     const cityItems = [...perItem.entries()]
-      .flatMap(([itemSlug, itemPoints]) => showsPriceSample(itemPoints.length) ? [itemGroup(itemSlug, itemPoints)] : [])
+      .flatMap(([itemSlug, itemPoints]) =>
+        showsPriceSample(itemPoints.length) ? [itemGroup(itemSlug, itemPoints)] : [],
+      )
       .sort((a, b) => a.sort - b.sort || a.title.localeCompare(b.title, 'ru'))
     if (!cityItems.length) {
       return []
     }
-    return [{
-      slug,
-      venueCount,
-      lastmod: latestCheck(cityItems.flatMap((item) => item.points)),
-      items: cityItems,
-    } satisfies CheaperCityGroup]
+    return [
+      {
+        slug,
+        venueCount,
+        lastmod: latestCheck(cityItems.flatMap((item) => item.points)),
+        items: cityItems,
+      } satisfies CheaperCityGroup,
+    ]
   })
   return { items, cities }
 }
 
-export function cheaperCityMeta(input: { regionSlug: string, regionName: string, venueCount: number }) {
+export function cheaperCityMeta(input: { regionSlug: string; regionName: string; venueCount: number }) {
   const known = inTown(input.regionSlug, input.regionName)
   const h1 = `Где дешевле ${known}`
   return {
@@ -743,7 +748,7 @@ export type StoredPriceBand = 'low' | 'mid' | 'high'
  * The badge decision. `basis` is how many of this venue's prices had a town
  * comparison. Below `PRICE_BAND_MIN` the level stays null, so the badge hides.
  */
-export function priceBandFromBands(bands: Array<PriceBand | null>): { level: StoredPriceBand | null, basis: number } {
+export function priceBandFromBands(bands: Array<PriceBand | null>): { level: StoredPriceBand | null; basis: number } {
   const known = bands.filter((band): band is PriceBand => band != null)
   if (known.length < PRICE_BAND_MIN) {
     return { level: null, basis: known.length }
@@ -760,7 +765,10 @@ export function priceBandFromBands(bands: Array<PriceBand | null>): { level: Sto
 }
 
 /** Badge copy for a stored band. Null hides the badge. */
-export function priceBadgeFromBand(level: StoredPriceBand | null | undefined, region?: PriceAreaInput): PriceSummary | null {
+export function priceBadgeFromBand(
+  level: StoredPriceBand | null | undefined,
+  region?: PriceAreaInput,
+): PriceSummary | null {
   if (!level) {
     return null
   }
@@ -785,13 +793,15 @@ export function priceBlockSummary(bands: Array<PriceBand | null>, region?: Price
  * URL whose newest price is later. Rows with no URL count only when nothing
  * has a URL. The date is the latest day of the prices that use that source.
  */
-export function sharedPriceSource(rows: Array<{ sourceTitle: string, sourceUrl: string | null, checkedAt: string }>): SharedPriceSource | null {
+export function sharedPriceSource(
+  rows: Array<{ sourceTitle: string; sourceUrl: string | null; checkedAt: string }>,
+): SharedPriceSource | null {
   if (!rows.length) {
     return null
   }
   const withUrl = rows.filter((row) => row.sourceUrl?.trim())
   const pool = withUrl.length ? withUrl : rows
-  const buckets = new Map<string, { title: string, url: string | null, count: number, latest: string }>()
+  const buckets = new Map<string, { title: string; url: string | null; count: number; latest: string }>()
   for (const row of pool) {
     const url = row.sourceUrl?.trim() || null
     const key = url ?? ''
@@ -818,7 +828,7 @@ export function sharedPriceSource(rows: Array<{ sourceTitle: string, sourceUrl: 
  * First tap on a coarse pointer reveals the comparison. A second tap, a
  * keyboard activation, or any click with a fine pointer follows the card link.
  */
-export function priceCardTap(input: { finePointer: boolean, keyboard: boolean, open: boolean }) {
+export function priceCardTap(input: { finePointer: boolean; keyboard: boolean; open: boolean }) {
   if (input.finePointer || input.keyboard || input.open) {
     return 'follow' as const
   }
@@ -851,9 +861,7 @@ export function priceListNode(items: PublicPriceCard[], title: string) {
 }
 
 function listingHref(slug: string, regionSlug: string | null, regionId: string | null, peers: CatalogPricePoint[]) {
-  const inRegion = regionId
-    ? onePricePerVenue(peers.filter((row) => row.regionId === regionId))
-    : []
+  const inRegion = regionId ? onePricePerVenue(peers.filter((row) => row.regionId === regionId)) : []
   if (regionSlug && inRegion.length) {
     return priceItemPath(slug, regionSlug)
   }
@@ -939,17 +947,23 @@ export function priceListingMeta(input: {
 }
 
 /** Sitemap locs for listings that already have one price per venue. */
-export function indexablePriceLocs(items: Array<{
-  slug: string
-  points: Array<{ regionSlug: string | null, checkedAt: string }>
-}>) {
-  const locs: Array<{ loc: string, lastmod: string | null }> = []
+export function indexablePriceLocs(
+  items: Array<{
+    slug: string
+    points: Array<{ regionSlug: string | null; checkedAt: string }>
+  }>,
+) {
+  const locs: Array<{ loc: string; lastmod: string | null }> = []
   for (const item of items) {
     const push = (loc: string, points: Array<{ checkedAt: string }>) => {
       if (!isPriceIndexable(points.length)) {
         return
       }
-      const lastmod = points.map((point) => point.checkedAt).sort().at(-1) ?? null
+      const lastmod =
+        points
+          .map((point) => point.checkedAt)
+          .sort()
+          .at(-1) ?? null
       locs.push({ loc, lastmod })
     }
     push(priceItemPath(item.slug), item.points)

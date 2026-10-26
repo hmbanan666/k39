@@ -11,10 +11,20 @@ describe('persona registry', () => {
 
 describe('page personas', () => {
   it('needs exactly one primary and known unique codes', () => {
-    expect(pagePersonasSchema.safeParse([{ code: 'local', weight: 3, primary: true }, { code: 'history', weight: 2 }]).success).toBe(true)
+    expect(
+      pagePersonasSchema.safeParse([
+        { code: 'local', weight: 3, primary: true },
+        { code: 'history', weight: 2 },
+      ]).success,
+    ).toBe(true)
     expect(pagePersonasSchema.safeParse([]).success).toBe(true)
     expect(pagePersonasSchema.safeParse([{ code: 'local', weight: 3 }]).success).toBe(false)
-    expect(pagePersonasSchema.safeParse([{ code: 'local', primary: true }, { code: 'sea', primary: true }]).success).toBe(false)
+    expect(
+      pagePersonasSchema.safeParse([
+        { code: 'local', primary: true },
+        { code: 'sea', primary: true },
+      ]).success,
+    ).toBe(false)
     expect(pagePersonasSchema.safeParse([{ code: 'local', primary: true }, { code: 'local' }]).success).toBe(false)
     expect(pagePersonasSchema.safeParse([{ code: 'tourist', primary: true }]).success).toBe(false)
     expect(pagePersonasSchema.safeParse([{ code: 'sea', weight: 4, primary: true }]).success).toBe(false)

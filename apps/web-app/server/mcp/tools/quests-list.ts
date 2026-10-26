@@ -8,10 +8,7 @@ export default defineStrictMcpTool({
   annotations: { readOnlyHint: true },
   inputSchema: {},
   handler: async () => {
-    const [rows, routes] = await Promise.all([
-      db.editor.listQuests(),
-      db.editor.listRoutes(),
-    ])
+    const [rows, routes] = await Promise.all([db.editor.listQuests(), db.editor.listRoutes()])
     return rows.map((row) => ({
       id: row.id,
       slug: row.slug,

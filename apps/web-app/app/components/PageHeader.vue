@@ -45,16 +45,19 @@
 <script setup lang="ts">
 import type { Crumb } from '~~/shared/seo'
 
-withDefaults(defineProps<{
-  h1: string
-  crumbs?: Crumb[]
-  kicker?: string
-  lede?: string
-}>(), {
-  crumbs: () => [],
-  kicker: '',
-  lede: '',
-})
+withDefaults(
+  defineProps<{
+    h1: string
+    crumbs?: Crumb[]
+    kicker?: string
+    lede?: string
+  }>(),
+  {
+    crumbs: () => [],
+    kicker: '',
+    lede: '',
+  },
+)
 </script>
 
 <style scoped>
@@ -84,11 +87,15 @@ h1 {
   font-size: 1.12rem;
   line-height: 1.55;
 }
-.extra { margin-top: var(--space-4); }
+.extra {
+  margin-top: var(--space-4);
+}
 .with-mark {
   display: flex;
   gap: 0.9rem;
   align-items: center;
 }
-.with-mark :deep(.sticker) { flex: none; }
+.with-mark :deep(.sticker) {
+  flex: none;
+}
 </style>

@@ -5,7 +5,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'place_draft_create',
-  description: 'Create a place. publicationStatus may be draft, review, or published. A slug rename writes a 301 slug redirect.',
+  description:
+    'Create a place. publicationStatus may be draft, review, or published. A slug rename writes a 301 slug redirect.',
   annotations: { destructiveHint: false },
   inputSchema: {
     ...placeFields,

@@ -1,5 +1,9 @@
 import process from 'node:process'
-import { DEFAULT_BASEMAP_FILE, DEFAULT_BASEMAP_SHA256, DEFAULT_BASEMAP_SOURCE_URL } from './server/utils/basemap-defaults'
+import {
+  DEFAULT_BASEMAP_FILE,
+  DEFAULT_BASEMAP_SHA256,
+  DEFAULT_BASEMAP_SOURCE_URL,
+} from './server/utils/basemap-defaults'
 import { tablerIconList } from './shared/icons'
 import { brandHeadLinks } from './shared/seo'
 
@@ -40,9 +44,23 @@ export default defineNuxtConfig({
       preload: true,
     },
     families: [
-      { name: 'Alegreya', provider: 'google', weights: ['400 800'], styles: ['normal', 'italic'], display: 'swap', preload: true },
+      {
+        name: 'Alegreya',
+        provider: 'google',
+        weights: ['400 800'],
+        styles: ['normal', 'italic'],
+        display: 'swap',
+        preload: true,
+      },
       { name: 'Alegreya SC', provider: 'google', weights: [400], styles: ['normal'], display: 'swap', preload: true },
-      { name: 'Golos Text', provider: 'google', weights: ['400 700'], styles: ['normal'], display: 'swap', preload: true },
+      {
+        name: 'Golos Text',
+        provider: 'google',
+        weights: ['400 700'],
+        styles: ['normal'],
+        display: 'swap',
+        preload: true,
+      },
     ],
   },
   sitemap: {
@@ -73,18 +91,20 @@ export default defineNuxtConfig({
     // Brand file names stay stable, so they are not immutable. A week is the cache for one URL.
     // Favicon links add ?v= from BRAND_ICON_VERSION so a replaced moose is not stuck on that week.
     // The manifest file is a day. Its link uses the same query.
-    ...Object.fromEntries([
-      '/favicon.ico',
-      '/favicon-16.png',
-      '/favicon-32.png',
-      '/apple-touch-icon.png',
-      '/icon-192.png',
-      '/icon-512.png',
-      '/icon-maskable-512.png',
-      '/logo/**',
-      '/og-default.jpg',
-      '/og-default.png',
-    ].map((path) => [path, { headers: { 'cache-control': 'public, max-age=604800' } }])),
+    ...Object.fromEntries(
+      [
+        '/favicon.ico',
+        '/favicon-16.png',
+        '/favicon-32.png',
+        '/apple-touch-icon.png',
+        '/icon-192.png',
+        '/icon-512.png',
+        '/icon-maskable-512.png',
+        '/logo/**',
+        '/og-default.jpg',
+        '/og-default.png',
+      ].map((path) => [path, { headers: { 'cache-control': 'public, max-age=604800' } }]),
+    ),
     '/site.webmanifest': { headers: { 'cache-control': 'public, max-age=86400' } },
     '/basemap/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/basemap/sprites/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
@@ -122,14 +142,7 @@ export default defineNuxtConfig({
     name: 'K39 content',
     route: '/mcp',
   },
-  modules: [
-    'nuxt-auth-utils',
-    '@nuxtjs/seo',
-    '@nuxt/fonts',
-    '@nuxt/icon',
-    '@vueuse/nuxt',
-    '@nuxtjs/mcp-toolkit',
-  ],
+  modules: ['nuxt-auth-utils', '@nuxtjs/seo', '@nuxt/fonts', '@nuxt/icon', '@vueuse/nuxt', '@nuxtjs/mcp-toolkit'],
   icon: {
     mode: 'svg',
     serverBundle: 'local',

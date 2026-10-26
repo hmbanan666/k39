@@ -6,33 +6,53 @@ const venueListShape = {
   kind: z.string().optional().describe('Venue kind, such as cafe or restaurant.'),
   status: z.enum(['draft', 'published', 'closed', 'archived']).optional(),
   stale: z.boolean().optional().describe('True: lastVerifiedAt missing or older than 180 days.'),
-  near: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-    radiusKm: z.number().positive().max(100),
-  }).optional(),
+  near: z
+    .object({
+      latitude: z.number(),
+      longitude: z.number(),
+      radiusKm: z.number().positive().max(100),
+    })
+    .optional(),
   query: z.string().trim().min(1).max(100).optional().describe('Name or slug. Lower case, ё and е match.'),
-  page: z.number().int().min(1).optional().describe('1-based page. The offset is (page - 1) * pageSize. There is no offset argument.'),
-  pageSize: z.number().int().min(1).max(50).optional().describe('Page size. Default 20, maximum 50. There is no limit argument.'),
+  page: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe('1-based page. The offset is (page - 1) * pageSize. There is no offset argument.'),
+  pageSize: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .optional()
+    .describe('Page size. Default 20, maximum 50. There is no limit argument.'),
 }
 
 export const venuesListInput = z.strictObject(venueListShape)
 
 export type VenuesListInput = z.infer<typeof venuesListInput>
 
-export const venueDuplicatesInput = z.strictObject({
-  name: z.string().trim().min(1).max(160).optional().describe('Compared ignoring case, ё/е, quotes, and a kind word such as кафе or ресторан.'),
-  latitude: z.number().min(-90).max(90).optional(),
-  longitude: z.number().min(-180).max(180).optional(),
-  radiusM: z.number().int().min(1).max(2000).optional().describe('Metres. Default 150, maximum 2000.'),
-  regionSlug: z.string().optional().describe('When set, only venues in this region.'),
-}).refine(
-  (value) => Boolean(value.name) || (value.latitude != null && value.longitude != null),
-  { message: 'Передайте название или координаты' },
-).refine(
-  (value) => (value.latitude == null) === (value.longitude == null),
-  { message: 'Широта и долгота задаются вместе' },
-)
+export const venueDuplicatesInput = z
+  .strictObject({
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(160)
+      .optional()
+      .describe('Compared ignoring case, ё/е, quotes, and a kind word such as кафе or ресторан.'),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    radiusM: z.number().int().min(1).max(2000).optional().describe('Metres. Default 150, maximum 2000.'),
+    regionSlug: z.string().optional().describe('When set, only venues in this region.'),
+  })
+  .refine((value) => Boolean(value.name) || (value.latitude != null && value.longitude != null), {
+    message: 'Передайте название или координаты',
+  })
+  .refine((value) => (value.latitude == null) === (value.longitude == null), {
+    message: 'Широта и долгота задаются вместе',
+  })
 
 export type VenueDuplicatesInput = z.infer<typeof venueDuplicatesInput>
 

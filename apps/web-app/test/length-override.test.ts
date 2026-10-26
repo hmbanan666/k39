@@ -1,7 +1,14 @@
 import type { LengthOverride, LengthOverrideInput } from '../shared/length-override'
 import { describe, expect, it } from 'vitest'
 import { passportWriteSchema } from '../server/utils/scoring/schemas'
-import { lengthJustificationValid, lengthOverrideApplies, lengthOverrideIsStale, lengthOverrideRejection, longPageFiller, stampLengthOverride } from '../shared/length-override'
+import {
+  lengthJustificationValid,
+  lengthOverrideApplies,
+  lengthOverrideIsStale,
+  lengthOverrideRejection,
+  longPageFiller,
+  stampLengthOverride,
+} from '../shared/length-override'
 import { searchTotalsForPath } from '../shared/scoring'
 
 const now = new Date('2026-10-16T00:00:00.000Z')
@@ -26,15 +33,20 @@ function stored(patch: Partial<LengthOverride> = {}): LengthOverride {
   }
 }
 
-const copied = 'Во дворе слышно шоссе круглый год, билет покупают у кассы у ворот, а стены сложены из красного кирпича в конце девятнадцатого века и стоят на своём месте до сих пор без новой облицовки.'
+const copied =
+  'Во дворе слышно шоссе круглый год, билет покупают у кассы у ворот, а стены сложены из красного кирпича в конце девятнадцатого века и стоят на своём месте до сих пор без новой облицовки.'
 
 describe('length override justification', () => {
   it('accepts impressions or competitor lengths, and refuses a bare ceiling', () => {
     expect(lengthJustificationValid(input())).toBe(true)
-    expect(lengthJustificationValid(input({
-      search: null,
-      competitors: [{ query: 'форт 11', chars: 14_000 }],
-    }))).toBe(true)
+    expect(
+      lengthJustificationValid(
+        input({
+          search: null,
+          competitors: [{ query: 'форт 11', chars: 14_000 }],
+        }),
+      ),
+    ).toBe(true)
     expect(lengthJustificationValid(input({ search: null }))).toBe(false)
     expect(lengthJustificationValid(input({ search: { impressions: 0, position: 3 } }))).toBe(false)
     expect(lengthJustificationValid(input({ sections: [] }))).toBe(false)
@@ -47,10 +59,12 @@ describe('length override justification', () => {
   it('parses a passport write and rejects an override without evidence', () => {
     expect(passportWriteSchema.safeParse({ path: '/fort-a', lengthOverride: input() }).success).toBe(true)
     expect(passportWriteSchema.safeParse({ path: '/fort-a', lengthOverride: null }).success).toBe(true)
-    expect(passportWriteSchema.safeParse({
-      path: '/fort-a',
-      lengthOverride: { ceiling: 12_000, queries: ['форт'], sections: ['История'] },
-    }).success).toBe(false)
+    expect(
+      passportWriteSchema.safeParse({
+        path: '/fort-a',
+        lengthOverride: { ceiling: 12_000, queries: ['форт'], sections: ['История'] },
+      }).success,
+    ).toBe(false)
   })
 
   it('keeps setAt when the justification is unchanged', () => {
@@ -85,25 +99,37 @@ describe('long page filler', () => {
     const checks = longPageFiller(text).checks
     expect(checks).toContain('repeated section: Двор снова')
     expect(checks).toContain('repeated paragraph')
-    expect(longPageFiller(`${copied}\n\nЭто уютная атмосфера у форта и больше ничего нового в этом абзаце нет.`).checks).toContain('stop-list: уютная атмосфера')
+    expect(
+      longPageFiller(`${copied}\n\nЭто уютная атмосфера у форта и больше ничего нового в этом абзаце нет.`).checks,
+    ).toContain('stop-list: уютная атмосфера')
   })
 
   it('leaves two different sections alone', () => {
-    const left = Array.from({ length: 8 }, (_, index) => `Ров ${index} сложен из кирпича ${1800 + index} года и выходит к западному валу форта.`).join(' ')
-    const right = Array.from({ length: 8 }, (_, index) => `Маяк ${index} стоит на косе с ${1900 + index} года и светит в сторону моря после заката.`).join(' ')
+    const left = Array.from(
+      { length: 8 },
+      (_, index) => `Ров ${index} сложен из кирпича ${1800 + index} года и выходит к западному валу форта.`,
+    ).join(' ')
+    const right = Array.from(
+      { length: 8 },
+      (_, index) => `Маяк ${index} стоит на косе с ${1900 + index} года и светит в сторону моря после заката.`,
+    ).join(' ')
     expect(longPageFiller(`## Ров\n\n${left}\n\n## Маяк\n\n${right}`).checks).toEqual([])
   })
 })
 
 describe('search totals', () => {
   it('sums impressions for this page and a site-wide target, not another page', () => {
-    const totals = searchTotalsForPath('/fort-a', [
-      { page: '/fort-a', query: 'форт а', impressions: 4, clicks: 1 },
-      { page: 'https://k39.online/fort-a/', query: 'форт а', impressions: 6, clicks: 2 },
-      { page: '/other', query: 'форт а', impressions: 100, clicks: 9 },
-      { page: '', query: 'билеты в форт', impressions: 3, clicks: 1 },
-      { page: '', query: 'погода', impressions: 50, clicks: 5 },
-    ], ['Билеты в форт'])
+    const totals = searchTotalsForPath(
+      '/fort-a',
+      [
+        { page: '/fort-a', query: 'форт а', impressions: 4, clicks: 1 },
+        { page: 'https://k39.online/fort-a/', query: 'форт а', impressions: 6, clicks: 2 },
+        { page: '/other', query: 'форт а', impressions: 100, clicks: 9 },
+        { page: '', query: 'билеты в форт', impressions: 3, clicks: 1 },
+        { page: '', query: 'погода', impressions: 50, clicks: 5 },
+      ],
+      ['Билеты в форт'],
+    )
     expect(totals).toEqual({ queries: ['форт а', 'билеты в форт'], impressions: 13, clicks: 4 })
   })
 })

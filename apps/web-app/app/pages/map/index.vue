@@ -100,7 +100,8 @@ const openError = ref(false)
 const openLoading = computed(() => openNow.value && openKeys.value === null)
 const filterOpen = computed(() => openNow.value && openKeys.value !== null)
 let availabilityRequest = 0
-const isOpen = (point: MapPoint) => openKeys.value?.has(`${point.group === 'food' ? 'venue' : 'place'}:${point.slug}`) ?? false
+const isOpen = (point: MapPoint) =>
+  openKeys.value?.has(`${point.group === 'food' ? 'venue' : 'place'}:${point.slug}`) ?? false
 const panelPoints = computed(() => (filterOpen.value ? page.points.filter(isOpen) : page.points))
 const visible = computed(() => {
   if (!filterOpen.value) {
@@ -122,7 +123,7 @@ async function toggleOpen() {
     snap.value = 'half'
   }
   try {
-    const result = await $fetch<{ items: Array<{ type: string, slug: string }> }>('/api/public/availability', {
+    const result = await $fetch<{ items: Array<{ type: string; slug: string }> }>('/api/public/availability', {
       query: { status: 'open,closing_soon' },
       retry: 0,
       timeout: 10_000,
@@ -149,7 +150,7 @@ const padding = computed<MapFramePadding>(() => {
     top: 16,
     right: 72,
     bottom: sheet + lift,
-    left: mobile.value ? 16 : (collapsed.value ? 16 : panelWidth.value + 8),
+    left: mobile.value ? 16 : collapsed.value ? 16 : panelWidth.value + 8,
   }
 })
 const controlsBottom = computed(() => {
@@ -187,7 +188,11 @@ function chooseCategory(id: BrowseCategory) {
 
 function toggleSight(id: SightId) {
   state.value.category = 'sights'
-  state.value.sights = toggleId(state.value.sights, id, SIGHT_BROWSE.map((item) => item.id)) as SightId[] | null
+  state.value.sights = toggleId(
+    state.value.sights,
+    id,
+    SIGHT_BROWSE.map((item) => item.id),
+  ) as SightId[] | null
 }
 
 function toggleFood(id: string) {
@@ -242,7 +247,7 @@ function onLocated(point: MapOrigin) {
   userOrigin.value = point
 }
 
-function onMetrics(size: { width: number, height: number }) {
+function onMetrics(size: { width: number; height: number }) {
   if (!mobile.value && size.width > 0) {
     panelWidth.value = size.width
   }
@@ -262,20 +267,27 @@ function syncPanelVar() {
 
 let noticeObserver: MutationObserver | undefined
 
-watch(() => route.query, (query) => {
-  if (queriesEqual(mapQueryRecord(state.value, foodAll), query)) {
-    return
-  }
-  state.value = parseMapQuery(query)
-})
+watch(
+  () => route.query,
+  (query) => {
+    if (queriesEqual(mapQueryRecord(state.value, foodAll), query)) {
+      return
+    }
+    state.value = parseMapQuery(query)
+  },
+)
 
-watch(state, (value) => {
-  const next = mapQueryRecord(value, foodAll)
-  if (queriesEqual(next, route.query)) {
-    return
-  }
-  void router.replace({ path: '/map', query: next })
-}, { deep: true })
+watch(
+  state,
+  (value) => {
+    const next = mapQueryRecord(value, foodAll)
+    if (queriesEqual(next, route.query)) {
+      return
+    }
+    void router.replace({ path: '/map', query: next })
+  },
+  { deep: true },
+)
 
 watch([collapsed, mobile, panelWidth], () => syncPanelVar())
 
@@ -315,7 +327,9 @@ onBeforeUnmount(() => {
   border: 0;
 }
 @media (min-width: 900px) {
-  .visitor-map { height: calc(100dvh - var(--site-header-offset)); }
+  .visitor-map {
+    height: calc(100dvh - var(--site-header-offset));
+  }
 }
 </style>
 
@@ -325,8 +339,10 @@ body:has(.visitor-map) {
   height: 100%;
   overflow: clip;
 }
-body:has(.visitor-map) .site-footer { margin-top: 0; }
-body:has([aria-label="Уведомление о cookie"]) .dock {
+body:has(.visitor-map) .site-footer {
+  margin-top: 0;
+}
+body:has([aria-label='Уведомление о cookie']) .dock {
   bottom: var(--cookie-notice-offset, 0px);
 }
 </style>

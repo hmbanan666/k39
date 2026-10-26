@@ -2,25 +2,39 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { saveCollectionDraft } from '../server/utils/mcp/collections'
 
 const { list, draft, store, audit } = vi.hoisted(() => ({
-  list: vi.fn(), draft: vi.fn(), store: vi.fn(), audit: vi.fn(),
+  list: vi.fn(),
+  draft: vi.fn(),
+  store: vi.fn(),
+  audit: vi.fn(),
 }))
 vi.mock('@k39/database', async (original) => ({
-  ...await original<object>(),
+  ...(await original<object>()),
   db: { editor: { listCollections: list, contentDraft: draft, collectionItems: async () => [] } },
 }))
 vi.mock('../server/utils/access', () => ({ contentScope: () => 'draft' }))
 vi.mock('../server/utils/mcp/audit', () => ({ auditMcp: audit }))
 vi.mock('../server/utils/content/save', async (original) => ({
-  ...await original<object>(), savePendingDraftContent: store,
+  ...(await original<object>()),
+  savePendingDraftContent: store,
 }))
 
-const sources = (count: number) => Array.from({ length: count }, (_, index) => ({ title: `Источник ${index}`, url: `https://example.com/${index}` }))
+const sources = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({ title: `Источник ${index}`, url: `https://example.com/${index}` }))
 beforeEach(() => {
   vi.clearAllMocks()
-  list.mockResolvedValue([{
-    id: 'fixture', slug: 'fixture', title: 'Подборка', body: 'Текст.',
-    publicationStatus: 'published', kind: 'classic', month: null, modules: [], sources: sources(29),
-  }])
+  list.mockResolvedValue([
+    {
+      id: 'fixture',
+      slug: 'fixture',
+      title: 'Подборка',
+      body: 'Текст.',
+      publicationStatus: 'published',
+      kind: 'classic',
+      month: null,
+      modules: [],
+      sources: sources(29),
+    },
+  ])
   draft.mockResolvedValue(null)
   store.mockResolvedValue({ row: {}, writingWarnings: [] })
 })
@@ -53,7 +67,10 @@ it('accepts an explicit corrected list and an explicit clear without inheriting 
 })
 
 it('dedupes inherited sources before counting and names malformed inherited rows', async () => {
-  const repeated = Array.from({ length: 29 }, (_, index) => ({ title: `Источник ${index}`, url: index % 2 ? 'http://www.example.com/page/' : 'https://example.com/page' }))
+  const repeated = Array.from({ length: 29 }, (_, index) => ({
+    title: `Источник ${index}`,
+    url: index % 2 ? 'http://www.example.com/page/' : 'https://example.com/page',
+  }))
   draft.mockResolvedValue({ payload: { sources: repeated } })
   await saveCollectionDraft({ id: 'fixture' })
   expect(store.mock.calls[0]?.[0].payload.sources).toEqual([repeated[0]])
@@ -68,14 +85,24 @@ it('dedupes inherited sources before counting and names malformed inherited rows
 
 it('keeps the canonical error for an explicitly supplied invalid list', async () => {
   await expect(saveCollectionDraft({ id: 'fixture', sources: sources(25) })).rejects.toMatchObject({
-    statusCode: 400, statusMessage: 'Не больше 24 источников',
+    statusCode: 400,
+    statusMessage: 'Не больше 24 источников',
   })
   expect(store).not.toHaveBeenCalled()
 })
 
 const malformedSources = [
-  {}, false, 0, '', 'sources', { length: 0 },
-  [null], [false], [0], [[]], [{}],
+  {},
+  false,
+  0,
+  '',
+  'sources',
+  { length: 0 },
+  [null],
+  [false],
+  [0],
+  [[]],
+  [{}],
   [{ title: 1, url: 'https://example.com' }],
   [{ title: false, url: 'https://example.com' }],
   [{ title: null, url: 'https://example.com' }],
@@ -86,18 +113,21 @@ const malformedSources = [
   [{ title: 'Источник', url: {} }],
 ]
 
-it.each(malformedSources.map((rows) => [rows]))('refuses malformed pending sources %j before any write', async (rows) => {
-  const pending = { payload: { sources: rows, body: 'Старая правка.' } }
-  const before = structuredClone(pending)
-  draft.mockResolvedValue(pending)
-  await expect(saveCollectionDraft({ id: 'fixture', body: 'Правка текста.' })).rejects.toMatchObject({
-    statusCode: 400,
-    statusMessage: expect.stringMatching(/ожидающего черновика.*sources/u),
-  })
-  expect(pending).toEqual(before)
-  expect(store).not.toHaveBeenCalled()
-  expect(audit).not.toHaveBeenCalled()
-})
+it.each(malformedSources.map((rows) => [rows]))(
+  'refuses malformed pending sources %j before any write',
+  async (rows) => {
+    const pending = { payload: { sources: rows, body: 'Старая правка.' } }
+    const before = structuredClone(pending)
+    draft.mockResolvedValue(pending)
+    await expect(saveCollectionDraft({ id: 'fixture', body: 'Правка текста.' })).rejects.toMatchObject({
+      statusCode: 400,
+      statusMessage: expect.stringMatching(/ожидающего черновика.*sources/u),
+    })
+    expect(pending).toEqual(before)
+    expect(store).not.toHaveBeenCalled()
+    expect(audit).not.toHaveBeenCalled()
+  },
+)
 
 it.each(malformedSources.map((rows) => [rows]))('refuses malformed live sources %j before any write', async (rows) => {
   const live = { ...(await list())[0], sources: rows }

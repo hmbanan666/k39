@@ -68,15 +68,7 @@ describe('reader navigation', () => {
   })
 
   it('hides the table when the body has fewer than three h2 sections', () => {
-    const two = renderMarkdown([
-      '## Один',
-      '',
-      '### Вложенный',
-      '',
-      '### Ещё',
-      '',
-      '## Два',
-    ].join('\n'))
+    const two = renderMarkdown(['## Один', '', '### Вложенный', '', '### Ещё', '', '## Два'].join('\n'))
     expect(showReaderToc(two)).toBe(false)
     expect(readerOutline(two)).toHaveLength(4)
     expect(showReaderToc('')).toBe(false)
@@ -102,15 +94,25 @@ describe('reader navigation', () => {
       { id: 'kuda-poehat', top: 160 },
     ]
     expect(activeHeadingId(headings, 120)).toBe('')
-    expect(activeHeadingId([
-      { id: 'pogoda', top: 80 },
-      { id: 'veter', top: 240 },
-    ], 120)).toBe('pogoda')
-    expect(activeHeadingId([
-      { id: 'pogoda', top: -40 },
-      { id: 'veter', top: 90 },
-      { id: 'kuda-poehat', top: 400 },
-    ], 120)).toBe('veter')
+    expect(
+      activeHeadingId(
+        [
+          { id: 'pogoda', top: 80 },
+          { id: 'veter', top: 240 },
+        ],
+        120,
+      ),
+    ).toBe('pogoda')
+    expect(
+      activeHeadingId(
+        [
+          { id: 'pogoda', top: -40 },
+          { id: 'veter', top: 90 },
+          { id: 'kuda-poehat', top: 400 },
+        ],
+        120,
+      ),
+    ).toBe('veter')
   })
 
   it('returns a partner only when the flag is on and the offer is complete', () => {

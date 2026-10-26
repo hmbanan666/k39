@@ -37,7 +37,7 @@
 import type { GuideFact } from '~~/shared/place-guide'
 import { tablerIcon } from '~~/shared/icons'
 
-defineProps<{ row: Partial<Pick<GuideFact, 'value' | 'phones' | 'href'>> & { key: string, label: string } }>()
+defineProps<{ row: Partial<Pick<GuideFact, 'value' | 'phones' | 'href'>> & { key: string; label: string } }>()
 </script>
 
 <style scoped>
@@ -48,7 +48,9 @@ defineProps<{ row: Partial<Pick<GuideFact, 'value' | 'phones' | 'href'>> & { key
   padding: 0.8rem 0;
   border-top: 1px dashed var(--color-line);
 }
-.fact:first-of-type { border-top: 0; }
+.fact:first-of-type {
+  border-top: 0;
+}
 .fact svg {
   width: 22px;
   height: 22px;
@@ -56,7 +58,11 @@ defineProps<{ row: Partial<Pick<GuideFact, 'value' | 'phones' | 'href'>> & { key
   color: var(--color-brick);
 }
 .fact p,
-.fact :slotted(p) { margin: 0; font-size: 0.97rem; line-height: 1.45; }
+.fact :slotted(p) {
+  margin: 0;
+  font-size: 0.97rem;
+  line-height: 1.45;
+}
 .fact .label {
   margin-bottom: 0.3rem;
   color: var(--muted);
@@ -64,6 +70,10 @@ defineProps<{ row: Partial<Pick<GuideFact, 'value' | 'phones' | 'href'>> & { key
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.fact :deep(a) { font-weight: 600; }
-.site { overflow-wrap: anywhere; }
+.fact :deep(a) {
+  font-weight: 600;
+}
+.site {
+  overflow-wrap: anywhere;
+}
 </style>

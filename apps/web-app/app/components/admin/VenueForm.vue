@@ -20,9 +20,20 @@
       @back="draftChoice = false"
     />
     <form @submit.prevent="save()">
-      <label>Название <input v-model="form.name" required></label>
-      <label>Адрес страницы <input v-model="form.slug" placeholder="из названия, если пусто"></label>
-      <label>Тип
+      <label
+        >Название
+        <input
+          v-model="form.name"
+          required
+      /></label>
+      <label
+        >Адрес страницы
+        <input
+          v-model="form.slug"
+          placeholder="из названия, если пусто"
+      /></label>
+      <label
+        >Тип
         <select v-model="form.kind">
           <option
             v-for="kind in kinds"
@@ -33,11 +44,10 @@
           </option>
         </select>
       </label>
-      <label>Территория каталога
+      <label
+        >Территория каталога
         <select v-model="form.regionSlug">
-          <option value="">
-            не выбран
-          </option>
+          <option value=""> не выбран </option>
           <option
             v-for="region in regions"
             :key="region.id"
@@ -48,7 +58,8 @@
         </select>
       </label>
       <p>Территория может включать окрестные посёлки. Она не определяет населённый пункт в адресе.</p>
-      <label>Статус
+      <label
+        >Статус
         <select v-model="form.status">
           <option value="draft">черновик</option>
           <option value="published">опубликовано</option>
@@ -56,11 +67,27 @@
           <option value="archived">в архиве</option>
         </select>
       </label>
-      <label>Кухня <input v-model="form.cuisine" placeholder="кофе, пицца"></label>
-      <label>Адрес <input v-model="form.address"></label>
-      <label>Широта <input v-model="form.latitude" inputmode="decimal"></label>
-      <label>Долгота <input v-model="form.longitude" inputmode="decimal"></label>
-      <label>Уровень цен
+      <label
+        >Кухня
+        <input
+          v-model="form.cuisine"
+          placeholder="кофе, пицца"
+      /></label>
+      <label>Адрес <input v-model="form.address" /></label>
+      <label
+        >Широта
+        <input
+          v-model="form.latitude"
+          inputmode="decimal"
+      /></label>
+      <label
+        >Долгота
+        <input
+          v-model="form.longitude"
+          inputmode="decimal"
+      /></label>
+      <label
+        >Уровень цен
         <select v-model="form.priceLevel">
           <option value="">нет</option>
           <option value="1">1</option>
@@ -69,11 +96,17 @@
           <option value="4">4</option>
         </select>
       </label>
-      <label>Средний чек, ₽ <input v-model="form.avgCheck" inputmode="numeric"></label>
-      <label>Телефон <input v-model="form.phone"></label>
-      <label>Сайт <input v-model="form.website"></label>
+      <label
+        >Средний чек, ₽
+        <input
+          v-model="form.avgCheck"
+          inputmode="numeric"
+      /></label>
+      <label>Телефон <input v-model="form.phone" /></label>
+      <label>Сайт <input v-model="form.website" /></label>
       <div class="field">
-        <label>ID сообщества ВКонтакте
+        <label
+          >ID сообщества ВКонтакте
           <input
             v-model="form.vkCommunityId"
             inputmode="numeric"
@@ -81,20 +114,17 @@
             :disabled="vkField.disabled && !form.vkCommunityId"
             :aria-invalid="vkField.error ? 'true' : undefined"
             aria-describedby="vk-community-hint"
-          >
+          />
         </label>
         <p
           id="vk-community-hint"
           class="hint"
         >
-          <template v-if="vkField.disabled">
-            В «Соцсети» нет ссылки ВКонтакте. ID задаётся вместе с ней.
-          </template>
+          <template v-if="vkField.disabled"> В «Соцсети» нет ссылки ВКонтакте. ID задаётся вместе с ней. </template>
           <template v-else>
             Нужен, когда в «Соцсети» ссылка по имени<template v-if="vkField.screenNames.length">
-              ({{ vkField.screenNames.map((name) => `vk.com/${name}`).join(', ') }})
-            </template>,
-            а меню лежит в альбоме, фото, записи или товарах. Число берите из адреса:
+              ({{ vkField.screenNames.map((name) => `vk.com/${name}`).join(', ') }}) </template
+            >, а меню лежит в альбоме, фото, записи или товарах. Число берите из адреса:
             vk.com/album-236300695_311487837 даёт 236300695.
             <template v-if="vkField.impliedIds.length">
               Ссылки в «Соцсети» уже дают ID {{ vkField.impliedIds.join(', ') }}.
@@ -108,7 +138,12 @@
           {{ vkField.error }}
         </p>
       </div>
-      <label>Проверено <input v-model="form.lastVerifiedAt" placeholder="2026-10-13"></label>
+      <label
+        >Проверено
+        <input
+          v-model="form.lastVerifiedAt"
+          placeholder="2026-10-13"
+      /></label>
       <fieldset>
         <legend>Часы</legend>
         <VenueHoursTable
@@ -121,25 +156,27 @@
           v-if="hours.editable"
           class="hint"
         >
-          Источник называет только время открытия? Оставьте закрытие пустым: на сайте будет «с 12:00, закрытие уточняйте».
-          Источник молчит про день? Выберите «часы уточняйте»: на сайте день не станет выходным.
+          Источник называет только время открытия? Оставьте закрытие пустым: на сайте будет «с 12:00, закрытие
+          уточняйте». Источник молчит про день? Выберите «часы уточняйте»: на сайте день не станет выходным.
         </p>
-        <label>Заметка <input
-          v-model="form.hoursNote"
-          :maxlength="HOURS_NOTE_MAX"
-          :disabled="!hours.editable"
-        ></label>
+        <label
+          >Заметка
+          <input
+            v-model="form.hoursNote"
+            :maxlength="HOURS_NOTE_MAX"
+            :disabled="!hours.editable"
+        /></label>
       </fieldset>
-      <label>Описание
+      <label
+        >Описание
         <textarea
           v-model="form.description"
           rows="8"
         />
       </label>
-      <p class="hint">
-        {{ form.description.trim().length }} знаков. Для публикации нужно 300-600.
-      </p>
-      <label>Источники, по строке «название | url»
+      <p class="hint"> {{ form.description.trim().length }} знаков. Для публикации нужно 300-600. </p>
+      <label
+        >Источники, по строке «название | url»
         <textarea
           v-model="form.sources"
           rows="3"
@@ -151,9 +188,7 @@
       >
         {{ error }}
       </p>
-      <button type="submit">
-        Сохранить
-      </button>
+      <button type="submit"> Сохранить </button>
     </form>
     <form
       v-if="venueId"
@@ -166,10 +201,16 @@
         accept="image/*"
         required
         @change="onFile"
-      >
-      <label>Подпись <input v-model="photo.alt" required></label>
-      <label>Автор <input v-model="photo.author"></label>
-      <label>Лицензия
+      />
+      <label
+        >Подпись
+        <input
+          v-model="photo.alt"
+          required
+      /></label>
+      <label>Автор <input v-model="photo.author" /></label>
+      <label
+        >Лицензия
         <select v-model="photo.license">
           <option value="own">своя</option>
           <option value="cc-by">cc-by</option>
@@ -179,10 +220,8 @@
           <option value="permission">разрешение</option>
         </select>
       </label>
-      <label>Источник фото <input v-model="photo.sourceUrl"></label>
-      <button type="submit">
-        Загрузить
-      </button>
+      <label>Источник фото <input v-model="photo.sourceUrl" /></label>
+      <button type="submit"> Загрузить </button>
     </form>
     <AdminPracticalEditor
       v-if="venueId"
@@ -243,14 +282,16 @@ import { vkCommunityField } from '~~/shared/venue-vk-form'
 const props = defineProps<{ venueId?: string }>()
 const requestFetch = useRequestFetch()
 const kinds = ['cafe', 'restaurant', 'coffee', 'bar', 'bakery', 'market', 'fastfood', 'other']
-const regions = ref<Array<{ id: string, slug: string, title: string, shortTitle?: string | null }>>([])
+const regions = ref<Array<{ id: string; slug: string; title: string; shortTitle?: string | null }>>([])
 const error = ref('')
 const pending = ref<PlaceDraftNotice | null>(null)
 const draftBusy = ref(false)
 const draftChoice = ref(false)
 const historyError = ref('')
-const revisions = ref<Array<{ id: string, createdAt: string, actorEmail: string | null, summary: { name: string } }>>([])
-const audits = ref<Array<{ id: string, createdAt: string, action: string, actorEmail: string | null }>>([])
+const revisions = ref<Array<{ id: string; createdAt: string; actorEmail: string | null; summary: { name: string } }>>(
+  [],
+)
+const audits = ref<Array<{ id: string; createdAt: string; action: string; actorEmail: string | null }>>([])
 const file = ref<File | null>(null)
 const photo = reactive({ alt: '', author: '', license: 'own', sourceUrl: '' })
 
@@ -279,10 +320,10 @@ const hours = ref<HoursFormState>(emptyHoursForm())
 // The hours as loaded. A save sends `hours` only when the table or the note differs.
 const savedHours = ref('')
 
-const socials = ref<Array<{ network: string, url: string }>>([])
+const socials = ref<Array<{ network: string; url: string }>>([])
 const vkField = computed(() => vkCommunityField(form.vkCommunityId, socials.value))
 
-const meta = await requestFetch<{ regions: Array<{ id: string, slug: string, title: string }> }>('/api/admin/meta')
+const meta = await requestFetch<{ regions: Array<{ id: string; slug: string; title: string }> }>('/api/admin/meta')
 regions.value = meta.regions
 
 if (props.venueId) {
@@ -301,11 +342,11 @@ if (props.venueId) {
       avgCheck: number | null
       phone: string | null
       website: string | null
-      socials: Array<{ network: string, url: string }>
+      socials: Array<{ network: string; url: string }>
       vkCommunityId: number | null
       lastVerifiedAt: string | null
       description: string
-      sources: Array<{ title: string, url: string }>
+      sources: Array<{ title: string; url: string }>
     }
     hours: HoursFormState
     pending: PlaceDraftNotice | null
@@ -361,7 +402,10 @@ function payload() {
     kind: form.kind,
     regionSlug: form.regionSlug || null,
     status: form.status,
-    cuisineTags: form.cuisine.split(',').map((item) => item.trim()).filter(Boolean),
+    cuisineTags: form.cuisine
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
     address: form.address || null,
     latitude: numberOrNull(form.latitude),
     longitude: numberOrNull(form.longitude),
@@ -392,7 +436,10 @@ async function save(discardDraft = false) {
   }
   try {
     if (props.venueId) {
-      await requestFetch(`/api/admin/venues/${props.venueId}`, { method: 'PATCH', body: { ...payload(), ...(discardDraft ? { pendingDraft: 'discard' } : {}) } })
+      await requestFetch(`/api/admin/venues/${props.venueId}`, {
+        method: 'PATCH',
+        body: { ...payload(), ...(discardDraft ? { pendingDraft: 'discard' } : {}) },
+      })
       pending.value = null
       draftChoice.value = false
       savedHours.value = JSON.stringify(hoursField())
@@ -401,9 +448,10 @@ async function save(discardDraft = false) {
     const created = await requestFetch<{ id: string }>('/api/admin/venues', { method: 'POST', body: payload() })
     await navigateTo(`/admin/venues/${created.id}`)
   } catch (reason) {
-    error.value = (reason as { data?: { message?: string }, statusMessage?: string }).data?.message
-      || (reason as { statusMessage?: string }).statusMessage
-      || 'Не удалось сохранить'
+    error.value =
+      (reason as { data?: { message?: string }; statusMessage?: string }).data?.message ||
+      (reason as { statusMessage?: string }).statusMessage ||
+      'Не удалось сохранить'
   }
 }
 
@@ -414,14 +462,18 @@ async function decideDraft(action: 'apply' | 'discard') {
   draftBusy.value = true
   error.value = ''
   try {
-    const result = await requestFetch<{ ownerConflicts?: string[] }>(`/api/admin/venues/${props.venueId}/draft`, { method: 'POST', body: { action, updatedAt: pending.value?.updatedAt } })
+    const result = await requestFetch<{ ownerConflicts?: string[] }>(`/api/admin/venues/${props.venueId}/draft`, {
+      method: 'POST',
+      body: { action, updatedAt: pending.value?.updatedAt },
+    })
     if (result.ownerConflicts?.length) {
-      error.value = 'Часть правок применена. Более свежие правки владельца сохранены. Обновите страницу, чтобы увидеть оставшийся черновик.'
+      error.value =
+        'Часть правок применена. Более свежие правки владельца сохранены. Обновите страницу, чтобы увидеть оставшийся черновик.'
       return
     }
     window.location.reload()
   } catch (reason) {
-    const data = (reason as { data?: { statusMessage?: string, message?: string } }).data
+    const data = (reason as { data?: { statusMessage?: string; message?: string } }).data
     error.value = data?.statusMessage || data?.message || 'Не удалось обработать черновик'
   } finally {
     draftBusy.value = false
@@ -456,9 +508,10 @@ async function revert(revisionId: string) {
     await requestFetch(`/api/admin/venues/${props.venueId}/revert`, { method: 'POST', body: { revisionId } })
     window.location.reload()
   } catch (reason) {
-    historyError.value = (reason as { data?: { message?: string, statusMessage?: string } }).data?.statusMessage
-      || (reason as { data?: { message?: string } }).data?.message
-      || 'Не удалось вернуть версию'
+    historyError.value =
+      (reason as { data?: { message?: string; statusMessage?: string } }).data?.statusMessage ||
+      (reason as { data?: { message?: string } }).data?.message ||
+      'Не удалось вернуть версию'
   }
 }
 
@@ -483,15 +536,52 @@ async function upload() {
 </script>
 
 <style scoped>
-.admin { max-width: 46rem; margin: 0 auto; padding: 1.5rem; }
-form { display: grid; gap: 0.7rem; }
-label { display: grid; gap: 0.25rem; }
-input, select, textarea { font: inherit; padding: 0.4rem 0.5rem; min-width: 0; }
-.hint { overflow-wrap: anywhere; }
-.hint, .error { margin: 0; }
-.field { display: grid; gap: 0.25rem; }
-input[aria-invalid='true'] { outline: 2px solid var(--color-danger); }
-.error { color: var(--color-danger); }
-.photo, .history { margin-top: 2rem; }
-.history li { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; justify-content: space-between; padding: 0.4rem 0; }
+.admin {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+form {
+  display: grid;
+  gap: 0.7rem;
+}
+label {
+  display: grid;
+  gap: 0.25rem;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  min-width: 0;
+}
+.hint {
+  overflow-wrap: anywhere;
+}
+.hint,
+.error {
+  margin: 0;
+}
+.field {
+  display: grid;
+  gap: 0.25rem;
+}
+input[aria-invalid='true'] {
+  outline: 2px solid var(--color-danger);
+}
+.error {
+  color: var(--color-danger);
+}
+.photo,
+.history {
+  margin-top: 2rem;
+}
+.history li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+}
 </style>

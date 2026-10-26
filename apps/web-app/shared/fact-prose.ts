@@ -50,12 +50,21 @@ function keepSentence(sentence: string, hourLines: string[]) {
  * phone fact. A short sentence that repeats the schedule is dropped too.
  */
 export function publicProse(text: string, hourLines: string[]) {
-  return text.split(/(\n+)/).map((chunk) => {
-    if (/^\n+$/.test(chunk)) {
+  return text
+    .split(/(\n+)/)
+    .map((chunk) => {
+      if (/^\n+$/.test(chunk)) {
+        return chunk
+      }
       return chunk
-    }
-    return chunk.split(/(?<=[.!?])\s+/).filter((sentence) => keepSentence(sentence, hourLines)).join(' ')
-  }).join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+        .split(/(?<=[.!?])\s+/)
+        .filter((sentence) => keepSentence(sentence, hourLines))
+        .join(' ')
+    })
+    .join('')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 /** The same cut, applied to stored venue modules before they render. */
@@ -91,7 +100,7 @@ export function publicVenueModules(modules: unknown, hourLines: string[]) {
         if (!item || typeof item !== 'object') {
           return [item]
         }
-        const entry = item as { question?: unknown, answer?: unknown }
+        const entry = item as { question?: unknown; answer?: unknown }
         if (typeof entry.answer !== 'string') {
           return [item]
         }

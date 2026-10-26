@@ -11,7 +11,8 @@
         <a
           v-if="index < crumbs.length - 1"
           :href="crumb.href"
-        >{{ crumb.name }}</a>
+          >{{ crumb.name }}</a
+        >
         <span v-else>{{ crumb.name }}</span>
       </li>
     </ol>
@@ -36,7 +37,7 @@ ol {
   font-size: var(--step--1);
 }
 li:not(:last-child)::after {
-  content: "/";
+  content: '/';
   margin-left: 0.55rem;
   color: var(--color-line);
 }

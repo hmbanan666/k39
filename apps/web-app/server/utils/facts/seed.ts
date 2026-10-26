@@ -1,7 +1,14 @@
 import type { SourceLink } from '@k39/database'
 import { db, tables, useDatabase } from '@k39/database'
 import { eq } from 'drizzle-orm'
-import { classifyMenuSourceUrl, classifySourceUrl, defaultTtl, FACT_IMPORT_ID, hoursLookEmpty, seedFactDisposition } from '../../../shared/facts'
+import {
+  classifyMenuSourceUrl,
+  classifySourceUrl,
+  defaultTtl,
+  FACT_IMPORT_ID,
+  hoursLookEmpty,
+  seedFactDisposition,
+} from '../../../shared/facts'
 import { readRules } from '../../../shared/schedule'
 import { commitFact } from './commit'
 import { loadPageSnapshots } from './pages'
@@ -19,40 +26,49 @@ export async function applyFactLayer() {
   }
   const database = useDatabase()
   const scheduleRows = await database.select().from(schedules)
-  const placeRows = await database.select({
-    id: places.id,
-    status: places.status,
-    latitude: places.latitude,
-    longitude: places.longitude,
-    lastVerifiedAt: places.lastVerifiedAt,
-    publicationStatus: places.publicationStatus,
-  }).from(places)
-  const venueRows = await database.select({
-    id: venues.id,
-    phone: venues.phone,
-    address: venues.address,
-    latitude: venues.latitude,
-    longitude: venues.longitude,
-    website: venues.website,
-    sources: venues.sources,
-    status: venues.status,
-    lastVerifiedAt: venues.lastVerifiedAt,
-  }).from(venues)
-  const priceRows = await database.select({
-    venueId: venuePrices.venueId,
-    itemId: venuePrices.itemId,
-    itemSlug: priceItems.slug,
-    variant: venuePrices.variant,
-    priceRub: venuePrices.priceRub,
-    checkedAt: venuePrices.checkedAt,
-    sourceKind: venuePrices.sourceKind,
-    sourceTitle: venuePrices.sourceTitle,
-    sourceUrl: venuePrices.sourceUrl,
-  }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id))
+  const placeRows = await database
+    .select({
+      id: places.id,
+      status: places.status,
+      latitude: places.latitude,
+      longitude: places.longitude,
+      lastVerifiedAt: places.lastVerifiedAt,
+      publicationStatus: places.publicationStatus,
+    })
+    .from(places)
+  const venueRows = await database
+    .select({
+      id: venues.id,
+      phone: venues.phone,
+      address: venues.address,
+      latitude: venues.latitude,
+      longitude: venues.longitude,
+      website: venues.website,
+      sources: venues.sources,
+      status: venues.status,
+      lastVerifiedAt: venues.lastVerifiedAt,
+    })
+    .from(venues)
+  const priceRows = await database
+    .select({
+      venueId: venuePrices.venueId,
+      itemId: venuePrices.itemId,
+      itemSlug: priceItems.slug,
+      variant: venuePrices.variant,
+      priceRub: venuePrices.priceRub,
+      checkedAt: venuePrices.checkedAt,
+      sourceKind: venuePrices.sourceKind,
+      sourceTitle: venuePrices.sourceTitle,
+      sourceUrl: venuePrices.sourceUrl,
+    })
+    .from(venuePrices)
+    .innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id))
 
   const placeStatus = new Map(placeRows.map((row) => [row.id, row.publicationStatus]))
   const venueStatus = new Map(venueRows.map((row) => [row.id, row.status]))
-  const scheduleByVenue = new Map(scheduleRows.filter((row) => row.entityType === 'venue').map((row) => [row.entityId, row.sourceUrl]))
+  const scheduleByVenue = new Map(
+    scheduleRows.filter((row) => row.entityType === 'venue').map((row) => [row.entityId, row.sourceUrl]),
+  )
   const priceUrls = new Map<string, string[]>()
   for (const row of priceRows) {
     if (!row.sourceUrl) {
@@ -98,7 +114,8 @@ export async function applyFactLayer() {
   }
 
   for (const row of priceRows) {
-    const sourceKind = row.sourceKind === 'owner' ? 'owner' : (row.sourceUrl ? classifyMenuSourceUrl(row.sourceUrl) : 'official')
+    const sourceKind =
+      row.sourceKind === 'owner' ? 'owner' : row.sourceUrl ? classifyMenuSourceUrl(row.sourceUrl) : 'official'
     await commitFact({
       kind: 'price',
       subjectType: 'venue',
@@ -119,7 +136,12 @@ export async function applyFactLayer() {
   }
 
   for (const venue of venueRows) {
-    const citation = contactCitation(venue.sources, venue.website, scheduleByVenue.get(venue.id) ?? null, priceUrls.get(venue.id) ?? [])
+    const citation = contactCitation(
+      venue.sources,
+      venue.website,
+      scheduleByVenue.get(venue.id) ?? null,
+      priceUrls.get(venue.id) ?? [],
+    )
     const checkedAt = venue.lastVerifiedAt
     const pageStatus = venue.status
     if (venue.phone?.trim()) {
@@ -135,7 +157,14 @@ export async function applyFactLayer() {
       }
     }
     if (venue.latitude != null && venue.longitude != null) {
-      const fact = contactFact('coordinates', venue.id, { latitude: venue.latitude, longitude: venue.longitude }, citation, checkedAt, pageStatus)
+      const fact = contactFact(
+        'coordinates',
+        venue.id,
+        { latitude: venue.latitude, longitude: venue.longitude },
+        citation,
+        checkedAt,
+        pageStatus,
+      )
       if (fact) {
         await commitFact(fact)
       }
@@ -195,7 +224,14 @@ export async function applyFactLayer() {
   return { applied: true }
 }
 
-function contactFact(kind: 'phone' | 'address' | 'coordinates', venueId: string, value: unknown, citation: { title: string, url: string } | null, checkedAt: string | null, pageStatus: string) {
+function contactFact(
+  kind: 'phone' | 'address' | 'coordinates',
+  venueId: string,
+  value: unknown,
+  citation: { title: string; url: string } | null,
+  checkedAt: string | null,
+  pageStatus: string,
+) {
   const sourceKind = !checkedAt || !citation ? 'none' : classifySourceUrl(citation.url)
   if (seedFactDisposition({ sourceKind, empty: false }) === 'skip') {
     return null
@@ -206,12 +242,12 @@ function contactFact(kind: 'phone' | 'address' | 'coordinates', venueId: string,
     subjectId: venueId,
     slot: kind,
     value,
-    sourceUrl: sourceKind === 'none' ? null : citation?.url ?? null,
-    sourceTitle: sourceKind === 'none' ? null : citation?.title ?? null,
+    sourceUrl: sourceKind === 'none' ? null : (citation?.url ?? null),
+    sourceTitle: sourceKind === 'none' ? null : (citation?.title ?? null),
     sourceKind,
     checkedAt,
     ttlDays: defaultTtl(kind),
-    confidence: sourceKind === 'none' ? 'gap' as const : 'stated' as const,
+    confidence: sourceKind === 'none' ? ('gap' as const) : ('stated' as const),
     actor: 'migration' as const,
     refs: [{ consumerType: 'venue', consumerId: venueId, path: `short.${kind}` }],
     pageType: 'venue',

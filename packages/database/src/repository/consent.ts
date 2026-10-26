@@ -18,16 +18,12 @@ export class Consent {
     const [row] = await useDatabase()
       .select()
       .from(userConsents)
-      .where(and(
-        eq(userConsents.userId, userId),
-        eq(userConsents.version, version),
-        isNull(userConsents.withdrawnAt),
-      ))
+      .where(and(eq(userConsents.userId, userId), eq(userConsents.version, version), isNull(userConsents.withdrawnAt)))
       .limit(1)
     return row
   }
 
-  static async record(data: { userId: string, version: string, method: string }): Promise<UserConsent> {
+  static async record(data: { userId: string; version: string; method: string }): Promise<UserConsent> {
     const current = await this.active(data.userId, data.version)
     if (current) {
       return current

@@ -5,10 +5,17 @@
     :class="{ open: status.open, muted: status.muted, compact }"
     role="status"
   >
-    <span class="dot" aria-hidden="true" />
+    <span
+      class="dot"
+      aria-hidden="true"
+    />
     <span class="text">
       {{ status.text }}
-      <span v-if="status.sub" class="sub">{{ status.sub }}</span>
+      <span
+        v-if="status.sub"
+        class="sub"
+        >{{ status.sub }}</span
+      >
     </span>
   </p>
   <p
@@ -52,7 +59,7 @@ const props = defineProps<{
 // Rendered only after hydration too, so cached HTML never carries it.
 const unverified = ref(false)
 const unknown = ref(false)
-const status = ref<{ open: boolean, muted: boolean, text: string, sub?: string } | null>(null)
+const status = ref<{ open: boolean; muted: boolean; text: string; sub?: string } | null>(null)
 let timer: ReturnType<typeof setInterval> | undefined
 
 function update() {
@@ -64,7 +71,11 @@ function update() {
     unknown.value = false
     return
   }
-  if (props.hideStaticStatus && value.status !== 'unknown' && ['appointment', 'always', 'closed'].includes(props.schedule?.rules.mode ?? '')) {
+  if (
+    props.hideStaticStatus &&
+    value.status !== 'unknown' &&
+    ['appointment', 'always', 'closed'].includes(props.schedule?.rules.mode ?? '')
+  ) {
     status.value = null
     unverified.value = false
     unknown.value = false
@@ -72,11 +83,25 @@ function update() {
   }
   // A closure's secondary part («снаружи можно посмотреть») goes on its own muted line.
   const [main, ...rest] = availabilityText(value, now).split(' · ')
-  status.value = value.status === 'unknown'
-    ? value.unknownDay ? { open: false, muted: true, text: availabilityText(value, now) } : null
-    : value.closure
-      ? { open: false, muted: false, text: main ?? '', sub: rest.join(' · ') || undefined }
-      : { open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'), muted: Boolean(value.alwaysOpen) || value.status === 'appointment' || Boolean(value.slot), text: [props.hideRemaining && value.closesAt && (value.minutesLeft ?? 0) < 24 * 60 ? (availabilityText(value, now).split(' · ')[0] ?? '') : availabilityText(value, now), value.status === 'appointment' ? props.schedule?.rules.note : ''].filter(Boolean).join(': ') }
+  status.value =
+    value.status === 'unknown'
+      ? value.unknownDay
+        ? { open: false, muted: true, text: availabilityText(value, now) }
+        : null
+      : value.closure
+        ? { open: false, muted: false, text: main ?? '', sub: rest.join(' · ') || undefined }
+        : {
+            open: !value.alwaysOpen && (value.status === 'open' || value.status === 'closing_soon'),
+            muted: Boolean(value.alwaysOpen) || value.status === 'appointment' || Boolean(value.slot),
+            text: [
+              props.hideRemaining && value.closesAt && (value.minutesLeft ?? 0) < 24 * 60
+                ? (availabilityText(value, now).split(' · ')[0] ?? '')
+                : availabilityText(value, now),
+              value.status === 'appointment' ? props.schedule?.rules.note : '',
+            ]
+              .filter(Boolean)
+              .join(': '),
+          }
   unverified.value = value.status === 'unknown' && Boolean(props.hasHours)
   unknown.value = value.status === 'unknown'
 }
@@ -99,9 +124,18 @@ onBeforeUnmount(() => clearInterval(timer))
   font-size: 0.95rem;
   font-weight: 600;
 }
-.live.open { color: var(--color-success); }
-.live.muted { color: var(--color-muted); font-weight: 400; font-size: 0.9rem; }
-.live.compact { margin: 0.15rem 0 0; font-size: var(--step--1); }
+.live.open {
+  color: var(--color-success);
+}
+.live.muted {
+  color: var(--color-muted);
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+.live.compact {
+  margin: 0.15rem 0 0;
+  font-size: var(--step--1);
+}
 .dot {
   width: 0.55rem;
   height: 0.55rem;

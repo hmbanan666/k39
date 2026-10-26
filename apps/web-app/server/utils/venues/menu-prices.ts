@@ -23,7 +23,7 @@ function pickFact(rows: Array<MenuFact & { path: string }>, item: string, varian
     if (!value || typeof value !== 'object') {
       continue
     }
-    const record = value as { itemSlug?: unknown, variant?: unknown }
+    const record = value as { itemSlug?: unknown; variant?: unknown }
     if (record.itemSlug !== item || record.variant !== variant) {
       continue
     }
@@ -63,7 +63,12 @@ export async function projectMenuPrices<T extends MenuColumn>(rows: T[], now = n
   return rows.flatMap((row) => {
     const link = links.get(row.venueId)
     const venue = link ? { website: link.website, socials: link.socials, vkCommunityId: link.vkCommunityId } : undefined
-    const resolved = resolveMenuPrice(row, pickFact(byVenue.get(row.venueId) ?? [], row.item, row.variant), cutoff, venue)
+    const resolved = resolveMenuPrice(
+      row,
+      pickFact(byVenue.get(row.venueId) ?? [], row.item, row.variant),
+      cutoff,
+      venue,
+    )
     return resolved ? [resolved] : []
   })
 }

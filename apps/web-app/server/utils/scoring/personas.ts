@@ -3,7 +3,7 @@ import { db } from '@k39/database'
 import { orderPagePersonas, personaTitle } from '../../../shared/personas'
 
 /** Adds each page's personas (primary first) to score rows for the admin table. */
-export async function withPagePersonas<T extends { pageType: PageKind, entityId: string }>(rows: T[]) {
+export async function withPagePersonas<T extends { pageType: PageKind; entityId: string }>(rows: T[]) {
   const stored = await db.scoring.listPagePersonas()
   const byPage = new Map<string, typeof stored>()
   for (const row of stored) {

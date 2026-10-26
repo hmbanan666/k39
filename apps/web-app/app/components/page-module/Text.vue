@@ -1,5 +1,8 @@
 <template>
-  <section class="module-text" :class="[module.variant]">
+  <section
+    class="module-text"
+    :class="[module.variant]"
+  >
     <h2 v-if="module.title">
       {{ module.title }}
     </h2>
@@ -25,6 +28,10 @@ h2 {
   font-size: clamp(1.7rem, 1.3rem + 0.8vw, 2rem);
   letter-spacing: -0.02em;
 }
-.prose { max-width: 70ch; }
-.lead .prose { font-size: 1.08rem; }
+.prose {
+  max-width: 70ch;
+}
+.lead .prose {
+  font-size: 1.08rem;
+}
 </style>

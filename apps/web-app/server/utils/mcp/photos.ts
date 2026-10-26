@@ -82,10 +82,15 @@ export async function attachCollectionPhoto(input: {
       focalY: input.focalY,
     })
   }
-  return { collectionId: input.collectionId, mediaId: input.mediaId, isCover: Boolean(row?.isCover), sortOrder: row?.sortOrder }
+  return {
+    collectionId: input.collectionId,
+    mediaId: input.mediaId,
+    isCover: Boolean(row?.isCover),
+    sortOrder: row?.sortOrder,
+  }
 }
 
-export async function detachCollectionPhoto(input: { collectionId: string, mediaId: string }) {
+export async function detachCollectionPhoto(input: { collectionId: string; mediaId: string }) {
   const collection = await db.editor.collectionById(input.collectionId)
   refuseDraftLivePage('remove a photo from a published collection', collection?.publicationStatus)
   const removed = await db.editor.detachCollectionMedia(input.collectionId, input.mediaId)

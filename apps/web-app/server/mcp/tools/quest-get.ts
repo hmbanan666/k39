@@ -5,7 +5,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'quest_get',
-  description: 'Load one quest by id or slug, including drafts, steps, and routeSlug. routeSlug is null when the quest is not linked to a route.',
+  description:
+    'Load one quest by id or slug, including drafts, steps, and routeSlug. routeSlug is null when the quest is not linked to a route.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),

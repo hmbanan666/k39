@@ -15,7 +15,7 @@ import { planVenueSchedule, saveVenueSchedule } from '../venues/write'
 import { ClaimDeliveryError, claimTransportConfig, postClaimCode } from './deliver'
 import { limitClaimStart, limitCodeCheck, limitCodeSend, limitEdit } from './rate'
 
-async function venuePhone(venue: { id: string, phone: string | null, address: string | null, status: string }) {
+async function venuePhone(venue: { id: string; phone: string | null; address: string | null; status: string }) {
   const shown = (await readShownFacts('venue', [venue])).get(venue.id)
   return shownText(shown?.phone, venue.phone)
 }
@@ -25,7 +25,12 @@ function fail(statusCode: number, statusMessage: string): never {
 }
 
 function formProblem(issues: Array<{ message: string }>, fallback: string) {
-  const issue = issues.find((item) => item.message.startsWith('Цену пишите') || item.message.startsWith('Нельзя использовать') || item.message === HOURS_NOTE_TOO_LONG)
+  const issue = issues.find(
+    (item) =>
+      item.message.startsWith('Цену пишите') ||
+      item.message.startsWith('Нельзя использовать') ||
+      item.message === HOURS_NOTE_TOO_LONG,
+  )
   return issue?.message ?? fallback
 }
 
@@ -46,7 +51,7 @@ function transports() {
   }
 }
 
-async function loadClaimable(slugOrId: { slug?: string, id?: string }) {
+async function loadClaimable(slugOrId: { slug?: string; id?: string }) {
   const venue = slugOrId.id
     ? await db.venues.byId(slugOrId.id)
     : slugOrId.slug
@@ -92,10 +97,14 @@ export async function claimPreview(userId: string, slug: string) {
   }
 }
 
-export async function startClaim(userId: string, input: { slug: string, channel: ClaimChannel, evidence?: string | null }, deps?: {
-  fetchImpl?: typeof fetch
-  now?: Date
-}) {
+export async function startClaim(
+  userId: string,
+  input: { slug: string; channel: ClaimChannel; evidence?: string | null },
+  deps?: {
+    fetchImpl?: typeof fetch
+    now?: Date
+  },
+) {
   limitClaimStart(userId, deps?.now?.getTime())
   const venue = await loadClaimable({ slug: input.slug })
   const member = await db.venueClaims.member(venue.id, userId)
@@ -117,9 +126,12 @@ export async function startClaim(userId: string, input: { slug: string, channel:
   if (input.channel === 'email' || input.channel === 'phone') {
     const side = input.channel === 'email' ? plan.email : plan.phone
     if (!side.present) {
-      fail(409, input.channel === 'email'
-        ? 'У заведения нет почты, на которую можно отправить код'
-        : 'У заведения нет телефона, на который можно отправить код')
+      fail(
+        409,
+        input.channel === 'email'
+          ? 'У заведения нет почты, на которую можно отправить код'
+          : 'У заведения нет телефона, на который можно отправить код',
+      )
     }
     if (!side.transport) {
       fail(409, 'Отправка кода пока не подключена. Оставьте заявку на проверку редакцией.')
@@ -187,7 +199,11 @@ export async function startClaim(userId: string, input: { slug: string, channel:
   }
 }
 
-export async function resendClaimCode(userId: string, claimId: string, deps?: { fetchImpl?: typeof fetch, now?: Date }) {
+export async function resendClaimCode(
+  userId: string,
+  claimId: string,
+  deps?: { fetchImpl?: typeof fetch; now?: Date },
+) {
   limitCodeSend(userId, deps?.now?.getTime())
   const claim = await db.venueClaims.byId(claimId)
   if (!claim || claim.userId !== userId) {
@@ -284,7 +300,7 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
   }
   try {
     const result = await db.venues.withLocked(venueId, async (tx, current) => {
-    // Only hours that differ from the schedule count as an owner check.
+      // Only hours that differ from the schedule count as an owner check.
       const schedule = write.hours === undefined ? null : await planVenueSchedule(current, { hours: write.hours }, tx)
       const checkedAt = schedule ? new Date() : null
       if (schedule && checkedAt && !schedule.rules.needsCheck) {
@@ -293,17 +309,27 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
       if (!schedule) {
         delete write.hours
       }
-      const updated = await updateVenueContent(venueId, {
-        ...write,
-        lastVerifiedAt: checkedAt ? checkedAt.toISOString() : undefined,
-      }, userId, contentGate('venue', {
-        description: write.description,
-        modules: write.modules,
-        address: write.address,
-        phone: write.phone,
-        name: write.name,
-        prices: ownerPrices,
-      }, current.status === 'published'), tx)
+      const updated = await updateVenueContent(
+        venueId,
+        {
+          ...write,
+          lastVerifiedAt: checkedAt ? checkedAt.toISOString() : undefined,
+        },
+        userId,
+        contentGate(
+          'venue',
+          {
+            description: write.description,
+            modules: write.modules,
+            address: write.address,
+            phone: write.phone,
+            name: write.name,
+            prices: ownerPrices,
+          },
+          current.status === 'published',
+        ),
+        tx,
+      )
       const saved = updated.row
       if (!saved) {
         fail(404, 'Заведение не найдено')
@@ -322,7 +348,11 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
         await setVenuePrices(venueId, ownerPrices, 'owner', saved.status, tx)
       }
       const fields = [
-        ...Object.keys(write).filter((key) => key !== 'hours' && JSON.stringify(current[key as keyof typeof current]) !== JSON.stringify(saved[key as keyof typeof saved])),
+        ...Object.keys(write).filter(
+          (key) =>
+            key !== 'hours' &&
+            JSON.stringify(current[key as keyof typeof current]) !== JSON.stringify(saved[key as keyof typeof saved]),
+        ),
         ...(schedule ? ['hours', 'lastVerifiedAt'] : []),
         ...(ownerPrices ? ['prices'] : []),
       ]
@@ -345,9 +375,10 @@ export async function saveOwnerVenue(userId: string, venueId: string, body: Reco
 export async function decideClaim(adminId: string, claimId: string, decision: 'approve' | 'reject') {
   const result = await db.venueClaims.decide({ claimId, adminId, decision })
   if (!result.ok) {
-    fail(result.reason === 'taken' ? 409 : 404, result.reason === 'taken'
-      ? 'У этой страницы уже есть владелец'
-      : 'Заявка не найдена')
+    fail(
+      result.reason === 'taken' ? 409 : 404,
+      result.reason === 'taken' ? 'У этой страницы уже есть владелец' : 'Заявка не найдена',
+    )
   }
   return result
 }

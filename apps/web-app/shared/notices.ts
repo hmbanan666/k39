@@ -46,7 +46,8 @@ function squash(value: string) {
 }
 
 function optionalText(max: number, label: string) {
-  return z.string()
+  return z
+    .string()
     .transform(squash)
     .pipe(z.string().max(max, `${label}: не больше ${max} символов`))
     .nullable()
@@ -58,16 +59,43 @@ export const noticeInputSchema = z.object({
   id: z.string().trim().min(1).max(64).optional(),
   kind: z.enum(NOTICE_KINDS),
   from: calendarDate.describe('First day, YYYY-MM-DD.'),
-  to: calendarDate.nullable().optional().describe('Last day the statement is still true, inclusive, YYYY-MM-DD. For an opening on day D, send D minus one. Null only with openEndedReason.'),
-  openEndedReason: optionalText(NOTICE_REASON_MAX, 'Почему нет даты окончания').describe('Required when to is null, forbidden when to is set. What the source withheld. Not rendered.'),
-  text: z.string().transform(squash).pipe(z.string().min(1, 'Нужен текст объявления').max(NOTICE_TEXT_MAX, `Текст: не больше ${NOTICE_TEXT_MAX} символов`)).describe('Russian, 1 to 160 characters. The page prints the dates before it, so no relative words, no clock, no price.'),
-  address: optionalText(NOTICE_ADDRESS_MAX, 'Адрес').describe('Required for relocation, forbidden otherwise. The words the source uses.'),
+  to: calendarDate
+    .nullable()
+    .optional()
+    .describe(
+      'Last day the statement is still true, inclusive, YYYY-MM-DD. For an opening on day D, send D minus one. Null only with openEndedReason.',
+    ),
+  openEndedReason: optionalText(NOTICE_REASON_MAX, 'Почему нет даты окончания').describe(
+    'Required when to is null, forbidden when to is set. What the source withheld. Not rendered.',
+  ),
+  text: z
+    .string()
+    .transform(squash)
+    .pipe(
+      z.string().min(1, 'Нужен текст объявления').max(NOTICE_TEXT_MAX, `Текст: не больше ${NOTICE_TEXT_MAX} символов`),
+    )
+    .describe(
+      'Russian, 1 to 160 characters. The page prints the dates before it, so no relative words, no clock, no price.',
+    ),
+  address: optionalText(NOTICE_ADDRESS_MAX, 'Адрес').describe(
+    'Required for relocation, forbidden otherwise. The words the source uses.',
+  ),
   sourceUrl: z.string().trim().url('Источник: нужна ссылка http(s)'),
-  sourceTitle: z.string().transform(squash).pipe(z.string().min(1, 'Нужно название источника').max(NOTICE_SOURCE_TITLE_MAX, `Название источника: не больше ${NOTICE_SOURCE_TITLE_MAX} символов`)),
+  sourceTitle: z
+    .string()
+    .transform(squash)
+    .pipe(
+      z
+        .string()
+        .min(1, 'Нужно название источника')
+        .max(NOTICE_SOURCE_TITLE_MAX, `Название источника: не больше ${NOTICE_SOURCE_TITLE_MAX} символов`),
+    ),
   checkedAt: calendarDate.describe('The day the source was opened, YYYY-MM-DD. Not later than today in Kaliningrad.'),
 })
 
-export const noticeListSchema = z.array(noticeInputSchema).max(NOTICE_MAX, `Не больше ${NOTICE_MAX} объявлений на странице`)
+export const noticeListSchema = z
+  .array(noticeInputSchema)
+  .max(NOTICE_MAX, `Не больше ${NOTICE_MAX} объявлений на странице`)
 
 export type NoticeInput = z.input<typeof noticeInputSchema>
 
@@ -229,22 +257,26 @@ export function noticeDateLine(row: Pick<NoticeWindow, 'from' | 'to'>) {
  * The rows a page shows on `today`: current ones first, then upcoming ones.
  * Inside each group: closed, renovation, relocation, other, then `from`.
  */
-export function visibleNotices<T extends NoticeWindow & { text: string, address: string | null, sourceUrl: string, sourceTitle: string }>(rows: T[], today: string): PublicNotice[] {
+export function visibleNotices<
+  T extends NoticeWindow & { text: string; address: string | null; sourceUrl: string; sourceTitle: string },
+>(rows: T[], today: string): PublicNotice[] {
   const shown = rows.flatMap((row) => {
     const state = noticeState(row, today)
     if (state === 'expired') {
       return []
     }
-    return [{
-      kind: row.kind,
-      from: row.from,
-      to: row.to,
-      state,
-      text: row.text,
-      address: row.address,
-      sourceUrl: row.sourceUrl,
-      sourceTitle: row.sourceTitle,
-    } satisfies PublicNotice]
+    return [
+      {
+        kind: row.kind,
+        from: row.from,
+        to: row.to,
+        state,
+        text: row.text,
+        address: row.address,
+        sourceUrl: row.sourceUrl,
+        sourceTitle: row.sourceTitle,
+      } satisfies PublicNotice,
+    ]
   })
   return shown.sort((left, right) => {
     if (left.state !== right.state) {
@@ -266,14 +298,18 @@ export function noticeLines(notice: Pick<PublicNotice, 'kind' | 'from' | 'to' | 
 }
 
 /** One line per row for the admin live-beside-draft diff. */
-export function noticeSummary(rows: Array<Pick<NoticeValue, 'kind' | 'from' | 'to' | 'text' | 'address'>> | null | undefined) {
+export function noticeSummary(
+  rows: Array<Pick<NoticeValue, 'kind' | 'from' | 'to' | 'text' | 'address'>> | null | undefined,
+) {
   if (!rows?.length) {
     return 'нет объявлений'
   }
-  return rows.map((row) => {
-    const where = row.kind === 'relocation' && row.address ? ` Адрес: ${row.address}.` : ''
-    return `${NOTICE_KIND_TITLE[row.kind]}, ${noticeDateLine(row)}. ${row.text}${where}`
-  }).join('\n')
+  return rows
+    .map((row) => {
+      const where = row.kind === 'relocation' && row.address ? ` Адрес: ${row.address}.` : ''
+      return `${NOTICE_KIND_TITLE[row.kind]}, ${noticeDateLine(row)}. ${row.text}${where}`
+    })
+    .join('\n')
 }
 
 /** The windows a status line needs: only `closed` overrides it. */
@@ -294,7 +330,11 @@ export type LiveAvailability = Availability & { notice?: NoticeWindow }
  * unverified one, and names no opening. Nothing is written: after `to` the
  * schedule answers again.
  */
-export function withNoticeStatus(value: Availability, rows: NoticeWindow[] | null | undefined, at: Date): LiveAvailability {
+export function withNoticeStatus(
+  value: Availability,
+  rows: NoticeWindow[] | null | undefined,
+  at: Date,
+): LiveAvailability {
   const closed = currentClosedNotice(rows, at)
   if (!closed) {
     return value
@@ -304,7 +344,7 @@ export function withNoticeStatus(value: Availability, rows: NoticeWindow[] | nul
 
 /** Browser status from the schedule plus the page's notices. */
 export function liveStatus(
-  schedule: { rules: ScheduleRules | null, verifiedAt: string | null } | null,
+  schedule: { rules: ScheduleRules | null; verifiedAt: string | null } | null,
   rows: NoticeWindow[] | null | undefined,
   at: Date,
 ): LiveAvailability {
@@ -320,7 +360,7 @@ export function liveStatusText(value: LiveAvailability, at: Date) {
 }
 
 /** True when an open-ended row was checked more than 30 days before `today`. */
-export function noticeNeedsCheck(row: { to: string | null, checkedAt: string }, today: string) {
+export function noticeNeedsCheck(row: { to: string | null; checkedAt: string }, today: string) {
   if (row.to) {
     return false
   }

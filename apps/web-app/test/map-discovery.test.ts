@@ -7,7 +7,7 @@ import { headFromDocument, tuneRobots } from '../shared/seo'
 import { renderPage } from './helpers/render-page'
 
 vi.mock('@k39/database', async (original) => ({
-  ...await original<object>(),
+  ...(await original<object>()),
   isDatabaseReady: () => true,
   db: {
     content: {
@@ -53,8 +53,12 @@ describe('map discovery', () => {
   })
 
   it.each([
-    { c: 'sights' }, { s: 'forty' }, { f: 'kofe' }, { r: 'five-forts' },
-    { q: 'Форт' }, { focus: 'fort-11-denhoff' },
+    { c: 'sights' },
+    { s: 'forty' },
+    { f: 'kofe' },
+    { r: 'five-forts' },
+    { q: 'Форт' },
+    { focus: 'fort-11-denhoff' },
   ])('keeps a filtered map noindex with a clean canonical: %j', async (query) => {
     const { doc } = await loadMap()
     const filtered = tuneRobots(doc, query)

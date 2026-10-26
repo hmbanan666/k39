@@ -26,10 +26,7 @@ export async function adminNoticeTarget(event: H3Event) {
  * draft there too; this local diff is only for a notices-only payload.
  */
 export async function adminNoticesView(target: Awaited<ReturnType<typeof adminNoticeTarget>>) {
-  const [view, draft] = await Promise.all([
-    noticesView(target),
-    db.editor.contentDraft(target.type, target.id),
-  ])
+  const [view, draft] = await Promise.all([noticesView(target), db.editor.contentDraft(target.type, target.id)])
   let pending: PlaceDraftNotice | null = null
   if (draft && target.type === 'venue' && onlyNoticesStaged(draft.payload)) {
     pending = {
@@ -54,7 +51,11 @@ export async function adminNoticesView(target: Awaited<ReturnType<typeof adminNo
  * actions, and discard deletes only that row in one statement, as apply
  * locks only that row.
  */
-export async function decideVenueNoticeDraft(target: Awaited<ReturnType<typeof adminNoticeTarget>>, action: unknown, updatedAt: unknown) {
+export async function decideVenueNoticeDraft(
+  target: Awaited<ReturnType<typeof adminNoticeTarget>>,
+  action: unknown,
+  updatedAt: unknown,
+) {
   if (target.type !== 'venue') {
     throw createError({ statusCode: 400, statusMessage: 'Черновик места применяется в форме места' })
   }
@@ -65,7 +66,10 @@ export async function decideVenueNoticeDraft(target: Awaited<ReturnType<typeof a
   if (!pending) {
     throw createError({ statusCode: 409, statusMessage: 'Черновика нет' })
   }
-  const changed = createError({ statusCode: 409, statusMessage: 'Черновик изменился. Обновите страницу и проверьте его снова.' })
+  const changed = createError({
+    statusCode: 409,
+    statusMessage: 'Черновик изменился. Обновите страницу и проверьте его снова.',
+  })
   if (typeof updatedAt !== 'string' || updatedAt !== pending.updatedAt) {
     throw changed
   }
@@ -75,7 +79,9 @@ export async function decideVenueNoticeDraft(target: Awaited<ReturnType<typeof a
   if (action === 'apply') {
     return withContentScope('editor', () => applyPendingVenue(target.id, pending))
   }
-  const dropped = await db.venues.withLocked(target.id, (tx) => db.editor.deleteContentDraftIfUnchanged(pending.id, updatedAt, tx))
+  const dropped = await db.venues.withLocked(target.id, (tx) =>
+    db.editor.deleteContentDraftIfUnchanged(pending.id, updatedAt, tx),
+  )
   if (!dropped) {
     throw changed
   }

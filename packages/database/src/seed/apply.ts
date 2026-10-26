@@ -2,7 +2,20 @@ import type { AuthorKind, SourceLink, VisitStatus } from '../types/entities'
 import { and, eq } from 'drizzle-orm'
 import { useDatabase } from '../database'
 import { firstPublishedStamp } from '../first-published'
-import { categories, collectionItems, collections, contentImports, places, quests, questSteps, regions, revisions, routePoints, routes, slugRedirects } from '../tables'
+import {
+  categories,
+  collectionItems,
+  collections,
+  contentImports,
+  places,
+  quests,
+  questSteps,
+  regions,
+  revisions,
+  routePoints,
+  routes,
+  slugRedirects,
+} from '../tables'
 import initialContent from './initial-content.json'
 
 export const INITIAL_CONTENT_IMPORT_ID = 'initial-content-v1'
@@ -31,13 +44,20 @@ interface SeedPlace {
 }
 
 interface SeedFile {
-  region: { slug: string, title: string, description: string }
-  categories: Array<{ slug: string, title: string, description: string, body?: string, seoTitle: string, seoDescription: string }>
+  region: { slug: string; title: string; description: string }
+  categories: Array<{
+    slug: string
+    title: string
+    description: string
+    body?: string
+    seoTitle: string
+    seoDescription: string
+  }>
   places: SeedPlace[]
-  route: { slug: string, title: string, summary: string, body: string, placeSlugs: string[] }
-  collection: { slug: string, title: string, summary: string, body: string, placeSlugs: string[] }
-  quest: { slug: string, title: string, summary: string, body: string, placeSlugs: string[] }
-  redirects: Array<{ fromPath: string, toPath: string, statusCode: number }>
+  route: { slug: string; title: string; summary: string; body: string; placeSlugs: string[] }
+  collection: { slug: string; title: string; summary: string; body: string; placeSlugs: string[] }
+  quest: { slug: string; title: string; summary: string; body: string; placeSlugs: string[] }
+  redirects: Array<{ fromPath: string; toPath: string; statusCode: number }>
 }
 
 const seed = initialContent as SeedFile
@@ -112,53 +132,62 @@ async function fillUntouchedDraft(place: SeedPlace, regionId: string, categoryId
   if (!(await isUntouchedEmptyDraft(existing))) {
     return false
   }
-  await db.update(places).set({
-    title: place.title,
-    categoryId,
-    regionId,
-    latitude: place.latitude,
-    longitude: place.longitude,
-    status: place.visitStatus,
-    hours: place.hours,
-    price: place.price,
-    howToGet: place.howToGet,
-    summary: place.summary,
-    body: place.body,
-    sources: place.sources,
-    authorKind: place.authorKind,
-    publicationStatus: 'published',
-    firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
-    updatedAt: new Date().toISOString(),
-  }).where(eq(places.id, existing.id))
+  await db
+    .update(places)
+    .set({
+      title: place.title,
+      categoryId,
+      regionId,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      status: place.visitStatus,
+      hours: place.hours,
+      price: place.price,
+      howToGet: place.howToGet,
+      summary: place.summary,
+      body: place.body,
+      sources: place.sources,
+      authorKind: place.authorKind,
+      publicationStatus: 'published',
+      firstPublishedAt: firstPublishedStamp(existing.firstPublishedAt, 'published'),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(places.id, existing.id))
   return true
 }
 
-async function isUntouchedEmptyDraft(row: { id: string, body: string | null, publicationStatus: string, updatedBy: string | null }) {
+async function isUntouchedEmptyDraft(row: {
+  id: string
+  body: string | null
+  publicationStatus: string
+  updatedBy: string | null
+}) {
   if (row.publicationStatus !== 'draft' || row.updatedBy) {
     return false
   }
   if ((row.body ?? '').trim() !== '') {
     return false
   }
-  const [revision] = await useDatabase().select({ id: revisions.id }).from(revisions).where(and(
-    eq(revisions.entityType, 'place'),
-    eq(revisions.entityId, row.id),
-  )).limit(1)
+  const [revision] = await useDatabase()
+    .select({ id: revisions.id })
+    .from(revisions)
+    .where(and(eq(revisions.entityType, 'place'), eq(revisions.entityId, row.id)))
+    .limit(1)
   return !revision
 }
 
 async function parkLegacyDrafts() {
   for (const legacy of LEGACY_DRAFTS) {
-    const row = legacy.entityType === 'route'
-      ? await legacyRow(routes, legacy.slug)
-      : await legacyRow(quests, legacy.slug)
+    const row =
+      legacy.entityType === 'route' ? await legacyRow(routes, legacy.slug) : await legacyRow(quests, legacy.slug)
     if (!row || row.publicationStatus !== 'draft' || row.updatedBy || (row.body ?? '').trim() !== '') {
       continue
     }
-    const [revision] = await useDatabase().select({ id: revisions.id }).from(revisions).where(and(
-      eq(revisions.entityType, legacy.entityType),
-      eq(revisions.entityId, row.id),
-    )).limit(1)
+    const [revision] = await useDatabase()
+      .select({ id: revisions.id })
+      .from(revisions)
+      .where(and(eq(revisions.entityType, legacy.entityType), eq(revisions.entityId, row.id)))
+      .limit(1)
     if (revision) {
       continue
     }
@@ -167,17 +196,25 @@ async function parkLegacyDrafts() {
 }
 
 async function legacyRow(table: typeof routes | typeof quests, slug: string) {
-  const [row] = await useDatabase().select({
-    id: table.id,
-    body: table.body,
-    publicationStatus: table.publicationStatus,
-    updatedBy: table.updatedBy,
-  }).from(table).where(eq(table.slug, slug)).limit(1)
+  const [row] = await useDatabase()
+    .select({
+      id: table.id,
+      body: table.body,
+      publicationStatus: table.publicationStatus,
+      updatedBy: table.updatedBy,
+    })
+    .from(table)
+    .where(eq(table.slug, slug))
+    .limit(1)
   return row
 }
 
 async function importAlreadyApplied(id: string) {
-  const [row] = await useDatabase().select({ id: contentImports.id }).from(contentImports).where(eq(contentImports.id, id)).limit(1)
+  const [row] = await useDatabase()
+    .select({ id: contentImports.id })
+    .from(contentImports)
+    .where(eq(contentImports.id, id))
+    .limit(1)
   return Boolean(row)
 }
 
@@ -204,15 +241,18 @@ async function insertCategory(data: SeedFile['categories'][number]) {
   if (existing) {
     return existing
   }
-  const [created] = await db.insert(categories).values({
-    slug: data.slug,
-    title: data.title,
-    description: data.description,
-    body: data.body ?? '',
-    seoTitle: data.seoTitle,
-    seoDescription: data.seoDescription,
-    firstPublishedAt: firstPublishedStamp(null, 'published'),
-  }).returning()
+  const [created] = await db
+    .insert(categories)
+    .values({
+      slug: data.slug,
+      title: data.title,
+      description: data.description,
+      body: data.body ?? '',
+      seoTitle: data.seoTitle,
+      seoDescription: data.seoDescription,
+      firstPublishedAt: firstPublishedStamp(null, 'published'),
+    })
+    .returning()
   if (!created) {
     throw new Error(`Category seed failed: ${data.slug}`)
   }
@@ -225,24 +265,27 @@ async function insertPlace(place: SeedPlace, regionId: string, categoryId: strin
   if (existing) {
     return existing
   }
-  const [created] = await db.insert(places).values({
-    slug: place.slug,
-    title: place.title,
-    categoryId,
-    regionId,
-    latitude: place.latitude,
-    longitude: place.longitude,
-    status: place.visitStatus,
-    hours: place.hours,
-    price: place.price,
-    howToGet: place.howToGet,
-    summary: place.summary,
-    body: place.body,
-    sources: place.sources,
-    authorKind: place.authorKind,
-    publicationStatus: 'published',
-    firstPublishedAt: firstPublishedStamp(null, 'published'),
-  }).returning()
+  const [created] = await db
+    .insert(places)
+    .values({
+      slug: place.slug,
+      title: place.title,
+      categoryId,
+      regionId,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      status: place.visitStatus,
+      hours: place.hours,
+      price: place.price,
+      howToGet: place.howToGet,
+      summary: place.summary,
+      body: place.body,
+      sources: place.sources,
+      authorKind: place.authorKind,
+      publicationStatus: 'published',
+      firstPublishedAt: firstPublishedStamp(null, 'published'),
+    })
+    .returning()
   if (!created) {
     throw new Error(`Place seed failed: ${place.slug}`)
   }
@@ -255,15 +298,18 @@ async function insertRoute(data: SeedFile['route'], regionId: string) {
   if (existing) {
     return existing
   }
-  const [created] = await db.insert(routes).values({
-    slug: data.slug,
-    title: data.title,
-    summary: data.summary,
-    body: data.body,
-    regionId,
-    publicationStatus: 'published',
-    firstPublishedAt: firstPublishedStamp(null, 'published'),
-  }).returning()
+  const [created] = await db
+    .insert(routes)
+    .values({
+      slug: data.slug,
+      title: data.title,
+      summary: data.summary,
+      body: data.body,
+      regionId,
+      publicationStatus: 'published',
+      firstPublishedAt: firstPublishedStamp(null, 'published'),
+    })
+    .returning()
   if (!created) {
     throw new Error('Route seed failed')
   }
@@ -276,14 +322,17 @@ async function insertCollection(data: SeedFile['collection']) {
   if (existing) {
     return existing
   }
-  const [created] = await db.insert(collections).values({
-    slug: data.slug,
-    title: data.title,
-    summary: data.summary,
-    body: data.body,
-    publicationStatus: 'published',
-    firstPublishedAt: firstPublishedStamp(null, 'published'),
-  }).returning()
+  const [created] = await db
+    .insert(collections)
+    .values({
+      slug: data.slug,
+      title: data.title,
+      summary: data.summary,
+      body: data.body,
+      publicationStatus: 'published',
+      firstPublishedAt: firstPublishedStamp(null, 'published'),
+    })
+    .returning()
   if (!created) {
     throw new Error('Collection seed failed')
   }
@@ -296,15 +345,18 @@ async function insertQuest(data: SeedFile['quest'], routeId: string) {
   if (existing) {
     return existing
   }
-  const [created] = await db.insert(quests).values({
-    slug: data.slug,
-    title: data.title,
-    summary: data.summary,
-    body: data.body,
-    routeId,
-    publicationStatus: 'published',
-    firstPublishedAt: firstPublishedStamp(null, 'published'),
-  }).returning()
+  const [created] = await db
+    .insert(quests)
+    .values({
+      slug: data.slug,
+      title: data.title,
+      summary: data.summary,
+      body: data.body,
+      routeId,
+      publicationStatus: 'published',
+      firstPublishedAt: firstPublishedStamp(null, 'published'),
+    })
+    .returning()
   if (!created) {
     throw new Error('Quest seed failed')
   }
@@ -337,9 +389,18 @@ async function insertPoints(
   }
 }
 
-async function insertQuestSteps(questId: string, slugs: string[], placeIds: Map<string, string>, allPlaces: SeedPlace[]) {
+async function insertQuestSteps(
+  questId: string,
+  slugs: string[],
+  placeIds: Map<string, string>,
+  allPlaces: SeedPlace[],
+) {
   const db = useDatabase()
-  const [existing] = await db.select({ id: questSteps.id }).from(questSteps).where(eq(questSteps.questId, questId)).limit(1)
+  const [existing] = await db
+    .select({ id: questSteps.id })
+    .from(questSteps)
+    .where(eq(questSteps.questId, questId))
+    .limit(1)
   if (existing) {
     return
   }
@@ -358,7 +419,11 @@ async function insertQuestSteps(questId: string, slugs: string[], placeIds: Map<
 
 async function insertRedirect(fromPath: string, toPath: string, statusCode: number) {
   const db = useDatabase()
-  const [existing] = await db.select({ id: slugRedirects.id }).from(slugRedirects).where(eq(slugRedirects.fromPath, fromPath)).limit(1)
+  const [existing] = await db
+    .select({ id: slugRedirects.id })
+    .from(slugRedirects)
+    .where(eq(slugRedirects.fromPath, fromPath))
+    .limit(1)
   if (existing) {
     return
   }

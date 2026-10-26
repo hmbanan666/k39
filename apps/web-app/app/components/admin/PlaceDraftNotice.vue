@@ -3,9 +3,7 @@
     class="draft"
     :aria-labelledby="headingId"
   >
-    <h2 :id="headingId">
-      Черновик ждёт решения
-    </h2>
+    <h2 :id="headingId"> Черновик ждёт решения </h2>
     <p class="lead">
       {{ lead || (pending.noticesOnly ? NOTICES_LEAD : PAGE_LEAD) }}
     </p>
@@ -26,17 +24,13 @@
       <h3>{{ change.label }}</h3>
       <div class="pair">
         <div>
-          <p class="who">
-            Сейчас
-          </p>
+          <p class="who"> Сейчас </p>
           <p class="sheet live">
             {{ change.live }}
           </p>
         </div>
         <div>
-          <p class="who">
-            В черновике
-          </p>
+          <p class="who"> В черновике </p>
           <p class="sheet next">
             {{ change.draft }}
           </p>
@@ -66,23 +60,28 @@
 <script setup lang="ts">
 import type { PlaceDraftNotice } from '~~/shared/place-draft-diff'
 
-withDefaults(defineProps<{
-  pending: PlaceDraftNotice
-  busy?: boolean
-  headingId?: string
-  /** Replaces the default lead, for a draft whose apply differs from a page publish. */
-  lead?: string
-}>(), {
-  headingId: 'place-draft-title',
-  lead: '',
-})
+withDefaults(
+  defineProps<{
+    pending: PlaceDraftNotice
+    busy?: boolean
+    headingId?: string
+    /** Replaces the default lead, for a draft whose apply differs from a page publish. */
+    lead?: string
+  }>(),
+  {
+    headingId: 'place-draft-title',
+    lead: '',
+  },
+)
 
 const emit = defineEmits<{
   apply: []
   discard: []
 }>()
-const PAGE_LEAD = 'Агент сохранил правки этой страницы. На сайте по-прежнему живой текст. Применить опубликует черновик. Отбросить оставит живую страницу.'
-const NOTICES_LEAD = 'Агент предложил объявления на даты. На сайте по-прежнему живые объявления. Применить запишет их, статус страницы не изменится. Отбросить оставит живые.'
+const PAGE_LEAD =
+  'Агент сохранил правки этой страницы. На сайте по-прежнему живой текст. Применить опубликует черновик. Отбросить оставит живую страницу.'
+const NOTICES_LEAD =
+  'Агент предложил объявления на даты. На сайте по-прежнему живые объявления. Применить запишет их, статус страницы не изменится. Отбросить оставит живые.'
 </script>
 
 <style scoped>

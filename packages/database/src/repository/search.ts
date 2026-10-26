@@ -46,7 +46,10 @@ function day(value: Date) {
 }
 
 function snippet(text: string) {
-  const plain = text.replace(/[#*_>`[\]]/g, '').replace(/\s+/g, ' ').trim()
+  const plain = text
+    .replace(/[#*_>`[\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
   return plain.length > 180 ? `${plain.slice(0, 177).trimEnd()}…` : plain
 }
 
@@ -76,7 +79,11 @@ export class Search {
       order by score desc, title
       limit ${Math.max(1, Math.min(50, limit))}
     `)
-    return rowsOf<SearchResult>(result).map((row) => ({ ...row, score: Number(row.score), snippet: snippet(row.snippet || '') }))
+    return rowsOf<SearchResult>(result).map((row) => ({
+      ...row,
+      score: Number(row.score),
+      snippet: snippet(row.snippet || ''),
+    }))
   }
 
   /** Stores search and click events. A search within 5 minutes of the last one in the session is a refinement. */
@@ -102,22 +109,24 @@ export class Search {
           continue
         }
       }
-      await useDatabase().insert(searchEvents).values({
-        id: createId(),
-        occurredAt: item.occurredAt,
-        searchId: item.searchId,
-        eventType: item.eventType,
-        visitorKey: item.visitorKey,
-        sessionKey: item.sessionKey ?? null,
-        isBot: item.isBot ?? false,
-        surface: item.surface ?? null,
-        query: item.query ?? null,
-        normalized: item.normalized ?? null,
-        resultCount: item.resultCount ?? null,
-        refinedFrom,
-        position: item.position ?? null,
-        resultPath: item.resultPath ?? null,
-      })
+      await useDatabase()
+        .insert(searchEvents)
+        .values({
+          id: createId(),
+          occurredAt: item.occurredAt,
+          searchId: item.searchId,
+          eventType: item.eventType,
+          visitorKey: item.visitorKey,
+          sessionKey: item.sessionKey ?? null,
+          isBot: item.isBot ?? false,
+          surface: item.surface ?? null,
+          query: item.query ?? null,
+          normalized: item.normalized ?? null,
+          resultCount: item.resultCount ?? null,
+          refinedFrom,
+          position: item.position ?? null,
+          resultPath: item.resultPath ?? null,
+        })
       stored += 1
     }
     return stored
@@ -193,17 +202,25 @@ export class Search {
       order by searches desc, s.normalized
       limit ${limit}
     `)
-    return rowsOf<{ query: string, searches: number, sessions: number, avg_results: number, clicked: number, exits: number, external_impressions: number, external_clicks: number }>(result)
-      .map((row) => ({
-        query: row.query,
-        searches: row.searches,
-        sessions: row.sessions,
-        avgResults: Number(row.avg_results ?? 0),
-        clicked: row.clicked,
-        exits: row.exits,
-        externalImpressions: row.external_impressions,
-        externalClicks: row.external_clicks,
-      }))
+    return rowsOf<{
+      query: string
+      searches: number
+      sessions: number
+      avg_results: number
+      clicked: number
+      exits: number
+      external_impressions: number
+      external_clicks: number
+    }>(result).map((row) => ({
+      query: row.query,
+      searches: row.searches,
+      sessions: row.sessions,
+      avgResults: Number(row.avg_results ?? 0),
+      clicked: row.clicked,
+      exits: row.exits,
+      externalImpressions: row.external_impressions,
+      externalClicks: row.external_clicks,
+    }))
   }
 
   /** Queries that found nothing: content opportunities. */
@@ -228,16 +245,23 @@ export class Search {
       order by searches desc, last_seen desc
       limit ${limit}
     `)
-    return rowsOf<{ query: string, searches: number, sessions: number, last_seen: string, refined: number, external_impressions: number, external_position: number | null }>(result)
-      .map((row) => ({
-        query: row.query,
-        searches: row.searches,
-        sessions: row.sessions,
-        lastSeen: new Date(row.last_seen).toISOString(),
-        refined: row.refined,
-        externalImpressions: row.external_impressions,
-        externalPosition: row.external_position == null ? null : Number(row.external_position),
-      }))
+    return rowsOf<{
+      query: string
+      searches: number
+      sessions: number
+      last_seen: string
+      refined: number
+      external_impressions: number
+      external_position: number | null
+    }>(result).map((row) => ({
+      query: row.query,
+      searches: row.searches,
+      sessions: row.sessions,
+      lastSeen: new Date(row.last_seen).toISOString(),
+      refined: row.refined,
+      externalImpressions: row.external_impressions,
+      externalPosition: row.external_position == null ? null : Number(row.external_position),
+    }))
   }
 
   /** Click-through by result position among searches that returned results. */
@@ -258,7 +282,7 @@ export class Search {
       order by position
       limit 20
     `)
-    return rowsOf<{ position: number, clicks: number, searches: number }>(result).map((row) => ({
+    return rowsOf<{ position: number; clicks: number; searches: number }>(result).map((row) => ({
       position: row.position,
       clicks: row.clicks,
       ctr: row.searches ? Math.round((row.clicks / row.searches) * 1000) / 10 : 0,
@@ -274,7 +298,7 @@ export class Search {
       group by 1
       order by searches desc
     `)
-    return rowsOf<{ surface: string, searches: number, clicked: number }>(result)
+    return rowsOf<{ surface: string; searches: number; clicked: number }>(result)
   }
 
   /** How searching sessions arrived: the entry channel and landing page of the ADR 0013 session. */
@@ -289,8 +313,11 @@ export class Search {
       order by sessions desc
       limit 20
     `)
-    return rowsOf<{ channel: string, landing_path: string | null, sessions: number }>(result)
-      .map((row) => ({ channel: row.channel, landingPath: row.landing_path, sessions: row.sessions }))
+    return rowsOf<{ channel: string; landing_path: string | null; sessions: number }>(result).map((row) => ({
+      channel: row.channel,
+      landingPath: row.landing_path,
+      sessions: row.sessions,
+    }))
   }
 
   static async report(from: Date, to: Date) {

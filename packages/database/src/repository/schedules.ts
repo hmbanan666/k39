@@ -44,13 +44,17 @@ export interface AvailabilityEntity {
    * `closed` notices (ADR 0049) whose window holds the Kaliningrad date of
    * `at`. A subject with one is listed even without a schedule.
    */
-  closedNotices: Array<{ kind: 'closed', from: string, to: string | null }>
+  closedNotices: Array<{ kind: 'closed'; from: string; to: string | null }>
 }
 
 // Schedules and their materialised intervals (ADR 0028).
 export class Schedules {
   static async get(entityType: string, entityId: string, tx?: ContentTx) {
-    const [row] = await (tx ?? useDatabase()).select().from(schedules).where(and(eq(schedules.entityType, entityType), eq(schedules.entityId, entityId))).limit(1)
+    const [row] = await (tx ?? useDatabase())
+      .select()
+      .from(schedules)
+      .where(and(eq(schedules.entityType, entityType), eq(schedules.entityId, entityId)))
+      .limit(1)
     return row ?? null
   }
 
@@ -58,7 +62,10 @@ export class Schedules {
     if (!ids.length) {
       return []
     }
-    return useDatabase().select().from(schedules).where(and(eq(schedules.entityType, entityType), inArray(schedules.entityId, ids)))
+    return useDatabase()
+      .select()
+      .from(schedules)
+      .where(and(eq(schedules.entityType, entityType), inArray(schedules.entityId, ids)))
   }
 
   static async list(entityType?: string) {
@@ -69,10 +76,26 @@ export class Schedules {
   /** Writes the rules and replaces the entity's intervals in one transaction. */
   static async save(row: ScheduleRow, intervals: IntervalRow[], outer?: ContentTx) {
     const write = async (tx: ContentTx) => {
-      const [saved] = await tx.insert(schedules).values({ ...row, updatedAt: new Date().toISOString() }).onConflictDoUpdate({ target: [schedules.entityType, schedules.entityId], set: { rules: row.rules, sourceUrl: row.sourceUrl, verifiedAt: row.verifiedAt, updatedAt: new Date().toISOString() } }).returning()
-      await tx.delete(scheduleIntervals).where(and(eq(scheduleIntervals.entityType, row.entityType), eq(scheduleIntervals.entityId, row.entityId)))
+      const [saved] = await tx
+        .insert(schedules)
+        .values({ ...row, updatedAt: new Date().toISOString() })
+        .onConflictDoUpdate({
+          target: [schedules.entityType, schedules.entityId],
+          set: {
+            rules: row.rules,
+            sourceUrl: row.sourceUrl,
+            verifiedAt: row.verifiedAt,
+            updatedAt: new Date().toISOString(),
+          },
+        })
+        .returning()
+      await tx
+        .delete(scheduleIntervals)
+        .where(and(eq(scheduleIntervals.entityType, row.entityType), eq(scheduleIntervals.entityId, row.entityId)))
       if (intervals.length) {
-        await tx.insert(scheduleIntervals).values(intervals.map((item) => ({ entityType: row.entityType, entityId: row.entityId, ...item })))
+        await tx
+          .insert(scheduleIntervals)
+          .values(intervals.map((item) => ({ entityType: row.entityType, entityId: row.entityId, ...item })))
       }
       return saved
     }
@@ -81,7 +104,9 @@ export class Schedules {
 
   static async remove(entityType: string, entityId: string, tx?: ContentTx) {
     const db = tx ?? useDatabase()
-    await db.delete(scheduleIntervals).where(and(eq(scheduleIntervals.entityType, entityType), eq(scheduleIntervals.entityId, entityId)))
+    await db
+      .delete(scheduleIntervals)
+      .where(and(eq(scheduleIntervals.entityType, entityType), eq(scheduleIntervals.entityId, entityId)))
     await db.delete(schedules).where(and(eq(schedules.entityType, entityType), eq(schedules.entityId, entityId)))
   }
 
@@ -89,7 +114,10 @@ export class Schedules {
    * One query for the map and lists: every published place and venue with a
    * schedule, its current interval end (if open at `at`) and next start.
    */
-  static async availability(at: string, options: { types?: string[], bbox?: [number, number, number, number] | null } = {}) {
+  static async availability(
+    at: string,
+    options: { types?: string[]; bbox?: [number, number, number, number] | null } = {},
+  ) {
     const types = options.types?.length ? options.types : ['place', 'venue']
     const box = options.bbox
     const result = await useDatabase().execute(sql`
@@ -129,7 +157,9 @@ export class Schedules {
         and (s.id is not null or closed_notices.rows is not null)
         ${box ? sql`and e.longitude between ${box[0]} and ${box[2]} and e.latitude between ${box[1]} and ${box[3]}` : sql``}
     `)
-    const rows = Array.isArray(result) ? result as Record<string, unknown>[] : (result as unknown as { rows?: Record<string, unknown>[] }).rows ?? []
+    const rows = Array.isArray(result)
+      ? (result as Record<string, unknown>[])
+      : ((result as unknown as { rows?: Record<string, unknown>[] }).rows ?? [])
     return rows.map((row): AvailabilityEntity => ({
       entityType: String(row.entity_type),
       entityId: String(row.entity_id),
@@ -146,16 +176,25 @@ export class Schedules {
       currentStart: row.current_start ? new Date(String(row.current_start)).toISOString() : null,
       currentOpenEnded: row.current_open_ended === true || row.current_open_ended === 't',
       nextStart: row.next_start ? new Date(String(row.next_start)).toISOString() : null,
-      unknownDayRules: row.unknown_day_rules && typeof row.unknown_day_rules === 'object' ? row.unknown_day_rules as Record<string, unknown> : null,
-      closedNotices: Array.isArray(row.closed_notices) ? row.closed_notices as AvailabilityEntity['closedNotices'] : [],
+      unknownDayRules:
+        row.unknown_day_rules && typeof row.unknown_day_rules === 'object'
+          ? (row.unknown_day_rules as Record<string, unknown>)
+          : null,
+      closedNotices: Array.isArray(row.closed_notices)
+        ? (row.closed_notices as AvailabilityEntity['closedNotices'])
+        : [],
     }))
   }
 
   /** Places and venues with hours text, for the one-off migration into schedules. */
   static async migrationSources() {
     const db = useDatabase()
-    const placeRows = await db.select({ id: places.id, slug: places.slug, hours: places.hours, verifiedAt: places.lastVerifiedAt }).from(places)
-    const venueRows = await db.select({ id: venues.id, slug: venues.slug, hours: venues.hours, verifiedAt: venues.lastVerifiedAt }).from(venues)
+    const placeRows = await db
+      .select({ id: places.id, slug: places.slug, hours: places.hours, verifiedAt: places.lastVerifiedAt })
+      .from(places)
+    const venueRows = await db
+      .select({ id: venues.id, slug: venues.slug, hours: venues.hours, verifiedAt: venues.lastVerifiedAt })
+      .from(venues)
     const existing = await db.select({ entityType: schedules.entityType, entityId: schedules.entityId }).from(schedules)
     return { placeRows, venueRows, existing: new Set(existing.map((row) => `${row.entityType}:${row.entityId}`)) }
   }

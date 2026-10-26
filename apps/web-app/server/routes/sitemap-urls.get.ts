@@ -7,7 +7,7 @@ import { latestSitemapLastmod, sitemapLastmod } from '../utils/sitemap-fields'
 import { priceSitemapEntries } from '../utils/venues/price-page'
 import { loadEatNow } from '../utils/venues/public'
 
-function imageEntries(images: Array<{ loc: string, title?: string | null }>) {
+function imageEntries(images: Array<{ loc: string; title?: string | null }>) {
   const listed = images.flatMap((image) => {
     const loc = image.loc.trim()
     if (!loc) {
@@ -19,7 +19,7 @@ function imageEntries(images: Array<{ loc: string, title?: string | null }>) {
   return listed.length ? listed : undefined
 }
 
-function entry(loc: string, lastmod?: string | null, images?: Array<{ loc: string, title?: string | null }>) {
+function entry(loc: string, lastmod?: string | null, images?: Array<{ loc: string; title?: string | null }>) {
   const pictures = images ? imageEntries(images) : undefined
   const stamp = sitemapLastmod(lastmod)
   return {
@@ -37,14 +37,11 @@ export default defineEventHandler(async () => {
   const categories = await db.content.categories()
   const hidden = categories.filter((row) => row.noindex).map((row) => row.slug)
   const updated = new Map(categories.map((row) => [row.slug, row.updatedAt]))
-  const contentLastmod = latestSitemapLastmod([
-    ...rows.places,
-    ...rows.routes,
-    ...rows.collections,
-    ...rows.quests,
-    ...rows.venues,
-    ...rows.venueListings,
-  ].map((row) => row.lastmod))
+  const contentLastmod = latestSitemapLastmod(
+    [...rows.places, ...rows.routes, ...rows.collections, ...rows.quests, ...rows.venues, ...rows.venueListings].map(
+      (row) => row.lastmod,
+    ),
+  )
   const sections = [
     { href: '/marshruty', lastmods: rows.routes.map((row) => row.lastmod) },
     { href: '/podborki', lastmods: rows.collections.map((row) => row.lastmod) },
@@ -57,7 +54,9 @@ export default defineEventHandler(async () => {
   return [
     entry('/', contentLastmod),
     entry('/map'),
-    ...(eatNow && eatNow.towns.length ? [entry(EAT_NOW_PATH, venueLastmod), ...eatNow.towns.map((town) => entry(town.href, venueLastmod))] : []),
+    ...(eatNow && eatNow.towns.length
+      ? [entry(EAT_NOW_PATH, venueLastmod), ...eatNow.towns.map((town) => entry(town.href, venueLastmod))]
+      : []),
     ...LEGAL_LINKS.map((link) => entry(link.href)),
     entry(CONSENT_PATH),
     ...indexableHubs(hidden).map((link) => entry(link.href, updated.get(link.href.slice(1)))),

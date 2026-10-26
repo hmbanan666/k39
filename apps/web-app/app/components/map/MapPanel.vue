@@ -29,13 +29,16 @@
             aria-label="Назад"
             @click="emit('back')"
           >
-            <Icon :name="tablerIcon('back')" size="18" />
+            <Icon
+              :name="tablerIcon('back')"
+              size="18"
+            />
           </button>
           <img
             class="hero"
             :src="card.photo || markerArt(card.marker)"
             alt=""
-          >
+          />
           <div class="copy">
             <p
               v-if="card.partner"
@@ -45,12 +48,8 @@
             </p>
             <h2>{{ card.title }}</h2>
             <p class="meta">
-              {{ card.kindLabel }}<template v-if="card.distance">
-                · {{ card.distance }}
-              </template>
-              <template v-if="card.stale">
-                · Давно не проверяли
-              </template>
+              {{ card.kindLabel }}<template v-if="card.distance"> · {{ card.distance }} </template>
+              <template v-if="card.stale"> · Давно не проверяли </template>
             </p>
             <p
               v-if="card.summary"
@@ -80,7 +79,8 @@
                 :href="`tel:${item.e164}`"
                 data-track="outbound"
                 data-track-name="phone"
-              >{{ item.display }}</a>
+                >{{ item.display }}</a
+              >
             </p>
             <UiButton
               class="open"
@@ -101,22 +101,21 @@
             aria-label="Назад"
             @click="emit('back')"
           >
-            <Icon :name="tablerIcon('back')" size="18" />
+            <Icon
+              :name="tablerIcon('back')"
+              size="18"
+            />
           </button>
           <img
             class="hero"
             :src="routeThumb(opened) || markerArt('forty')"
             alt=""
-          >
+          />
           <div class="copy">
-            <p class="kicker">
-              Маршрут
-            </p>
+            <p class="kicker"> Маршрут </p>
             <h2>{{ opened.title }}</h2>
             <p class="meta">
-              <template v-if="routeDurationLabel(opened)">
-                {{ routeDurationLabel(opened) }} ·
-              </template>
+              <template v-if="routeDurationLabel(opened)"> {{ routeDurationLabel(opened) }} · </template>
               {{ stopsLabel(opened.stops.length) }}
             </p>
             <p
@@ -147,7 +146,7 @@
                 <img
                   :src="stop.photo || markerArt('forty')"
                   alt=""
-                >
+                />
                 <span>
                   <b>{{ stop.title }}</b>
                   <small v-if="stop.summary">{{ stop.summary }}</small>
@@ -165,14 +164,17 @@
             >
               <label class="search">
                 <span class="sr">Название</span>
-                <Icon :name="tablerIcon('search')" size="18" />
+                <Icon
+                  :name="tablerIcon('search')"
+                  size="18"
+                />
                 <input
                   :value="state.q"
                   type="search"
                   placeholder="Название"
                   enterkeyhint="search"
                   @input="onSearch"
-                >
+                />
               </label>
             </form>
             <div class="cats">
@@ -184,7 +186,10 @@
                 :aria-pressed="category === item.id"
                 @click="emit('category', item.id)"
               >
-                <Icon :name="tablerIcon(item.id)" size="16" />
+                <Icon
+                  :name="tablerIcon(item.id)"
+                  size="16"
+                />
                 {{ item.label }}
               </button>
             </div>
@@ -271,7 +276,7 @@
                   <img
                     :src="point.photo || markerArt(point.marker)"
                     alt=""
-                  >
+                  />
                   <span>
                     <b>{{ point.title }}</b>
                     <small>{{ point.kindLabel }}</small>
@@ -293,13 +298,11 @@
                     <img
                       :src="routeThumb(item) || markerArt('forty')"
                       alt=""
-                    >
+                    />
                     <span>
                       <b>{{ item.title }}</b>
                       <small>
-                        <template v-if="routeDurationLabel(item)">
-                          {{ routeDurationLabel(item) }} ·
-                        </template>
+                        <template v-if="routeDurationLabel(item)"> {{ routeDurationLabel(item) }} · </template>
                         {{ stopsLabel(item.stops.length) }}
                       </small>
                     </span>
@@ -332,13 +335,11 @@
                   <img
                     :src="routeThumb(item) || markerArt('forty')"
                     alt=""
-                  >
+                  />
                   <span>
                     <b>{{ item.title }}</b>
                     <small>
-                      <template v-if="routeDurationLabel(item)">
-                        {{ routeDurationLabel(item) }} ·
-                      </template>
+                      <template v-if="routeDurationLabel(item)"> {{ routeDurationLabel(item) }} · </template>
                       {{ stopsLabel(item.stops.length) }}
                     </small>
                   </span>
@@ -371,17 +372,13 @@
                   <img
                     :src="point.photo || markerArt(point.marker)"
                     alt=""
-                  >
+                  />
                   <span>
                     <b>{{ point.title }}</b>
                     <small>
                       {{ point.kindLabel }}
-                      <template v-if="point.partner">
-                        · Партнёр
-                      </template>
-                      <template v-if="away(point)">
-                        · {{ away(point) }}
-                      </template>
+                      <template v-if="point.partner"> · Партнёр </template>
+                      <template v-if="away(point)"> · {{ away(point) }} </template>
                     </small>
                   </span>
                 </button>
@@ -405,7 +402,10 @@
       :aria-label="collapsed ? 'Открыть панель' : 'Свернуть панель'"
       @click="emit('collapse')"
     >
-      <Icon :name="tablerIcon(collapsed ? 'open' : 'close')" size="18" />
+      <Icon
+        :name="tablerIcon(collapsed ? 'open' : 'close')"
+        size="18"
+      />
     </button>
   </div>
 </template>
@@ -462,21 +462,23 @@ const emit = defineEmits<{
   back: []
   collapse: []
   snap: [snap: 'peek' | 'half' | 'full']
-  metrics: [size: { width: number, height: number }]
+  metrics: [size: { width: number; height: number }]
 }>()
 
 const root = ref<HTMLElement | null>(null)
 const counts = computed(() => facetCounts(props.points))
 const category = computed(() => activeCategory(props.state))
 const opened = computed(() => props.routes.find((item) => item.slug === props.state.route) || null)
-const routeStops = computed(() => (opened.value ? routeOverlay(opened.value)?.stops ?? [] : []).map((stop) => ({
-  id: stop.id,
-  n: stop.position,
-  title: stop.title,
-  summary: stop.summary,
-  photo: stop.photo,
-  href: stop.href,
-})))
+const routeStops = computed(() =>
+  (opened.value ? (routeOverlay(opened.value)?.stops ?? []) : []).map((stop) => ({
+    id: stop.id,
+    n: stop.position,
+    title: stop.title,
+    summary: stop.summary,
+    photo: stop.photo,
+    href: stop.href,
+  })),
+)
 
 const categories = computed(() => {
   const totals = browseCounts(props.points, props.routes.length)
@@ -488,13 +490,15 @@ const categories = computed(() => {
   })
 })
 
-const sightChips = computed(() => SIGHT_BROWSE.flatMap((item) => {
-  const count = counts.value.sights[item.id] || 0
-  return count ? [{ ...item, count }] : []
-}))
+const sightChips = computed(() =>
+  SIGHT_BROWSE.flatMap((item) => {
+    const count = counts.value.sights[item.id] || 0
+    return count ? [{ ...item, count }] : []
+  }),
+)
 
 const foodChips = computed(() => {
-  const chips: Array<{ id: string, label: string, count: number }> = FOOD_FILTERS.map((item) => ({
+  const chips: Array<{ id: string; label: string; count: number }> = FOOD_FILTERS.map((item) => ({
     id: item.id,
     label: item.label,
     count: counts.value.food[item.id] || 0,
@@ -518,7 +522,11 @@ const results = computed(() => {
   }
   const query = props.state.q.trim().toLocaleLowerCase('ru')
   if (query) {
-    pool = pool.filter((point) => `${point.title} ${point.kindLabel} ${point.address || ''} ${point.phone || ''} ${formatPhoneDisplay(point.phone)}`.toLocaleLowerCase('ru').includes(query))
+    pool = pool.filter((point) =>
+      `${point.title} ${point.kindLabel} ${point.address || ''} ${point.phone || ''} ${formatPhoneDisplay(point.phone)}`
+        .toLocaleLowerCase('ru')
+        .includes(query),
+    )
   }
   return browseList(pool, props.bounds, focus.value, props.state.q)
 })
@@ -529,7 +537,9 @@ const routeCards = computed(() => {
   if (!box) {
     return { items, nearby: false }
   }
-  const inside = items.filter((item) => item.stops.some((stop) => Number.isFinite(stop.latitude) && inBounds(stop, box)))
+  const inside = items.filter((item) =>
+    item.stops.some((stop) => Number.isFinite(stop.latitude) && inBounds(stop, box)),
+  )
   if (inside.length) {
     return { items: inside, nearby: false }
   }
@@ -569,7 +579,9 @@ const card = computed(() => {
   }
 })
 
-const cardPhones = computed(() => parsePhones(card.value && 'phone' in card.value ? card.value.phone : null).filter((item) => item.e164))
+const cardPhones = computed(() =>
+  parsePhones(card.value && 'phone' in card.value ? card.value.phone : null).filter((item) => item.e164),
+)
 
 const mode = computed(() => {
   if (card.value) {
@@ -595,7 +607,7 @@ function foodOn(id: string) {
   return props.state.food == null || props.state.food.includes(id)
 }
 
-function away(point: { latitude: number, longitude: number }) {
+function away(point: { latitude: number; longitude: number }) {
   const from = focus.value
   if (!from || !Number.isFinite(point.latitude) || !Number.isFinite(point.longitude)) {
     return ''
@@ -655,7 +667,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => observer?.disconnect())
 
-watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
+watch(
+  () => [props.collapsed, props.mobile, props.snap],
+  () => publishSize(),
+)
 </script>
 
 <style scoped>
@@ -678,7 +693,9 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   background: var(--color-surface);
   box-shadow: var(--shadow-map-panel);
 }
-.dock.collapsed { width: 0; }
+.dock.collapsed {
+  width: 0;
+}
 .dock.collapsed .panel {
   width: 0;
   overflow: hidden;
@@ -699,7 +716,10 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   padding: 0.95rem 1rem 0.7rem;
   background: var(--color-surface);
 }
-.search { position: relative; display: block; }
+.search {
+  position: relative;
+  display: block;
+}
 .search input {
   width: 100%;
   min-height: 2.75rem;
@@ -718,14 +738,18 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   height: 1rem;
   color: var(--muted);
 }
-.cats, .subs {
+.cats,
+.subs {
   display: flex;
   gap: 0.4rem;
   margin-top: 0.7rem;
   overflow-x: auto;
 }
-.subs { margin-top: 0.45rem; }
-.cat, .sub {
+.subs {
+  margin-top: 0.45rem;
+}
+.cat,
+.sub {
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -739,14 +763,23 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   font: 600 0.84rem/1 var(--font-body);
   cursor: pointer;
 }
-.cat[aria-pressed="true"], .sub[aria-pressed="true"] {
+.cat[aria-pressed='true'],
+.sub[aria-pressed='true'] {
   border-color: var(--color-brick);
   background: var(--color-brick);
   color: var(--color-paper);
 }
-.sub { min-height: 1.85rem; font-size: 0.78rem; }
-.sub span { opacity: 0.72; font-weight: 500; font-variant-numeric: tabular-nums; }
-.shelf h2, .detail h3 {
+.sub {
+  min-height: 1.85rem;
+  font-size: 0.78rem;
+}
+.sub span {
+  opacity: 0.72;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.shelf h2,
+.detail h3 {
   margin: 0.85rem 0 0.35rem;
   color: var(--muted);
   font-family: var(--font-stamp);
@@ -755,8 +788,16 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.rows, .stops { display: grid; gap: 0.15rem; margin: 0; padding: 0; list-style: none; }
-.rows button, .stops button {
+.rows,
+.stops {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rows button,
+.stops button {
   display: flex;
   gap: 0.7rem;
   align-items: center;
@@ -769,15 +810,21 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   text-align: left;
   cursor: pointer;
 }
-.rows button:hover, .stops button:hover, .rows button[aria-current="true"] { background: var(--color-paper); }
-.rows img, .stops img {
+.rows button:hover,
+.stops button:hover,
+.rows button[aria-current='true'] {
+  background: var(--color-paper);
+}
+.rows img,
+.stops img {
   width: 3.4rem;
   height: 3.4rem;
   object-fit: cover;
   border-radius: 10px;
   background: var(--color-sand);
 }
-.rows b, .stops b {
+.rows b,
+.stops b {
   display: block;
   color: var(--color-ink);
   font-family: var(--font-display);
@@ -785,17 +832,31 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   font-weight: 700;
   line-height: 1.2;
 }
-.rows small, .stops small {
+.rows small,
+.stops small {
   display: block;
   margin-top: 0.12rem;
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.3;
 }
-.note, .empty { margin: 0.2rem 0 0.5rem; color: var(--muted); font-size: 0.88rem; }
-.availability-error { color: var(--color-brick-dark); font-size: 0.88rem; }
-.availability-error p { margin: 0 0 0.5rem; }
-.detail { display: grid; gap: 0.75rem; }
+.note,
+.empty {
+  margin: 0.2rem 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.availability-error {
+  color: var(--color-brick-dark);
+  font-size: 0.88rem;
+}
+.availability-error p {
+  margin: 0 0 0.5rem;
+}
+.detail {
+  display: grid;
+  gap: 0.75rem;
+}
 .back {
   display: grid;
   place-items: center;
@@ -822,7 +883,12 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   font-size: 1.7rem;
   line-height: 1.1;
 }
-.kicker, .meta, .sum, .fact { margin: 0.25rem 0 0; }
+.kicker,
+.meta,
+.sum,
+.fact {
+  margin: 0.25rem 0 0;
+}
 .kicker {
   color: var(--color-sea);
   font-family: var(--font-stamp);
@@ -830,8 +896,16 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.meta, .sum, .fact { color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
-.fact { color: var(--color-ink); }
+.meta,
+.sum,
+.fact {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+.fact {
+  color: var(--color-ink);
+}
 .phones {
   display: flex;
   flex-direction: column;
@@ -839,8 +913,12 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   gap: 0.1rem;
   font-variant-numeric: tabular-nums;
 }
-.phones a { text-decoration: none; }
-.open { margin-top: 0.7rem; }
+.phones a {
+  text-decoration: none;
+}
+.open {
+  margin-top: 0.7rem;
+}
 .partner {
   display: inline-block;
   margin: 0;
@@ -887,7 +965,9 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
   left: 0.75rem;
   margin-left: 0;
 }
-.handle { display: none; }
+.handle {
+  display: none;
+}
 .sr {
   position: absolute;
   width: 1px;
@@ -918,8 +998,12 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
     box-shadow: var(--shadow-map-panel-mobile);
     transition: height var(--duration) var(--ease);
   }
-  .panel.half { height: min(52dvh, 28rem); }
-  .panel.full { height: calc(100% - 4.25rem); }
+  .panel.half {
+    height: min(52dvh, 28rem);
+  }
+  .panel.full {
+    height: calc(100% - 4.25rem);
+  }
   .handle {
     display: grid;
     place-items: center;
@@ -932,15 +1016,19 @@ watch(() => [props.collapsed, props.mobile, props.snap], () => publishSize())
     touch-action: none;
   }
   .handle::before {
-    content: "";
+    content: '';
     width: 2.4rem;
     height: 0.28rem;
     border-radius: 99px;
     background: var(--color-line);
   }
-  .hero { height: 9.5rem; }
+  .hero {
+    height: 9.5rem;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .panel { transition: none; }
+  .panel {
+    transition: none;
+  }
 }
 </style>

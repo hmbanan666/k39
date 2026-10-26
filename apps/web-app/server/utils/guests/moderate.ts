@@ -28,49 +28,56 @@ export async function loadGuestItems(subjectType: 'place' | 'venue', subjectId: 
     if (kind !== 'photo' && !body) {
       return []
     }
-    const license = row.license && LICENSES.has(row.license as MediaLicense) ? row.license as MediaLicense : null
-    const media = kind === 'photo' && row.media_id && row.filename
-      ? {
-          ...toPublicMedia({
-            id: row.media_id,
-            filename: row.filename,
-            alt: row.alt || row.media_alt || '',
-            caption: row.caption,
+    const license = row.license && LICENSES.has(row.license as MediaLicense) ? (row.license as MediaLicense) : null
+    const media =
+      kind === 'photo' && row.media_id && row.filename
+        ? {
+            ...toPublicMedia({
+              id: row.media_id,
+              filename: row.filename,
+              alt: row.alt || row.media_alt || '',
+              caption: row.caption,
+              author: byline,
+              credit: null,
+              license,
+              sourceUrl: null,
+              width: row.width,
+              height: row.height,
+              focalX: row.focal_x,
+              focalY: row.focal_y,
+              dominantColor: row.dominant_color,
+              lqip: row.lqip,
+              variants: Array.isArray(row.variants) ? (row.variants as MediaVariant[]) : [],
+            }),
             author: byline,
-            credit: null,
-            license,
             sourceUrl: null,
-            width: row.width,
-            height: row.height,
-            focalX: row.focal_x,
-            focalY: row.focal_y,
-            dominantColor: row.dominant_color,
-            lqip: row.lqip,
-            variants: Array.isArray(row.variants) ? row.variants as MediaVariant[] : [],
-          }),
-          author: byline,
-          sourceUrl: null,
-          license: 'guest' as const,
-        }
-      : null
+            license: 'guest' as const,
+          }
+        : null
     if (kind === 'photo' && !media) {
       return []
     }
-    return [{
-      id: row.id,
-      kind,
-      byline,
-      acceptedAt,
-      dateLabel: guestDateLabel(acceptedAt),
-      body,
-      parts: guestParts(body),
-      alt: row.alt || row.media_alt || '',
-      media,
-    }]
+    return [
+      {
+        id: row.id,
+        kind,
+        byline,
+        acceptedAt,
+        dateLabel: guestDateLabel(acceptedAt),
+        body,
+        parts: guestParts(body),
+        alt: row.alt || row.media_alt || '',
+        media,
+      },
+    ]
   })
 }
 
-export function attachGuestReviews(itemId: string, items: Array<{ kind: string, byline: string, body: string, acceptedAt: string }>, jsonLd: Array<Record<string, unknown>>) {
+export function attachGuestReviews(
+  itemId: string,
+  items: Array<{ kind: string; byline: string; body: string; acceptedAt: string }>,
+  jsonLd: Array<Record<string, unknown>>,
+) {
   for (const node of guestReviewNodes(itemId, items)) {
     jsonLd.push(node)
   }
@@ -182,7 +189,7 @@ export async function removeGuestMedia(mediaIds: Array<string | null>) {
 
 export async function listPendingGuestRows() {
   const rows = presentPending(await db.guests.pendingQueue())
-  const mediaRows = await db.content.mediaByIds(rows.flatMap((row) => row.mediaId ? [row.mediaId] : []))
+  const mediaRows = await db.content.mediaByIds(rows.flatMap((row) => (row.mediaId ? [row.mediaId] : [])))
   const mediaById = new Map(mediaRows.map((row) => [row.id, row]))
   return rows.map((row) => {
     const media = row.mediaId ? mediaById.get(row.mediaId) : undefined
@@ -196,11 +203,7 @@ export async function listPendingGuestRows() {
 export function presentPending(rows: Awaited<ReturnType<typeof db.guests.pendingQueue>>) {
   return rows.map((row) => {
     const subjectTitle = row.placeTitle || row.venueName || 'Страница'
-    const subjectPath = row.placeSlug
-      ? `/${row.placeSlug}`
-      : row.venueSlug
-        ? `/zavedeniya/${row.venueSlug}`
-        : ''
+    const subjectPath = row.placeSlug ? `/${row.placeSlug}` : row.venueSlug ? `/zavedeniya/${row.venueSlug}` : ''
     return {
       id: row.id,
       createdAt: row.createdAt,

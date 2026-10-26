@@ -13,7 +13,17 @@ import { rulesFromVenueHours, weeklyTableRules } from '../../../../../apps/web-a
 import { hoursPayload } from '../../../../../apps/web-app/shared/venue-hours-form'
 import { useDatabase } from '../../database'
 import { HOURS_NOTE_MAX, HOURS_NOTE_TOO_LONG } from '../../hours-note'
-import { facts, mcpAudits, revisions, schedules, users, venueAudits, venueMembers, venues, verificationQueue } from '../../tables'
+import {
+  facts,
+  mcpAudits,
+  revisions,
+  schedules,
+  users,
+  venueAudits,
+  venueMembers,
+  venues,
+  verificationQueue,
+} from '../../tables'
 import { normalizeHours, parseOsmHours, VenueInputError } from '../../venues'
 import { Schedules } from '../schedules'
 
@@ -33,8 +43,17 @@ const singleSeason: ScheduleRules = {
 const twoSeasons: ScheduleRules = {
   ...singleSeason,
   seasons: [
-    { from: '06-01', to: '08-31', week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '23:00', breaks: [] }] },
-    { week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }, { days: [6], opens: '11:00', closes: '17:00', breaks: [] }] },
+    {
+      from: '06-01',
+      to: '08-31',
+      week: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: '09:00', closes: '23:00', breaks: [] }],
+    },
+    {
+      week: [
+        { days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] },
+        { days: [6], opens: '11:00', closes: '17:00', breaks: [] },
+      ],
+    },
   ],
 }
 
@@ -64,28 +83,42 @@ afterEach(async () => {
 })
 
 async function venueWith(slug: string, rules: ScheduleRules) {
-  const [venue] = await useDatabase().insert(venues).values({
-    slug,
-    name: 'Кафе с расписанием',
-    kind: 'cafe',
-    description: 'Описание до сохранения.',
-    status: 'draft',
-    lastVerifiedAt: '2026-10-01T00:00:00.000Z',
-  }).returning()
+  const [venue] = await useDatabase()
+    .insert(venues)
+    .values({
+      slug,
+      name: 'Кафе с расписанием',
+      kind: 'cafe',
+      description: 'Описание до сохранения.',
+      status: 'draft',
+      lastVerifiedAt: '2026-10-01T00:00:00.000Z',
+    })
+    .returning()
   venueIds.push(venue!.id)
-  await saveSchedule('venue', venue!.id, { rules, sourceUrl: SOURCE, verifiedAt: '2026-10-01' }, { actor: 'editor', pageStatus: 'draft' })
+  await saveSchedule(
+    'venue',
+    venue!.id,
+    { rules, sourceUrl: SOURCE, verifiedAt: '2026-10-01' },
+    { actor: 'editor', pageStatus: 'draft' },
+  )
   return venue!
 }
 
 async function owner(venueId: string) {
-  const [user] = await useDatabase().insert(users).values({ email: `owner-${venueId}@cafe.test`, name: 'Владелец' }).returning()
+  const [user] = await useDatabase()
+    .insert(users)
+    .values({ email: `owner-${venueId}@cafe.test`, name: 'Владелец' })
+    .returning()
   userIds.push(user!.id)
   await useDatabase().insert(venueMembers).values({ venueId, userId: user!.id, role: 'owner' })
   return user!.id
 }
 
 async function editor() {
-  const [user] = await useDatabase().insert(users).values({ email: `editor-${Date.now()}@k39.test`, name: 'Редактор', role: 'editor' }).returning()
+  const [user] = await useDatabase()
+    .insert(users)
+    .values({ email: `editor-${Date.now()}@k39.test`, name: 'Редактор', role: 'editor' })
+    .returning()
   userIds.push(user!.id)
   return user!.id
 }
@@ -96,7 +129,10 @@ async function storedRow(venueId: string) {
 }
 
 /** The `hours` a form sends after the person edits the loaded table. */
-async function formHours(venueId: string, edit: (days: Awaited<ReturnType<typeof loadHoursForm>>['days']) => void = () => {}) {
+async function formHours(
+  venueId: string,
+  edit: (days: Awaited<ReturnType<typeof loadHoursForm>>['days']) => void = () => {},
+) {
   const form = await loadHoursForm('venue', venueId)
   edit(form.days)
   return hoursPayload(form.days, form.note, { openEnded: true })
@@ -123,9 +159,9 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
     expect(form.editable).toBe(false)
     expect(form.lines.length).toBeGreaterThan(0)
     form.days[0]!.opens = '08:00'
-    await expect(updateVenue({ id: venue.id, hours: hoursPayload(form.days, form.note, { openEnded: true }) }, userId))
-      .rejects
-      .toMatchObject({ statusCode: 409 })
+    await expect(
+      updateVenue({ id: venue.id, hours: hoursPayload(form.days, form.note, { openEnded: true }) }, userId),
+    ).rejects.toMatchObject({ statusCode: 409 })
     expect((await storedRow(venue.id)).rules).toEqual(before.rules)
   })
 
@@ -153,13 +189,15 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
     await updateVenue({ id: venue.id, hours }, userId)
     const stored = await loadSchedule('venue', venue.id)
     expect(keptRules(stored!.rules)).toEqual(keptRules(singleSeason))
-    expect(stored!.rules.seasons).toEqual([{
-      week: [
-        { days: [1], opens: '08:00', closes: '19:00', breaks: [] },
-        { days: [2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] },
-      ],
-      unknownDays: [0],
-    }])
+    expect(stored!.rules.seasons).toEqual([
+      {
+        week: [
+          { days: [1], opens: '08:00', closes: '19:00', breaks: [] },
+          { days: [2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] },
+        ],
+        unknownDays: [0],
+      },
+    ])
     expect(stored!.sourceUrl).toBe(SOURCE)
     expect(stored!.verifiedAt).toBe('2026-10-01')
   })
@@ -178,7 +216,9 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
     })
     const stored = await loadSchedule('venue', venue.id)
     expect(keptRules(stored!.rules)).toEqual(keptRules(singleSeason))
-    expect(stored!.rules.seasons[0]!.week).toEqual([{ days: [2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }])
+    expect(stored!.rules.seasons[0]!.week).toEqual([
+      { days: [2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] },
+    ])
     expect(stored!.sourceUrl).toBe(SOURCE)
     expect(stored!.verifiedAt).not.toBe('2026-10-01')
     const [row] = await useDatabase().select().from(venues).where(eq(venues.id, venue.id))
@@ -199,13 +239,21 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
 
   it('fills the forms from schedule_set and ignores the legacy column', async () => {
     const venue = await venueWith('hours-from-schedule', singleSeason)
-    await useDatabase().update(venues).set({
-      hours: { note: 'Старая колонка', days: [{ weekday: 'mon', closed: false, opens: '00:00', closes: '01:00' }] },
-    }).where(eq(venues.id, venue.id))
+    await useDatabase()
+      .update(venues)
+      .set({
+        hours: { note: 'Старая колонка', days: [{ weekday: 'mon', closed: false, opens: '00:00', closes: '01:00' }] },
+      })
+      .where(eq(venues.id, venue.id))
     const form = await loadHoursForm('venue', venue.id)
     expect(form.editable).toBe(true)
     expect(form.note).toBe('Кухня до 18:30')
-    expect(form.days.find((day) => day.weekday === 'mon')).toEqual({ weekday: 'mon', state: 'open', opens: '10:00', closes: '19:00' })
+    expect(form.days.find((day) => day.weekday === 'mon')).toEqual({
+      weekday: 'mon',
+      state: 'open',
+      opens: '10:00',
+      closes: '19:00',
+    })
     expect(form.days.find((day) => day.weekday === 'sun')?.state).toBe('unknown')
     expect(form.days.find((day) => day.weekday === 'sat')?.state).toBe('closed')
   })
@@ -265,7 +313,12 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
   })
 
   it('stores a note without a schedule as hours unknown on every day, never closed', async () => {
-    const created = await createVenue({ name: 'Кафе с заметкой', kind: 'cafe', status: 'draft', hours: { note: 'Работает по сезону' } })
+    const created = await createVenue({
+      name: 'Кафе с заметкой',
+      kind: 'cafe',
+      status: 'draft',
+      hours: { note: 'Работает по сезону' },
+    })
     venueIds.push(created!.id)
     const stored = await loadSchedule('venue', created!.id)
     expect(stored!.rules.seasons).toEqual([{ week: [], unknownDays: [1, 2, 3, 4, 5, 6, 0] }])
@@ -277,10 +330,16 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
     const before = await storedRow(venue.id)
     const long = 'я'.repeat(HOURS_NOTE_MAX + 1)
     expect(() => normalizeHours({ note: long })).toThrow(VenueInputError)
-    await expect(updateVenue({ id: venue.id, hours: { note: long, days: [] } })).rejects.toMatchObject({ statusCode: 400, statusMessage: HOURS_NOTE_TOO_LONG })
+    await expect(updateVenue({ id: venue.id, hours: { note: long, days: [] } })).rejects.toMatchObject({
+      statusCode: 400,
+      statusMessage: HOURS_NOTE_TOO_LONG,
+    })
     await expect(updateVenue({ id: venue.id, hours: { note: long } })).rejects.toMatchObject({ statusCode: 400 })
     const userId = await owner(venue.id)
-    await expect(saveOwnerVenue(userId, venue.id, { hours: { note: long } })).rejects.toMatchObject({ statusCode: 400, statusMessage: HOURS_NOTE_TOO_LONG })
+    await expect(saveOwnerVenue(userId, venue.id, { hours: { note: long } })).rejects.toMatchObject({
+      statusCode: 400,
+      statusMessage: HOURS_NOTE_TOO_LONG,
+    })
     expect((await storedRow(venue.id)).updatedAt).toBe(before.updatedAt)
     const atLimit = normalizeHours({ note: 'я'.repeat(HOURS_NOTE_MAX), days: [] })
     expect(weeklyTableRules(atLimit)?.note).toHaveLength(HOURS_NOTE_MAX)
@@ -294,38 +353,58 @@ describe('venue hours: the schedule is the only source (ADR 0028)', () => {
   })
 
   it('stores OSM hours draft by draft and skips invalid input without stopping', async () => {
-    const [long, open, good] = await useDatabase().insert(venues).values([
-      { slug: 'hours-osm-long', name: 'Длинная заметка', kind: 'cafe', description: '', status: 'draft' },
-      { slug: 'hours-osm-open', name: 'Нет времени', kind: 'cafe', description: '', status: 'draft' },
-      { slug: 'hours-osm-good', name: 'Хорошие часы', kind: 'cafe', description: '', status: 'draft' },
-    ]).returning()
+    const [long, open, good] = await useDatabase()
+      .insert(venues)
+      .values([
+        { slug: 'hours-osm-long', name: 'Длинная заметка', kind: 'cafe', description: '', status: 'draft' },
+        { slug: 'hours-osm-open', name: 'Нет времени', kind: 'cafe', description: '', status: 'draft' },
+        { slug: 'hours-osm-good', name: 'Хорошие часы', kind: 'cafe', description: '', status: 'draft' },
+      ])
+      .returning()
     venueIds.push(long!.id, open!.id, good!.id)
     const skipped = await saveImportedHours([
-      { id: long!.id, draft: { osmId: 'node/1', hours: { note: 'я'.repeat(HOURS_NOTE_MAX + 1), days: [] }, sources: [] } },
+      {
+        id: long!.id,
+        draft: { osmId: 'node/1', hours: { note: 'я'.repeat(HOURS_NOTE_MAX + 1), days: [] }, sources: [] },
+      },
       { id: open!.id, draft: { osmId: 'node/3', hours: { days: [{ weekday: 'mon', closed: false }] }, sources: [] } },
-      { id: good!.id, draft: { osmId: 'node/2', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [{ url: 'https://www.openstreetmap.org/node/2' }] } },
+      {
+        id: good!.id,
+        draft: {
+          osmId: 'node/2',
+          hours: parseOsmHours('Mo-Fr 09:00-18:00'),
+          sources: [{ url: 'https://www.openstreetmap.org/node/2' }],
+        },
+      },
     ])
     expect(skipped).toEqual(['node/1', 'node/3'])
     expect(await loadSchedule('venue', long!.id)).toBeNull()
     expect(await loadSchedule('venue', open!.id)).toBeNull()
     const stored = await loadSchedule('venue', good!.id)
     expect(stored).toMatchObject({ sourceUrl: 'https://www.openstreetmap.org/node/2', verifiedAt: null })
-    expect(stored!.rules.seasons[0]!.week).toEqual([{ days: [1, 2, 3, 4, 5], opens: '09:00', closes: '18:00', breaks: [] }])
+    expect(stored!.rules.seasons[0]!.week).toEqual([
+      { days: [1, 2, 3, 4, 5], opens: '09:00', closes: '18:00', breaks: [] },
+    ])
   })
 
   it('fails the OSM import on a database error instead of skipping the draft', async () => {
-    const [first, second] = await useDatabase().insert(venues).values([
-      { slug: 'hours-osm-db-a', name: 'Сбой базы', kind: 'cafe', description: '', status: 'draft' },
-      { slug: 'hours-osm-db-b', name: 'После сбоя', kind: 'cafe', description: '', status: 'draft' },
-    ]).returning()
+    const [first, second] = await useDatabase()
+      .insert(venues)
+      .values([
+        { slug: 'hours-osm-db-a', name: 'Сбой базы', kind: 'cafe', description: '', status: 'draft' },
+        { slug: 'hours-osm-db-b', name: 'После сбоя', kind: 'cafe', description: '', status: 'draft' },
+      ])
+      .returning()
     venueIds.push(first!.id, second!.id)
     const outage = new Error('connection terminated')
     const save = vi.spyOn(Schedules, 'save').mockRejectedValueOnce(outage)
     try {
-      await expect(saveImportedHours([
-        { id: first!.id, draft: { osmId: 'node/4', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [] } },
-        { id: second!.id, draft: { osmId: 'node/5', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [] } },
-      ])).rejects.toBe(outage)
+      await expect(
+        saveImportedHours([
+          { id: first!.id, draft: { osmId: 'node/4', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [] } },
+          { id: second!.id, draft: { osmId: 'node/5', hours: parseOsmHours('Mo-Fr 09:00-18:00'), sources: [] } },
+        ]),
+      ).rejects.toBe(outage)
       expect(save).toHaveBeenCalledTimes(1)
     } finally {
       save.mockRestore()

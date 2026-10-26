@@ -71,7 +71,9 @@ function checkAdrs() {
 
 function checkMigrations() {
   const dir = join(root, 'packages/database/migrations')
-  const sql = readdirSync(dir).filter((name) => /^\d{4}_.+\.sql$/.test(name)).sort()
+  const sql = readdirSync(dir)
+    .filter((name) => /^\d{4}_.+\.sql$/.test(name))
+    .sort()
   const prefixes = new Map()
   for (const name of sql) {
     const prefix = name.slice(0, 4)
@@ -208,11 +210,15 @@ export function journalOrderErrors(journal) {
     if (position === 0) {
       const holder = byIdx.get(0)
       const expected = holder && holder !== name ? holder : 'idx 0'
-      errors.push(`migration journal idx is not 0..${last} in file order: ${name} (idx ${idxLabel}) is first, expected ${expected}`)
+      errors.push(
+        `migration journal idx is not 0..${last} in file order: ${name} (idx ${idxLabel}) is first, expected ${expected}`,
+      )
       continue
     }
     const previous = entries[position - 1]
-    errors.push(`migration journal idx is not 0..${last} in file order: ${name} (idx ${idxLabel}) follows ${entryName(previous, position - 1)} (idx ${previous?.idx})`)
+    errors.push(
+      `migration journal idx is not 0..${last} in file order: ${name} (idx ${idxLabel}) follows ${entryName(previous, position - 1)} (idx ${previous?.idx})`,
+    )
   }
 
   for (let position = 1; position < entries.length; position++) {
@@ -223,17 +229,23 @@ export function journalOrderErrors(journal) {
     const before = previous?.when
     const after = entry?.when
     if (typeof before !== 'number' || typeof after !== 'number' || !(after > before)) {
-      errors.push(`migration journal when is not strictly increasing: ${name} (${whenLabel(after)}) follows ${previousName} (${whenLabel(before)})`)
+      errors.push(
+        `migration journal when is not strictly increasing: ${name} (${whenLabel(after)}) follows ${previousName} (${whenLabel(before)})`,
+      )
     }
     const previousPrefix = tagPrefix(previous?.tag)
     const prefix = tagPrefix(entry?.tag)
     if (previousPrefix == null || prefix == null || !(prefix > previousPrefix)) {
-      errors.push(`migration journal tag prefix does not increase with idx: ${name} (${prefixLabel(entry?.tag, prefix)}) follows ${previousName} (${prefixLabel(previous?.tag, previousPrefix)})`)
+      errors.push(
+        `migration journal tag prefix does not increase with idx: ${name} (${prefixLabel(entry?.tag, prefix)}) follows ${previousName} (${prefixLabel(previous?.tag, previousPrefix)})`,
+      )
     }
   }
 
   if (entries.length === 1 && tagPrefix(entries[0]?.tag) == null) {
-    errors.push(`migration journal tag prefix does not increase with idx: ${entryName(entries[0], 0)} (${prefixLabel(entries[0]?.tag, null)})`)
+    errors.push(
+      `migration journal tag prefix does not increase with idx: ${entryName(entries[0], 0)} (${prefixLabel(entries[0]?.tag, null)})`,
+    )
   }
   return errors
 }
@@ -276,7 +288,9 @@ if (isDirectRun()) {
   checkAdrs()
   checkMigrations()
   checkTrailers()
-  const files = execSync('git ls-files --cached --others --exclude-standard -z', { encoding: 'utf8' }).split('\0').filter(Boolean)
+  const files = execSync('git ls-files --cached --others --exclude-standard -z', { encoding: 'utf8' })
+    .split('\0')
+    .filter(Boolean)
   errors.push(...skillErrors(root, files))
 
   if (errors.length) {

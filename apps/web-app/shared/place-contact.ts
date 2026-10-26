@@ -8,7 +8,7 @@ import { isPlaceSchemaType, PLACE_SCHEMA_TYPES } from './seo'
 
 export const PLACE_WEBSITE_MAX = 300
 
-export type Checked<T> = { ok: true, value: T } | { ok: false, message: string }
+export type Checked<T> = { ok: true; value: T } | { ok: false; message: string }
 
 function cleaned(value: string | null | undefined) {
   const text = value?.replace(/\s+/g, ' ').trim()
@@ -67,7 +67,11 @@ export function checkPlacePhoneSource(value: string | null | undefined, website:
   if (kind === 'social') {
     return { ok: false, message: 'У места есть сайт: телефон берите со страницы этого сайта, не из соцсети' }
   }
-  return { ok: false, message: 'Телефон места берите только с официального сайта или официальной страницы места, не с карты, агрегатора или сервиса Яндекса и Google' }
+  return {
+    ok: false,
+    message:
+      'Телефон места берите только с официального сайта или официальной страницы места, не с карты, агрегатора или сервиса Яндекса и Google',
+  }
 }
 
 export function checkPlaceSchemaType(value: string | null | undefined): Checked<string | null> {

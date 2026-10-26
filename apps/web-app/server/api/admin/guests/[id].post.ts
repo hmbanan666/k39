@@ -4,7 +4,7 @@ import { moderateGuest } from '../../../utils/guests/moderate'
 export default defineEventHandler(async (event) => {
   const editor = await requireEditor(event)
   const id = getRouterParam(event, 'id') || ''
-  const body = await readJsonBody<{ decision?: string, note?: string }>(event)
+  const body = await readJsonBody<{ decision?: string; note?: string }>(event)
   if (body.decision === 'accept' || body.decision === 'reject' || body.decision === 'dispute') {
     return moderateGuest({
       id,

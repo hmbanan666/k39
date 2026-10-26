@@ -2,8 +2,9 @@
   <section class="notices">
     <h2>Объявления на даты</h2>
     <p class="live-note">
-      Переезд на другой адрес, закрытие или реконструкция с точными датами. Строки сохраняются отдельно от формы и сразу видны на странице.
-      Расписание, адрес и точка на карте не меняются. Строка скрывается сама на следующий день после даты «по».
+      Переезд на другой адрес, закрытие или реконструкция с точными датами. Строки сохраняются отдельно от формы и сразу
+      видны на странице. Расписание, адрес и точка на карте не меняются. Строка скрывается сама на следующий день после
+      даты «по».
     </p>
     <AdminPlaceDraftNotice
       v-if="pending"
@@ -17,7 +18,8 @@
       v-else-if="hasDraft"
       class="muted"
     >
-      У страницы есть черновик. Его объявления показаны в блоке черновика выше. Сохранение здесь сначала спросит, отбросить ли черновик.
+      У страницы есть черновик. Его объявления показаны в блоке черновика выше. Сохранение здесь сначала спросит,
+      отбросить ли черновик.
     </p>
     <p
       v-if="!rows.length"
@@ -36,11 +38,13 @@
           v-if="row.state"
           class="state"
           :class="`state-${row.state}`"
-        >{{ STATE_LABEL[row.state] }}</span>
+          >{{ STATE_LABEL[row.state] }}</span
+        >
         <span
           v-if="row.needsCheck"
           class="state state-check"
-        >пора перепроверить</span>
+          >пора перепроверить</span
+        >
       </legend>
       <div class="grid">
         <UiField label="Что">
@@ -182,7 +186,7 @@ interface EditRow {
   needsCheck?: boolean
 }
 
-const props = defineProps<{ subjectType: NoticeSubjectType, subjectId: string }>()
+const props = defineProps<{ subjectType: NoticeSubjectType; subjectId: string }>()
 const requestFetch = useRequestFetch()
 const base = `/api/admin/notices/${props.subjectType}/${props.subjectId}`
 const kindOptions = NOTICE_KINDS.map((value) => ({ value, label: NOTICE_KIND_TITLE[value] }))
@@ -288,19 +292,75 @@ async function decide(action: 'apply' | 'discard') {
 </script>
 
 <style scoped>
-.notices { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--color-line); }
-.notices h2 { margin: 0.4rem 0 0; }
-.live-note { margin: 0; padding: 0.6rem 0.8rem; border-left: 3px solid var(--color-brick); background: var(--color-surface); }
-.muted { color: var(--muted); }
-.row { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0.7rem 0.8rem; border: 1px solid var(--color-line); border-radius: 8px; }
-.row legend { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; padding: 0 0.3rem; font-weight: 700; }
-.state { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--color-sea-light); color: var(--color-sea); font-size: 0.8rem; font-weight: 600; }
-.state-current { background: var(--color-amber-soft); color: var(--color-partner); }
-.state-expired { background: var(--color-sand); color: var(--color-muted); }
-.state-check { background: var(--color-amber-soft); color: var(--color-warn); }
-.grid { display: grid; gap: 0.5rem; }
-.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-line);
+}
+.notices h2 {
+  margin: 0.4rem 0 0;
+}
+.live-note {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--color-brick);
+  background: var(--color-surface);
+}
+.muted {
+  color: var(--muted);
+}
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+}
+.row legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0 0.3rem;
+  font-weight: 700;
+}
+.state {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-sea-light);
+  color: var(--color-sea);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.state-current {
+  background: var(--color-amber-soft);
+  color: var(--color-partner);
+}
+.state-expired {
+  background: var(--color-sand);
+  color: var(--color-muted);
+}
+.state-check {
+  background: var(--color-amber-soft);
+  color: var(--color-warn);
+}
+.grid {
+  display: grid;
+  gap: 0.5rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 @media (min-width: 720px) {
-  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 </style>

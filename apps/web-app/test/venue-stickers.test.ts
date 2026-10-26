@@ -19,17 +19,20 @@ describe('venue module stickers', () => {
   it('shows the heart sticker whenever the audience module renders', () => {
     const wrapper = mount(VenueModules, {
       props: {
-        blocks: [{
-          type: 'audience',
-          id: 'komu-podoydet',
-          title: 'Кому подойдёт',
-          items: [{ who: 'Семья', icon: 'family', html: '<p>С детьми.</p>' }],
-        }, {
-          type: 'tips',
-          id: 'sovety',
-          title: 'Советы',
-          items: ['Берите стол у окна.'],
-        }],
+        blocks: [
+          {
+            type: 'audience',
+            id: 'komu-podoydet',
+            title: 'Кому подойдёт',
+            items: [{ who: 'Семья', icon: 'family', html: '<p>С детьми.</p>' }],
+          },
+          {
+            type: 'tips',
+            id: 'sovety',
+            title: 'Советы',
+            items: ['Берите стол у окна.'],
+          },
+        ],
       },
       global: { stubs },
     })

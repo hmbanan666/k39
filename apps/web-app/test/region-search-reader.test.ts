@@ -3,10 +3,10 @@ import { beforeEach, expect, it, vi } from 'vitest'
 
 const { query, listRegions, getQuery } = vi.hoisted(() => ({ query: vi.fn(), listRegions: vi.fn(), getQuery: vi.fn() }))
 vi.mock('@k39/database', async (original) => ({
-  ...await original<object>(),
+  ...(await original<object>()),
   db: { search: { query }, editor: { listRegions } },
 }))
-vi.mock('h3', async (original) => ({ ...await original<object>(), getQuery }))
+vi.mock('h3', async (original) => ({ ...(await original<object>()), getQuery }))
 const handler = (await import('../server/api/search/index.get')).default
 
 beforeEach(() => {
@@ -16,7 +16,17 @@ beforeEach(() => {
 })
 
 it('presents ranked reader results as areas without changing paths, kinds, scores or search inputs', async () => {
-  const rows = [{ kind: 'city', path: '/gde-poest-seychas/zelenogradsk', title: 'Зеленоградск', label: 'Город', region: '', snippet: '', score: 3 }]
+  const rows = [
+    {
+      kind: 'city',
+      path: '/gde-poest-seychas/zelenogradsk',
+      title: 'Зеленоградск',
+      label: 'Город',
+      region: '',
+      snippet: '',
+      score: 3,
+    },
+  ]
   query.mockResolvedValue(rows)
   listRegions.mockResolvedValue([{ slug: 'zelenogradsk', title: 'Историческое название', shortTitle: 'Зеленоградск' }])
   const result = await handler({} as H3Event)

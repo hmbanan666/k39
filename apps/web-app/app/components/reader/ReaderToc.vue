@@ -30,7 +30,8 @@
         <a
           :href="`#${item.id}`"
           :aria-current="item.id === activeId ? 'location' : undefined"
-        >{{ item.text }}</a>
+          >{{ item.text }}</a
+        >
         <ol
           v-if="item.children.length"
           class="sub"
@@ -42,7 +43,8 @@
             <a
               :href="`#${child.id}`"
               :aria-current="child.id === activeId ? 'location' : undefined"
-            >{{ child.text }}</a>
+              >{{ child.text }}</a
+            >
           </li>
         </ol>
       </li>
@@ -53,17 +55,20 @@
 <script setup lang="ts">
 import type { ReaderTocItem } from '~~/shared/reader-nav'
 
-withDefaults(defineProps<{
-  items: ReaderTocItem[]
-  activeId?: string
-  showLabel?: boolean
-  /** Reading progress 0..1 for the rail; null hides the bar. */
-  progress?: number | null
-}>(), {
-  activeId: '',
-  showLabel: false,
-  progress: null,
-})
+withDefaults(
+  defineProps<{
+    items: ReaderTocItem[]
+    activeId?: string
+    showLabel?: boolean
+    /** Reading progress 0..1 for the rail; null hides the bar. */
+    progress?: number | null
+  }>(),
+  {
+    activeId: '',
+    showLabel: false,
+    progress: null,
+  },
+)
 
 const labelId = useId()
 </script>
@@ -97,7 +102,9 @@ ol {
   list-style: none;
   counter-reset: toc;
 }
-li { counter-increment: toc; }
+li {
+  counter-increment: toc;
+}
 a {
   display: grid;
   grid-template-columns: 1.6rem 1fr;
@@ -109,7 +116,9 @@ a {
   font-size: 0.93rem;
   line-height: 1.35;
   text-decoration: none;
-  transition: background-color var(--duration-fast), border-color var(--duration-fast);
+  transition:
+    background-color var(--duration-fast),
+    border-color var(--duration-fast);
 }
 a::before {
   content: counter(toc, decimal-leading-zero);
@@ -118,28 +127,38 @@ a::before {
   font-variant-numeric: tabular-nums;
   line-height: 1.75;
 }
-a:hover { background: var(--color-sand); }
+a:hover {
+  background: var(--color-sand);
+}
 a:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
-a[aria-current="location"] {
+a[aria-current='location'] {
   border-left-color: var(--color-brick);
   background: color-mix(in srgb, var(--color-brick) 10%, transparent);
   color: var(--color-brick);
   font-weight: 700;
 }
-a[aria-current="location"]::before { color: var(--color-brick); }
+a[aria-current='location']::before {
+  color: var(--color-brick);
+}
 .sub {
   margin: 0.05rem 0 0.2rem 1.6rem;
   counter-reset: none;
 }
-.sub li { counter-increment: none; }
+.sub li {
+  counter-increment: none;
+}
 .sub a {
   display: block;
   font-size: 0.86rem;
   color: var(--muted);
 }
-.sub a::before { content: none; }
-.sub a[aria-current="location"] { color: var(--color-brick); }
+.sub a::before {
+  content: none;
+}
+.sub a[aria-current='location'] {
+  color: var(--color-brick);
+}
 </style>

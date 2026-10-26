@@ -16,51 +16,75 @@ import { bannedSiteProblem } from '../shared/writing'
 
 describe('banned sites outside the prose gate', () => {
   it('rejects a banned site on a quest or hub save before the row is written', async () => {
-    await expect(saveQuestContent({
-      slug: 'banned-quest',
-      title: 'Квест',
-      body: 'Форт у дороги.',
-      publicationStatus: 'draft',
-      ogImage: 'https://kgdmore.ru/cover.jpg',
-    }, null, { prose: ['Квест', 'Форт у дороги.'], publishing: false })).rejects.toThrow(/Нельзя использовать: kgdmore\.ru/)
+    await expect(
+      saveQuestContent(
+        {
+          slug: 'banned-quest',
+          title: 'Квест',
+          body: 'Форт у дороги.',
+          publicationStatus: 'draft',
+          ogImage: 'https://kgdmore.ru/cover.jpg',
+        },
+        null,
+        { prose: ['Квест', 'Форт у дороги.'], publishing: false },
+      ),
+    ).rejects.toThrow(/Нельзя использовать: kgdmore\.ru/)
 
-    await expect(saveHubContent('hub-id', {
-      title: 'Форты',
-      description: 'Смотрите kgdmore.ru',
-    }, { prose: ['Форты'], publishing: true })).rejects.toThrow(/kgdmore\.ru/)
+    await expect(
+      saveHubContent(
+        'hub-id',
+        {
+          title: 'Форты',
+          description: 'Смотрите kgdmore.ru',
+        },
+        { prose: ['Форты'], publishing: true },
+      ),
+    ).rejects.toThrow(/kgdmore\.ru/)
   })
 
   it('rejects a banned source URL on a price, a fact, a schedule, and a photo', async () => {
     expect(bannedSiteProblem('https://example.com/menu')).toBeNull()
-    await expect(setVenuePrices('venue', [{
-      item: 'cappuccino',
-      priceRub: 200,
-      checkedAt: '2026-10-01',
-      sourceKind: 'official',
-      sourceTitle: 'Меню',
-      sourceUrl: 'https://kgdmore.ru/menu',
-    }], 'mcp')).rejects.toThrow(/kgdmore\.ru/)
+    await expect(
+      setVenuePrices(
+        'venue',
+        [
+          {
+            item: 'cappuccino',
+            priceRub: 200,
+            checkedAt: '2026-10-01',
+            sourceKind: 'official',
+            sourceTitle: 'Меню',
+            sourceUrl: 'https://kgdmore.ru/menu',
+          },
+        ],
+        'mcp',
+      ),
+    ).rejects.toThrow(/kgdmore\.ru/)
 
-    await expect(commitFact({
-      kind: 'hours',
-      subjectType: 'place',
-      subjectId: 'place',
-      slot: 'hours',
-      value: { mode: 'closed' },
-      sourceUrl: 'https://kgdmore.ru/hours',
-      sourceTitle: null,
-      sourceKind: 'official',
-      checkedAt: null,
-      confidence: 'stated',
-      actor: 'mcp',
-      refs: [],
-    })).rejects.toThrow(/kgdmore\.ru/)
+    await expect(
+      commitFact({
+        kind: 'hours',
+        subjectType: 'place',
+        subjectId: 'place',
+        slot: 'hours',
+        value: { mode: 'closed' },
+        sourceUrl: 'https://kgdmore.ru/hours',
+        sourceTitle: null,
+        sourceKind: 'official',
+        checkedAt: null,
+        confidence: 'stated',
+        actor: 'mcp',
+        refs: [],
+      }),
+    ).rejects.toThrow(/kgdmore\.ru/)
 
-    await expect(saveSchedule('place', 'place', {
-      rules: { mode: 'closed' } as never,
-      sourceUrl: 'https://kgdmore.ru/hours',
-      verifiedAt: null,
-    })).rejects.toThrow(/kgdmore\.ru/)
+    await expect(
+      saveSchedule('place', 'place', {
+        rules: { mode: 'closed' } as never,
+        sourceUrl: 'https://kgdmore.ru/hours',
+        verifiedAt: null,
+      }),
+    ).rejects.toThrow(/kgdmore\.ru/)
 
     const photo = await ingestImage({
       bytes: Buffer.from('not-an-image'),
@@ -72,27 +96,41 @@ describe('banned sites outside the prose gate', () => {
     expect(photo).toMatchObject({ statusCode: 400, error: expect.stringMatching(/kgdmore\.ru/) })
 
     const toolDir = resolve(import.meta.dirname, '../server/mcp/tools')
-    for (const file of ['media-upload-from-url.ts', 'commons-import.ts', 'fact-update.ts', 'schedule-set.ts', 'venue-prices-set.ts']) {
+    for (const file of [
+      'media-upload-from-url.ts',
+      'commons-import.ts',
+      'fact-update.ts',
+      'schedule-set.ts',
+      'venue-prices-set.ts',
+    ]) {
       expect(readFileSync(resolve(toolDir, file), 'utf8')).toMatch(/rejectBannedSites|banned site/)
     }
-    expect(readFileSync(resolve(import.meta.dirname, '../server/api/admin/media/[id].patch.ts'), 'utf8')).toContain('rejectBannedSites')
+    expect(readFileSync(resolve(import.meta.dirname, '../server/api/admin/media/[id].patch.ts'), 'utf8')).toContain(
+      'rejectBannedSites',
+    )
   })
 })
 
 describe('prices in names', () => {
   it('rejects a price in a dish name or a price variant and lets a portion through', () => {
-    const modules = venueModulesSchema.safeParse([{
-      type: 'dishes',
-      items: [{ name: 'Борщ 350 ₽' }],
-    }])
+    const modules = venueModulesSchema.safeParse([
+      {
+        type: 'dishes',
+        items: [{ name: 'Борщ 350 ₽' }],
+      },
+    ])
     expect(modules.success).toBe(false)
     if (!modules.success) {
       expect(modules.error.issues.map((issue) => issue.message).join(' ')).toMatch(/Цену пишите/)
     }
-    expect(venueModulesSchema.safeParse([{
-      type: 'dishes',
-      items: [{ name: 'Борщ' }],
-    }]).success).toBe(true)
+    expect(
+      venueModulesSchema.safeParse([
+        {
+          type: 'dishes',
+          items: [{ name: 'Борщ' }],
+        },
+      ]).success,
+    ).toBe(true)
 
     const priceRow = {
       item: 'cappuccino',

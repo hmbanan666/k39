@@ -6,8 +6,10 @@ export default defineNuxtPlugin(() => {
       first = false
       return
     }
-    window.dispatchEvent(new CustomEvent('k39-track', {
-      detail: { type: 'pageview', path: to.fullPath, ref: `${location.origin}${from.fullPath}` },
-    }))
+    window.dispatchEvent(
+      new CustomEvent('k39-track', {
+        detail: { type: 'pageview', path: to.fullPath, ref: `${location.origin}${from.fullPath}` },
+      }),
+    )
   })
 })

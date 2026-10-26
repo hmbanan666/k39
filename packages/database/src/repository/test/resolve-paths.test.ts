@@ -23,9 +23,18 @@ describe('batched path resolve', () => {
   it('resolves places, routes, and venues from one batch, including repeats', async () => {
     await clearRows()
     const db = useDatabase()
-    const [place] = await db.insert(places).values({ slug: PLACE, title: 'Hot path place' }).returning({ id: places.id })
-    const [route] = await db.insert(routes).values({ slug: ROUTE, title: 'Hot path route' }).returning({ id: routes.id })
-    const [venue] = await db.insert(venues).values({ slug: VENUE, name: 'Hot path venue', kind: 'cafe' }).returning({ id: venues.id })
+    const [place] = await db
+      .insert(places)
+      .values({ slug: PLACE, title: 'Hot path place' })
+      .returning({ id: places.id })
+    const [route] = await db
+      .insert(routes)
+      .values({ slug: ROUTE, title: 'Hot path route' })
+      .returning({ id: routes.id })
+    const [venue] = await db
+      .insert(venues)
+      .values({ slug: VENUE, name: 'Hot path venue', kind: 'cafe' })
+      .returning({ id: venues.id })
     const paths = [
       `/${PLACE}`,
       `/${PLACE}?utm=1`,

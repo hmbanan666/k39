@@ -34,7 +34,7 @@ export async function loadNoticeWindows(subjectType: NoticeSubjectType, ids: str
  * collapsed «Источники» list of this response. The notice link goes away
  * with the notice unless the page already stored it.
  */
-export function sourcesWithNotices(sources: Array<{ title: string, url: string }>, notices: PublicNotice[]) {
+export function sourcesWithNotices(sources: Array<{ title: string; url: string }>, notices: PublicNotice[]) {
   const seen = new Set(sources.map((row) => row.url))
   const extra = notices.flatMap((row) => {
     if (seen.has(row.sourceUrl)) {

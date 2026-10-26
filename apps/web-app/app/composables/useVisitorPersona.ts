@@ -11,7 +11,10 @@ export function useVisitorPersona() {
 
   onMounted(() => {
     try {
-      const raw = JSON.parse(localStorage.getItem(VISITOR_PERSONA_KEY) ?? 'null') as { code?: unknown, explicit?: unknown } | null
+      const raw = JSON.parse(localStorage.getItem(VISITOR_PERSONA_KEY) ?? 'null') as {
+        code?: unknown
+        explicit?: unknown
+      } | null
       if (raw && isVisitorPersona(raw.code)) {
         persona.value = raw.code
         explicit.value = raw.explicit === true
@@ -42,5 +45,10 @@ export function useVisitorPersona() {
     }
   }
 
-  return { persona: readonly(persona), explicit: readonly(explicit), choose: (code: VisitorPersona | null) => save(code, true), infer }
+  return {
+    persona: readonly(persona),
+    explicit: readonly(explicit),
+    choose: (code: VisitorPersona | null) => save(code, true),
+    infer,
+  }
 }

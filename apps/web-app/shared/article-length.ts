@@ -16,6 +16,5 @@ export function articleTextLength(source: string) {
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
-    .trim()
-    .length
+    .trim().length
 }

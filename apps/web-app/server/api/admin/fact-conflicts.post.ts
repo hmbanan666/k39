@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
     value: proposal.value,
     sourceUrl: typeof proposal.sourceUrl === 'string' ? proposal.sourceUrl : null,
     sourceTitle: typeof proposal.sourceTitle === 'string' ? proposal.sourceTitle : null,
-    sourceKind: typeof proposal.sourceKind === 'string' ? proposal.sourceKind as 'official' : 'none',
+    sourceKind: typeof proposal.sourceKind === 'string' ? (proposal.sourceKind as 'official') : 'none',
     checkedAt: typeof proposal.checkedAt === 'string' ? proposal.checkedAt : new Date().toISOString(),
     ttlDays: typeof proposal.ttlDays === 'number' ? proposal.ttlDays : undefined,
     confidence: proposal.confidence === 'owner' || proposal.confidence === 'gap' ? proposal.confidence : 'stated',

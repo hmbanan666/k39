@@ -40,13 +40,13 @@
           placeholder="09:00"
           :disabled="!editable || day.state !== 'open'"
           :aria-label="`${HOURS_WEEKDAY_LABELS[day.weekday]}: открытие`"
-        >
+        />
         <input
           v-model="day.closes"
           :placeholder="owner ? (day.openEnded ? '?' : '21:00') : 'уточняйте'"
           :disabled="!editable || day.state !== 'open'"
           :aria-label="`${HOURS_WEEKDAY_LABELS[day.weekday]}: закрытие`"
-        >
+        />
       </label>
     </template>
   </div>
@@ -69,12 +69,17 @@ defineProps<{
 
 const days = defineModel<HoursFormDay[]>('days', { required: true })
 
-const EDITOR_NOTE = 'Часы заданы расписанием (schedule_set): сезоны, перерывы или особый режим. Здесь они только для просмотра. Сохранение формы их не меняет.'
-const OWNER_NOTE = 'Часы заданы редакцией: сезоны, перерывы или особый режим. Здесь они только для просмотра, сохранение страницы их не меняет. Изменить их может редакция.'
+const EDITOR_NOTE =
+  'Часы заданы расписанием (schedule_set): сезоны, перерывы или особый режим. Здесь они только для просмотра. Сохранение формы их не меняет.'
+const OWNER_NOTE =
+  'Часы заданы редакцией: сезоны, перерывы или особый режим. Здесь они только для просмотра, сохранение страницы их не меняет. Изменить их может редакция.'
 </script>
 
 <style scoped>
-.hours { display: grid; gap: 0.35rem; }
+.hours {
+  display: grid;
+  gap: 0.35rem;
+}
 .schedule {
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--color-line);
@@ -82,8 +87,13 @@ const OWNER_NOTE = 'Часы заданы редакцией: сезоны, пе
   border-radius: 6px;
   background: var(--color-surface);
 }
-.schedule p { margin: 0; }
-.schedule ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+.schedule p {
+  margin: 0;
+}
+.schedule ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
 .day {
   display: grid;
   grid-template-columns: 1.6rem minmax(6.5rem, 10.5rem) minmax(3.6rem, 4.6rem) minmax(4.2rem, 5.6rem);
@@ -91,6 +101,15 @@ const OWNER_NOTE = 'Часы заданы редакцией: сезоны, пе
   align-items: center;
   justify-content: start;
 }
-.day select, .day input { min-width: 0; font: inherit; padding: 0.4rem 0.35rem; }
-.day :disabled { color: var(--color-muted); background: transparent; border-color: var(--color-line); }
+.day select,
+.day input {
+  min-width: 0;
+  font: inherit;
+  padding: 0.4rem 0.35rem;
+}
+.day :disabled {
+  color: var(--color-muted);
+  background: transparent;
+  border-color: var(--color-line);
+}
 </style>

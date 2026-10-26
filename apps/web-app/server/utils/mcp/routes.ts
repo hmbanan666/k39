@@ -9,7 +9,7 @@ import { rethrowContentWrite } from './content-error'
 import { refusePendingLiveEdit, resolvePublication } from './draft'
 import { isPublicationOnly, mergedField, mergedPresent, pendingDraftFields, pendingPublication } from './pending'
 
-type StopInput = { placeSlug: string, note?: string | null }
+type StopInput = { placeSlug: string; note?: string | null }
 
 export interface RouteWriteInput {
   id?: string
@@ -50,7 +50,9 @@ export const ROUTE_RENDERED_FIELDS = [
   'seoDescription',
 ] as const
 
-export function orderedStopView(rows: Array<{ placeSlug: string, title: string, note: string | null, position: number }>) {
+export function orderedStopView(
+  rows: Array<{ placeSlug: string; title: string; note: string | null; position: number }>,
+) {
   return rows.map((row) => ({
     placeSlug: row.placeSlug,
     slug: row.placeSlug,
@@ -101,26 +103,34 @@ export async function createRouteDraft(input: {
   const publicationStatus = resolvePublication(input.publicationStatus)
   refusePendingLiveEdit(publicationStatus, 'route')
   try {
-    const { row, writingWarnings } = await saveRouteContent({
-      slug: input.slug,
-      title: input.title,
-      summary: input.summary,
-      body: input.body,
-      sections: input.sections,
-      publicationStatus,
-      seoTitle: input.seoTitle,
-      seoDescription: input.seoDescription,
-      points: input.points,
-      path: input.path,
-    }, null, contentGate('route', {
-      title: input.title,
-      summary: input.summary,
-      body: input.body,
-      sections: input.sections,
-      seoTitle: input.seoTitle,
-      seoDescription: input.seoDescription,
-      points: input.points,
-    }, publicationStatus === 'published'))
+    const { row, writingWarnings } = await saveRouteContent(
+      {
+        slug: input.slug,
+        title: input.title,
+        summary: input.summary,
+        body: input.body,
+        sections: input.sections,
+        publicationStatus,
+        seoTitle: input.seoTitle,
+        seoDescription: input.seoDescription,
+        points: input.points,
+        path: input.path,
+      },
+      null,
+      contentGate(
+        'route',
+        {
+          title: input.title,
+          summary: input.summary,
+          body: input.body,
+          sections: input.sections,
+          seoTitle: input.seoTitle,
+          seoDescription: input.seoDescription,
+          points: input.points,
+        },
+        publicationStatus === 'published',
+      ),
+    )
     await auditMcp('route_draft_create', 'route', row.id)
     return {
       id: row.id,
@@ -137,16 +147,19 @@ export async function createRouteDraft(input: {
 
 export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'route_draft_update') {
   const rows = await db.editor.listRoutes()
-  const current = input.id
-    ? rows.find((item) => item.id === input.id)
-    : rows.find((item) => item.slug === input.slug)
+  const current = input.id ? rows.find((item) => item.id === input.id) : rows.find((item) => item.slug === input.slug)
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Маршрут не найден' })
   }
   const scope = contentScope()
   const pending = await db.editor.contentDraft('route', current.id)
   const publicationStatus = resolvePublication(input.publicationStatus, current.publicationStatus, scope)
-  if (scope === 'editor' && publicationStatus === 'published' && pending && isPublicationOnly(input, ROUTE_CONTENT_KEYS, current.slug)) {
+  if (
+    scope === 'editor' &&
+    publicationStatus === 'published' &&
+    pending &&
+    isPublicationOnly(input, ROUTE_CONTENT_KEYS, current.slug)
+  ) {
     const payload = pending.payload
     const applied = await applyPendingRouteContent(current.id, contentGate('route', payload, true))
     const row = applied.row
@@ -201,12 +214,15 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       if (points.set) {
         await db.editor.assertOrderedStops(points.value ?? [])
       }
-      const stored = await savePendingDraftContent({
-        entityType: 'route',
-        entityId: current.id,
-        publicationStatus: pendingStatus,
-        payload,
-      }, contentGate('route', payload, false))
+      const stored = await savePendingDraftContent(
+        {
+          entityType: 'route',
+          entityId: current.id,
+          publicationStatus: pendingStatus,
+          payload,
+        },
+        contentGate('route', payload, false),
+      )
       await auditMcp(auditTool, 'route', current.id)
       return {
         id: current.id,
@@ -214,7 +230,7 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
         title: String(payload.title),
         publicationStatus: current.publicationStatus,
         points: await stopsForPayload(current.id, payload),
-        path: Object.hasOwn(payload, 'path') ? payload.path as [number, number][] | null : current.path,
+        path: Object.hasOwn(payload, 'path') ? (payload.path as [number, number][] | null) : current.path,
         ...pendingDraftFields(String(payload.body ?? ''), pendingStatus, ROUTE_RENDERED_FIELDS, stored.writingWarnings),
       }
     } catch (error) {
@@ -240,21 +256,28 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
       points: input.points,
       path: input.path,
     }
-    const gate = contentGate('route', {
-      title: input.title || current.title,
-      summary: input.summary ?? current.summary,
-      body: input.body ?? current.body,
-      sections: input.sections,
-      seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-      seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-      points: input.points,
-    }, publicationStatus === 'published')
-    const saved = scope === 'editor'
-      ? await withEditorLiveWrite('route', current.id, async (tx) => {
-          const written = await saveRouteContent(write, null, gate, tx)
-          return liveWriteRow(written.row, written.writingWarnings)
-        })
-      : await saveRouteContent(write, null, gate).then((written) => liveWriteRow(written.row, written.writingWarnings))
+    const gate = contentGate(
+      'route',
+      {
+        title: input.title || current.title,
+        summary: input.summary ?? current.summary,
+        body: input.body ?? current.body,
+        sections: input.sections,
+        seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+        seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+        points: input.points,
+      },
+      publicationStatus === 'published',
+    )
+    const saved =
+      scope === 'editor'
+        ? await withEditorLiveWrite('route', current.id, async (tx) => {
+            const written = await saveRouteContent(write, null, gate, tx)
+            return liveWriteRow(written.row, written.writingWarnings)
+          })
+        : await saveRouteContent(write, null, gate).then((written) =>
+            liveWriteRow(written.row, written.writingWarnings),
+          )
     await auditMcp(auditTool, 'route', current.id)
     return {
       id: saved.id,
@@ -271,7 +294,7 @@ export async function updateRouteDraft(input: RouteWriteInput, auditTool = 'rout
   }
 }
 
-export async function readRoute(input: { id?: string, slug?: string }) {
+export async function readRoute(input: { id?: string; slug?: string }) {
   const rows = await db.editor.listRoutes()
   const route = rows.find((item) => item.id === input.id || item.slug === input.slug)
   if (!route) {

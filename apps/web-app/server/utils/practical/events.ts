@@ -34,7 +34,13 @@ function slotKey(id: string) {
 }
 
 export function normalizeEvent(input: EventInput, own: OwnSocialLinks | null, now = new Date()) {
-  const timing = eventInstants({ allDay: Boolean(input.allDay), startsAt: input.startsAt, endsAt: input.endsAt, startsOn: input.startsOn, endsOn: input.endsOn })
+  const timing = eventInstants({
+    allDay: Boolean(input.allDay),
+    startsAt: input.startsAt,
+    endsAt: input.endsAt,
+    startsOn: input.startsOn,
+    endsOn: input.endsOn,
+  })
   if (typeof timing === 'string') {
     bad(timing)
   }
@@ -61,13 +67,33 @@ export function normalizeEvent(input: EventInput, own: OwnSocialLinks | null, no
   }
 }
 
-async function writeEventFact(target: PracticalTarget, row: { id: string, title: string, startsAt: string, endsAt: string | null, allDay: boolean, ticketUrl: string | null, sourceUrl: string, sourceTitle: string, checkedAt: string }, actor: FactActor) {
+async function writeEventFact(
+  target: PracticalTarget,
+  row: {
+    id: string
+    title: string
+    startsAt: string
+    endsAt: string | null
+    allDay: boolean
+    ticketUrl: string | null
+    sourceUrl: string
+    sourceTitle: string
+    checkedAt: string
+  },
+  actor: FactActor,
+) {
   return commitFact({
     kind: 'event',
     subjectType: target.type,
     subjectId: target.id,
     slot: slotKey(row.id),
-    value: { title: row.title, start: new Date(row.startsAt).toISOString(), end: row.endsAt ? new Date(row.endsAt).toISOString() : null, ticketUrl: row.ticketUrl, allDay: row.allDay },
+    value: {
+      title: row.title,
+      start: new Date(row.startsAt).toISOString(),
+      end: row.endsAt ? new Date(row.endsAt).toISOString() : null,
+      ticketUrl: row.ticketUrl,
+      allDay: row.allDay,
+    },
     sourceUrl: row.sourceUrl,
     sourceTitle: row.sourceTitle,
     sourceKind: ownOfficialSourceKind(row.sourceUrl, target.own) ?? 'official',
@@ -92,7 +118,12 @@ async function ownedEvent(target: PracticalTarget, id: string) {
  * Creates or updates one event. `remove` sets `cancelled_at` and retires the fact.
  * The draft token gets 409 on a live parent and nothing is stored.
  */
-export async function upsertEvent(target: PracticalTarget, input: { id?: string | null, remove?: boolean, event?: EventInput | null }, actor: FactActor, now = new Date()) {
+export async function upsertEvent(
+  target: PracticalTarget,
+  input: { id?: string | null; remove?: boolean; event?: EventInput | null },
+  actor: FactActor,
+  now = new Date(),
+) {
   if (target.type === 'route') {
     bad('События принадлежат месту или заведению. Маршрут показывает события остановок')
   }
@@ -104,7 +135,11 @@ export async function upsertEvent(target: PracticalTarget, input: { id?: string 
     await ownedEvent(target, input.id)
     const cancelled = await db.calendarEvents.cancel(input.id, now.toISOString())
     await retireFactSlot(target.type, target.id, slotKey(input.id))
-    return { event: cancelled ?? await db.calendarEvents.byId(input.id), removed: true, ownerConflict: null as string | null }
+    return {
+      event: cancelled ?? (await db.calendarEvents.byId(input.id)),
+      removed: true,
+      ownerConflict: null as string | null,
+    }
   }
   if (!input.event) {
     bad('Нужны поля события')
@@ -142,7 +177,10 @@ export async function expireEvents(now = new Date()) {
 
 export async function retirePastEvents(now = new Date()) {
   const due = await db.calendarEvents.due(now.toISOString())
-  await db.calendarEvents.markExpired(due.map((row) => row.id), now.toISOString())
+  await db.calendarEvents.markExpired(
+    due.map((row) => row.id),
+    now.toISOString(),
+  )
   for (const row of due) {
     await retireFactSlot(row.subjectType as PracticalTarget['type'], row.subjectId, slotKey(row.id))
   }
@@ -150,19 +188,28 @@ export async function retirePastEvents(now = new Date()) {
 }
 
 /** `fact_update` on an event fact rewrites the row through `upsertEvent`. */
-export async function updateEventFact(target: PracticalTarget, slot: string, value: { title: string, start: string, end: string | null, ticketUrl: string | null, allDay: boolean }, source: { sourceUrl: string | null, sourceTitle: string | null, checkedAt: string | null }) {
+export async function updateEventFact(
+  target: PracticalTarget,
+  slot: string,
+  value: { title: string; start: string; end: string | null; ticketUrl: string | null; allDay: boolean },
+  source: { sourceUrl: string | null; sourceTitle: string | null; checkedAt: string | null },
+) {
   const id = slot.replace(/^event:/, '')
   const current = await ownedEvent(target, id)
   const timing = eventFormTiming({ startsAt: value.start, endsAt: value.end, allDay: value.allDay })
-  return upsertEvent(target, {
-    id,
-    event: {
-      title: value.title,
-      ...timing,
-      ticketUrl: value.ticketUrl,
-      sourceUrl: source.sourceUrl ?? current.sourceUrl,
-      sourceTitle: source.sourceTitle ?? current.sourceTitle,
-      checkedAt: source.checkedAt?.slice(0, 10) ?? localNow(new Date()).date,
+  return upsertEvent(
+    target,
+    {
+      id,
+      event: {
+        title: value.title,
+        ...timing,
+        ticketUrl: value.ticketUrl,
+        sourceUrl: source.sourceUrl ?? current.sourceUrl,
+        sourceTitle: source.sourceTitle ?? current.sourceTitle,
+        checkedAt: source.checkedAt?.slice(0, 10) ?? localNow(new Date()).date,
+      },
     },
-  }, 'mcp')
+    'mcp',
+  )
 }

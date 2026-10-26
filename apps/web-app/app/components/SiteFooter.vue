@@ -5,33 +5,33 @@
         <a
           href="/"
           class="mark"
-        >K39</a>
+          >K39</a
+        >
         <p>Путеводитель по Калининградской области: места, маршруты и квесты.</p>
       </div>
       <nav aria-label="Разделы">
-        <p class="label">
-          Разделы
-        </p>
+        <p class="label"> Разделы </p>
         <a
           v-for="link in hubs"
           :key="link.href"
           :href="link.href"
-        >{{ link.text }}</a>
+          >{{ link.text }}</a
+        >
       </nav>
       <nav aria-label="Ещё">
-        <p class="label">
-          Ещё
-        </p>
+        <p class="label"> Ещё </p>
         <a
           v-for="link in sections"
           :key="link.href"
           :href="link.href"
-        >{{ link.text }}</a>
+          >{{ link.text }}</a
+        >
         <a
           v-for="link in legal"
           :key="link.href"
           :href="link.href"
-        >{{ link.text }}</a>
+          >{{ link.text }}</a
+        >
       </nav>
     </div>
   </footer>
@@ -72,14 +72,18 @@ const legal = LEGAL_LINKS
   text-decoration: none;
 }
 .mark::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 3px;
   border: 1px dashed var(--color-amber);
   border-radius: 50%;
   opacity: 0.7;
 }
-p { max-width: 18rem; color: var(--color-footer-muted); font-size: var(--step--1); }
+p {
+  max-width: 18rem;
+  color: var(--color-footer-muted);
+  font-size: var(--step--1);
+}
 .label {
   margin-bottom: 0.4rem;
   font-family: var(--font-stamp);
@@ -87,9 +91,18 @@ p { max-width: 18rem; color: var(--color-footer-muted); font-size: var(--step--1
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-nav { display: flex; flex-direction: column; gap: 0.35rem; }
-a { color: var(--color-paper); text-decoration: none; }
+nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+a {
+  color: var(--color-paper);
+  text-decoration: none;
+}
 @media (min-width: 720px) {
-  .inner { grid-template-columns: 1.4fr 1fr 1fr; }
+  .inner {
+    grid-template-columns: 1.4fr 1fr 1fr;
+  }
 }
 </style>

@@ -53,9 +53,11 @@ Guest moderation (ADR 0040): once a day, with the editor token only, call guests
 
 export function contentGuideMessages() {
   return {
-    messages: [{
-      role: 'user' as const,
-      content: { type: 'text' as const, text: CONTENT_GUIDE },
-    }],
+    messages: [
+      {
+        role: 'user' as const,
+        content: { type: 'text' as const, text: CONTENT_GUIDE },
+      },
+    ],
   }
 }

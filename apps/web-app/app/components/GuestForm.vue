@@ -3,11 +3,10 @@
     class="guest-form"
     aria-labelledby="guest-form-title"
   >
-    <h2 id="guest-form-title">
-      Сообщение гостя
-    </h2>
+    <h2 id="guest-form-title"> Сообщение гостя </h2>
     <p class="lead">
-      Отзыв, совет, фото или поправка. Редакция смотрит каждое сообщение до публикации. Поправка не меняет часы и цены на странице.
+      Отзыв, совет, фото или поправка. Редакция смотрит каждое сообщение до публикации. Поправка не меняет часы и цены
+      на странице.
     </p>
     <div
       class="kinds"
@@ -33,7 +32,9 @@
         :label="kind === 'review' ? 'Отзыв' : 'Совет'"
         :count="text.length"
         :max="kind === 'review' ? 1200 : 400"
-        :hint="kind === 'review' ? 'От 80 до 1200 знаков. Одна ссылка https.' : 'От 40 до 400 знаков. Одна ссылка https.'"
+        :hint="
+          kind === 'review' ? 'От 80 до 1200 знаков. Одна ссылка https.' : 'От 40 до 400 знаков. Одна ссылка https.'
+        "
       >
         <UiTextarea
           v-model="text"
@@ -56,14 +57,17 @@
             type="file"
             accept="image/jpeg,image/png,image/webp"
             @change="onFile"
-          >
+          />
         </UiField>
         <label class="rights">
           <input
             v-model="rights"
             type="checkbox"
+          />
+          <span
+            >Я снял это фото сам, это не копия, в кадре нет узнаваемого человека, и я разрешаю K39 показать его на
+            сайте, пока не уберу.</span
           >
-          <span>Я снял это фото сам, это не копия, в кадре нет узнаваемого человека, и я разрешаю K39 показать его на сайте, пока не уберу.</span>
         </label>
       </template>
 
@@ -136,8 +140,8 @@
       </div>
       <p class="consent">
         Кнопка «Отправить» записывает
-        <a :href="consentPath">согласие на публикацию материалов гостя</a>.
-        Отдельной галочки нет. Полное имя и почта на странице не появятся.
+        <a :href="consentPath">согласие на публикацию материалов гостя</a>. Отдельной галочки нет. Полное имя и почта на
+        странице не появятся.
       </p>
     </form>
   </section>
@@ -193,7 +197,7 @@ function onFile(event: Event) {
 }
 
 function problem(reason: unknown) {
-  const item = reason as { data?: { statusMessage?: string, message?: string }, statusMessage?: string }
+  const item = reason as { data?: { statusMessage?: string; message?: string }; statusMessage?: string }
   return item.data?.statusMessage || item.data?.message || item.statusMessage || 'Не удалось отправить.'
 }
 
@@ -269,7 +273,8 @@ async function send() {
   margin: 0 0 0.45rem;
   font-size: var(--step-2);
 }
-.lead, .consent {
+.lead,
+.consent {
   max-width: 62ch;
   margin: 0 0 1rem;
   color: var(--muted);
@@ -295,7 +300,9 @@ async function send() {
   background: var(--color-brick);
   color: var(--surface);
 }
-.file { font: inherit; }
+.file {
+  font: inherit;
+}
 .rights {
   display: flex;
   gap: 0.55rem;
@@ -304,8 +311,16 @@ async function send() {
   margin: 0.2rem 0 1rem;
   line-height: 1.45;
 }
-.error { color: var(--color-brick-dark); }
-.done { color: var(--color-pine); }
-.actions { margin: 0.4rem 0 0.7rem; }
-.consent a { font-weight: 700; }
+.error {
+  color: var(--color-brick-dark);
+}
+.done {
+  color: var(--color-pine);
+}
+.actions {
+  margin: 0.4rem 0 0.7rem;
+}
+.consent a {
+  font-weight: 700;
+}
 </style>

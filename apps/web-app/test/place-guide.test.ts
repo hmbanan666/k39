@@ -23,7 +23,9 @@ describe('place guide template', () => {
     ['closed', 'Закрыто'],
   ] as const)('keeps the %s schedule in the server-rendered facts', (mode, text) => {
     const rules = scheduleRulesSchema.parse({ mode, note: 'Уточните условия посещения' })
-    const facts = guideFacts({ schedule: { rules, verifiedAt: '2026-10-22', sourceUrl: 'https://museum.example/hours' } })
+    const facts = guideFacts({
+      schedule: { rules, verifiedAt: '2026-10-22', sourceUrl: 'https://museum.example/hours' },
+    })
     expect(facts.find((row) => row.key === 'hours')?.value).toContain(text)
     expect(facts.find((row) => row.key === 'hours')?.value).toContain(rules.note)
   })
@@ -37,13 +39,17 @@ describe('place guide template', () => {
   })
 
   it('drops empty answer rows', () => {
-    expect(guideFacts({ visitDuration: ' ', bestTime: 'май–сентябрь', hours: null, price: '300 ₽' }).map((row) => row.key)).toEqual(['season', 'price'])
+    expect(
+      guideFacts({ visitDuration: ' ', bestTime: 'май–сентябрь', hours: null, price: '300 ₽' }).map((row) => row.key),
+    ).toEqual(['season', 'price'])
     expect(guideFacts({})).toEqual([])
   })
 
   it('prefers the structured FAQ over the body section', () => {
     const body = '## Частые вопросы\n\n**Можно с собакой?** Да.'
-    expect(pageFaq(body, [{ question: 'Есть парковка?', answer: 'Есть у входа.' }])).toEqual([{ question: 'Есть парковка?', answer: 'Есть у входа.' }])
+    expect(pageFaq(body, [{ question: 'Есть парковка?', answer: 'Есть у входа.' }])).toEqual([
+      { question: 'Есть парковка?', answer: 'Есть у входа.' },
+    ])
     expect(pageFaq(body, [])).toEqual([{ question: 'Можно с собакой?', answer: 'Да.' }])
     expect(pageFaq('', [])).toEqual([])
   })
@@ -63,7 +69,10 @@ describe('place guide template', () => {
     })
     expect(schemaProblems(plain.jsonLd)).toEqual([])
 
-    const withFaq = placeDocument({ ...base, faq: [{ question: 'Сколько стоит вход?', answer: '300 ₽ по данным музея.' }] })
+    const withFaq = placeDocument({
+      ...base,
+      faq: [{ question: 'Сколько стоит вход?', answer: '300 ₽ по данным музея.' }],
+    })
     expect(withFaq.jsonLd.some((node) => node['@type'] === 'FAQPage')).toBe(true)
     expect(schemaProblems(withFaq.jsonLd)).toEqual([])
   })

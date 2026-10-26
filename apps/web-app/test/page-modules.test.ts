@@ -3,7 +3,21 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { scoresFromCatalog } from '../server/utils/scoring/assemble'
 import { monthName } from '../shared/month-guide'
-import { categoryTags, COLLECTION_BODY_REJECTED, collectionArticle, collectionWritePlan, fitsPicker, HUB_RENDERED_FIELDS, modulesArticle, pageModulesSchema, parsePickerQuery, pickerFit, pickerQuery, rankByPicker, toPublicModules } from '../shared/page-modules'
+import {
+  categoryTags,
+  COLLECTION_BODY_REJECTED,
+  collectionArticle,
+  collectionWritePlan,
+  fitsPicker,
+  HUB_RENDERED_FIELDS,
+  modulesArticle,
+  pageModulesSchema,
+  parsePickerQuery,
+  pickerFit,
+  pickerQuery,
+  rankByPicker,
+  toPublicModules,
+} from '../shared/page-modules'
 import { collectionDocument, tuneRobots } from '../shared/seo'
 import { writingHits } from '../shared/writing'
 
@@ -19,7 +33,15 @@ describe('picker query', () => {
   })
 
   it('makes a parametric state noindex, the clean page stays indexable', () => {
-    const doc = collectionDocument({ path: '/podborki/x', h1: 'X', summary: 'X', crumbName: 'подборка', parent: { name: 'Подборки', href: '/podborki' }, items: [], kind: 'CollectionPage' })
+    const doc = collectionDocument({
+      path: '/podborki/x',
+      h1: 'X',
+      summary: 'X',
+      crumbName: 'подборка',
+      parent: { name: 'Подборки', href: '/podborki' },
+      items: [],
+      kind: 'CollectionPage',
+    })
     expect(tuneRobots(doc, {}).robots).not.toContain('noindex')
     expect(tuneRobots(doc, { i: 'more' }).robots).toContain('noindex')
     expect(doc.canonical).toBe('https://k39.online/podborki/x')
@@ -41,7 +63,9 @@ describe('picker ranking', () => {
   it('treats an untagged question as neutral', () => {
     expect(pickerFit(['istoriya'], { transport: ['bez-mashiny'] })).toEqual({ matched: 0, missed: 0 })
     expect(fitsPicker(pickerFit(['istoriya'], { interest: ['istoriya'], transport: ['bez-mashiny'] }))).toBe(true)
-    expect(fitsPicker(pickerFit(['istoriya', 'mashina'], { interest: ['istoriya'], transport: ['bez-mashiny'] }))).toBe(false)
+    expect(fitsPicker(pickerFit(['istoriya', 'mashina'], { interest: ['istoriya'], transport: ['bez-mashiny'] }))).toBe(
+      false,
+    )
   })
 
   it('moves fitting cards up and keeps every card', () => {
@@ -50,7 +74,9 @@ describe('picker ranking', () => {
   })
 
   it('keeps the stored order without answers', () => {
-    expect(rankByPicker(cards, (card) => card.tags, {}).map((entry) => entry.item.id)).toEqual(cards.map((card) => card.id))
+    expect(rankByPicker(cards, (card) => card.tags, {}).map((entry) => entry.item.id)).toEqual(
+      cards.map((card) => card.id),
+    )
   })
 
   it('tags place cards from their category', () => {
@@ -63,23 +89,49 @@ describe('page modules', () => {
   const modules = [
     { type: 'months' },
     { type: 'text', variant: 'lead', text: 'Лид' },
-    { type: 'month-stats', title: 'Октябрь в цифрах', tiles: [{ label: 'Днём', value: '+12 °C' }, { label: 'Море', value: '+13 °C' }] },
+    {
+      type: 'month-stats',
+      title: 'Октябрь в цифрах',
+      tiles: [
+        { label: 'Днём', value: '+12 °C' },
+        { label: 'Море', value: '+13 °C' },
+      ],
+    },
     { type: 'picker', questions: ['interest', 'transport'] },
-    { type: 'ideas', title: 'Идеи', items: [{ title: 'Коса', text: 'Текст [ссылка](/vysota-efa)', tags: ['priroda'] }] },
+    {
+      type: 'ideas',
+      title: 'Идеи',
+      items: [{ title: 'Коса', text: 'Текст [ссылка](/vysota-efa)', tags: ['priroda'] }],
+    },
     { type: 'places', title: 'Места' },
   ]
 
   it('validates and renders markdown', () => {
     const rendered = toPublicModules(modules, (markdown) => `<p>${markdown}</p>`)
-    expect(rendered?.map((module) => module.type)).toEqual(['months', 'text', 'month-stats', 'picker', 'ideas', 'places'])
+    expect(rendered?.map((module) => module.type)).toEqual([
+      'months',
+      'text',
+      'month-stats',
+      'picker',
+      'ideas',
+      'places',
+    ])
     const ideas = rendered?.[4]
     expect(ideas?.type === 'ideas' && ideas.items[0]?.html).toBe('<p>Текст [ссылка](/vysota-efa)</p>')
   })
 
   it('rejects unknown tags, types and a second picker', () => {
-    expect(pageModulesSchema.safeParse([{ type: 'ideas', title: 'x', items: [{ title: 'x', text: 'x', tags: ['beach'] }] }]).success).toBe(false)
+    expect(
+      pageModulesSchema.safeParse([{ type: 'ideas', title: 'x', items: [{ title: 'x', text: 'x', tags: ['beach'] }] }])
+        .success,
+    ).toBe(false)
     expect(pageModulesSchema.safeParse([{ type: 'map' }]).success).toBe(false)
-    expect(pageModulesSchema.safeParse([{ type: 'picker', questions: ['interest'] }, { type: 'picker', questions: ['company'] }]).success).toBe(false)
+    expect(
+      pageModulesSchema.safeParse([
+        { type: 'picker', questions: ['interest'] },
+        { type: 'picker', questions: ['company'] },
+      ]).success,
+    ).toBe(false)
   })
 
   it('falls back to the article when stored modules no longer validate', () => {
@@ -100,11 +152,18 @@ describe('collection article', () => {
       type: 'month-stats' as const,
       title: 'Октябрь',
       verdict: 'Море холодное.',
-      tiles: [{ label: 'Днём', value: '+12 °C', note: 'среднее' }, { label: 'Море', value: '+13 °C' }],
+      tiles: [
+        { label: 'Днём', value: '+12 °C', note: 'среднее' },
+        { label: 'Море', value: '+13 °C' },
+      ],
       rows: [{ label: 'Дождь', value: '18 дней' }],
     },
     { type: 'picker' as const, questions: ['interest' as const] },
-    { type: 'ideas' as const, title: 'Идеи', items: [{ title: 'Коса', text: 'Текст про косу.', tags: ['priroda' as const] }] },
+    {
+      type: 'ideas' as const,
+      title: 'Идеи',
+      items: [{ title: 'Коса', text: 'Текст про косу.', tags: ['priroda' as const] }],
+    },
     { type: 'places' as const, title: 'Места' },
     { type: 'months' as const, title: 'Другие месяцы' },
   ]
@@ -183,36 +242,43 @@ describe('module prose on the score', () => {
   it('scores the module projection when the stored body is stale', () => {
     const lead = 'Лид модульной страницы, который длиннее старого тела.'
     const stale = 'Старый.'
-    const [score] = scoresFromCatalog({
-      places: [],
-      routes: [],
-      routeStops: [],
-      collections: [{
-        id: 'col-modules',
-        slug: 'modules',
-        title: 'Модули',
-        summary: 'Кратко о модулях.',
-        body: stale,
-        publicationStatus: 'published',
-        noindex: false,
-        seoTitle: null,
-        seoDescription: null,
-        updatedAt: '2026-10-01T00:00:00.000Z',
-        routeSlug: null,
-        modules: [{ type: 'text', variant: 'lead', text: lead }],
-        sourcesCount: 0,
-        firstPublishedAt: '2026-10-01T00:00:00.000Z',
-      }],
-      collectionStops: [],
-      quests: [],
-      questStops: [],
-      hubs: [],
-      venues: [],
-      related: [],
-      photos: [],
-      venuePhotos: [],
-      passports: [],
-    }, [], [], false)
+    const [score] = scoresFromCatalog(
+      {
+        places: [],
+        routes: [],
+        routeStops: [],
+        collections: [
+          {
+            id: 'col-modules',
+            slug: 'modules',
+            title: 'Модули',
+            summary: 'Кратко о модулях.',
+            body: stale,
+            publicationStatus: 'published',
+            noindex: false,
+            seoTitle: null,
+            seoDescription: null,
+            updatedAt: '2026-10-01T00:00:00.000Z',
+            routeSlug: null,
+            modules: [{ type: 'text', variant: 'lead', text: lead }],
+            sourcesCount: 0,
+            firstPublishedAt: '2026-10-01T00:00:00.000Z',
+          },
+        ],
+        collectionStops: [],
+        quests: [],
+        questStops: [],
+        hubs: [],
+        venues: [],
+        related: [],
+        photos: [],
+        venuePhotos: [],
+        passports: [],
+      },
+      [],
+      [],
+      false,
+    )
     expect(score?.signals.bodyChars).toBe(lead.length)
     expect(score?.signals.bodyChars).not.toBe(stale.length)
     expect(HUB_RENDERED_FIELDS).toContain('body')

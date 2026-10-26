@@ -22,16 +22,16 @@ The [implementation inventory](docs/product-state.md) maps capabilities to code,
 
 ## Stack
 
-| Area      | Technology                                                       |
-| --------- | ---------------------------------------------------------------- |
-| App       | Nuxt 4, Vue, Reka UI (headless), `@nuxtjs/seo`, `nuxt-auth-utils` |
-| Styling   | Local CSS tokens (no Tailwind, no `@nuxt/ui`)                    |
-| Database  | PostgreSQL, Drizzle ORM                                          |
-| Maps      | MapLibre GL, PMTiles                                             |
-| Images    | `sharp` (AVIF and WebP variants)                                 |
-| Validation| Zod                                                              |
-| Tooling   | pnpm workspaces, ESLint, Vitest, Husky, commitlint               |
-| Deploy    | Docker on Dokploy                                                |
+| Area       | Technology                                                        |
+| ---------- | ----------------------------------------------------------------- |
+| App        | Nuxt 4, Vue, Reka UI (headless), `@nuxtjs/seo`, `nuxt-auth-utils` |
+| Styling    | Local CSS tokens (no Tailwind, no `@nuxt/ui`)                     |
+| Database   | PostgreSQL, Drizzle ORM                                           |
+| Maps       | MapLibre GL, PMTiles                                              |
+| Images     | `sharp` (AVIF and WebP variants)                                  |
+| Validation | Zod                                                               |
+| Tooling    | pnpm workspaces, ESLint, Vitest, Husky, commitlint                |
+| Deploy     | Docker on Dokploy                                                 |
 
 ## Repository layout
 
@@ -91,16 +91,16 @@ Database tests use `DATABASE_URL_TEST` when it is set. A local `DATABASE_URL` is
 
 ## Configuration
 
-| Variable                                     | Purpose                                                  |
-| -------------------------------------------- | -------------------------------------------------------- |
-| `DATABASE_URL`                               | Postgres connection (required)                           |
-| `NUXT_SESSION_PASSWORD`                      | Session cookie secret, 32 or more characters (required)  |
-| `NODE_ENV`                                   | Set to `production` in deployment (required)             |
-| `ADMIN_EMAILS`                               | Accounts promoted to admin on login                      |
-| `CONTENT_API_TOKEN`, `CONTENT_DRAFT_TOKEN`   | Editor and draft-only bearers for the content API and MCP |
-| Yandex and VK OAuth id/secret pairs          | Enable each login provider                               |
-| `NUXT_BASEMAP_FILE`, `BASEMAP_SOURCE_URL`, `BASEMAP_SHA256` | Self-hosted basemap (defaults are baked into the image) |
-| `MEDIA_DIR`                                  | Where uploaded photos are stored                         |
+| Variable                                                    | Purpose                                                   |
+| ----------------------------------------------------------- | --------------------------------------------------------- |
+| `DATABASE_URL`                                              | Postgres connection (required)                            |
+| `NUXT_SESSION_PASSWORD`                                     | Session cookie secret, 32 or more characters (required)   |
+| `NODE_ENV`                                                  | Set to `production` in deployment (required)              |
+| `ADMIN_EMAILS`                                              | Accounts promoted to admin on login                       |
+| `CONTENT_API_TOKEN`, `CONTENT_DRAFT_TOKEN`                  | Editor and draft-only bearers for the content API and MCP |
+| Yandex and VK OAuth id/secret pairs                         | Enable each login provider                                |
+| `NUXT_BASEMAP_FILE`, `BASEMAP_SOURCE_URL`, `BASEMAP_SHA256` | Self-hosted basemap (defaults are baked into the image)   |
+| `MEDIA_DIR`                                                 | Where uploaded photos are stored                          |
 
 See `apps/web-app/.env.example` for the full list. Never commit token values.
 

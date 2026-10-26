@@ -6,7 +6,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'venue_stats',
-  description: 'Cookieless venue impressions from nearby blocks and pageviews of venue pages. Pass id or slug for one venue. period is like 28d. Writes an mcp_audits row.',
+  description:
+    'Cookieless venue impressions from nearby blocks and pageviews of venue pages. Pass id or slug for one venue. period is like 28d. Writes an mcp_audits row.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     id: z.string().optional(),

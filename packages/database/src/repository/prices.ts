@@ -37,7 +37,14 @@ export class Prices {
     return (tx ?? useDatabase()).select().from(priceItems).orderBy(asc(priceItems.sortOrder), asc(priceItems.slug))
   }
 
-  static async upsertItem(input: { slug: string, title: string, category: string, defaultVariant?: string | null, sortOrder?: number, image?: string | null }) {
+  static async upsertItem(input: {
+    slug: string
+    title: string
+    category: string
+    defaultVariant?: string | null
+    sortOrder?: number
+    image?: string | null
+  }) {
     const image = input.image === undefined ? undefined : normalizePriceItemImage(input.image)
     const values = {
       slug: input.slug.trim().toLowerCase(),
@@ -47,34 +54,43 @@ export class Prices {
       sortOrder: input.sortOrder ?? 0,
       image: image ?? null,
     }
-    const [row] = await useDatabase().insert(priceItems).values(values).onConflictDoUpdate({
-      target: priceItems.slug,
-      set: {
-        title: values.title,
-        category: values.category,
-        defaultVariant: values.defaultVariant,
-        sortOrder: values.sortOrder,
-        ...(image === undefined ? {} : { image }),
-      },
-    }).returning()
+    const [row] = await useDatabase()
+      .insert(priceItems)
+      .values(values)
+      .onConflictDoUpdate({
+        target: priceItems.slug,
+        set: {
+          title: values.title,
+          category: values.category,
+          defaultVariant: values.defaultVariant,
+          sortOrder: values.sortOrder,
+          ...(image === undefined ? {} : { image }),
+        },
+      })
+      .returning()
     return row
   }
 
   /** Every stored price of a venue, fresh or not (for editors). */
   static async forVenue(venueId: string, tx?: ContentTx) {
-    return (tx ?? useDatabase()).select({
-      id: venuePrices.id,
-      item: priceItems.slug,
-      title: priceItems.title,
-      category: priceItems.category,
-      image: priceItems.image,
-      variant: venuePrices.variant,
-      priceRub: venuePrices.priceRub,
-      checkedAt: venuePrices.checkedAt,
-      sourceKind: venuePrices.sourceKind,
-      sourceTitle: venuePrices.sourceTitle,
-      sourceUrl: venuePrices.sourceUrl,
-    }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).where(eq(venuePrices.venueId, venueId)).orderBy(asc(priceItems.sortOrder), asc(venuePrices.variant))
+    return (tx ?? useDatabase())
+      .select({
+        id: venuePrices.id,
+        item: priceItems.slug,
+        title: priceItems.title,
+        category: priceItems.category,
+        image: priceItems.image,
+        variant: venuePrices.variant,
+        priceRub: venuePrices.priceRub,
+        checkedAt: venuePrices.checkedAt,
+        sourceKind: venuePrices.sourceKind,
+        sourceTitle: venuePrices.sourceTitle,
+        sourceUrl: venuePrices.sourceUrl,
+      })
+      .from(venuePrices)
+      .innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id))
+      .where(eq(venuePrices.venueId, venueId))
+      .orderBy(asc(priceItems.sortOrder), asc(venuePrices.variant))
   }
 
   /** Prices checked within PRICE_FRESH_DAYS, for the public page. */
@@ -86,21 +102,33 @@ export class Prices {
 
   /** One item across published venues, cheapest first. Drafts, closed and archived stay out. */
   static async forItem(slug: string, now = new Date()) {
-    return useDatabase().select({
-      venueId: venues.id,
-      venueSlug: venues.slug,
-      venueName: venues.name,
-      regionId: venues.regionId,
-      itemId: priceItems.id,
-      item: priceItems.slug,
-      title: priceItems.title,
-      variant: venuePrices.variant,
-      priceRub: venuePrices.priceRub,
-      checkedAt: venuePrices.checkedAt,
-      sourceKind: venuePrices.sourceKind,
-      sourceTitle: venuePrices.sourceTitle,
-      sourceUrl: venuePrices.sourceUrl,
-    }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).innerJoin(venues, eq(venuePrices.venueId, venues.id)).where(and(eq(priceItems.slug, slug), eq(venues.status, 'published'), gte(venuePrices.checkedAt, priceFreshCutoff(now)))).orderBy(asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
+    return useDatabase()
+      .select({
+        venueId: venues.id,
+        venueSlug: venues.slug,
+        venueName: venues.name,
+        regionId: venues.regionId,
+        itemId: priceItems.id,
+        item: priceItems.slug,
+        title: priceItems.title,
+        variant: venuePrices.variant,
+        priceRub: venuePrices.priceRub,
+        checkedAt: venuePrices.checkedAt,
+        sourceKind: venuePrices.sourceKind,
+        sourceTitle: venuePrices.sourceTitle,
+        sourceUrl: venuePrices.sourceUrl,
+      })
+      .from(venuePrices)
+      .innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id))
+      .innerJoin(venues, eq(venuePrices.venueId, venues.id))
+      .where(
+        and(
+          eq(priceItems.slug, slug),
+          eq(venues.status, 'published'),
+          gte(venuePrices.checkedAt, priceFreshCutoff(now)),
+        ),
+      )
+      .orderBy(asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
   }
 
   /**
@@ -108,24 +136,30 @@ export class Prices {
    * menu rows after the fact overlay. Drafts, closed and archived stay out.
    */
   static async freshPublished(now = new Date()) {
-    return useDatabase().select({
-      venueId: venues.id,
-      venueSlug: venues.slug,
-      venueName: venues.name,
-      regionId: venues.regionId,
-      itemId: priceItems.id,
-      item: priceItems.slug,
-      title: priceItems.title,
-      category: priceItems.category,
-      image: priceItems.image,
-      sortOrder: priceItems.sortOrder,
-      variant: venuePrices.variant,
-      priceRub: venuePrices.priceRub,
-      checkedAt: venuePrices.checkedAt,
-      sourceKind: venuePrices.sourceKind,
-      sourceTitle: venuePrices.sourceTitle,
-      sourceUrl: venuePrices.sourceUrl,
-    }).from(venuePrices).innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id)).innerJoin(venues, eq(venuePrices.venueId, venues.id)).where(and(eq(venues.status, 'published'), gte(venuePrices.checkedAt, priceFreshCutoff(now)))).orderBy(asc(priceItems.sortOrder), asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
+    return useDatabase()
+      .select({
+        venueId: venues.id,
+        venueSlug: venues.slug,
+        venueName: venues.name,
+        regionId: venues.regionId,
+        itemId: priceItems.id,
+        item: priceItems.slug,
+        title: priceItems.title,
+        category: priceItems.category,
+        image: priceItems.image,
+        sortOrder: priceItems.sortOrder,
+        variant: venuePrices.variant,
+        priceRub: venuePrices.priceRub,
+        checkedAt: venuePrices.checkedAt,
+        sourceKind: venuePrices.sourceKind,
+        sourceTitle: venuePrices.sourceTitle,
+        sourceUrl: venuePrices.sourceUrl,
+      })
+      .from(venuePrices)
+      .innerJoin(priceItems, eq(venuePrices.itemId, priceItems.id))
+      .innerJoin(venues, eq(venuePrices.venueId, venues.id))
+      .where(and(eq(venues.status, 'published'), gte(venuePrices.checkedAt, priceFreshCutoff(now))))
+      .orderBy(asc(priceItems.sortOrder), asc(venuePrices.priceRub), desc(venuePrices.checkedAt))
   }
 
   /** Replaces a venue's prices. Unknown catalog items fail the whole write. */

@@ -8,7 +8,10 @@ describe('workspace typecheck graph', () => {
   it('reads globs, exclusions and dependency kinds without requiring a typecheck on every intermediary', () => {
     const root = mkdtempSync(join(tmpdir(), 'k39-workspaces-'))
     try {
-      writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n  - apps/*\n  - "!packages/ignored"\n')
+      writeFileSync(
+        join(root, 'pnpm-workspace.yaml'),
+        'packages:\n  - packages/*\n  - apps/*\n  - "!packages/ignored"\n',
+      )
       const manifests = [
         ['packages/core', { name: 'core', scripts: { typecheck: 'tsc' } }],
         ['packages/bridge', { name: 'bridge', dependencies: { core: 'workspace:*' } }],

@@ -8,9 +8,7 @@
       class="guest-notes"
       aria-labelledby="guest-notes-title"
     >
-      <h2 id="guest-notes-title">
-        От гостей
-      </h2>
+      <h2 id="guest-notes-title"> От гостей </h2>
       <p class="disclaimer">
         {{ disclaimer }}
       </p>
@@ -35,7 +33,8 @@
               v-if="part.type === 'link'"
               :href="part.href"
               rel="ugc nofollow noopener noreferrer"
-            >{{ part.text }}</a>
+              >{{ part.text }}</a
+            >
             <template v-else>
               {{ part.text }}
             </template>
@@ -80,7 +79,9 @@ const staff = computed(() => {
 </script>
 
 <style scoped>
-.guest-block { margin-top: 2.4rem; }
+.guest-block {
+  margin-top: 2.4rem;
+}
 .guest-notes h2 {
   margin: 0 0 0.45rem;
   font-size: var(--step-2);
@@ -113,6 +114,10 @@ const staff = computed(() => {
   line-height: 1.55;
   white-space: pre-wrap;
 }
-.body a { font-weight: 700; }
-.note :deep(figure) { margin: 0.55rem 0 0; }
+.body a {
+  font-weight: 700;
+}
+.note :deep(figure) {
+  margin: 0.55rem 0 0;
+}
 </style>

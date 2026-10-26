@@ -32,13 +32,17 @@ export function collectionPlaceCards(items: CollectionPlaceSource[]): Collection
     title: item.title,
     summary: oneLine(item.summary) || oneLine(item.note),
     hub: oneLine(item.categoryTitle),
-    town: oneLine(regionLabel(item.regionTitle == null
-      ? null
-      : {
-          slug: item.regionSlug,
-          title: item.regionTitle,
-          shortTitle: item.regionShortTitle,
-        })),
+    town: oneLine(
+      regionLabel(
+        item.regionTitle == null
+          ? null
+          : {
+              slug: item.regionSlug,
+              title: item.regionTitle,
+              shortTitle: item.regionShortTitle,
+            },
+      ),
+    ),
     kind: oneLine(item.categorySlug),
   }))
 }

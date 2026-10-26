@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     revisions: revisions.map((row) => ({
       id: row.id,
       createdAt: row.createdAt,
-      actorEmail: row.updatedBy ? actors.get(row.updatedBy) ?? null : null,
+      actorEmail: row.updatedBy ? (actors.get(row.updatedBy) ?? null) : null,
       summary: summary(row.snapshot),
     })),
     audits: audits.map((row) => ({

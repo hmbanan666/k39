@@ -12,5 +12,7 @@ defineProps<{ href: string }>()
 </script>
 
 <style scoped>
-.ui-link { font-weight: 700; }
+.ui-link {
+  font-weight: 700;
+}
 </style>

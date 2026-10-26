@@ -53,8 +53,8 @@ const slug = String(useRoute().params.slug || '')
 const page = await fetchPublic<{
   doc: SeoDocument
   html: string
-  route: { slug: string, title: string, href: string | null } | null
-  steps: Array<{ href: string, title: string, task: string, label: string, kind: string, media: PublicMedia | null }>
+  route: { slug: string; title: string; href: string | null } | null
+  steps: Array<{ href: string; title: string; task: string; label: string; kind: string; media: PublicMedia | null }>
 }>(`/api/public/quests/${slug}`)
 usePublicHead(page.doc)
 </script>
@@ -64,6 +64,10 @@ usePublicHead(page.doc)
   margin: 0.2rem 0 0;
   font-size: 1.05rem;
 }
-.stops { margin-top: 2.2rem; }
-.stops h2 { margin-bottom: 1rem; }
+.stops {
+  margin-top: 2.2rem;
+}
+.stops h2 {
+  margin-bottom: 1rem;
+}
 </style>

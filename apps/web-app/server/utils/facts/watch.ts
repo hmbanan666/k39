@@ -23,14 +23,17 @@ export async function watchSources(now = new Date()) {
   return { skipped: false, fetched }
 }
 
-async function watchOne(row: {
-  url: string
-  content_hash: string | null
-  etag: string | null
-  fetched_at: string | null
-  fail_count: number
-  ttl_days: number
-}, now: Date) {
+async function watchOne(
+  row: {
+    url: string
+    content_hash: string | null
+    etag: string | null
+    fetched_at: string | null
+    fail_count: number
+    ttl_days: number
+  },
+  now: Date,
+) {
   const result = await fetchWatchable(row.url, row.etag)
   const decision = decideWatch({
     status: result.status || null,

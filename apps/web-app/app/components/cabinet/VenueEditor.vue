@@ -43,7 +43,8 @@
         v-if="hours.editable"
         class="muted"
       >
-        Изменённые часы отмечают расписание проверенным. День без часов считается выходным. Если часы дня пока неизвестны, выберите «часы уточняйте».
+        Изменённые часы отмечают расписание проверенным. День без часов считается выходным. Если часы дня пока
+        неизвестны, выберите «часы уточняйте».
       </p>
       <VenueHoursTable
         v-model:days="form.days"
@@ -134,9 +135,7 @@
           <UiInput v-model="form.avgCheck" />
         </UiField>
       </div>
-      <p class="muted">
-        Ориентиры цен берутся из общего каталога. Источник всегда «от заведения».
-      </p>
+      <p class="muted"> Ориентиры цен берутся из общего каталога. Источник всегда «от заведения». </p>
       <div
         v-for="(row, index) in form.prices"
         :key="index"
@@ -181,9 +180,7 @@
     </fieldset>
     <fieldset>
       <legend>Блоки страницы</legend>
-      <p class="muted">
-        Те же блоки, что у редакции: «О месте», «Кому подойдёт», «Полезно знать» и остальные.
-      </p>
+      <p class="muted"> Те же блоки, что у редакции: «О месте», «Кому подойдёт», «Полезно знать» и остальные. </p>
       <article
         v-for="(module, index) in form.modules"
         :key="index"
@@ -224,12 +221,8 @@
           label="Вид"
         >
           <select v-model="module.variant">
-            <option value="plain">
-              обычный
-            </option>
-            <option value="lead">
-              лид
-            </option>
+            <option value="plain"> обычный </option>
+            <option value="lead"> лид </option>
           </select>
         </UiField>
         <UiField
@@ -242,9 +235,7 @@
           />
         </UiField>
         <template v-if="module.type === 'dishes'">
-          <p class="field-count">
-            {{ dishCount(module) }} из {{ dishMax }}
-          </p>
+          <p class="field-count"> {{ dishCount(module) }} из {{ dishMax }} </p>
           <article
             v-for="(item, itemIndex) in module.dishes"
             :key="item.id"
@@ -312,21 +303,22 @@
                 :alt="item.name || 'Фото блюда'"
                 width="96"
                 height="72"
-              >
+              />
               <span
                 v-else-if="item.mediaId"
                 class="muted"
-              >Фото не найдено</span>
+                >Фото не найдено</span
+              >
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 @change="onDishFile(item, $event)"
-              >
+              />
               <label class="rights">
                 <input
                   v-model="item.rights"
                   type="checkbox"
-                >
+                />
                 Права на фото мои, его можно опубликовать на K39. Происхождение: от заведения.
               </label>
               <div class="row">
@@ -467,9 +459,7 @@
     </fieldset>
     <fieldset>
       <legend>Короткий список</legend>
-      <p class="muted">
-        Показывается, только если на странице нет блока «Что заказать».
-      </p>
+      <p class="muted"> Показывается, только если на странице нет блока «Что заказать». </p>
       <div
         v-for="(dish, index) in form.dishes"
         :key="index"
@@ -529,7 +519,7 @@
           :alt="photo.alt"
           width="160"
           height="120"
-        >
+        />
         <span>{{ photo.alt }}</span>
         <button
           v-if="photo.origin === 'venue'"
@@ -541,7 +531,8 @@
         <span
           v-else
           class="muted"
-        >фото редакции</span>
+          >фото редакции</span
+        >
       </li>
     </ul>
     <form
@@ -553,7 +544,7 @@
         accept="image/jpeg,image/png,image/webp"
         required
         @change="onFile"
-      >
+      />
       <UiField label="Подпись">
         <UiInput
           v-model="photoForm.alt"
@@ -570,7 +561,7 @@
         <input
           v-model="photoForm.rights"
           type="checkbox"
-        >
+        />
         Права на фото мои, его можно опубликовать на K39. Происхождение: от заведения.
       </label>
       <p
@@ -596,7 +587,14 @@ import { HOURS_NOTE_MAX } from '@k39/database/hours-note'
 import { metaProductFromHref } from '~~/shared/meta-links'
 import { socialLabel } from '~~/shared/venue-actions'
 import { hoursPayload } from '~~/shared/venue-hours-form'
-import { AUDIENCE_ICONS, DISH_SHOWCASE_MAX, dishPriceIsFresh, isDishId, PRACTICAL_KEYS, VENUE_MODULE_TITLES } from '~~/shared/venue-modules'
+import {
+  AUDIENCE_ICONS,
+  DISH_SHOWCASE_MAX,
+  dishPriceIsFresh,
+  isDishId,
+  PRACTICAL_KEYS,
+  VENUE_MODULE_TITLES,
+} from '~~/shared/venue-modules'
 
 const props = defineProps<{ venueId: string }>()
 
@@ -627,10 +625,10 @@ interface ModuleDraft {
   variant: string
   text: string
   dishes: DishDraft[]
-  audience: Array<{ who: string, icon: string, text: string }>
-  practical: Array<{ key: string, label: string, value: string }>
+  audience: Array<{ who: string; icon: string; text: string }>
+  practical: Array<{ key: string; label: string; value: string }>
   tips: Array<{ text: string }>
-  faq: Array<{ question: string, answer: string }>
+  faq: Array<{ question: string; answer: string }>
 }
 interface CatalogItem {
   slug: string
@@ -665,15 +663,15 @@ const form = reactive({
   menuUrl: '',
   priceLevel: '',
   avgCheck: '',
-  socials: [] as Array<{ network: string, url: string }>,
-  prices: [] as Array<{ item: string, variant: string, priceRub: string }>,
+  socials: [] as Array<{ network: string; url: string }>,
+  prices: [] as Array<{ item: string; variant: string; priceRub: string }>,
   modules: [] as ModuleDraft[],
-  dishes: [] as Array<{ name: string, priceRub: string, note: string }>,
+  dishes: [] as Array<{ name: string; priceRub: string; note: string }>,
   days: [] as HoursFormState['days'],
 })
 
 const metaContacts = computed(() => {
-  const items: Array<{ href: string, label: string }> = []
+  const items: Array<{ href: string; label: string }> = []
   const push = (href: string, label: string) => {
     const url = href.trim()
     if (!url || !metaProductFromHref(url)) {
@@ -717,12 +715,20 @@ function blankDish(): DishDraft {
 }
 
 function dishFromStored(item: unknown): DishDraft {
-  const row = item as { id?: string, name?: string, description?: string | null, note?: string | null, priceRub?: number | null, mediaId?: string | null, updatedAt?: string }
+  const row = item as {
+    id?: string
+    name?: string
+    description?: string | null
+    note?: string | null
+    priceRub?: number | null
+    mediaId?: string | null
+    updatedAt?: string
+  }
   const price = row.priceRub == null ? '' : String(row.priceRub)
   return {
     id: row.id && isDishId(row.id) ? row.id : crypto.randomUUID(),
     name: row.name || '',
-    description: (row.description || row.note || ''),
+    description: row.description || row.note || '',
     priceRub: price,
     savedPrice: price,
     mediaId: row.mediaId || '',
@@ -739,7 +745,13 @@ function dishCount(module: ModuleDraft) {
 }
 
 function stalePrice(item: DishDraft) {
-  return Boolean(item.priceRub.trim() && item.updatedAt && !dishPriceIsFresh(item.updatedAt) && item.priceRub.trim() === item.savedPrice && !item.refreshPrice)
+  return Boolean(
+    item.priceRub.trim() &&
+    item.updatedAt &&
+    !dishPriceIsFresh(item.updatedAt) &&
+    item.priceRub.trim() === item.savedPrice &&
+    !item.refreshPrice,
+  )
 }
 
 function dishPhoto(item: DishDraft) {
@@ -786,13 +798,13 @@ function moduleFromStored(raw: Record<string, unknown>): ModuleDraft {
   }
   if (Array.isArray(raw.items) && draft.type === 'audience') {
     draft.audience = raw.items.map((item) => {
-      const row = item as { who?: string, icon?: string, text?: string }
+      const row = item as { who?: string; icon?: string; text?: string }
       return { who: row.who || '', icon: row.icon || 'group', text: row.text || '' }
     })
   }
   if (Array.isArray(raw.items) && draft.type === 'practical') {
     draft.practical = raw.items.map((item) => {
-      const row = item as { key?: string, label?: string, value?: string }
+      const row = item as { key?: string; label?: string; value?: string }
       return { key: row.key || 'other', label: row.label || '', value: row.value || '' }
     })
   }
@@ -801,7 +813,7 @@ function moduleFromStored(raw: Record<string, unknown>): ModuleDraft {
   }
   if (Array.isArray(raw.items) && draft.type === 'faq') {
     draft.faq = raw.items.map((item) => {
-      const row = item as { question?: string, answer?: string }
+      const row = item as { question?: string; answer?: string }
       return { question: row.question || '', answer: row.answer || '' }
     })
   }
@@ -828,23 +840,31 @@ function modulesPayload(): unknown[] {
         if (!row.name.trim()) {
           return []
         }
-        return [{
-          id: row.id,
-          name: row.name.trim(),
-          description: row.description.trim().slice(0, 200) || null,
-          priceRub: intOrNull(row.priceRub),
-          mediaId: row.mediaId || null,
-          refreshPrice: row.refreshPrice || undefined,
-        }]
+        return [
+          {
+            id: row.id,
+            name: row.name.trim(),
+            description: row.description.trim().slice(0, 200) || null,
+            priceRub: intOrNull(row.priceRub),
+            mediaId: row.mediaId || null,
+            refreshPrice: row.refreshPrice || undefined,
+          },
+        ]
       })
       return items.length ? [{ type: 'dishes', title, items }] : []
     }
     if (module.type === 'audience') {
-      const items = module.audience.flatMap((row) => row.who.trim() && row.text.trim() ? [{ who: row.who.trim(), icon: row.icon, text: row.text.trim() }] : [])
+      const items = module.audience.flatMap((row) =>
+        row.who.trim() && row.text.trim() ? [{ who: row.who.trim(), icon: row.icon, text: row.text.trim() }] : [],
+      )
       return items.length ? [{ type: 'audience', title, items }] : []
     }
     if (module.type === 'practical') {
-      const items = module.practical.flatMap((row) => row.label.trim() && row.value.trim() ? [{ key: row.key, label: row.label.trim(), value: row.value.trim() }] : [])
+      const items = module.practical.flatMap((row) =>
+        row.label.trim() && row.value.trim()
+          ? [{ key: row.key, label: row.label.trim(), value: row.value.trim() }]
+          : [],
+      )
       return items.length ? [{ type: 'practical', title, items }] : []
     }
     if (module.type === 'tips') {
@@ -852,7 +872,9 @@ function modulesPayload(): unknown[] {
       return items.length ? [{ type: 'tips', title, items }] : []
     }
     if (module.type === 'faq') {
-      const items = module.faq.flatMap((row) => row.question.trim() && row.answer.trim() ? [{ question: row.question.trim(), answer: row.answer.trim() }] : [])
+      const items = module.faq.flatMap((row) =>
+        row.question.trim() && row.answer.trim() ? [{ question: row.question.trim(), answer: row.answer.trim() }] : [],
+      )
       return items.length ? [{ type: 'faq', title, items }] : []
     }
     return []
@@ -879,7 +901,7 @@ function moveModule(index: number, step: number) {
 }
 
 function problem(reason: unknown, fallback: string) {
-  const item = reason as { data?: { message?: string, statusMessage?: string }, statusMessage?: string }
+  const item = reason as { data?: { message?: string; statusMessage?: string }; statusMessage?: string }
   return item.data?.statusMessage || item.data?.message || item.statusMessage || fallback
 }
 
@@ -900,7 +922,7 @@ const loaded = await requestFetch<{
     address: string | null
     phone: string | null
     website: string | null
-    socials: Array<{ network: string, url: string }>
+    socials: Array<{ network: string; url: string }>
     bookingUrl: string | null
     orderUrl: string | null
     deliveryUrl: string | null
@@ -908,10 +930,10 @@ const loaded = await requestFetch<{
     priceLevel: number | null
     avgCheck: number | null
     modules: unknown[]
-    signatureDishes: Array<{ name: string, note?: string | null, priceRub?: number | null }>
+    signatureDishes: Array<{ name: string; note?: string | null; priceRub?: number | null }>
   }
   hours: HoursFormState
-  prices: Array<{ item: string, variant: string, priceRub: number }>
+  prices: Array<{ item: string; variant: string; priceRub: number }>
   catalog: CatalogItem[]
   photos: Photo[]
 }>(`/api/cabinet/venues/${props.venueId}`)
@@ -930,7 +952,9 @@ form.priceLevel = loaded.venue.priceLevel == null ? '' : String(loaded.venue.pri
 form.avgCheck = loaded.venue.avgCheck == null ? '' : String(loaded.venue.avgCheck)
 const hours = loaded.hours
 form.hoursNote = hours.note
-form.socials = loaded.venue.socials.length ? loaded.venue.socials.map((row) => ({ ...row })) : [{ network: '', url: '' }]
+form.socials = loaded.venue.socials.length
+  ? loaded.venue.socials.map((row) => ({ ...row }))
+  : [{ network: '', url: '' }]
 catalog.value = loaded.catalog
 form.prices = loaded.prices.map((row) => ({
   item: row.item,
@@ -967,7 +991,10 @@ function payload() {
   return {
     name: form.name,
     description: form.description,
-    cuisineTags: form.cuisine.split(',').map((item) => item.trim()).filter(Boolean),
+    cuisineTags: form.cuisine
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
     address: form.address || null,
     phone: form.phone || null,
     website: form.website || null,
@@ -984,15 +1011,17 @@ function payload() {
       if (!row.item || priceRub == null || priceRub < 1) {
         return []
       }
-      return [{
-        item: row.item,
-        variant: row.variant.trim() || null,
-        priceRub,
-        checkedAt: new Date().toISOString().slice(0, 10),
-        sourceKind: 'owner',
-        sourceTitle: 'Сообщено заведением',
-        sourceUrl: null,
-      }]
+      return [
+        {
+          item: row.item,
+          variant: row.variant.trim() || null,
+          priceRub,
+          checkedAt: new Date().toISOString().slice(0, 10),
+          sourceKind: 'owner',
+          sourceTitle: 'Сообщено заведением',
+          sourceUrl: null,
+        },
+      ]
     }),
     signatureDishes: form.dishes.flatMap((row) => {
       if (!row.name.trim()) {
@@ -1103,31 +1132,106 @@ async function remove(id: string) {
 </script>
 
 <style scoped>
-.editor, .upload { display: grid; gap: 0.75rem; }
-.row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-.module { display: grid; gap: 0.55rem; margin: 0.8rem 0; padding-top: 0.6rem; border-top: 1px dashed var(--color-line); }
-.dish-edit { display: grid; gap: 0.55rem; margin: 0.6rem 0; padding: 0.7rem 0; border-top: 1px solid var(--color-line); }
-.dish-photo { display: grid; gap: 0.45rem; }
-.dish-photo img { width: 96px; height: 72px; object-fit: cover; border-radius: 8px; }
-select { font: inherit; padding: 0.45rem 0.55rem; }
+.editor,
+.upload {
+  display: grid;
+  gap: 0.75rem;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.module {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.8rem 0;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--color-line);
+}
+.dish-edit {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.6rem 0;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--color-line);
+}
+.dish-photo {
+  display: grid;
+  gap: 0.45rem;
+}
+.dish-photo img {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+select {
+  font: inherit;
+  padding: 0.45rem 0.55rem;
+}
 fieldset {
   margin: 0;
   padding: 0.8rem 0 0;
   border: 0;
   border-top: 1px dashed var(--color-line);
 }
-legend { padding: 0; font-weight: 700; }
-.grid { display: grid; gap: 0.6rem; }
-.muted { margin: 0.2rem 0 0.4rem; color: var(--muted); font-size: 0.92rem; }
-.socials { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin: 0.4rem 0 0; }
-.error { color: var(--color-danger, var(--color-brick)); }
-.ok { color: var(--color-sea-dark, var(--color-ink)); }
-.photos { margin-top: 2rem; }
-.shots { display: grid; gap: 0.8rem; margin: 0; padding: 0; list-style: none; }
-.shots li { display: grid; grid-template-columns: 96px 1fr auto; gap: 0.6rem; align-items: center; }
-.shots img { width: 96px; height: 72px; object-fit: cover; border-radius: 8px; }
-.rights { display: flex; gap: 0.5rem; align-items: flex-start; }
+legend {
+  padding: 0;
+  font-weight: 700;
+}
+.grid {
+  display: grid;
+  gap: 0.6rem;
+}
+.muted {
+  margin: 0.2rem 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  margin: 0.4rem 0 0;
+}
+.error {
+  color: var(--color-danger, var(--color-brick));
+}
+.ok {
+  color: var(--color-sea-dark, var(--color-ink));
+}
+.photos {
+  margin-top: 2rem;
+}
+.shots {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shots li {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+}
+.shots img {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.rights {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
 @media (min-width: 720px) {
-  .grid { grid-template-columns: 1fr 1fr; }
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

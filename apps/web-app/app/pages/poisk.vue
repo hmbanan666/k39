@@ -33,7 +33,11 @@
       </p>
       <template v-else>
         <p class="count">
-          {{ results.length ? `${resultsLabel(results.length)} по запросу «${query}»` : `По запросу «${query}» ничего не нашлось` }}
+          {{
+            results.length
+              ? `${resultsLabel(results.length)} по запросу «${query}»`
+              : `По запросу «${query}» ничего не нашлось`
+          }}
         </p>
         <ol
           v-if="results.length"
@@ -55,7 +59,8 @@
               <span
                 v-if="item.snippet"
                 class="snippet"
-              >{{ item.snippet }}</span>
+                >{{ item.snippet }}</span
+              >
             </a>
           </li>
         </ol>
@@ -68,9 +73,7 @@
             slug="shrugging"
             :width="140"
           />
-          <p>
-            Попробуйте другое слово или загляните в разделы.
-          </p>
+          <p> Попробуйте другое слово или загляните в разделы. </p>
         </div>
       </template>
     </template>
@@ -110,14 +113,18 @@ const crumbs = [
 const { data, status, error, refresh } = await useFetch<SearchResponse>('/api/search', { query: { q: query } })
 const failed = computed(() => status.value === 'error' || Boolean(error.value))
 // AsyncData can retain the previous response during a refresh or URL change.
-const response = computed(() => status.value === 'success' && !failed.value && data.value?.query === query.value ? data.value : null)
+const response = computed(() =>
+  status.value === 'success' && !failed.value && data.value?.query === query.value ? data.value : null,
+)
 const results = computed(() => response.value?.results ?? [])
 
 function retry() {
   return refresh()
 }
 
-const { data: links } = await useFetch<{ hubs: TextLink[], places: TextLink[], routes: TextLink[] }>('/api/public/error-links')
+const { data: links } = await useFetch<{ hubs: TextLink[]; places: TextLink[]; routes: TextLink[] }>(
+  '/api/public/error-links',
+)
 
 // Same HTML for people and bots; the page is never indexed (ADR 0030).
 useSeoMeta({
@@ -135,7 +142,15 @@ function logSearch() {
     return
   }
   searchId = newSearchId()
-  sendSearchEvents([{ type: 'search', id: searchId, q: query.value, count: results.value.length, surface: searchSurface(route.query.s) }])
+  sendSearchEvents([
+    {
+      type: 'search',
+      id: searchId,
+      q: query.value,
+      count: results.value.length,
+      surface: searchSurface(route.query.s),
+    },
+  ])
 }
 
 function clicked(index: number, path: string) {
@@ -202,7 +217,9 @@ onMounted(() => watch(response, logSearch, { immediate: true }))
   max-width: 40rem;
   margin-bottom: var(--space-6);
 }
-.empty p { margin: 0; }
+.empty p {
+  margin: 0;
+}
 .mascot {
   flex: none;
   width: 110px;
@@ -212,6 +229,8 @@ onMounted(() => watch(response, logSearch, { immediate: true }))
   gap: var(--space-5);
 }
 @media (min-width: 760px) {
-  .lists { grid-template-columns: 1fr 1fr; }
+  .lists {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

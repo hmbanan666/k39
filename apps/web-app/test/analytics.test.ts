@@ -2,7 +2,17 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { dailyVisitorKey } from '../server/utils/analytics/identity'
-import { classifyChannel, COLLECT_TYPES, isBotUserAgent, mergeHitEntities, parseUserAgent, resolvePeriod, screenBucket, searchQueryFromReferrer, trendPercent } from '../shared/analytics'
+import {
+  classifyChannel,
+  COLLECT_TYPES,
+  isBotUserAgent,
+  mergeHitEntities,
+  parseUserAgent,
+  resolvePeriod,
+  screenBucket,
+  searchQueryFromReferrer,
+  trendPercent,
+} from '../shared/analytics'
 
 describe('analytics classification', () => {
   it('reads channels and the rare search query', () => {
@@ -56,16 +66,20 @@ describe('analytics classification', () => {
   })
 
   it('stores the pin entity and keeps the page route', () => {
-    expect(mergeHitEntities(
-      { placeId: 'place-page', routeId: 'route-1', venueId: null },
-      { placeId: null, routeId: null, venueId: 'venue-1' },
-      null,
-    )).toEqual({ placeId: 'place-page', routeId: 'route-1', venueId: 'venue-1' })
-    expect(mergeHitEntities(
-      { placeId: null, routeId: 'route-1', venueId: null },
-      { placeId: 'stop-place', routeId: null, venueId: null },
-      null,
-    )).toEqual({ placeId: 'stop-place', routeId: 'route-1', venueId: null })
+    expect(
+      mergeHitEntities(
+        { placeId: 'place-page', routeId: 'route-1', venueId: null },
+        { placeId: null, routeId: null, venueId: 'venue-1' },
+        null,
+      ),
+    ).toEqual({ placeId: 'place-page', routeId: 'route-1', venueId: 'venue-1' })
+    expect(
+      mergeHitEntities(
+        { placeId: null, routeId: 'route-1', venueId: null },
+        { placeId: 'stop-place', routeId: null, venueId: null },
+        null,
+      ),
+    ).toEqual({ placeId: 'stop-place', routeId: 'route-1', venueId: null })
   })
 })
 
@@ -79,23 +93,20 @@ describe('search console property', () => {
   })
 
   it('asks Yandex for a lagged week and the verified host', async () => {
-    const {
-      pickYandexHost,
-      yandexFallbackWindow,
-      yandexPopularUrl,
-      yandexQueryRows,
-      yandexQueryWindow,
-    } = await import('../server/utils/analytics/search-job')
+    const { pickYandexHost, yandexFallbackWindow, yandexPopularUrl, yandexQueryRows, yandexQueryWindow } =
+      await import('../server/utils/analytics/search-job')
     const now = new Date('2026-10-16T15:00:00Z')
     expect(yandexQueryWindow(now, false)).toEqual({ from: '2026-10-07', to: '2026-10-13' })
     expect(yandexQueryWindow(now, true)).toEqual({ from: '2026-09-16', to: '2026-10-13' })
     expect(yandexFallbackWindow('2026-10-07')).toEqual({ from: '2026-09-30', to: '2026-10-06' })
-    const hosts = [{
-      host_id: 'https:k39.online:443',
-      unicode_host_url: 'https://k39.online/',
-      ascii_host_url: 'https://k39.online/',
-      verified: true,
-    }]
+    const hosts = [
+      {
+        host_id: 'https:k39.online:443',
+        unicode_host_url: 'https://k39.online/',
+        ascii_host_url: 'https://k39.online/',
+        verified: true,
+      },
+    ]
     expect(pickYandexHost('https:k39.online:443', hosts)).toBe('https:k39.online:443')
     expect(pickYandexHost('https://k39.online/', hosts)).toBe('https:k39.online:443')
     expect(pickYandexHost('http:k39.online:80', hosts)).toBe('https:k39.online:443')
@@ -103,17 +114,26 @@ describe('search console property', () => {
     expect(url.pathname.endsWith('/search-queries/popular/')).toBe(true)
     expect(url.searchParams.get('order_by')).toBe('TOTAL_SHOWS')
     expect(url.searchParams.get('date_to')).toBe('2026-10-13')
-    expect(yandexQueryRows({
-      date_to: '2026-10-13T00:00:00.000+03:00',
-      queries: [{ query_text: 'форт 11', indicators: { TOTAL_SHOWS: 12, TOTAL_CLICKS: 2, AVG_SHOW_POSITION: 4.5 } }],
-    }, '2026-10-16')).toEqual([{
-      day: '2026-10-13',
-      engine: 'yandex',
-      page: '',
-      query: 'форт 11',
-      impressions: 12,
-      clicks: 2,
-      position: 4.5,
-    }])
+    expect(
+      yandexQueryRows(
+        {
+          date_to: '2026-10-13T00:00:00.000+03:00',
+          queries: [
+            { query_text: 'форт 11', indicators: { TOTAL_SHOWS: 12, TOTAL_CLICKS: 2, AVG_SHOW_POSITION: 4.5 } },
+          ],
+        },
+        '2026-10-16',
+      ),
+    ).toEqual([
+      {
+        day: '2026-10-13',
+        engine: 'yandex',
+        page: '',
+        query: 'форт 11',
+        impressions: 12,
+        clicks: 2,
+        position: 4.5,
+      },
+    ])
   })
 })

@@ -4,10 +4,7 @@ import { presentPending } from '../../utils/guests/moderate'
 
 export default defineEventHandler(async (event) => {
   await requireEditor(event)
-  const [submissions, signals] = await Promise.all([
-    db.guests.pendingQueue(),
-    db.guests.openSectionSignals(),
-  ])
+  const [submissions, signals] = await Promise.all([db.guests.pendingQueue(), db.guests.openSectionSignals()])
   return {
     submissions: presentPending(submissions),
     signals: signals.map((row) => ({

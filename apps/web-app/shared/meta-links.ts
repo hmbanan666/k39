@@ -4,7 +4,7 @@
 
 export const META_PRODUCT_ORDER = ['instagram', 'facebook', 'threads', 'whatsapp'] as const
 
-export type MetaProduct = typeof META_PRODUCT_ORDER[number]
+export type MetaProduct = (typeof META_PRODUCT_ORDER)[number]
 
 const PRODUCT_LABEL: Record<MetaProduct, string> = {
   instagram: 'Instagram',
@@ -15,7 +15,7 @@ const PRODUCT_LABEL: Record<MetaProduct, string> = {
 
 // Host match is the name or a subdomain. wa.me and whatsapp.com are included so
 // WhatsApp is handled the same way as the other Meta products.
-const META_HOSTS: ReadonlyArray<{ host: string, product: MetaProduct }> = [
+const META_HOSTS: ReadonlyArray<{ host: string; product: MetaProduct }> = [
   { host: 'instagram.com', product: 'instagram' },
   { host: 'facebook.com', product: 'facebook' },
   { host: 'fb.com', product: 'facebook' },
@@ -68,7 +68,9 @@ function joinProducts(labels: string[]) {
 
 /** Footnote for the products actually linked. Empty when the page has none. */
 export function metaFootnote(products: readonly MetaProduct[]) {
-  const labels = META_PRODUCT_ORDER.filter((product) => products.includes(product)).map((product) => PRODUCT_LABEL[product])
+  const labels = META_PRODUCT_ORDER.filter((product) => products.includes(product)).map(
+    (product) => PRODUCT_LABEL[product],
+  )
   if (!labels.length) {
     return ''
   }

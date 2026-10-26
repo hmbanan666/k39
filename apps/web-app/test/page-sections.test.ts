@@ -3,7 +3,11 @@ import { moduleAnchors, PAGE_SECTIONS, presentSections } from '../shared/page-se
 
 describe('page sections', () => {
   it('keeps only rendered blocks in order', () => {
-    const out = presentSections([[PAGE_SECTIONS.nearby, true], [PAGE_SECTIONS.faq, false], [PAGE_SECTIONS.sources, true]])
+    const out = presentSections([
+      [PAGE_SECTIONS.nearby, true],
+      [PAGE_SECTIONS.faq, false],
+      [PAGE_SECTIONS.sources, true],
+    ])
     expect(out.map((s) => s.id)).toEqual(['ryadom', 'istochniki'])
   })
 

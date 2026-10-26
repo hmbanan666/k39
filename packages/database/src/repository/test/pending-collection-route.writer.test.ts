@@ -5,12 +5,23 @@ import { eq, sql } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { enterContentScope, requireEditorContent } from '../../../../../apps/web-app/server/utils/access'
 import { saveAdminCollection } from '../../../../../apps/web-app/server/utils/admin/collection-write'
-import { applyAdminContentDraft, collectionDraftNotice, discardAdminContentDraft, routeDraftNotice } from '../../../../../apps/web-app/server/utils/admin/content-draft'
+import {
+  applyAdminContentDraft,
+  collectionDraftNotice,
+  discardAdminContentDraft,
+  routeDraftNotice,
+} from '../../../../../apps/web-app/server/utils/admin/content-draft'
 import { withEditorLiveWrite, withPendingGuard } from '../../../../../apps/web-app/server/utils/content/pending-guard'
 import { readCollection, saveCollectionDraft } from '../../../../../apps/web-app/server/utils/mcp/collections'
 import { refuseLiveFact, updateFact } from '../../../../../apps/web-app/server/utils/mcp/fact-write'
 import { importCommonsPhoto, uploadMediaFromUrl } from '../../../../../apps/web-app/server/utils/mcp/media-import'
-import { attachCollectionPhoto, attachPlacePhoto, detachCollectionPhoto, refuseIncomingPhoto, refuseVenuePhoto } from '../../../../../apps/web-app/server/utils/mcp/photos'
+import {
+  attachCollectionPhoto,
+  attachPlacePhoto,
+  detachCollectionPhoto,
+  refuseIncomingPhoto,
+  refuseVenuePhoto,
+} from '../../../../../apps/web-app/server/utils/mcp/photos'
 import { updatePlaceDraft } from '../../../../../apps/web-app/server/utils/mcp/places'
 import { setPublication } from '../../../../../apps/web-app/server/utils/mcp/publish'
 import { writeQuest } from '../../../../../apps/web-app/server/utils/mcp/quests'
@@ -24,7 +35,24 @@ import { toPublicModules } from '../../../../../apps/web-app/shared/page-modules
 import { bodyOf } from '../../body-sections'
 import { useDatabase } from '../../database'
 import { SOURCE_LINK_LIMIT, sourceLimitMessage } from '../../sources'
-import { collections, contentDrafts, facts, mcpAudits, media, pageReviews, places, quests, regions, revisions, routePoints, routes, schedules, slugRedirects, venues, verificationQueue } from '../../tables'
+import {
+  collections,
+  contentDrafts,
+  facts,
+  mcpAudits,
+  media,
+  pageReviews,
+  places,
+  quests,
+  regions,
+  revisions,
+  routePoints,
+  routes,
+  schedules,
+  slugRedirects,
+  venues,
+  verificationQueue,
+} from '../../tables'
 import { Content, Editor } from '../content'
 import { Facts } from '../facts'
 import { Venues } from '../venues'
@@ -58,7 +86,15 @@ const factSubjectIds: string[] = []
 afterEach(async () => {
   enterContentScope('editor')
   const database = useDatabase()
-  for (const id of [...placeIds, ...routeIds, ...collectionIds, ...questIds, ...venueIds, ...factSubjectIds, ...regionIds]) {
+  for (const id of [
+    ...placeIds,
+    ...routeIds,
+    ...collectionIds,
+    ...questIds,
+    ...venueIds,
+    ...factSubjectIds,
+    ...regionIds,
+  ]) {
     await database.delete(verificationQueue).where(eq(verificationQueue.entityId, id))
     await database.delete(pageReviews).where(eq(pageReviews.entityId, id))
     await database.delete(contentDrafts).where(eq(contentDrafts.entityId, id))
@@ -162,23 +198,30 @@ async function storedPhoto(name: string, caption?: string) {
   return row
 }
 
-async function phoneFact(subjectType: 'place' | 'venue' | 'route' | 'route_stop' | 'region', subjectId: string, text: string) {
+async function phoneFact(
+  subjectType: 'place' | 'venue' | 'route' | 'route_stop' | 'region',
+  subjectId: string,
+  text: string,
+) {
   const value = { text }
-  const saved = await Facts.upsert({
-    kind: 'phone',
-    subjectType,
-    subjectId,
-    slot: 'phone',
-    value,
-    valueHash: valueHash(value),
-    sourceUrl: null,
-    sourceTitle: null,
-    sourceKind: 'official',
-    checkedAt: '2026-01-01T00:00:00.000Z',
-    ttlDays: 180,
-    confidence: 'stated',
-    actor: 'editor',
-  }, [])
+  const saved = await Facts.upsert(
+    {
+      kind: 'phone',
+      subjectType,
+      subjectId,
+      slot: 'phone',
+      value,
+      valueHash: valueHash(value),
+      sourceUrl: null,
+      sourceTitle: null,
+      sourceKind: 'official',
+      checkedAt: '2026-01-01T00:00:00.000Z',
+      ttlDays: 180,
+      confidence: 'stated',
+      actor: 'editor',
+    },
+    [],
+  )
   return saved.fact
 }
 
@@ -261,7 +304,10 @@ describe('pending collection and route drafts', () => {
     expect(row?.body).toBe('Новый текст подборки про ров.')
     expect(await Editor.contentDraft('collection', live.id)).toBeNull()
     expect((await readCollection({ id: live.id })).pendingReview).toBeNull()
-    const redirects = await useDatabase().select().from(slugRedirects).where(eq(slugRedirects.fromPath, '/podborki/pending-collection-apply'))
+    const redirects = await useDatabase()
+      .select()
+      .from(slugRedirects)
+      .where(eq(slugRedirects.fromPath, '/podborki/pending-collection-apply'))
     expect(redirects[0]?.toPath).toBe('/podborki/pending-collection-next')
     const page = await Content.publishedCollection('pending-collection-next')
     expect(renderedCollection(page!)).toContain('Новый текст подборки про ров.')
@@ -322,33 +368,45 @@ describe('pending collection and route drafts', () => {
     expect(written.body).toBe('Новый лид из редактора.')
     expect((await Editor.listCollections()).find((item) => item.id === live.id)?.body).toBe('Новый лид из редактора.')
 
-    await expect(saveCollectionDraft({
-      id: live.id,
-      slug: live.slug,
-      title: live.title,
-      body: 'Чужой текст, которого нет в модулях.',
-      modules: [{ type: 'text', variant: 'lead', text: 'Новый лид из редактора.' }],
-    })).rejects.toMatchObject({ statusCode: 400 })
+    await expect(
+      saveCollectionDraft({
+        id: live.id,
+        slug: live.slug,
+        title: live.title,
+        body: 'Чужой текст, которого нет в модулях.',
+        modules: [{ type: 'text', variant: 'lead', text: 'Новый лид из редактора.' }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 })
 
-    const admin = await saveAdminCollection(live.id, {
-      slug: live.slug,
-      title: live.title,
-      summary: live.summary,
-      modules: [{ type: 'text', variant: 'lead', text: 'Лид из админки.' }],
-      publicationStatus: 'published',
-    }, null)
+    const admin = await saveAdminCollection(
+      live.id,
+      {
+        slug: live.slug,
+        title: live.title,
+        summary: live.summary,
+        modules: [{ type: 'text', variant: 'lead', text: 'Лид из админки.' }],
+        publicationStatus: 'published',
+      },
+      null,
+    )
     expect(admin.article).toBe('modules')
     expect(admin.renderedFields).toContain('modules')
     expect(admin.body).toBe('Лид из админки.')
     expect((await Editor.listCollections()).find((item) => item.id === live.id)?.body).toBe('Лид из админки.')
 
-    await expect(saveAdminCollection(live.id, {
-      slug: live.slug,
-      title: live.title,
-      body: 'Чужой текст из формы.',
-      modules: [{ type: 'text', variant: 'lead', text: 'Лид из админки.' }],
-      publicationStatus: 'published',
-    }, null)).rejects.toMatchObject({ statusCode: 400 })
+    await expect(
+      saveAdminCollection(
+        live.id,
+        {
+          slug: live.slug,
+          title: live.title,
+          body: 'Чужой текст из формы.',
+          modules: [{ type: 'text', variant: 'lead', text: 'Лид из админки.' }],
+          publicationStatus: 'published',
+        },
+        null,
+      ),
+    ).rejects.toMatchObject({ statusCode: 400 })
     expect((await Editor.listCollections()).find((item) => item.id === live.id)?.body).toBe('Лид из админки.')
   })
 
@@ -359,12 +417,14 @@ describe('pending collection and route drafts', () => {
       summary: 'Описание публичной страницы.',
       body: 'Старый абзац без вопроса.',
       publicationStatus: 'published',
-      modules: [{
-        type: 'text',
-        variant: 'plain',
-        title: 'Частые вопросы',
-        text: '**Можно ли зайти?**\n\nДа, можно.',
-      }],
+      modules: [
+        {
+          type: 'text',
+          variant: 'plain',
+          title: 'Частые вопросы',
+          text: '**Можно ли зайти?**\n\nДа, можно.',
+        },
+      ],
     })
     collectionIds.push(live.id)
     const page = await loadCollection(live.slug)
@@ -381,29 +441,41 @@ describe('pending collection and route drafts', () => {
     await place('pending-stop-b', 'Вторая остановка')
     const live = await publishedRoute('pending-route')
     enterContentScope('draft')
-    const first = await updateRouteDraft({
-      id: live.id,
-      title: 'Новый маршрут',
-      body: 'Новый текст маршрута про ров.',
-    }, 'route_update')
+    const first = await updateRouteDraft(
+      {
+        id: live.id,
+        title: 'Новый маршрут',
+        body: 'Новый текст маршрута про ров.',
+      },
+      'route_update',
+    )
     expect(first.pendingReview).toBe(true)
     expect(first.publicationStatus).toBe('published')
     expect(first.bodyLength).toBe('Новый текст маршрута про ров.'.length)
     expect(draftFields(first)).toContain('points')
     const stored = await Editor.contentDraft('route', live.id)
 
-    const second = await updateRouteDraft({
-      id: live.id,
-      points: [{ placeSlug: 'pending-stop-b' }, { placeSlug: 'pending-stop-a' }],
-      path: [[20.6, 54.8], [20.7, 54.9]],
-    }, 'route_update')
+    const second = await updateRouteDraft(
+      {
+        id: live.id,
+        points: [{ placeSlug: 'pending-stop-b' }, { placeSlug: 'pending-stop-a' }],
+        path: [
+          [20.6, 54.8],
+          [20.7, 54.9],
+        ],
+      },
+      'route_update',
+    )
     expect(second.points.map((item) => item.placeSlug)).toEqual(['pending-stop-b', 'pending-stop-a'])
     const merged = await Editor.contentDraft('route', live.id)
     expect(merged?.id).toBe(stored?.id)
     expect(merged?.payload).toMatchObject({
       title: 'Новый маршрут',
       body: 'Новый текст маршрута про ров.',
-      path: [[20.6, 54.8], [20.7, 54.9]],
+      path: [
+        [20.6, 54.8],
+        [20.7, 54.9],
+      ],
     })
     expect((await Editor.listRoutes()).find((item) => item.id === live.id)?.body).toBe('Старый текст маршрута про вал.')
     expect((await Editor.routePoints(live.id)).map((item) => item.placeSlug)).toEqual(['pending-stop-a'])
@@ -419,8 +491,14 @@ describe('pending collection and route drafts', () => {
     const row = (await Editor.listRoutes()).find((item) => item.id === live.id)
     expect(row?.title).toBe('Новый маршрут')
     expect(row?.body).toBe('Новый текст маршрута про ров.')
-    expect(row?.path).toEqual([[20.6, 54.8], [20.7, 54.9]])
-    expect((await Editor.routePoints(live.id)).map((item) => item.placeSlug)).toEqual(['pending-stop-b', 'pending-stop-a'])
+    expect(row?.path).toEqual([
+      [20.6, 54.8],
+      [20.7, 54.9],
+    ])
+    expect((await Editor.routePoints(live.id)).map((item) => item.placeSlug)).toEqual([
+      'pending-stop-b',
+      'pending-stop-a',
+    ])
     expect(await Editor.contentDraft('route', live.id)).toBeNull()
     expect((await readRoute({ id: live.id })).pendingReview).toBeNull()
     const after = await Content.publishedRoute(live.slug)
@@ -438,11 +516,13 @@ describe('pending collection and route drafts', () => {
     })
     expect(written.writingWarnings?.length).toBeGreaterThan(0)
     enterContentScope('editor')
-    await expect(setPublication({
-      entity: 'route',
-      id: live.id,
-      publicationStatus: 'published',
-    })).rejects.toMatchObject({ statusCode: 400 })
+    await expect(
+      setPublication({
+        entity: 'route',
+        id: live.id,
+        publicationStatus: 'published',
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 })
     expect((await Editor.listRoutes()).find((item) => item.id === live.id)?.body).toBe('Старый текст маршрута про вал.')
     expect(await Editor.contentDraft('route', live.id)).not.toBeNull()
   })
@@ -459,11 +539,14 @@ describe('pending collection and route drafts', () => {
     expect((await Editor.routeById(route.id))?.firstPublishedAt).toBeNull()
 
     enterContentScope('draft')
-    await updateRouteDraft({
-      id: route.id,
-      title: 'Маршрут со штампом',
-      body: 'Новый текст маршрута со штампом.',
-    }, 'route_update')
+    await updateRouteDraft(
+      {
+        id: route.id,
+        title: 'Маршрут со штампом',
+        body: 'Новый текст маршрута со штампом.',
+      },
+      'route_update',
+    )
     await saveCollectionDraft({
       id: collection.id,
       slug: collection.slug,
@@ -516,7 +599,9 @@ describe('pending collection and route drafts', () => {
 
     enterContentScope('editor')
     await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
-    await expect(setPublication({ entity: 'route', id: route.id, publicationStatus: 'published' })).rejects.toMatchObject({
+    await expect(
+      setPublication({ entity: 'route', id: route.id, publicationStatus: 'published' }),
+    ).rejects.toMatchObject({
       statusCode: 400,
       statusMessage: sourceLimitMessage(),
     })
@@ -529,23 +614,28 @@ describe('pending collection and route drafts', () => {
     expect(await Editor.contentDraft('route', route.id)).not.toBeNull()
 
     enterContentScope('draft')
-    await expect(saveCollectionDraft({
-      id: collection.id,
-      slug: 'pending-source-collection',
-      title: 'Слишком много источников',
-      sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
-        title: `Источник ${index + 1}`,
-        url: `https://example.com/collection/${index + 1}`,
-      })),
-    })).rejects.toMatchObject({ statusCode: 400, statusMessage: sourceLimitMessage() })
+    await expect(
+      saveCollectionDraft({
+        id: collection.id,
+        slug: 'pending-source-collection',
+        title: 'Слишком много источников',
+        sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+          title: `Источник ${index + 1}`,
+          url: `https://example.com/collection/${index + 1}`,
+        })),
+      }),
+    ).rejects.toMatchObject({ statusCode: 400, statusMessage: sourceLimitMessage() })
     // Legacy/raw pending payloads still meet the independent publish-time guard.
     await Editor.saveContentDraft({
       entityType: 'collection',
       entityId: collection.id,
       publicationStatus: 'review',
-      payload: { sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
-        title: `Источник ${index + 1}`, url: `https://example.com/legacy/${index + 1}`,
-      })) },
+      payload: {
+        sources: Array.from({ length: SOURCE_LINK_LIMIT + 1 }, (_, index) => ({
+          title: `Источник ${index + 1}`,
+          url: `https://example.com/legacy/${index + 1}`,
+        })),
+      },
     })
     await Editor.saveContentDraft({
       entityType: 'route',
@@ -560,7 +650,9 @@ describe('pending collection and route drafts', () => {
       },
     })
     enterContentScope('editor')
-    await expect(setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })).rejects.toMatchObject({
+    await expect(
+      setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' }),
+    ).rejects.toMatchObject({
       statusCode: 400,
       statusMessage: sourceLimitMessage(),
     })
@@ -576,23 +668,32 @@ describe('pending collection and route drafts', () => {
   it('rejects inherited legacy sources before staging, then accepts a repaired list for editor application', async () => {
     await place('pending-stop-a', 'Первая остановка')
     const collection = await publishedCollection('pending-legacy-sources')
-    const legacy = Array.from({ length: 29 }, (_, index) => ({ title: `Источник ${index}`, url: `https://example.com/${index}` }))
+    const legacy = Array.from({ length: 29 }, (_, index) => ({
+      title: `Источник ${index}`,
+      url: `https://example.com/${index}`,
+    }))
     await useDatabase().update(collections).set({ sources: legacy }).where(eq(collections.id, collection.id))
     const auditBefore = await useDatabase().select().from(mcpAudits).where(eq(mcpAudits.entityId, collection.id))
     enterContentScope('draft')
     await expect(saveCollectionDraft({ id: collection.id, body: 'Правка текста.' })).rejects.toMatchObject({
-      statusCode: 400, statusMessage: expect.stringMatching(/29.*опубликованной версии.*Не больше 24/u),
+      statusCode: 400,
+      statusMessage: expect.stringMatching(/29.*опубликованной версии.*Не больше 24/u),
     })
     expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
-    expect(await useDatabase().select().from(mcpAudits).where(eq(mcpAudits.entityId, collection.id))).toEqual(auditBefore)
+    expect(await useDatabase().select().from(mcpAudits).where(eq(mcpAudits.entityId, collection.id))).toEqual(
+      auditBefore,
+    )
     expect((await Editor.collectionById(collection.id))?.sources).toEqual(legacy)
     await Editor.saveContentDraft({
-      entityType: 'collection', entityId: collection.id, publicationStatus: 'review',
+      entityType: 'collection',
+      entityId: collection.id,
+      publicationStatus: 'review',
       payload: { sources: legacy, body: 'Старая правка.' },
     })
     const previous = await Editor.contentDraft('collection', collection.id)
     await expect(saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })).rejects.toMatchObject({
-      statusCode: 400, statusMessage: expect.stringMatching(/29.*ожидающего черновика/u),
+      statusCode: 400,
+      statusMessage: expect.stringMatching(/29.*ожидающего черновика/u),
     })
     expect(await Editor.contentDraft('collection', collection.id)).toEqual(previous)
     const corrected = legacy.slice(0, SOURCE_LINK_LIMIT)
@@ -607,7 +708,14 @@ describe('pending collection and route drafts', () => {
   })
 
   const malformedSources = [
-    {}, false, 0, '', { length: 0 }, [null], [false], [{}],
+    {},
+    false,
+    0,
+    '',
+    { length: 0 },
+    [null],
+    [false],
+    [{}],
     [{ title: 1, url: 'https://example.com' }],
     [{ title: null, url: 'https://example.com' }],
     [{ title: 'Источник', url: false }],
@@ -625,74 +733,111 @@ describe('pending collection and route drafts', () => {
     }
   }
 
-  it.each(malformedSources.flatMap((sources) => ['pending', 'live'].map((origin) => ({ origin, sources }))))('refuses malformed $origin JSONB sources $sources without changing stored state', async ({ origin, sources }) => {
-    const database = useDatabase()
-    const collection = await Editor.saveCollection({
-      slug: 'pending-malformed-sources', title: 'Подборка', body: 'Опубликованный текст.',
-      publicationStatus: 'published', sources: [{ title: 'Источник', url: 'https://example.com/live' }],
-    })
-    collectionIds.push(collection.id)
-    if (origin === 'live') {
-      await database.update(collections).set({ sources: sql`${JSON.stringify(sources)}::jsonb` }).where(eq(collections.id, collection.id))
-    }
-    await Editor.saveContentDraft({
-      entityType: 'collection', entityId: collection.id, publicationStatus: 'review',
-      payload: { body: 'Старая правка.', ...(origin === 'pending' ? { sources } : {}) },
-    })
-    const before = await collectionState(collection.id)
-    enterContentScope('draft')
-    await expect(saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })).rejects.toMatchObject({
-      statusCode: 400,
-      statusMessage: expect.stringMatching(origin === 'pending' ? /ожидающего черновика.*sources/u : /опубликованной версии.*sources/u),
-    })
-    expect(await collectionState(collection.id)).toEqual(before)
-    if (origin === 'pending' && !Array.isArray(sources)) {
-      enterContentScope('editor')
-      await expect(setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })).rejects.toMatchObject({
-        statusCode: 400, statusMessage: 'Источники: нужен список',
+  it.each(malformedSources.flatMap((sources) => ['pending', 'live'].map((origin) => ({ origin, sources }))))(
+    'refuses malformed $origin JSONB sources $sources without changing stored state',
+    async ({ origin, sources }) => {
+      const database = useDatabase()
+      const collection = await Editor.saveCollection({
+        slug: 'pending-malformed-sources',
+        title: 'Подборка',
+        body: 'Опубликованный текст.',
+        publicationStatus: 'published',
+        sources: [{ title: 'Источник', url: 'https://example.com/live' }],
+      })
+      collectionIds.push(collection.id)
+      if (origin === 'live') {
+        await database
+          .update(collections)
+          .set({ sources: sql`${JSON.stringify(sources)}::jsonb` })
+          .where(eq(collections.id, collection.id))
+      }
+      await Editor.saveContentDraft({
+        entityType: 'collection',
+        entityId: collection.id,
+        publicationStatus: 'review',
+        payload: { body: 'Старая правка.', ...(origin === 'pending' ? { sources } : {}) },
+      })
+      const before = await collectionState(collection.id)
+      enterContentScope('draft')
+      await expect(saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })).rejects.toMatchObject({
+        statusCode: 400,
+        statusMessage: expect.stringMatching(
+          origin === 'pending' ? /ожидающего черновика.*sources/u : /опубликованной версии.*sources/u,
+        ),
       })
       expect(await collectionState(collection.id)).toEqual(before)
-    }
-  })
+      if (origin === 'pending' && !Array.isArray(sources)) {
+        enterContentScope('editor')
+        await expect(
+          setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' }),
+        ).rejects.toMatchObject({
+          statusCode: 400,
+          statusMessage: 'Источники: нужен список',
+        })
+        expect(await collectionState(collection.id)).toEqual(before)
+      }
+    },
+  )
 
   const liveSources = [{ title: 'Источник', url: 'https://example.com/live' }]
   const duplicateSources = Array.from({ length: 29 }, (_, index) => ({
-    title: ' Новый источник ', url: index % 2 ? 'http://www.example.com/new/' : ' https://example.com/new ',
+    title: ' Новый источник ',
+    url: index % 2 ? 'http://www.example.com/new/' : ' https://example.com/new ',
   }))
   it.each([
     { label: 'omitted', payload: {}, expected: liveSources },
     { label: 'null', payload: { sources: null }, expected: [] },
     { label: 'empty', payload: { sources: [] }, expected: [] },
-    { label: 'duplicates', payload: { sources: duplicateSources }, expected: [{ title: 'Новый источник', url: 'https://example.com/new' }] },
-  ])('preserves inherited $label source semantics through staging and editor application', async ({ payload, expected }) => {
-    const collection = await Editor.saveCollection({
-      slug: 'pending-valid-sources', title: 'Подборка', body: 'Опубликованный текст.',
-      publicationStatus: 'published', sources: liveSources,
-    })
-    collectionIds.push(collection.id)
-    await Editor.saveContentDraft({
-      entityType: 'collection', entityId: collection.id, publicationStatus: 'review',
-      payload: { body: 'Старая правка.', ...payload },
-    })
-    enterContentScope('draft')
-    await saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })
-    expect((await Editor.contentDraft('collection', collection.id))?.payload.sources).toEqual(expected)
-    expect((await Editor.collectionById(collection.id))?.sources).toEqual(liveSources)
-    await expect(setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })).rejects.toMatchObject({ statusCode: 403 })
-    enterContentScope('editor')
-    await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
-    expect((await Editor.collectionById(collection.id))?.sources).toEqual(expected)
-    expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
-  })
+    {
+      label: 'duplicates',
+      payload: { sources: duplicateSources },
+      expected: [{ title: 'Новый источник', url: 'https://example.com/new' }],
+    },
+  ])(
+    'preserves inherited $label source semantics through staging and editor application',
+    async ({ payload, expected }) => {
+      const collection = await Editor.saveCollection({
+        slug: 'pending-valid-sources',
+        title: 'Подборка',
+        body: 'Опубликованный текст.',
+        publicationStatus: 'published',
+        sources: liveSources,
+      })
+      collectionIds.push(collection.id)
+      await Editor.saveContentDraft({
+        entityType: 'collection',
+        entityId: collection.id,
+        publicationStatus: 'review',
+        payload: { body: 'Старая правка.', ...payload },
+      })
+      enterContentScope('draft')
+      await saveCollectionDraft({ id: collection.id, body: 'Новая правка.' })
+      expect((await Editor.contentDraft('collection', collection.id))?.payload.sources).toEqual(expected)
+      expect((await Editor.collectionById(collection.id))?.sources).toEqual(liveSources)
+      await expect(
+        setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' }),
+      ).rejects.toMatchObject({ statusCode: 403 })
+      enterContentScope('editor')
+      await setPublication({ entity: 'collection', id: collection.id, publicationStatus: 'published' })
+      expect((await Editor.collectionById(collection.id))?.sources).toEqual(expected)
+      expect(await Editor.contentDraft('collection', collection.id)).toBeNull()
+    },
+  )
 
   it.each([false, true])('allows explicit repair/clear of malformed pending JSON (clear=%s)', async (clear) => {
     const collection = await Editor.saveCollection({
-      slug: 'pending-repair-sources', title: 'Подборка', body: 'Опубликованный текст.',
-      publicationStatus: 'published', sources: liveSources,
+      slug: 'pending-repair-sources',
+      title: 'Подборка',
+      body: 'Опубликованный текст.',
+      publicationStatus: 'published',
+      sources: liveSources,
     })
     collectionIds.push(collection.id)
     await Editor.saveContentDraft({
-      entityType: 'collection', entityId: collection.id, publicationStatus: 'review', payload: { sources: {} },
+      entityType: 'collection',
+      entityId: collection.id,
+      publicationStatus: 'review',
+      payload: { sources: {} },
     })
     enterContentScope('draft')
     const corrected = clear ? [] : liveSources
@@ -728,19 +873,25 @@ describe('pending collection and route drafts', () => {
     expect(collectionView?.changes[0]).toMatchObject({ live: 'Старая подборка', draft: 'Новая подборка' })
     expect(routeView?.changes.map((item) => item.field)).toEqual(['title', 'body'])
 
-    await expect(withPendingGuard('collection', collection.id, undefined, async () => {
-      throw new Error('save should not run')
-    })).rejects.toMatchObject({ statusCode: 409 })
+    await expect(
+      withPendingGuard('collection', collection.id, undefined, async () => {
+        throw new Error('save should not run')
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 })
     expect((await Editor.listCollections()).find((item) => item.id === collection.id)?.title).toBe('Старая подборка')
 
     await withPendingGuard('route', route.id, 'discard', async (tx) => {
-      return Editor.saveRoute({
-        id: route.id,
-        slug: route.slug,
-        title: 'Правка редактора',
-        body: 'Текст формы редактора на живой странице.',
-        publicationStatus: 'published',
-      }, null, tx)
+      return Editor.saveRoute(
+        {
+          id: route.id,
+          slug: route.slug,
+          title: 'Правка редактора',
+          body: 'Текст формы редактора на живой странице.',
+          publicationStatus: 'published',
+        },
+        null,
+        tx,
+      )
     })
     expect((await Editor.listRoutes()).find((item) => item.id === route.id)?.title).toBe('Правка редактора')
     expect(await Editor.contentDraft('route', route.id)).toBeNull()
@@ -754,7 +905,9 @@ describe('pending collection and route drafts', () => {
     await updateRouteDraft({ id: route.id, body: 'Ещё один черновик маршрута про ров.' })
     enterContentScope('editor')
     await discardAdminContentDraft('route', route.id)
-    expect((await Editor.listRoutes()).find((item) => item.id === route.id)?.body).toBe('Текст формы редактора на живой странице.')
+    expect((await Editor.listRoutes()).find((item) => item.id === route.id)?.body).toBe(
+      'Текст формы редактора на живой странице.',
+    )
     expect(await routeDraftNotice(route.id)).toBeNull()
   })
 
@@ -770,36 +923,53 @@ describe('pending collection and route drafts', () => {
       publicationStatus: 'published',
     })
     questIds.push(quest.id)
-    const [venue] = await useDatabase().insert(venues).values({
-      slug: 'pending-venue',
-      name: 'Кафе проверки',
-      kind: 'cafe',
-      description: 'Короткое описание.',
-      status: 'published',
-    }).returning()
+    const [venue] = await useDatabase()
+      .insert(venues)
+      .values({
+        slug: 'pending-venue',
+        name: 'Кафе проверки',
+        kind: 'cafe',
+        description: 'Короткое описание.',
+        status: 'published',
+      })
+      .returning()
     venueIds.push(venue!.id)
 
     enterContentScope('draft')
-    await expect(saveCollectionDraft({
-      id: collection.id,
-      slug: collection.slug,
-      title: collection.title,
-      publicationStatus: 'published',
-    })).rejects.toMatchObject({ statusCode: 403 })
-    await expect(updateRouteDraft({
-      id: route.id,
-      publicationStatus: 'published',
-    })).rejects.toMatchObject({ statusCode: 403 })
+    await expect(
+      saveCollectionDraft({
+        id: collection.id,
+        slug: collection.slug,
+        title: collection.title,
+        publicationStatus: 'published',
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 })
+    await expect(
+      updateRouteDraft({
+        id: route.id,
+        publicationStatus: 'published',
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 })
     expect(() => requireEditorContent('archive content')).toThrowError(expect.objectContaining({ statusCode: 403 }))
-    expect(() => requireEditorContent('edit a venue listing')).toThrowError(expect.objectContaining({ statusCode: 403 }))
-    await expect(writeQuest({
-      id: quest.id,
-      body: 'Новый текст квеста про площадь.',
-    }, 'quest_update', { create: false })).rejects.toMatchObject({ statusCode: 409 })
-    await expect(updateVenue({
-      id: venue!.id,
-      description: 'Другое описание заведения для проверки отказа.',
-    })).resolves.toMatchObject({ pendingReview: true })
+    expect(() => requireEditorContent('edit a venue listing')).toThrowError(
+      expect.objectContaining({ statusCode: 403 }),
+    )
+    await expect(
+      writeQuest(
+        {
+          id: quest.id,
+          body: 'Новый текст квеста про площадь.',
+        },
+        'quest_update',
+        { create: false },
+      ),
+    ).rejects.toMatchObject({ statusCode: 409 })
+    await expect(
+      updateVenue({
+        id: venue!.id,
+        description: 'Другое описание заведения для проверки отказа.',
+      }),
+    ).resolves.toMatchObject({ pendingReview: true })
     expect((await Venues.byId(venue!.id))?.description).toBe(venue!.description)
 
     expect((await Editor.listCollections()).find((item) => item.id === collection.id)?.title).toBe('Старая подборка')
@@ -822,17 +992,24 @@ describe('pending collection and route drafts', () => {
     const checked = await Editor.contentDraft('collection', collection.id)
     enterContentScope('editor')
     await withPendingGuard('collection', collection.id, 'discard', async (tx) => {
-      await useDatabase().update(contentDrafts).set({
-        payload: { title: 'Свежий черновик', body: 'Текст, который пришёл во время сохранения.' },
-        updatedAt: '2099-01-01T00:00:00.000Z',
-      }).where(eq(contentDrafts.id, checked!.id))
-      return Editor.saveCollection({
-        id: collection.id,
-        slug: collection.slug,
-        title: 'Правка редактора',
-        body: 'Текст формы на живой странице.',
-        publicationStatus: 'published',
-      }, null, tx)
+      await useDatabase()
+        .update(contentDrafts)
+        .set({
+          payload: { title: 'Свежий черновик', body: 'Текст, который пришёл во время сохранения.' },
+          updatedAt: '2099-01-01T00:00:00.000Z',
+        })
+        .where(eq(contentDrafts.id, checked!.id))
+      return Editor.saveCollection(
+        {
+          id: collection.id,
+          slug: collection.slug,
+          title: 'Правка редактора',
+          body: 'Текст формы на живой странице.',
+          publicationStatus: 'published',
+        },
+        null,
+        tx,
+      )
     })
     const kept = await Editor.contentDraft('collection', collection.id)
     expect(kept?.id).toBe(checked?.id)
@@ -848,18 +1025,25 @@ describe('pending collection and route drafts', () => {
     const checked = await Editor.contentDraft('place', live.id)
     enterContentScope('editor')
     await withPendingGuard('place', live.id, 'discard', async (tx) => {
-      await useDatabase().update(contentDrafts).set({
-        payload: { title: 'Свежий черновик', body: 'Текст, который пришёл во время сохранения.' },
-        updatedAt: '2099-01-01T00:00:00.000Z',
-      }).where(eq(contentDrafts.id, checked!.id))
-      return Editor.savePlace({
-        id: live.id,
-        slug: live.slug,
-        title: 'Правка редактора',
-        summary: live.summary,
-        body: 'Текст формы на живой странице.',
-        publicationStatus: 'published',
-      }, null, tx)
+      await useDatabase()
+        .update(contentDrafts)
+        .set({
+          payload: { title: 'Свежий черновик', body: 'Текст, который пришёл во время сохранения.' },
+          updatedAt: '2099-01-01T00:00:00.000Z',
+        })
+        .where(eq(contentDrafts.id, checked!.id))
+      return Editor.savePlace(
+        {
+          id: live.id,
+          slug: live.slug,
+          title: 'Правка редактора',
+          summary: live.summary,
+          body: 'Текст формы на живой странице.',
+          publicationStatus: 'published',
+        },
+        null,
+        tx,
+      )
     })
     const kept = await Editor.contentDraft('place', live.id)
     expect(kept?.id).toBe(checked?.id)
@@ -885,11 +1069,14 @@ describe('pending collection and route drafts', () => {
       title: 'Черновик маршрута',
       body: 'Текст черновика маршрута про ров.',
     })
-    await updatePlaceDraft({
-      id: live.id,
-      title: 'Черновик места',
-      body: 'Текст черновика места про ров.',
-    }, 'place_update')
+    await updatePlaceDraft(
+      {
+        id: live.id,
+        title: 'Черновик места',
+        body: 'Текст черновика места про ров.',
+      },
+      'place_update',
+    )
     enterContentScope('editor')
 
     const droppedCollection = await saveCollectionDraft({
@@ -909,11 +1096,14 @@ describe('pending collection and route drafts', () => {
     expect(droppedRoute).toMatchObject({ draftDropped: true, pendingReview: false, title: 'Правка маршрута' })
     expect(await Editor.contentDraft('route', route.id)).toBeNull()
 
-    const droppedPlace = await updatePlaceDraft({
-      id: live.id,
-      title: 'Правка места',
-      body: 'Текст редактора места на живой странице.',
-    }, 'place_update')
+    const droppedPlace = await updatePlaceDraft(
+      {
+        id: live.id,
+        title: 'Правка места',
+        body: 'Текст редактора места на живой странице.',
+      },
+      'place_update',
+    )
     expect(droppedPlace).toMatchObject({ draftDropped: true, pendingReview: false, title: 'Правка места' })
     expect(await Editor.contentDraft('place', live.id)).toBeNull()
 
@@ -936,39 +1126,53 @@ describe('pending collection and route drafts', () => {
     }
     const racedCollection = await withEditorLiveWrite('collection', collection.id, async (tx) => {
       await useDatabase().update(contentDrafts).set(bumped).where(eq(contentDrafts.id, freshCollection!.id))
-      return Editor.saveCollection({
-        id: collection.id,
-        slug: collection.slug,
-        title: 'Правка после гонки',
-        body: 'Текст формы на живой странице.',
-        publicationStatus: 'published',
-      }, null, tx)
+      return Editor.saveCollection(
+        {
+          id: collection.id,
+          slug: collection.slug,
+          title: 'Правка после гонки',
+          body: 'Текст формы на живой странице.',
+          publicationStatus: 'published',
+        },
+        null,
+        tx,
+      )
     })
     const racedRoute = await withEditorLiveWrite('route', route.id, async (tx) => {
       await useDatabase().update(contentDrafts).set(bumped).where(eq(contentDrafts.id, freshRoute!.id))
-      return Editor.saveRoute({
-        id: route.id,
-        slug: route.slug,
-        title: 'Правка маршрута после гонки',
-        body: 'Текст формы на живой странице.',
-        publicationStatus: 'published',
-      }, null, tx)
+      return Editor.saveRoute(
+        {
+          id: route.id,
+          slug: route.slug,
+          title: 'Правка маршрута после гонки',
+          body: 'Текст формы на живой странице.',
+          publicationStatus: 'published',
+        },
+        null,
+        tx,
+      )
     })
     const racedPlace = await withEditorLiveWrite('place', live.id, async (tx) => {
       await useDatabase().update(contentDrafts).set(bumped).where(eq(contentDrafts.id, freshPlace!.id))
-      return Editor.savePlace({
-        id: live.id,
-        slug: live.slug,
-        title: 'Правка места после гонки',
-        summary: live.summary,
-        body: 'Текст формы на живой странице.',
-        publicationStatus: 'published',
-      }, null, tx)
+      return Editor.savePlace(
+        {
+          id: live.id,
+          slug: live.slug,
+          title: 'Правка места после гонки',
+          summary: live.summary,
+          body: 'Текст формы на живой странице.',
+          publicationStatus: 'published',
+        },
+        null,
+        tx,
+      )
     })
     expect(racedCollection.draftDropped).toBe(false)
     expect(racedRoute.draftDropped).toBe(false)
     expect(racedPlace.draftDropped).toBe(false)
-    expect((await Editor.contentDraft('collection', collection.id))?.payload).toMatchObject({ title: 'Свежий черновик' })
+    expect((await Editor.contentDraft('collection', collection.id))?.payload).toMatchObject({
+      title: 'Свежий черновик',
+    })
     expect((await Editor.contentDraft('route', route.id))?.payload).toMatchObject({ title: 'Свежий черновик' })
     expect((await Editor.contentDraft('place', live.id))?.payload).toMatchObject({ title: 'Свежий черновик' })
     expect((await Editor.collectionById(collection.id))?.title).toBe('Правка после гонки')
@@ -986,7 +1190,9 @@ describe('draft token leaves a live gallery and schedule unchanged', () => {
     await attachPlacePhoto({ placeId: live.id, mediaId: cover.id, isCover: true })
 
     enterContentScope('draft')
-    await expect(attachPlacePhoto({ placeId: live.id, mediaId: extra.id, isCover: true })).rejects.toMatchObject(liveUnchanged)
+    await expect(attachPlacePhoto({ placeId: live.id, mediaId: extra.id, isCover: true })).rejects.toMatchObject(
+      liveUnchanged,
+    )
     await expect(refuseIncomingPhoto(live.id)).rejects.toMatchObject(liveUnchanged)
     expect((await Content.galleryFor(live.id)).map((item) => ({ id: item.media.id, isCover: item.isCover }))).toEqual([
       { id: cover.id, isCover: true },
@@ -1006,8 +1212,10 @@ describe('draft token leaves a live gallery and schedule unchanged', () => {
       publicationStatus: 'archived',
     })
     enterContentScope('draft')
-    await expect(attachPlacePhoto({ placeId: live.id, mediaId: extra.id, sortOrder: 4 })).rejects.toMatchObject(liveUnchanged)
-    expect((await Content.galleryFor(live.id))).toHaveLength(2)
+    await expect(attachPlacePhoto({ placeId: live.id, mediaId: extra.id, sortOrder: 4 })).rejects.toMatchObject(
+      liveUnchanged,
+    )
+    expect(await Content.galleryFor(live.id)).toHaveLength(2)
   })
 
   it('refuses a published collection cover, caption, and detach, and still lets the editor attach', async () => {
@@ -1019,13 +1227,17 @@ describe('draft token leaves a live gallery and schedule unchanged', () => {
     await attachCollectionPhoto({ collectionId: live.id, mediaId: cover.id, caption: 'Старая подпись' })
 
     enterContentScope('draft')
-    await expect(attachCollectionPhoto({
-      collectionId: live.id,
-      mediaId: extra.id,
-      isCover: true,
-      caption: 'Новая подпись',
-    })).rejects.toMatchObject(liveUnchanged)
-    await expect(detachCollectionPhoto({ collectionId: live.id, mediaId: cover.id })).rejects.toMatchObject(liveUnchanged)
+    await expect(
+      attachCollectionPhoto({
+        collectionId: live.id,
+        mediaId: extra.id,
+        isCover: true,
+        caption: 'Новая подпись',
+      }),
+    ).rejects.toMatchObject(liveUnchanged)
+    await expect(detachCollectionPhoto({ collectionId: live.id, mediaId: cover.id })).rejects.toMatchObject(
+      liveUnchanged,
+    )
     await expect(refuseIncomingPhoto(undefined, live.id)).rejects.toMatchObject(liveUnchanged)
     const blocked = await Content.collectionGallery(live.id)
     expect(blocked.map((item) => ({ id: item.media.id, isCover: item.isCover, caption: item.media.caption }))).toEqual([
@@ -1046,7 +1258,9 @@ describe('draft token leaves a live gallery and schedule unchanged', () => {
       publicationStatus: 'archived',
     })
     enterContentScope('draft')
-    await expect(detachCollectionPhoto({ collectionId: live.id, mediaId: extra.id })).rejects.toMatchObject(liveUnchanged)
+    await expect(detachCollectionPhoto({ collectionId: live.id, mediaId: extra.id })).rejects.toMatchObject(
+      liveUnchanged,
+    )
     expect(await Content.collectionGallery(live.id)).toHaveLength(2)
 
     const draftRow = await Editor.saveCollection({
@@ -1064,13 +1278,16 @@ describe('draft token leaves a live gallery and schedule unchanged', () => {
 
   it('refuses schedule and venue photo writes on a live page', async () => {
     const live = await place('pending-hours-place', 'Место с часами')
-    const [venue] = await useDatabase().insert(venues).values({
-      slug: 'pending-hours-venue',
-      name: 'Кафе с часами',
-      kind: 'cafe',
-      description: 'Короткое описание.',
-      status: 'published',
-    }).returning()
+    const [venue] = await useDatabase()
+      .insert(venues)
+      .values({
+        slug: 'pending-hours-venue',
+        name: 'Кафе с часами',
+        kind: 'cafe',
+        description: 'Короткое описание.',
+        status: 'published',
+      })
+      .returning()
     venueIds.push(venue!.id)
     enterContentScope('draft')
     await expect(assertScheduleWritable('place', live.id)).rejects.toMatchObject(liveUnchanged)
@@ -1137,12 +1354,14 @@ describe('draft token leaves a public fact unchanged', () => {
     const live = await place('pending-fact-place', 'Место с телефоном')
     const stored = await phoneFact('place', live.id, '+7 4012 00-00-01')
     enterContentScope('draft')
-    await expect(updateFact({
-      id: stored.id,
-      value: { text: '+7 4012 00-00-02' },
-      sourceKind: 'official',
-      confidence: 'stated',
-    })).rejects.toMatchObject(liveUnchanged)
+    await expect(
+      updateFact({
+        id: stored.id,
+        value: { text: '+7 4012 00-00-02' },
+        sourceKind: 'official',
+        confidence: 'stated',
+      }),
+    ).rejects.toMatchObject(liveUnchanged)
     expect((await Facts.byId(stored.id))?.value).toEqual({ text: '+7 4012 00-00-01' })
 
     enterContentScope('editor')
@@ -1164,38 +1383,47 @@ describe('draft token leaves a public fact unchanged', () => {
       publicationStatus: 'archived',
     })
     enterContentScope('draft')
-    await expect(updateFact({
-      id: stored.id,
-      value: { text: '+7 4012 00-00-03' },
-      sourceKind: 'official',
-      confidence: 'stated',
-    })).rejects.toMatchObject(liveUnchanged)
+    await expect(
+      updateFact({
+        id: stored.id,
+        value: { text: '+7 4012 00-00-03' },
+        sourceKind: 'official',
+        confidence: 'stated',
+      }),
+    ).rejects.toMatchObject(liveUnchanged)
     expect((await Facts.byId(stored.id))?.value).toEqual({ text: '+7 4012 00-00-02' })
 
-    const [venue] = await useDatabase().insert(venues).values({
-      slug: 'pending-fact-venue',
-      name: 'Кафе с телефоном',
-      kind: 'cafe',
-      description: 'Короткое описание.',
-      status: 'published',
-    }).returning()
+    const [venue] = await useDatabase()
+      .insert(venues)
+      .values({
+        slug: 'pending-fact-venue',
+        name: 'Кафе с телефоном',
+        kind: 'cafe',
+        description: 'Короткое описание.',
+        status: 'published',
+      })
+      .returning()
     venueIds.push(venue!.id)
     const venueFact = await phoneFact('venue', venue!.id, '+7 4012 11-11-11')
-    await expect(updateFact({
-      id: venueFact.id,
-      value: { text: '+7 4012 22-22-22' },
-      sourceKind: 'official',
-      confidence: 'stated',
-    })).rejects.toMatchObject(liveUnchanged)
+    await expect(
+      updateFact({
+        id: venueFact.id,
+        value: { text: '+7 4012 22-22-22' },
+        sourceKind: 'official',
+        confidence: 'stated',
+      }),
+    ).rejects.toMatchObject(liveUnchanged)
     expect((await Facts.byId(venueFact.id))?.value).toEqual({ text: '+7 4012 11-11-11' })
 
     await useDatabase().update(venues).set({ status: 'closed' }).where(eq(venues.id, venue!.id))
-    await expect(updateFact({
-      id: venueFact.id,
-      value: { text: '+7 4012 33-33-33' },
-      sourceKind: 'official',
-      confidence: 'stated',
-    })).rejects.toMatchObject(liveUnchanged)
+    await expect(
+      updateFact({
+        id: venueFact.id,
+        value: { text: '+7 4012 33-33-33' },
+        sourceKind: 'official',
+        confidence: 'stated',
+      }),
+    ).rejects.toMatchObject(liveUnchanged)
     expect((await Facts.byId(venueFact.id))?.value).toEqual({ text: '+7 4012 11-11-11' })
   })
 
@@ -1206,10 +1434,13 @@ describe('draft token leaves a public fact unchanged', () => {
     const [point] = await useDatabase().select().from(routePoints).where(eq(routePoints.routeId, live.id))
     factSubjectIds.push(point!.id)
     const stopFact = await phoneFact('route_stop', point!.id, '+7 4012 40-00-02')
-    const [region] = await useDatabase().insert(regions).values({
-      slug: 'pending-fact-region',
-      title: 'Край факта',
-    }).returning()
+    const [region] = await useDatabase()
+      .insert(regions)
+      .values({
+        slug: 'pending-fact-region',
+        title: 'Край факта',
+      })
+      .returning()
     regionIds.push(region!.id)
     const regionFact = await phoneFact('region', region!.id, '+7 4012 40-00-03')
 
@@ -1274,13 +1505,16 @@ describe('draft token leaves a public fact unchanged', () => {
 
 describe('venue delete is editor-only', () => {
   it('refuses the draft token on an archived venue and lets the editor delete it', async () => {
-    const [venue] = await useDatabase().insert(venues).values({
-      slug: 'pending-delete-venue',
-      name: 'Архивное кафе',
-      kind: 'cafe',
-      description: 'Короткое описание.',
-      status: 'archived',
-    }).returning()
+    const [venue] = await useDatabase()
+      .insert(venues)
+      .values({
+        slug: 'pending-delete-venue',
+        name: 'Архивное кафе',
+        kind: 'cafe',
+        description: 'Короткое описание.',
+        status: 'archived',
+      })
+      .returning()
     venueIds.push(venue!.id)
     enterContentScope('draft')
     await expect(deleteVenue({ id: venue!.id })).rejects.toMatchObject({

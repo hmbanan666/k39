@@ -6,7 +6,16 @@ import { catalogHoursKnown, catalogPageRefs, scoresFromCatalog, toStored } from 
 import { personaCoverageReport } from '../server/utils/scoring/coverage'
 import { scorePreview } from '../server/utils/scoring/preview'
 import { LENGTH_OVERRIDE_IGNORED, LENGTH_OVERRIDE_STALE, REPEATED_PARAGRAPH } from '../shared/length-override'
-import { buildWeeklyReport, emptyResults, filterScores, issueLabel, linkStats, queriesForPath, scorePage, topIssue } from '../shared/scoring'
+import {
+  buildWeeklyReport,
+  emptyResults,
+  filterScores,
+  issueLabel,
+  linkStats,
+  queriesForPath,
+  scorePage,
+  topIssue,
+} from '../shared/scoring'
 
 const TITLE = `Форт на окраине города K39 ${'а'.repeat(10)}`
 const DESCRIPTION = 'б'.repeat(120)
@@ -61,7 +70,9 @@ function uniqueArticle(chars: number, noun: string) {
   const parts: string[] = []
   let index = 0
   while (parts.join('\n\n').length < chars) {
-    parts.push(`${noun} ${index} описан отдельно: год ${1800 + (index % 50)}, признак ${noun}-${index}, и это не повтор соседнего абзаца.`)
+    parts.push(
+      `${noun} ${index} описан отдельно: год ${1800 + (index % 50)}, признак ${noun}-${index}, и это не повтор соседнего абзаца.`,
+    )
     index += 1
   }
   return parts.join('\n\n').slice(0, chars)
@@ -88,20 +99,26 @@ function faq(count: number) {
 }
 
 describe('page score', () => {
-  it.each([0, 180, 181])('reports the page stamp age (%i days) even when structured facts determine freshness', (days) => {
-    const now = new Date('2026-10-25T12:00:00Z')
-    const checked = new Date(now.getTime() - days * 86_400_000).toISOString()
-    const score = scorePage(source({ factsCheckedAt: checked, factRefs: { count: 1, stale: 0 } }), now)
-    expect(score.signals.factsAgeDays).toBe(days)
-    expect(score.checks.quality).not.toContain('stale facts')
-    expect(score.checks.quality.some((check) => check.startsWith('facts checked '))).toBe(false)
-  })
+  it.each([0, 180, 181])(
+    'reports the page stamp age (%i days) even when structured facts determine freshness',
+    (days) => {
+      const now = new Date('2026-10-25T12:00:00Z')
+      const checked = new Date(now.getTime() - days * 86_400_000).toISOString()
+      const score = scorePage(source({ factsCheckedAt: checked, factRefs: { count: 1, stale: 0 } }), now)
+      expect(score.signals.factsAgeDays).toBe(days)
+      expect(score.checks.quality).not.toContain('stale facts')
+      expect(score.checks.quality.some((check) => check.startsWith('facts checked '))).toBe(false)
+    },
+  )
 
-  it.each([null, 'not-a-date'])('keeps an unavailable page stamp %j null without overriding fresh cited facts', (factsCheckedAt) => {
-    const score = scorePage(source({ factsCheckedAt, factRefs: { count: 1, stale: 0 } }))
-    expect(score.signals.factsAgeDays).toBeNull()
-    expect(score.checks.quality).not.toContain('facts not checked')
-  })
+  it.each([null, 'not-a-date'])(
+    'keeps an unavailable page stamp %j null without overriding fresh cited facts',
+    (factsCheckedAt) => {
+      const score = scorePage(source({ factsCheckedAt, factRefs: { count: 1, stale: 0 } }))
+      expect(score.signals.factsAgeDays).toBeNull()
+      expect(score.checks.quality).not.toContain('facts not checked')
+    },
+  )
 
   it('retains the 180-day fallback boundary when no cited facts replace the page stamp', () => {
     const now = new Date('2026-10-25T12:00:00Z')
@@ -123,21 +140,25 @@ describe('page score', () => {
   })
 
   it('names a thin major place: no FAQ, short description, orphan', () => {
-    const score = scorePage(source({
-      body: 'Мало текста.',
-      seoDescription: 'в'.repeat(40),
-      photoCount: 0,
-      inRoute: false,
-      inCollection: false,
-      inbound: 0,
-      contentOutbound: 0,
-      orphan: true,
-      factsCheckedAt: null,
-      passport: null,
-      publicationStatus: 'published',
-    }))
+    const score = scorePage(
+      source({
+        body: 'Мало текста.',
+        seoDescription: 'в'.repeat(40),
+        photoCount: 0,
+        inRoute: false,
+        inCollection: false,
+        inbound: 0,
+        contentOutbound: 0,
+        orphan: true,
+        factsCheckedAt: null,
+        passport: null,
+        publicationStatus: 'published',
+      }),
+    )
     expect(score.checks.quality).toContain('no FAQ')
-    expect(score.checks.quality.some((check) => check.startsWith('body ') && check.includes('need 3000-6000'))).toBe(true)
+    expect(score.checks.quality.some((check) => check.startsWith('body ') && check.includes('need 3000-6000'))).toBe(
+      true,
+    )
     expect(score.checks.quality).toContain('0 photos')
     expect(score.checks.quality).toContain('facts not checked')
     expect(score.checks.quality).toContain('passport empty')
@@ -193,51 +214,59 @@ describe('page score', () => {
   })
 
   it('uses the 2000 character floor for a minor place', () => {
-    const score = scorePage(source({
-      categorySlug: 'eda',
-      categoryTitle: 'Еда',
-      body: 'б'.repeat(500),
-      photoCount: 1,
-    }))
+    const score = scorePage(
+      source({
+        categorySlug: 'eda',
+        categoryTitle: 'Еда',
+        body: 'б'.repeat(500),
+        photoCount: 1,
+      }),
+    )
     expect(score.checks.quality.some((check) => check.includes('need 2000'))).toBe(true)
     expect(score.signals.tier).toBe('minor')
   })
 
   it('flags a route above the length band and a short FAQ', () => {
-    const score = scorePage(source({
-      kind: 'route',
-      path: '/marshruty/long',
-      categorySlug: null,
-      body: `${'в'.repeat(13000)}\n\n## Как добраться\n\nПешком.\n\n## Цены\n\nБесплатно.\n\n${faq(2)}`,
-      memberCount: 3,
-      photoCount: 1,
-    }))
+    const score = scorePage(
+      source({
+        kind: 'route',
+        path: '/marshruty/long',
+        categorySlug: null,
+        body: `${'в'.repeat(13000)}\n\n## Как добраться\n\nПешком.\n\n## Цены\n\nБесплатно.\n\n${faq(2)}`,
+        memberCount: 3,
+        photoCount: 1,
+      }),
+    )
     expect(score.checks.quality.some((check) => check.includes('above 12000'))).toBe(true)
     expect(score.checks.quality).toContain('FAQ 2, need 6')
   })
 
   it('does not punish a page when search queries were never imported', () => {
-    const score = scorePage(source({
-      results: { ...emptyResults(), searchImported: false, organic30d: 10, organic90d: 40 },
-    }))
+    const score = scorePage(
+      source({
+        results: { ...emptyResults(), searchImported: false, organic30d: 10, organic90d: 40 },
+      }),
+    )
     expect(score.checks.results).not.toContain('no search queries')
   })
 
   it('reports a missed organic goal and a weak scroll', () => {
-    const score = scorePage(source({
-      results: {
-        ...emptyResults(),
-        searchImported: true,
-        organic30d: 0,
-        organic90d: 1,
-        pageviews30d: 4,
-        scrollTracked: true,
-        scrollMax: 25,
-        engagedTracked: true,
-        avgEngagedSec: 4,
-        nextClicks: 0,
-      },
-    }))
+    const score = scorePage(
+      source({
+        results: {
+          ...emptyResults(),
+          searchImported: true,
+          organic30d: 0,
+          organic90d: 1,
+          pageviews30d: 4,
+          scrollTracked: true,
+          scrollMax: 25,
+          engagedTracked: true,
+          avgEngagedSec: 4,
+          nextClicks: 0,
+        },
+      }),
+    )
     expect(score.checks.results).toContain('organic 30d: 0, goal 10')
     expect(score.checks.results).toContain('no search queries')
     expect(score.checks.results).toContain('scroll 25')
@@ -275,14 +304,16 @@ describe('page score', () => {
       '',
       faq(6),
     ].join('\n')
-    const score = scorePage(source({
-      kind: 'route',
-      path: '/marshruty/pyat-fortov',
-      categorySlug: null,
-      body,
-      memberCount: 5,
-      photoCount: 1,
-    }))
+    const score = scorePage(
+      source({
+        kind: 'route',
+        path: '/marshruty/pyat-fortov',
+        categorySlug: null,
+        body,
+        memberCount: 5,
+        photoCount: 1,
+      }),
+    )
     expect(score.checks.quality).not.toContain('no Как добраться')
     expect(score.checks.quality).not.toContain('no prices')
     expect(score.checks.quality).not.toContain('no FAQ')
@@ -307,14 +338,16 @@ describe('page score', () => {
       '',
       faq(6),
     ].join('\n')
-    const score = scorePage(source({
-      kind: 'collection',
-      path: '/podborki/otkrytye-forty',
-      categorySlug: null,
-      body,
-      memberCount: 4,
-      photoCount: 1,
-    }))
+    const score = scorePage(
+      source({
+        kind: 'collection',
+        path: '/podborki/otkrytye-forty',
+        categorySlug: null,
+        body,
+        memberCount: 4,
+        photoCount: 1,
+      }),
+    )
     expect(score.checks.quality).not.toContain('no Как добраться')
     expect(score.checks.quality).not.toContain('no prices')
   })
@@ -335,27 +368,31 @@ describe('page score', () => {
       '',
       faq(6),
     ].join('\n')
-    const score = scorePage(source({
-      kind: 'route',
-      path: '/marshruty/vorota-i-bashni-peshkom',
-      categorySlug: null,
-      body,
-      memberCount: 3,
-      photoCount: 1,
-    }))
+    const score = scorePage(
+      source({
+        kind: 'route',
+        path: '/marshruty/vorota-i-bashni-peshkom',
+        categorySlug: null,
+        body,
+        memberCount: 3,
+        photoCount: 1,
+      }),
+    )
     expect(score.checks.quality).not.toContain('no Как добраться')
     expect(score.checks.quality).not.toContain('no prices')
   })
 
   it('still flags a route that never says how to get there or what it costs', () => {
-    const score = scorePage(source({
-      kind: 'route',
-      path: '/marshruty/empty',
-      categorySlug: null,
-      body: '## План дня\n\nТолько расписание. На рубеже города.',
-      memberCount: 2,
-      photoCount: 1,
-    }))
+    const score = scorePage(
+      source({
+        kind: 'route',
+        path: '/marshruty/empty',
+        categorySlug: null,
+        body: '## План дня\n\nТолько расписание. На рубеже города.',
+        memberCount: 2,
+        photoCount: 1,
+      }),
+    )
     expect(score.checks.quality).toContain('no Как добраться')
     expect(score.checks.quality).toContain('no prices')
   })
@@ -372,15 +409,17 @@ describe('page score', () => {
       '',
       'Форт № 5, если нужен музей с часами.',
     ].join('\n')
-    const score = scorePage(source({
-      kind: 'hub',
-      path: '/forty',
-      summary: 'Коротко.',
-      body,
-      categorySlug: 'forty',
-      photoCount: 1,
-      memberCount: 2,
-    }))
+    const score = scorePage(
+      source({
+        kind: 'hub',
+        path: '/forty',
+        summary: 'Коротко.',
+        body,
+        categorySlug: 'forty',
+        photoCount: 1,
+        memberCount: 2,
+      }),
+    )
     expect(score.signals.bodyChars).toBeGreaterThan(500)
     expect(score.signals.faqCount).toBe(1)
     expect(score.checks.quality).toContain('FAQ 1, need 6')
@@ -391,15 +430,19 @@ describe('page score', () => {
   })
 
   it('accepts a hub inside 2000-8000 characters', () => {
-    const score = scorePage(source({
-      kind: 'hub',
-      path: '/forty',
-      categorySlug: 'forty',
-      body: `${'ы'.repeat(4000)}\n\n${faq(6)}`,
-      photoCount: 1,
-      memberCount: 2,
-    }))
-    expect(score.checks.quality.filter((check) => check.startsWith('body ') || check.includes('FAQ') || check === 'no FAQ')).toEqual([])
+    const score = scorePage(
+      source({
+        kind: 'hub',
+        path: '/forty',
+        categorySlug: 'forty',
+        body: `${'ы'.repeat(4000)}\n\n${faq(6)}`,
+        photoCount: 1,
+        memberCount: 2,
+      }),
+    )
+    expect(
+      score.checks.quality.filter((check) => check.startsWith('body ') || check.includes('FAQ') || check === 'no FAQ'),
+    ).toEqual([])
   })
 
   it('uses an extended ceiling only when the passport justification is valid', () => {
@@ -409,45 +452,59 @@ describe('page score', () => {
       ...source().passport!,
       lengthOverride: lengthOverride({ ceiling: 12_000, setAt: '2026-10-01T00:00:00.000Z' }),
     }
-    const extended = scorePage(source({
-      categorySlug: 'eda',
-      categoryTitle: 'Еда',
-      body,
-      photoCount: 1,
-      passport,
-      results: { ...emptyResults(), searchImported: true, searchImpressions: 12, organic30d: 10, organic90d: 40 },
-    }), now)
+    const extended = scorePage(
+      source({
+        categorySlug: 'eda',
+        categoryTitle: 'Еда',
+        body,
+        photoCount: 1,
+        passport,
+        results: { ...emptyResults(), searchImported: true, searchImpressions: 12, organic30d: 10, organic90d: 40 },
+      }),
+      now,
+    )
     expect(extended.checks.quality.some((check) => check.includes('above'))).toBe(false)
     expect(extended.checks.quality).not.toContain(LENGTH_OVERRIDE_IGNORED)
     expect(extended.checks.results).not.toContain(LENGTH_OVERRIDE_STALE)
     expect(extended.signals.lengthOverride).toMatchObject({ applied: true, stale: false, ceiling: 12_000 })
 
-    const over = scorePage(source({
-      categorySlug: 'eda',
-      body: uniqueArticle(13_000, 'ров'),
-      photoCount: 1,
-      passport,
-    }), now)
+    const over = scorePage(
+      source({
+        categorySlug: 'eda',
+        body: uniqueArticle(13_000, 'ров'),
+        photoCount: 1,
+        passport,
+      }),
+      now,
+    )
     expect(over.checks.quality.some((check) => check.includes('above 12000'))).toBe(true)
 
-    const ignored = scorePage(source({
-      categorySlug: 'eda',
-      body,
-      photoCount: 1,
-      passport: { ...passport, lengthOverride: lengthOverride({ ceiling: 5000 }) },
-    }), now)
+    const ignored = scorePage(
+      source({
+        categorySlug: 'eda',
+        body,
+        photoCount: 1,
+        passport: { ...passport, lengthOverride: lengthOverride({ ceiling: 5000 }) },
+      }),
+      now,
+    )
     expect(ignored.checks.quality).toContain(LENGTH_OVERRIDE_IGNORED)
     expect(ignored.checks.quality.some((check) => check.includes('above 6000'))).toBe(true)
   })
 
   it.each([
-    ['place', 3000, 6000], ['route', 8000, 12000], ['collection', 5000, 8000],
-    ['quest', 2000, 4000], ['hub', 2000, 8000],
+    ['place', 3000, 6000],
+    ['route', 8000, 12000],
+    ['collection', 5000, 8000],
+    ['quest', 2000, 4000],
+    ['hub', 2000, 8000],
   ] as const)('uses visible article text at both length boundaries for %s', (kind, min, max) => {
-    const atCeiling = scorePage(source({
-      kind,
-      body: `${'ы'.repeat(max - 5)} [факт](/${'long-target-'.repeat(40)})`,
-    }))
+    const atCeiling = scorePage(
+      source({
+        kind,
+        body: `${'ы'.repeat(max - 5)} [факт](/${'long-target-'.repeat(40)})`,
+      }),
+    )
     expect(atCeiling.signals.bodyChars).toBe(max)
     expect(atCeiling.checks.quality.filter((check) => check.startsWith('body '))).toEqual([])
 
@@ -464,51 +521,65 @@ describe('page score', () => {
   })
 
   it('measures the prepared public article after lead removal and directions folding', () => {
-    const score = scorePage(source({
-      summary: 'Лид.',
-      body: 'Лид.\n\n## История\n\n[Форт](/fort-a)',
-      howToGet: 'Идите **пешком**.',
-    }))
+    const score = scorePage(
+      source({
+        summary: 'Лид.',
+        body: 'Лид.\n\n## История\n\n[Форт](/fort-a)',
+        howToGet: 'Идите **пешком**.',
+      }),
+    )
     expect(score.signals.bodyChars).toBe('История Форт Как добраться Идите пешком.'.length)
   })
 
   it('flags filler on a long page and a stale override after 60 days', () => {
     const now = new Date('2026-10-16T00:00:00.000Z')
-    const copied = 'Во дворе слышно шоссе круглый год, билет покупают у кассы у ворот, а стены сложены из красного кирпича в конце девятнадцатого века и стоят на своём месте до сих пор без новой облицовки.'
-    const repeated = scorePage(source({
-      categorySlug: 'eda',
-      body: `${'к'.repeat(6200)}\n\n## Двор\n\n${copied}\n\n## Двор снова\n\n${copied}`,
-      photoCount: 1,
-      passport: { ...source().passport!, lengthOverride: lengthOverride({ ceiling: 20_000 }) },
-    }))
+    const copied =
+      'Во дворе слышно шоссе круглый год, билет покупают у кассы у ворот, а стены сложены из красного кирпича в конце девятнадцатого века и стоят на своём месте до сих пор без новой облицовки.'
+    const repeated = scorePage(
+      source({
+        categorySlug: 'eda',
+        body: `${'к'.repeat(6200)}\n\n## Двор\n\n${copied}\n\n## Двор снова\n\n${copied}`,
+        photoCount: 1,
+        passport: { ...source().passport!, lengthOverride: lengthOverride({ ceiling: 20_000 }) },
+      }),
+    )
     expect(repeated.checks.quality).toContain('repeated section: Двор снова')
     expect(repeated.checks.quality).toContain(REPEATED_PARAGRAPH)
-    expect(repeated.quality).toBeLessThan(scorePage(source({
-      categorySlug: 'eda',
-      body: `${uniqueArticle(4000, 'ров')}\n\n${uniqueArticle(4000, 'маяк')}`,
-      photoCount: 1,
-      passport: { ...source().passport!, lengthOverride: lengthOverride({ ceiling: 20_000 }) },
-    })).quality)
+    expect(repeated.quality).toBeLessThan(
+      scorePage(
+        source({
+          categorySlug: 'eda',
+          body: `${uniqueArticle(4000, 'ров')}\n\n${uniqueArticle(4000, 'маяк')}`,
+          photoCount: 1,
+          passport: { ...source().passport!, lengthOverride: lengthOverride({ ceiling: 20_000 }) },
+        }),
+      ).quality,
+    )
 
-    const slogan = scorePage(source({
-      categorySlug: 'eda',
-      body: `${uniqueArticle(7000, 'ров')}\n\nЭто уютная атмосфера у форта.`,
-      photoCount: 1,
-    }))
+    const slogan = scorePage(
+      source({
+        categorySlug: 'eda',
+        body: `${uniqueArticle(7000, 'ров')}\n\nЭто уютная атмосфера у форта.`,
+        photoCount: 1,
+      }),
+    )
     expect(slogan.checks.quality).toContain('stop-list: уютная атмосфера')
     const short = scorePage(source({ body: 'Это уютная атмосфера у форта.' }))
     expect(short.checks.quality.some((check) => check.startsWith('stop-list:'))).toBe(false)
 
-    const stale = scorePage(source({
-      categorySlug: 'eda',
-      body: uniqueArticle(8000, 'ров'),
-      photoCount: 1,
-      passport: {
-        ...source().passport!,
-        lengthOverride: lengthOverride({ setAt: new Date(now.getTime() - 60 * 86_400_000).toISOString() }),
-      },
-      results: { ...emptyResults(), searchImported: true, searchImpressions: 0, organic30d: 10, organic90d: 40 },
-    }), now)
+    const stale = scorePage(
+      source({
+        categorySlug: 'eda',
+        body: uniqueArticle(8000, 'ров'),
+        photoCount: 1,
+        passport: {
+          ...source().passport!,
+          lengthOverride: lengthOverride({ setAt: new Date(now.getTime() - 60 * 86_400_000).toISOString() }),
+        },
+        results: { ...emptyResults(), searchImported: true, searchImpressions: 0, organic30d: 10, organic90d: 40 },
+      }),
+      now,
+    )
     expect(stale.checks.results).toContain(LENGTH_OVERRIDE_STALE)
     expect(issueLabel(LENGTH_OVERRIDE_STALE)).toBe('Расширенный текст без показов 60 дней')
     expect(issueLabel('repeated section: Двор')).toBe('Повтор раздела: Двор')
@@ -518,88 +589,82 @@ describe('page score', () => {
   })
 
   it('flags a minor place above 6000 characters and a hub above 8000', () => {
-    const minor = scorePage(source({
-      categorySlug: 'eda',
-      categoryTitle: 'Еда',
-      body: 'б'.repeat(7000),
-    }))
+    const minor = scorePage(
+      source({
+        categorySlug: 'eda',
+        categoryTitle: 'Еда',
+        body: 'б'.repeat(7000),
+      }),
+    )
     expect(minor.checks.quality.some((check) => check.includes('above 6000'))).toBe(true)
-    const hub = scorePage(source({
-      kind: 'hub',
-      path: '/eda',
-      categorySlug: 'eda',
-      body: 'ы'.repeat(9000),
-      photoCount: 1,
-      memberCount: 2,
-    }))
+    const hub = scorePage(
+      source({
+        kind: 'hub',
+        path: '/eda',
+        categorySlug: 'eda',
+        body: 'ы'.repeat(9000),
+        photoCount: 1,
+        memberCount: 2,
+      }),
+    )
     expect(hub.checks.quality.some((check) => check.includes('above 8000'))).toBe(true)
   })
 
   it('does not require Как добраться when every collection stop is in one city', () => {
-    const body = [
-      'а'.repeat(5200),
-      '',
-      '## Сколько стоит',
-      '',
-      'Билет 300 ₽.',
-      '',
-      faq(6),
-    ].join('\n')
+    const body = ['а'.repeat(5200), '', '## Сколько стоит', '', 'Билет 300 ₽.', '', faq(6)].join('\n')
     const stops = [
       { city: 'kaliningrad', access: null },
       { city: 'kaliningrad', access: 'уточнить у кассы' },
     ]
     for (const path of ['/podborki/gorodskie-vorota-kaliningrada', '/podborki/kaliningrad-v-dozhd']) {
-      const score = scorePage(source({
-        kind: 'collection',
-        path,
-        categorySlug: null,
-        body,
-        memberCount: 8,
-        photoCount: 1,
-        stops,
-      }))
+      const score = scorePage(
+        source({
+          kind: 'collection',
+          path,
+          categorySlug: null,
+          body,
+          memberCount: 8,
+          photoCount: 1,
+          stops,
+        }),
+      )
       expect(score.checks.quality).not.toContain('no Как добраться')
     }
   })
 
   it('accepts per-item address or transport lines instead of a collection how-to-get block', () => {
-    const score = scorePage(source({
-      kind: 'collection',
-      path: '/podborki/dva-goroda',
-      categorySlug: null,
-      body: [
-        'б'.repeat(5200),
-        '',
-        '## Сколько стоит',
-        '',
-        'Билет 400 рублей.',
-        '',
-        faq(6),
-      ].join('\n'),
-      memberCount: 2,
-      photoCount: 1,
-      stops: [
-        { city: 'kaliningrad', access: 'ул. Фрунзе, 112' },
-        { city: 'svetlogorsk', access: 'электричка до Светлогорска' },
-      ],
-    }))
+    const score = scorePage(
+      source({
+        kind: 'collection',
+        path: '/podborki/dva-goroda',
+        categorySlug: null,
+        body: ['б'.repeat(5200), '', '## Сколько стоит', '', 'Билет 400 рублей.', '', faq(6)].join('\n'),
+        memberCount: 2,
+        photoCount: 1,
+        stops: [
+          { city: 'kaliningrad', access: 'ул. Фрунзе, 112' },
+          { city: 'svetlogorsk', access: 'электричка до Светлогорска' },
+        ],
+      }),
+    )
     expect(score.checks.quality).not.toContain('no Как добраться')
   })
 
   it('still requires Как добраться when collection stops span cities and have no access lines', () => {
-    const score = scorePage(source({
-      kind: 'collection',
-      path: '/podborki/zamki-oblasti',
-      categorySlug: null,
-      body: '## План\n\nДва города, без адресов.',
-      memberCount: 2,
-      photoCount: 1,
-      stops: [
-        { city: 'kaliningrad', access: null },
-        { city: 'gvardeysk', access: 'касса у входа' },
-      ],
-    }))
+    const score = scorePage(
+      source({
+        kind: 'collection',
+        path: '/podborki/zamki-oblasti',
+        categorySlug: null,
+        body: '## План\n\nДва города, без адресов.',
+        memberCount: 2,
+        photoCount: 1,
+        stops: [
+          { city: 'kaliningrad', access: null },
+          { city: 'gvardeysk', access: 'касса у входа' },
+        ],
+      }),
+    )
     expect(score.checks.quality).toContain('no Как добраться')
   })
 })
@@ -646,17 +711,19 @@ describe('internal links', () => {
 
   it('orphans a place that nobody links', () => {
     const stats = linkStats({
-      places: [{
-        slug: 'lonely',
-        title: 'Одинокий',
-        categorySlug: null,
-        regionId: null,
-        latitude: null,
-        longitude: null,
-        published: true,
-        noindex: false,
-        body: '',
-      }],
+      places: [
+        {
+          slug: 'lonely',
+          title: 'Одинокий',
+          categorySlug: null,
+          regionId: null,
+          latitude: null,
+          longitude: null,
+          published: true,
+          noindex: false,
+          body: '',
+        },
+      ],
       routes: [],
       collections: [],
       quests: [],
@@ -668,27 +735,31 @@ describe('internal links', () => {
 
   it('counts a link in the hub article, not only the short description', () => {
     const stats = linkStats({
-      places: [{
-        slug: 'lonely',
-        title: 'Одинокий',
-        categorySlug: null,
-        regionId: null,
-        latitude: null,
-        longitude: null,
-        published: true,
-        noindex: false,
-        body: '',
-      }],
+      places: [
+        {
+          slug: 'lonely',
+          title: 'Одинокий',
+          categorySlug: null,
+          regionId: null,
+          latitude: null,
+          longitude: null,
+          published: true,
+          noindex: false,
+          body: '',
+        },
+      ],
       routes: [],
       collections: [],
       quests: [],
-      hubs: [{
-        slug: 'zamki',
-        title: 'Замки',
-        description: 'Короткое описание без ссылки.',
-        body: 'Подробнее в статье [замок](/lonely).',
-        noindex: false,
-      }],
+      hubs: [
+        {
+          slug: 'zamki',
+          title: 'Замки',
+          description: 'Короткое описание без ссылки.',
+          body: 'Подробнее в статье [замок](/lonely).',
+          noindex: false,
+        },
+      ],
       related: [],
     })
     expect(stats.get('/lonely')?.orphan).toBe(false)
@@ -786,9 +857,11 @@ describe('score run', () => {
       places: [catalogPlace()],
       routes: [catalogArticle({ id: 'route-review', slug: 'chernovik', publicationStatus: 'review' })],
       quests: [catalogArticle({ id: 'quest-old', slug: 'five-forts', publicationStatus: 'draft' })],
-      hubs: [catalogHub({
-        body: `${'ы'.repeat(500)}\n\nСмотрите [маршрут](/marshruty/pyat-fortov).\n\n## Частые вопросы\n\n### Какой форт выбрать?\n\nФорт № 5.`,
-      })],
+      hubs: [
+        catalogHub({
+          body: `${'ы'.repeat(500)}\n\nСмотрите [маршрут](/marshruty/pyat-fortov).\n\n## Частые вопросы\n\n### Какой форт выбрать?\n\nФорт № 5.`,
+        }),
+      ],
     })
     const scores = scoresFromCatalog(rows, [], [], false)
     const paths = scores.map((row) => row.path)
@@ -810,25 +883,41 @@ describe('collection member admission evidence', () => {
     return catalog({
       places: [catalogPlace()],
       collections: [catalogArticle({ id: 'collection-1', publicationStatus: 'published' })],
-      collectionStops: [{ parentId: 'collection-1', placeSlug: 'fort-a', placePublished: true, regionId: null, access: null }],
-      practical: [{ subjectType: 'place', subjectId: 'place-1', admissionRows: 1, freshAdmission: 1, upcomingEvents: 0 }],
+      collectionStops: [
+        { parentId: 'collection-1', placeSlug: 'fort-a', placePublished: true, regionId: null, access: null },
+      ],
+      practical: [
+        { subjectType: 'place', subjectId: 'place-1', admissionRows: 1, freshAdmission: 1, upcomingEvents: 0 },
+      ],
     })
   }
 
-  it.each(['published', 'draft', 'review'] as const)('shares collection evidence across catalog/storage and %s previews', (publicationStatus) => {
-    const rows = linked()
-    rows.collections[0]!.publicationStatus = publicationStatus
-    rows.collections[0]!.modules = [{ type: 'text', variant: 'lead', text: 'Дома стоят возле реки.' }]
-    const now = new Date()
-    const scores = scoresFromCatalog(rows, [], [], false, now, undefined, { include: [{ kind: 'collection', id: 'collection-1' }] })
-    const stored = toStored(scores.find((score) => score.entityId === 'collection-1')!)
-    expect(stored.checks.quality).not.toContain('no prices')
-    const preview = scorePreview({ catalog: rows, pageType: 'collection', entityId: 'collection-1', source: publicationStatus === 'published' ? 'live' : 'draft', publicationStatus, now })
-    expect(preview?.checks.quality).toEqual(stored.checks.quality)
-    expect(preview?.quality).toBe(stored.quality)
-  })
+  it.each(['published', 'draft', 'review'] as const)(
+    'shares collection evidence across catalog/storage and %s previews',
+    (publicationStatus) => {
+      const rows = linked()
+      rows.collections[0]!.publicationStatus = publicationStatus
+      rows.collections[0]!.modules = [{ type: 'text', variant: 'lead', text: 'Дома стоят возле реки.' }]
+      const now = new Date()
+      const scores = scoresFromCatalog(rows, [], [], false, now, undefined, {
+        include: [{ kind: 'collection', id: 'collection-1' }],
+      })
+      const stored = toStored(scores.find((score) => score.entityId === 'collection-1')!)
+      expect(stored.checks.quality).not.toContain('no prices')
+      const preview = scorePreview({
+        catalog: rows,
+        pageType: 'collection',
+        entityId: 'collection-1',
+        source: publicationStatus === 'published' ? 'live' : 'draft',
+        publicationStatus,
+        now,
+      })
+      expect(preview?.checks.quality).toEqual(stored.checks.quality)
+      expect(preview?.quality).toBe(stored.quality)
+    },
+  )
 
-  it('does not inherit member hours/events or another subject type\'s entries', () => {
+  it("does not inherit member hours/events or another subject type's entries", () => {
     const rows = linked()
     rows.places[0]!.schedule = { rules: { mode: 'always' }, verifiedAt: UPDATED }
     rows.practical = [
@@ -836,7 +925,9 @@ describe('collection member admission evidence', () => {
       { subjectType: 'route', subjectId: 'place-1', admissionRows: 1, freshAdmission: 1, upcomingEvents: 0 },
       { subjectType: 'venue', subjectId: 'place-1', admissionRows: 1, freshAdmission: 1, upcomingEvents: 0 },
     ]
-    expect(scoresFromCatalog(rows, [], [], false).find((score) => score.entityId === 'collection-1')?.checks.quality).toContain('no prices')
+    expect(
+      scoresFromCatalog(rows, [], [], false).find((score) => score.entityId === 'collection-1')?.checks.quality,
+    ).toContain('no prices')
   })
 
   it('leaves route and quest inheritance unchanged', () => {
@@ -882,7 +973,12 @@ describe('hours known from the schedule', () => {
 
   it('scores the hours of a schedule-only venue and not of an unverified one', () => {
     const [known] = scoresFromCatalog(catalog({ venues: [catalogVenue({ schedule: verified })] }), [], [], false)
-    const [unverified] = scoresFromCatalog(catalog({ venues: [catalogVenue({ schedule: { ...verified, verifiedAt: null } })] }), [], [], false)
+    const [unverified] = scoresFromCatalog(
+      catalog({ venues: [catalogVenue({ schedule: { ...verified, verifiedAt: null } })] }),
+      [],
+      [],
+      false,
+    )
     const [missing] = scoresFromCatalog(catalog({ venues: [catalogVenue()] }), [], [], false)
     expect(known?.checks.quality).not.toContain('no hours')
     expect(unverified?.checks.quality).toContain('no hours')
@@ -907,76 +1003,96 @@ describe('hours known from the schedule', () => {
 })
 
 describe('weekly report', () => {
-  const current = [{
-    path: '/fort-a',
-    title: 'Форт А',
-    pageType: 'place' as const,
-    total: 40,
-    quality: 30,
-    linking: 50,
-    indexing: 40,
-    results: 40,
-    organic30d: 1,
-    organic90d: 2,
-    goal30d: 10,
-    goal90d: 20,
-  }, {
-    path: '/fort-b',
-    title: 'Форт Б',
-    pageType: 'place' as const,
-    total: 80,
-    quality: 80,
-    linking: 80,
-    indexing: 80,
-    results: 80,
-    organic30d: 30,
-    organic90d: 90,
-    goal30d: 10,
-    goal90d: 20,
-  }]
+  const current = [
+    {
+      path: '/fort-a',
+      title: 'Форт А',
+      pageType: 'place' as const,
+      total: 40,
+      quality: 30,
+      linking: 50,
+      indexing: 40,
+      results: 40,
+      organic30d: 1,
+      organic90d: 2,
+      goal30d: 10,
+      goal90d: 20,
+    },
+    {
+      path: '/fort-b',
+      title: 'Форт Б',
+      pageType: 'place' as const,
+      total: 80,
+      quality: 80,
+      linking: 80,
+      indexing: 80,
+      results: 80,
+      organic30d: 30,
+      organic90d: 90,
+      goal30d: 10,
+      goal90d: 20,
+    },
+  ]
 
   it('returns the delta, the bottom page, and the missed goal', () => {
-    const report = buildWeeklyReport(current, [{ ...current[0]!, total: 55, quality: 30, linking: 50, indexing: 40, results: 40 }, { ...current[1]!, total: 70, quality: 70, linking: 70, indexing: 70, results: 70 }], {
-      current: '2026-10-12',
-      previous: '2026-10-05',
-    })
+    const report = buildWeeklyReport(
+      current,
+      [
+        { ...current[0]!, total: 55, quality: 30, linking: 50, indexing: 40, results: 40 },
+        { ...current[1]!, total: 70, quality: 70, linking: 70, indexing: 70, results: 70 },
+      ],
+      {
+        current: '2026-10-12',
+        previous: '2026-10-05',
+      },
+    )
     expect(report.previousDay).toBe('2026-10-05')
     expect(report.delta).not.toBeNull()
     expect(report.bottom[0]?.path).toBe('/fort-a')
     expect(report.top[0]?.path).toBe('/fort-b')
     expect(report.missingGoals.map((row) => row.path)).toEqual(['/fort-a'])
-    const pending = buildWeeklyReport([{
-      ...current[0]!,
-      signals: { goal30Pending: true, goal90Pending: true },
-    }], null, { current: '2026-10-12', previous: null })
+    const pending = buildWeeklyReport(
+      [
+        {
+          ...current[0]!,
+          signals: { goal30Pending: true, goal90Pending: true },
+        },
+      ],
+      null,
+      { current: '2026-10-12', previous: null },
+    )
     expect(pending.missingGoals).toEqual([])
     expect(report.drops[0]).toMatchObject({ path: '/fort-a', delta: -15 })
     expect(report.lengthOverrides).toEqual([])
   })
 
   it('lists a length override with its traffic, stale rows first', () => {
-    const report = buildWeeklyReport([
-      {
-        ...current[1]!,
-        signals: {
-          bodyChars: 4000,
-          searchImpressions: 10,
-          searchClicks: 2,
-          lengthOverride: { ceiling: 9000, setAt: '2026-09-01T00:00:00.000Z', applied: true, stale: false },
+    const report = buildWeeklyReport(
+      [
+        {
+          ...current[1]!,
+          signals: {
+            bodyChars: 4000,
+            searchImpressions: 10,
+            searchClicks: 2,
+            lengthOverride: { ceiling: 9000, setAt: '2026-09-01T00:00:00.000Z', applied: true, stale: false },
+          },
         },
-      },
-      {
-        ...current[0]!,
-        organic30d: 0,
-        organic90d: 1,
-        signals: {
-          bodyChars: 9000,
-          searchImpressions: 0,
-          searchClicks: 0,
-          lengthOverride: { ceiling: 12_000, setAt: '2026-01-01T00:00:00.000Z', applied: true, stale: true },
+        {
+          ...current[0]!,
+          organic30d: 0,
+          organic90d: 1,
+          signals: {
+            bodyChars: 9000,
+            searchImpressions: 0,
+            searchClicks: 0,
+            lengthOverride: { ceiling: 12_000, setAt: '2026-01-01T00:00:00.000Z', applied: true, stale: true },
+          },
         },
-      },
-    ], null, { current: '2026-10-16', previous: null })
+      ],
+      null,
+      { current: '2026-10-16', previous: null },
+    )
     expect(report.lengthOverrides.map((row) => row.path)).toEqual(['/fort-a', '/fort-b'])
     expect(report.lengthOverrides[0]).toMatchObject({
       ceiling: 12_000,
@@ -1013,12 +1129,15 @@ describe('goal grace and status scope', () => {
   }
 
   function at(days: number, patch: Partial<ScoreSource> = {}) {
-    return scorePage(source({
-      results: quiet,
-      passport: goals,
-      firstPublishedAt: daysBefore(days),
-      ...patch,
-    }), now)
+    return scorePage(
+      source({
+        results: quiet,
+        passport: goals,
+        firstPublishedAt: daysBefore(days),
+        ...patch,
+      }),
+      now,
+    )
   }
 
   it('keeps both goals pending at day 5, judges 30 days at day 40, and both at day 100', () => {
@@ -1088,14 +1207,21 @@ describe('goal grace and status scope', () => {
     expect(issueLabel('goal pending (25 days)')).toBe('Цель ещё не оценивается (25 дн.)')
     expect(issueLabel('goal pending (not indexable)')).toBe('Цель не оценивается: страница закрыта от индекса')
     expect(issueLabel('goal pending (unpublished)')).toBe('Цель не оценивается: страница не опубликована')
-    expect(issueLabel('status warning: closure may refer to another subject')).toBe('Фраза про закрытие может относиться к другому месту')
+    expect(issueLabel('status warning: closure may refer to another subject')).toBe(
+      'Фраза про закрытие может относиться к другому месту',
+    )
   })
 
   it('does not charge a closure penalty for footwear advice in a fort FAQ', () => {
     const page = source({
       title: 'Форт №2а «Барнеков»',
       body: 'Фасад доступен для осмотра.',
-      faq: [{ question: 'Что взять с собой?', answer: 'Закрытую обувь, которая не боится сырости, фонарь и заряженный телефон.' }],
+      faq: [
+        {
+          question: 'Что взять с собой?',
+          answer: 'Закрытую обувь, которая не боится сырости, фонарь и заряженный телефон.',
+        },
+      ],
     })
     const unchecked = scorePage(page)
     const open = scorePage({ ...page, scheduleMode: 'always' })
@@ -1112,54 +1238,89 @@ describe('goal grace and status scope', () => {
 
   it.each([
     { mode: 'always', prose: 'Вход по записи.', warning: 'appointment wording needs context review' },
-    { mode: 'always', prose: 'Ресторан местной пивоварни принимает по записи.', warning: 'appointment wording needs context review' },
-    { mode: 'appointment', prose: 'Свяжитесь с кассой по телефону.', warning: 'appointment instructions need editorial review' },
-  ])('keeps appointment advisories visible with zero quality/total impact ($mode): $prose', ({ mode, prose, warning }) => {
-    for (const fields of [{ body: prose }, { body: '', faq: [{ question: 'Как посетить?', answer: prose }] }]) {
-      const page = source({ ...fields, title: 'Полесск' })
-      const baseline = scorePage(page)
-      const advised = scorePage({ ...page, scheduleMode: mode })
-      expect(advised.quality).toBe(baseline.quality)
-      expect(advised.total).toBe(baseline.total)
-      expect(advised.checks.quality).toContain(`status warning: ${warning}`)
-      expect(advised.checks.quality.some((check) => check.startsWith('status contradiction:'))).toBe(false)
-    }
-  })
+    {
+      mode: 'always',
+      prose: 'Ресторан местной пивоварни принимает по записи.',
+      warning: 'appointment wording needs context review',
+    },
+    {
+      mode: 'appointment',
+      prose: 'Свяжитесь с кассой по телефону.',
+      warning: 'appointment instructions need editorial review',
+    },
+  ])(
+    'keeps appointment advisories visible with zero quality/total impact ($mode): $prose',
+    ({ mode, prose, warning }) => {
+      for (const fields of [{ body: prose }, { body: '', faq: [{ question: 'Как посетить?', answer: prose }] }]) {
+        const page = source({ ...fields, title: 'Полесск' })
+        const baseline = scorePage(page)
+        const advised = scorePage({ ...page, scheduleMode: mode })
+        expect(advised.quality).toBe(baseline.quality)
+        expect(advised.total).toBe(baseline.total)
+        expect(advised.checks.quality).toContain(`status warning: ${warning}`)
+        expect(advised.checks.quality.some((check) => check.startsWith('status contradiction:'))).toBe(false)
+      }
+    },
+  )
 
   it.each([
-    { check: 'status warning: appointment wording needs context review', label: 'Упомянута запись: проверьте контекст и условия посещения' },
-    { check: 'status warning: appointment instructions need editorial review', label: 'Проверьте, понятны ли условия записи в тексте' },
-    { check: 'writing advisory: самой', label: 'Неопределённость: «самой» может быть местоимением или превосходной степенью. Проверьте контекст вручную (0 баллов).' },
+    {
+      check: 'status warning: appointment wording needs context review',
+      label: 'Упомянута запись: проверьте контекст и условия посещения',
+    },
+    {
+      check: 'status warning: appointment instructions need editorial review',
+      label: 'Проверьте, понятны ли условия записи в тексте',
+    },
+    {
+      check: 'writing advisory: самой',
+      label:
+        'Неопределённость: «самой» может быть местоимением или превосходной степенью. Проверьте контекст вручную (0 баллов).',
+    },
   ])('keeps the top issue label explicitly advisory: $check', ({ check, label }) => {
-    expect(topIssue({ quality: [check], linking: [], indexing: [], results: [] }, { quality: 50, linking: 100, indexing: 100, results: 100 })).toBe(check)
+    expect(
+      topIssue(
+        { quality: [check], linking: [], indexing: [], results: [] },
+        { quality: 50, linking: 100, indexing: 100, results: 100 },
+      ),
+    ).toBe(check)
     expect(issueLabel(check)).toBe(label)
   })
 
-  it.each([2400, 6200])('keeps writing uncertainty visible without quality or filler deductions at %i chars', (chars) => {
-    const body = uniqueArticle(chars, 'Город')
-    const baseline = scorePage(source({ body }))
-    for (const prose of ['Дом стоит у самой Куршской косы.', 'Дом стоит у самого Балтийского моря.', 'Город гордится самою высокой башней.']) {
-      for (const inFaq of [false, true]) {
-        const page = scorePage(source({
-          body: inFaq ? body : `${body}\n\n${prose}`,
-          faq: inFaq ? [{ question: 'Где находится?', answer: prose }] : [],
-        }))
-        expect(page.quality, prose).toBe(baseline.quality)
-        expect(page.total, prose).toBe(baseline.total)
-        const advisory = page.checks.quality.find((check) => check.startsWith('writing advisory:'))
-        expect(advisory, prose).toBeDefined()
-        expect(issueLabel(advisory!)).toMatch(/Неопределённость.*0 баллов/u)
-        expect(page.checks.quality, prose).not.toContain('stop-list: empty superlatives')
+  it.each([2400, 6200])(
+    'keeps writing uncertainty visible without quality or filler deductions at %i chars',
+    (chars) => {
+      const body = uniqueArticle(chars, 'Город')
+      const baseline = scorePage(source({ body }))
+      for (const prose of [
+        'Дом стоит у самой Куршской косы.',
+        'Дом стоит у самого Балтийского моря.',
+        'Город гордится самою высокой башней.',
+      ]) {
+        for (const inFaq of [false, true]) {
+          const page = scorePage(
+            source({
+              body: inFaq ? body : `${body}\n\n${prose}`,
+              faq: inFaq ? [{ question: 'Где находится?', answer: prose }] : [],
+            }),
+          )
+          expect(page.quality, prose).toBe(baseline.quality)
+          expect(page.total, prose).toBe(baseline.total)
+          const advisory = page.checks.quality.find((check) => check.startsWith('writing advisory:'))
+          expect(advisory, prose).toBeDefined()
+          expect(issueLabel(advisory!)).toMatch(/Неопределённость.*0 баллов/u)
+          expect(page.checks.quality, prose).not.toContain('stop-list: empty superlatives')
+        }
       }
-    }
-    if (chars > 6000) {
-      for (const prose of ['Самый высокий дом.', 'В самом сердце города.', 'Уютная атмосфера в доме.']) {
-        const blocked = scorePage(source({ body: `${body}\n\n${prose}` }))
-        expect(blocked.checks.quality.some((check) => check.startsWith('stop-list:'))).toBe(true)
-        expect(blocked.quality).toBe(baseline.quality - 10)
+      if (chars > 6000) {
+        for (const prose of ['Самый высокий дом.', 'В самом сердце города.', 'Уютная атмосфера в доме.']) {
+          const blocked = scorePage(source({ body: `${body}\n\n${prose}` }))
+          expect(blocked.checks.quality.some((check) => check.startsWith('stop-list:'))).toBe(true)
+          expect(blocked.quality).toBe(baseline.quality - 10)
+        }
       }
-    }
-  })
+    },
+  )
 
   it('does not charge 15 points for a tenant closure, and still charges a real one', () => {
     const body = 'Ворота временно закрыты на реставрацию.'
@@ -1168,24 +1329,34 @@ describe('goal grace and status scope', () => {
     expect(open.checks.quality).toContain('status contradiction: text says closed, schedule mode is always')
     expect(open.quality).toBe(closed.quality - 15)
 
-    const tenant = 'Фасад доступен для осмотра круглосуточно, а ресторан «Солнечный камень» внутри, по данным Яндекс Карт, временно не работает.'
-    const page = scorePage(source({
-      scheduleMode: 'always',
-      body: tenant,
-      faq: [{ question: 'Можно ли поесть внутри?', answer: 'Сейчас нет: ресторан в казематах временно не работает.' }],
-    }))
+    const tenant =
+      'Фасад доступен для осмотра круглосуточно, а ресторан «Солнечный камень» внутри, по данным Яндекс Карт, временно не работает.'
+    const page = scorePage(
+      source({
+        scheduleMode: 'always',
+        body: tenant,
+        faq: [
+          { question: 'Можно ли поесть внутри?', answer: 'Сейчас нет: ресторан в казематах временно не работает.' },
+        ],
+      }),
+    )
     expect(page.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(false)
 
-    const fromFaq = scorePage(source({
-      scheduleMode: 'always',
-      body: 'Фасад доступен для осмотра круглосуточно.',
-      faq: [{ question: 'Идут ли работы?', answer: 'Ворота временно закрыты на реставрацию.' }],
-    }))
+    const fromFaq = scorePage(
+      source({
+        scheduleMode: 'always',
+        body: 'Фасад доступен для осмотра круглосуточно.',
+        faq: [{ question: 'Идут ли работы?', answer: 'Ворота временно закрыты на реставрацию.' }],
+      }),
+    )
     expect(fromFaq.checks.quality).toContain('status contradiction: text says closed, schedule mode is always')
 
     const titled = [
       { title: 'Музей «Фридландские ворота»', body: 'Музей «Фридландские ворота» временно закрыт на реставрацию.' },
-      { title: 'Форт №5 «Король Фридрих Вильгельм III»', body: 'Форт №5 «Король Фридрих Вильгельм III» сейчас закрыт для посещения.' },
+      {
+        title: 'Форт №5 «Король Фридрих Вильгельм III»',
+        body: 'Форт №5 «Король Фридрих Вильгельм III» сейчас закрыт для посещения.',
+      },
       { title: 'Башня', body: 'Выставка завершилась, а сама башня временно закрыта на ремонт.' },
       { title: 'Здание биржи', body: 'Здание временно закрыто на ремонт, работает только кафе на первом этаже.' },
       { title: 'Башня', body: 'Закрыт на реконструкцию до 2027 года, кафе «Башня» тоже не работает.' },
@@ -1202,27 +1373,33 @@ describe('goal grace and status scope', () => {
     expect(historicOpen.quality).toBe(historicShut.quality - 15)
 
     const strayShut = scorePage(source({ body: '«Солнечный камень» временно не работает.' }))
-    const strayOpen = scorePage(source({
-      scheduleMode: 'always',
-      title: 'Росгартенские ворота',
-      body: '«Солнечный камень» временно не работает.',
-    }))
+    const strayOpen = scorePage(
+      source({
+        scheduleMode: 'always',
+        title: 'Росгартенские ворота',
+        body: '«Солнечный камень» временно не работает.',
+      }),
+    )
     expect(strayOpen.checks.quality).toContain('status warning: closure may refer to another subject')
     expect(strayOpen.checks.quality.some((check) => check.startsWith('status contradiction'))).toBe(false)
     expect(strayOpen.quality).toBe(strayShut.quality)
 
-    const judittenOpen = scorePage(source({
-      scheduleMode: 'always',
-      title: 'Кирха «Юдиттен»',
-      body: 'Фасад на месте.',
-      faq: [{ question: 'Идёт ремонт?', answer: 'Да, кирха «Юдиттен» сейчас закрыта на реставрацию' }],
-    }))
-    const judittenShut = scorePage(source({
-      scheduleMode: 'closed',
-      title: 'Кирха «Юдиттен»',
-      body: 'Фасад на месте.',
-      faq: [{ question: 'Идёт ремонт?', answer: 'Да, кирха «Юдиттен» сейчас закрыта на реставрацию' }],
-    }))
+    const judittenOpen = scorePage(
+      source({
+        scheduleMode: 'always',
+        title: 'Кирха «Юдиттен»',
+        body: 'Фасад на месте.',
+        faq: [{ question: 'Идёт ремонт?', answer: 'Да, кирха «Юдиттен» сейчас закрыта на реставрацию' }],
+      }),
+    )
+    const judittenShut = scorePage(
+      source({
+        scheduleMode: 'closed',
+        title: 'Кирха «Юдиттен»',
+        body: 'Фасад на месте.',
+        faq: [{ question: 'Идёт ремонт?', answer: 'Да, кирха «Юдиттен» сейчас закрыта на реставрацию' }],
+      }),
+    )
     expect(judittenOpen.quality).toBe(judittenShut.quality - 15)
 
     const ambiguous = 'Временно закрыт ресторан внутри.'
@@ -1246,7 +1423,13 @@ describe('search queries', () => {
 
 describe('persona coverage report', () => {
   it('builds rows for targeted pages and flags gaps', () => {
-    const month = catalogArticle({ id: 'month-1', slug: 'month', title: 'Месяц', body: 'Текст', modules: [{ type: 'plans' }, { type: 'text', role: 'events' }] })
+    const month = catalogArticle({
+      id: 'month-1',
+      slug: 'month',
+      title: 'Месяц',
+      body: 'Текст',
+      modules: [{ type: 'plans' }, { type: 'text', role: 'events' }],
+    })
     const report = personaCoverageReport(catalog({ collections: [month], places: [catalogPlace()] }), [
       { pageType: 'collection', entityId: 'month-1', personaCode: 'local', weight: 3, primary: true },
       { pageType: 'collection', entityId: 'month-1', personaCode: 'business', weight: 1, primary: false },

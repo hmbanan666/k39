@@ -29,15 +29,17 @@ describe('place page', () => {
   })
 
   it('renders a markdown table and keeps the FAQ visible as text', () => {
-    const html = renderMarkdown([
-      '| Когда | Цена |',
-      '| --- | --- |',
-      '| Вт–вс | 500 ₽ |',
-      '',
-      '## Частые вопросы',
-      '',
-      '**Можно ли войти?** Пока нет.',
-    ].join('\n'))
+    const html = renderMarkdown(
+      [
+        '| Когда | Цена |',
+        '| --- | --- |',
+        '| Вт–вс | 500 ₽ |',
+        '',
+        '## Частые вопросы',
+        '',
+        '**Можно ли войти?** Пока нет.',
+      ].join('\n'),
+    )
     expect(html).toContain('<table>')
     expect(html).toContain('<th>Когда</th>')
     expect(html).toContain('<td>500 ₽</td>')
@@ -75,48 +77,62 @@ describe('place page', () => {
     const faq = doc.jsonLd.find((node) => node['@type'] === 'FAQPage') as { mainEntity?: Array<{ name: string }> }
     expect(faq?.mainEntity?.map((item) => item.name)).toEqual(['Можно ли войти?'])
     expect(faqFromBody('Просто текст')).toEqual([])
-    expect(faqFromBody([
-      '## Частые вопросы',
-      '',
-      '**Можно ли зайти?**',
-      'Нет. Закрыто на стройку.',
-      '',
-      '**Где сбор?**',
-      '',
-      'Ул. Победы, 51а.',
-    ].join('\n'))).toEqual([
+    expect(
+      faqFromBody(
+        [
+          '## Частые вопросы',
+          '',
+          '**Можно ли зайти?**',
+          'Нет. Закрыто на стройку.',
+          '',
+          '**Где сбор?**',
+          '',
+          'Ул. Победы, 51а.',
+        ].join('\n'),
+      ),
+    ).toEqual([
       { question: 'Можно ли зайти?', answer: 'Нет. Закрыто на стройку.' },
       { question: 'Где сбор?', answer: 'Ул. Победы, 51а.' },
     ])
-    expect(faqFromBody([
-      '### Это не вопрос раздела?',
-      '',
-      'Снаружи.',
-      '',
-      '## Частые вопросы',
-      '',
-      '### Какой форт выбрать, если время только на один?',
-      '',
-      'Форт № 5, если нужен музей с часами.',
-      '',
-      '### Можно ли зайти в заброшенные форты?',
-      '',
-      'У форта № 2а вход свободный, но без охраны.',
-      '',
-      '## Места',
-      '',
-      '**Это не вопрос?** И не попадает.',
-    ].join('\n'))).toEqual([
+    expect(
+      faqFromBody(
+        [
+          '### Это не вопрос раздела?',
+          '',
+          'Снаружи.',
+          '',
+          '## Частые вопросы',
+          '',
+          '### Какой форт выбрать, если время только на один?',
+          '',
+          'Форт № 5, если нужен музей с часами.',
+          '',
+          '### Можно ли зайти в заброшенные форты?',
+          '',
+          'У форта № 2а вход свободный, но без охраны.',
+          '',
+          '## Места',
+          '',
+          '**Это не вопрос?** И не попадает.',
+        ].join('\n'),
+      ),
+    ).toEqual([
       { question: 'Какой форт выбрать, если время только на один?', answer: 'Форт № 5, если нужен музей с часами.' },
       { question: 'Можно ли зайти в заброшенные форты?', answer: 'У форта № 2а вход свободный, но без охраны.' },
     ])
-    expect(stripRepeatedLead('Короткий лид.', body)).toBe('Дальше текст.\n\n## Частые вопросы\n\n**Можно ли войти?** Пока нет.\n\n## Источники\n\n**Это не вопрос** и не попадает в FAQ.')
+    expect(stripRepeatedLead('Короткий лид.', body)).toBe(
+      'Дальше текст.\n\n## Частые вопросы\n\n**Можно ли войти?** Пока нет.\n\n## Источники\n\n**Это не вопрос** и не попадает в FAQ.',
+    )
     expect(stripRepeatedLead('Другой лид.', body)).toBe(body)
   })
 
   it('opens off-site links in a new tab and leaves internal links alone', () => {
-    const html = renderMarkdown('[Карты](https://yandex.ru/maps/?rtext=~54) и [форт](/fort-11) и [вики](https://ru.wikipedia.org/wiki/A)')
-    expect(html).toContain('href="https://yandex.ru/maps/?rtext=~54" target="_blank" rel="noopener noreferrer nofollow"')
+    const html = renderMarkdown(
+      '[Карты](https://yandex.ru/maps/?rtext=~54) и [форт](/fort-11) и [вики](https://ru.wikipedia.org/wiki/A)',
+    )
+    expect(html).toContain(
+      'href="https://yandex.ru/maps/?rtext=~54" target="_blank" rel="noopener noreferrer nofollow"',
+    )
     expect(html).toContain('<a href="/fort-11">форт</a>')
     expect(html).toContain('href="https://ru.wikipedia.org/wiki/A" target="_blank" rel="noopener nofollow"')
     expect(externalLinkAttrs('https://k39.online/fort-11')).toEqual({})
@@ -136,17 +152,22 @@ describe('place page', () => {
       longitude: 20.512,
       hours: null,
       sources: [{ title: 'Википедия', url: 'https://ru.wikipedia.org/wiki/sobor' }],
-      images: [{
-        url: 'https://k39.online/media/photo/og.jpg',
-        width: 1200,
-        height: 800,
-        alt: 'Собор. Julian Nyča. CC BY-SA 4.0',
-        author: 'Julian Nyča',
-        license: 'cc-by-sa',
-        sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sobor.jpg',
-      }],
+      images: [
+        {
+          url: 'https://k39.online/media/photo/og.jpg',
+          width: 1200,
+          height: 800,
+          alt: 'Собор. Julian Nyča. CC BY-SA 4.0',
+          author: 'Julian Nyča',
+          license: 'cc-by-sa',
+          sourceUrl: 'https://commons.wikimedia.org/wiki/File:Sobor.jpg',
+        },
+      ],
     })
-    const node = doc.jsonLd.find((item) => jsonLdTypes(item).includes('LandmarksOrHistoricalBuildings')) as { image?: Array<Record<string, unknown>>, citation?: unknown }
+    const node = doc.jsonLd.find((item) => jsonLdTypes(item).includes('LandmarksOrHistoricalBuildings')) as {
+      image?: Array<Record<string, unknown>>
+      citation?: unknown
+    }
     const image = node.image?.[0]
     expect(image?.['@type']).toBe('ImageObject')
     expect(image?.creator).toEqual({ '@type': 'Person', 'name': 'Julian Nyča' })
@@ -154,18 +175,24 @@ describe('place page', () => {
     expect(image?.acquireLicensePage).toBe('https://commons.wikimedia.org/wiki/File:Sobor.jpg')
     expect(image?.creditText).toBe('Julian Nyča, CC BY-SA 4.0')
     expect(image?.copyrightNotice).toBe('© Julian Nyča')
-    expect(node.citation).toEqual([{
-      '@type': 'CreativeWork',
-      'name': 'Википедия',
-      'url': 'https://ru.wikipedia.org/wiki/sobor',
-    }])
+    expect(node.citation).toEqual([
+      {
+        '@type': 'CreativeWork',
+        'name': 'Википедия',
+        'url': 'https://ru.wikipedia.org/wiki/sobor',
+      },
+    ])
   })
 
   it('keeps a short address in the facts and leaves directions in the body', () => {
-    expect(shortAddress('Неман, ул. Победы, 47 (120 км от Калининграда). Сбор на экскурсию: ул. Победы, 51а.')).toBe('Неман, ул. Победы, 47 (120 км от Калининграда).')
+    expect(shortAddress('Неман, ул. Победы, 47 (120 км от Калининграда). Сбор на экскурсию: ул. Победы, 51а.')).toBe(
+      'Неман, ул. Победы, 47 (120 км от Калининграда).',
+    )
     expect(shortAddress('Ул. Канта, 1, остров Канта. Остановки «Рыбная деревня».')).toBe('Ул. Канта, 1, остров Канта.')
     expect(shortAddress('Литовский вал, 21')).toBe('Литовский вал, 21')
-    expect(htmlContainsAddress('<p>Светлогорск, ул. Ленина, 17. Ориентир: зал.</p>', 'Светлогорск, ул. Ленина, 17')).toBe(true)
+    expect(
+      htmlContainsAddress('<p>Светлогорск, ул. Ленина, 17. Ориентир: зал.</p>', 'Светлогорск, ул. Ленина, 17'),
+    ).toBe(true)
     expect(htmlContainsAddress('<p>От вокзала пять минут.</p>', 'Светлогорск, ул. Ленина, 17')).toBe(false)
     expect(htmlContainsAddress(null, 'Светлогорск, ул. Ленина, 17')).toBe(false)
     const body = '## История\n\nТекст.\n\n## Как добраться\n\nНа машине 120 км.'

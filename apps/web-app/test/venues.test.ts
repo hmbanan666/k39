@@ -48,31 +48,26 @@ function venue(patch: Partial<ScoreSource> = {}): ScoreSource {
 describe('venue scores', () => {
   it('checks description, photo, hours, verification, and coordinates', () => {
     const thin = scorePage(venue(), new Date('2026-10-13T00:00:00.000Z'))
-    expect(thin.checks.quality).toEqual(expect.arrayContaining([
-      'description missing',
-      '0 photos',
-      'no hours',
-      'facts not checked',
-      'no coordinates',
-    ]))
+    expect(thin.checks.quality).toEqual(
+      expect.arrayContaining(['description missing', '0 photos', 'no hours', 'facts not checked', 'no coordinates']),
+    )
     const text = 'Кофейня у форта варит эспрессо и кормит обедом после экскурсии. '.repeat(8).slice(0, 450)
-    const ready = scorePage(venue({
-      body: text,
-      summary: text,
-      hours: 'set',
-      photoCount: 1,
-      latitude: 54.65,
-      longitude: 20.56,
-      factsCheckedAt: '2026-10-01T00:00:00.000Z',
-      noindex: false,
-    }), new Date('2026-10-13T00:00:00.000Z'))
-    expect(ready.checks.quality).not.toEqual(expect.arrayContaining([
-      'description missing',
-      '0 photos',
-      'no hours',
-      'facts not checked',
-      'no coordinates',
-    ]))
+    const ready = scorePage(
+      venue({
+        body: text,
+        summary: text,
+        hours: 'set',
+        photoCount: 1,
+        latitude: 54.65,
+        longitude: 20.56,
+        factsCheckedAt: '2026-10-01T00:00:00.000Z',
+        noindex: false,
+      }),
+      new Date('2026-10-13T00:00:00.000Z'),
+    )
+    expect(ready.checks.quality).not.toEqual(
+      expect.arrayContaining(['description missing', '0 photos', 'no hours', 'facts not checked', 'no coordinates']),
+    )
     expect(ready.quality).toBeGreaterThan(thin.quality)
   })
 })
@@ -155,16 +150,26 @@ describe('eat-nearby card helpers', () => {
 })
 
 describe('venue modules', async () => {
-  const { dishMenuNode, dishPhotoProblem, dishPriceIsFresh, stampDishModules, toPublicVenueModules, venueModulesSchema } = await import('../shared/venue-modules')
+  const {
+    dishMenuNode,
+    dishPhotoProblem,
+    dishPriceIsFresh,
+    stampDishModules,
+    toPublicVenueModules,
+    venueModulesSchema,
+  } = await import('../shared/venue-modules')
   const { absoluteUrl, schemaProblems, searchBlurb, venueDocument, venueTitleBase } = await import('../shared/seo')
   it('renders only valid lists and pulls how-to-get out of the blocks', () => {
     expect(toPublicVenueModules([], (text) => text)).toBeNull()
     expect(toPublicVenueModules([{ type: 'nope' }], (text) => text)).toBeNull()
-    const out = toPublicVenueModules([
-      { type: 'text', text: 'Про место.' },
-      { type: 'practical', items: [{ key: 'takeaway', label: 'Навынос', value: 'Да' }] },
-      { type: 'how-to-get', text: 'От вокзала пять минут.' },
-    ], (text) => `<p>${text}</p>`)
+    const out = toPublicVenueModules(
+      [
+        { type: 'text', text: 'Про место.' },
+        { type: 'practical', items: [{ key: 'takeaway', label: 'Навынос', value: 'Да' }] },
+        { type: 'how-to-get', text: 'От вокзала пять минут.' },
+      ],
+      (text) => `<p>${text}</p>`,
+    )
     expect(out?.blocks.map((block) => block.id)).toEqual(['o-meste', 'praktichno'])
     expect(out?.howToGetHtml).toBe('<p>От вокзала пять минут.</p>')
   })
@@ -179,7 +184,11 @@ describe('venue modules', async () => {
     expect(venueModulesSchema.safeParse([{ type: 'dishes', items: nine.slice(0, 8) }]).success).toBe(true)
     const shown = toPublicVenueModules([{ type: 'dishes', note: 'Цены из меню.', items: [item] }], (text) => text)
     const block = shown?.blocks.find((row) => row.type === 'dishes')
-    expect(block?.type === 'dishes' && block.items[0]).toMatchObject({ name: 'Смёрреброд с форелью', description: '350 г', priceRub: 540 })
+    expect(block?.type === 'dishes' && block.items[0]).toMatchObject({
+      name: 'Смёрреброд с форелью',
+      description: '350 г',
+      priceRub: 540,
+    })
     expect(block?.type === 'dishes' && block.note).toBe('Цены из меню.')
   })
 
@@ -189,30 +198,64 @@ describe('venue modules', async () => {
     const stale = '2024-01-01T00:00:00.000Z'
     expect(dishPriceIsFresh(stale, now)).toBe(false)
     expect(dishPriceIsFresh(undefined, now)).toBe(true)
-    const previous = [{
-      type: 'dishes',
-      items: [
-        { id: 'dish-herring-01', name: 'Сельдь', description: 'С яблоком', priceRub: 480, updatedAt: stale, mediaId: 'photo-own' },
-        { id: 'dish-ribs-00001', name: 'Рёбра', description: 'На двоих', priceRub: 650, updatedAt: fresh },
+    const previous = [
+      {
+        type: 'dishes',
+        items: [
+          {
+            id: 'dish-herring-01',
+            name: 'Сельдь',
+            description: 'С яблоком',
+            priceRub: 480,
+            updatedAt: stale,
+            mediaId: 'photo-own',
+          },
+          { id: 'dish-ribs-00001', name: 'Рёбра', description: 'На двоих', priceRub: 650, updatedAt: fresh },
+        ],
+      },
+    ]
+    const stamped = stampDishModules(
+      [
+        {
+          type: 'dishes',
+          items: [
+            {
+              id: 'dish-herring-01',
+              name: 'Сельдь',
+              description: 'С яблоком и луком',
+              priceRub: 480,
+              mediaId: 'photo-own',
+            },
+            { id: 'dish-ribs-00001', name: 'Рёбра', description: 'На двоих', priceRub: 690 },
+            { name: 'Блонден', note: '0,5 л', priceRub: 290 },
+          ],
+        },
       ],
-    }]
-    const stamped = stampDishModules([{
-      type: 'dishes',
-      items: [
-        { id: 'dish-herring-01', name: 'Сельдь', description: 'С яблоком и луком', priceRub: 480, mediaId: 'photo-own' },
-        { id: 'dish-ribs-00001', name: 'Рёбра', description: 'На двоих', priceRub: 690 },
-        { name: 'Блонден', note: '0,5 л', priceRub: 290 },
-      ],
-    }], previous, now)
+      previous,
+      now,
+    )
     const items = stamped[0]?.type === 'dishes' ? stamped[0].items : []
-    expect(items[0]).toMatchObject({ id: 'dish-herring-01', updatedAt: stale, description: 'С яблоком и луком', mediaId: 'photo-own' })
+    expect(items[0]).toMatchObject({
+      id: 'dish-herring-01',
+      updatedAt: stale,
+      description: 'С яблоком и луком',
+      mediaId: 'photo-own',
+    })
     expect(items[1]).toMatchObject({ id: 'dish-ribs-00001', priceRub: 690, updatedAt: now.toISOString() })
     expect(items[2]?.id).toBeTruthy()
     expect(items[2]).toMatchObject({ description: '0,5 л', priceRub: 290, updatedAt: now.toISOString() })
-    const confirmed = stampDishModules([{
-      type: 'dishes',
-      items: [{ id: 'dish-herring-01', name: 'Сельдь', description: 'С яблоком', priceRub: 480, refreshPrice: true }],
-    }], previous, now)
+    const confirmed = stampDishModules(
+      [
+        {
+          type: 'dishes',
+          items: [
+            { id: 'dish-herring-01', name: 'Сельдь', description: 'С яблоком', priceRub: 480, refreshPrice: true },
+          ],
+        },
+      ],
+      previous,
+      now,
+    )
     expect(confirmed[0]?.type === 'dishes' && confirmed[0].items[0]?.updatedAt).toBe(now.toISOString())
     const view = toPublicVenueModules(previous, (text) => text, [], { now })
     const dishes = view?.blocks.find((row) => row.type === 'dishes')
@@ -225,9 +268,25 @@ describe('venue modules', async () => {
       { id: 'dish-herring-01', mediaId: 'photo-own' },
       { id: 'new-dish-00000001', mediaId: 'photo-venue' },
     ]
-    expect(dishPhotoProblem(links, [{ id: 'dish-herring-01', mediaId: 'photo-own' }], gallery, 'editorial')).toBeTruthy()
-    expect(dishPhotoProblem([{ id: 'dish-herring-01', mediaId: 'photo-own' }], [{ id: 'dish-herring-01', mediaId: 'photo-own' }], gallery, 'editorial')).toBeNull()
-    expect(dishPhotoProblem([{ id: 'new-dish-00000001', mediaId: 'photo-commons' }], [], [{ mediaId: 'photo-commons', origin: 'commons' }], 'editorial')).toBeNull()
+    expect(
+      dishPhotoProblem(links, [{ id: 'dish-herring-01', mediaId: 'photo-own' }], gallery, 'editorial'),
+    ).toBeTruthy()
+    expect(
+      dishPhotoProblem(
+        [{ id: 'dish-herring-01', mediaId: 'photo-own' }],
+        [{ id: 'dish-herring-01', mediaId: 'photo-own' }],
+        gallery,
+        'editorial',
+      ),
+    ).toBeNull()
+    expect(
+      dishPhotoProblem(
+        [{ id: 'new-dish-00000001', mediaId: 'photo-commons' }],
+        [],
+        [{ mediaId: 'photo-commons', origin: 'commons' }],
+        'editorial',
+      ),
+    ).toBeNull()
     expect(dishPhotoProblem([{ id: 'new-dish-00000001', mediaId: 'photo-venue' }], [], gallery, 'owner')).toBeNull()
     expect(dishPhotoProblem([{ id: 'new-dish-00000001', mediaId: 'photo-own' }], [], gallery, 'owner')).toBeTruthy()
   })
@@ -241,13 +300,22 @@ describe('venue modules', async () => {
       menuUrl: 'https://bochka.example/menu',
     })
     const business = doc.jsonLd.find((node) => node['@type'] === 'BarOrPub')!
-    const menu = dishMenuNode({
-      title: 'Что заказать',
-      items: [
-        { id: 'a', name: 'Сельдь', description: 'С яблоком', priceRub: 480, media: null },
-        { id: 'b', name: 'Рёбра', description: null, priceRub: null, media: { src: '/media/ribs/960.webp' } as never },
-      ],
-    }, { menuUrl: 'https://bochka.example/menu', absolute: absoluteUrl })
+    const menu = dishMenuNode(
+      {
+        title: 'Что заказать',
+        items: [
+          { id: 'a', name: 'Сельдь', description: 'С яблоком', priceRub: 480, media: null },
+          {
+            id: 'b',
+            name: 'Рёбра',
+            description: null,
+            priceRub: null,
+            media: { src: '/media/ribs/960.webp' } as never,
+          },
+        ],
+      },
+      { menuUrl: 'https://bochka.example/menu', absolute: absoluteUrl },
+    )
     business.hasMenu = menu
     expect(schemaProblems(doc.jsonLd)).toEqual([])
     expect(JSON.stringify(menu)).toContain('MenuItem')

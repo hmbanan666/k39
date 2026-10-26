@@ -14,6 +14,6 @@ import type { SeoDocument } from '~~/shared/seo'
 definePageMeta({ layout: 'admin', middleware: ['admin-only'] })
 
 const slug = String(useRoute().params.slug || '')
-const page = await fetchPublic<{ doc: SeoDocument, html: string }>(`/api/admin/preview/${slug}`)
+const page = await fetchPublic<{ doc: SeoDocument; html: string }>(`/api/admin/preview/${slug}`)
 usePublicHead(page.doc)
 </script>

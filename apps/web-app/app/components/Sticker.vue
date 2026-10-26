@@ -4,21 +4,21 @@
       type="image/avif"
       :srcset="sources.avif"
       :sizes="sizes"
-    >
+    />
     <source
       type="image/webp"
       :srcset="sources.webp"
       :sizes="sizes"
-    >
+    />
     <img
       :src="sources.png"
-      :alt="decorative ? '' : (alt || sources.alt)"
+      :alt="decorative ? '' : alt || sources.alt"
       :width="width"
       :height="sources.height"
       :loading="priority ? 'eager' : 'lazy'"
       :fetchpriority="priority ? 'high' : undefined"
       decoding="async"
-    >
+    />
   </picture>
 </template>
 
@@ -70,7 +70,7 @@ const sources = computed(() => {
       webp: foodStickerSrcset(props.slug, 'webp'),
       png: foodStickerSrc(props.slug, 256, 'png'),
       alt: meta.alt,
-      height: Math.round(props.width * meta.height / meta.width),
+      height: Math.round((props.width * meta.height) / meta.width),
     }
   }
   if (!(props.slug in STICKERS)) {
@@ -83,7 +83,7 @@ const sources = computed(() => {
     webp: stickerSrcset(slug, 'webp'),
     png: stickerSrc(slug, 256, 'png'),
     alt: meta.alt,
-    height: Math.round(props.width * meta.height / meta.width),
+    height: Math.round((props.width * meta.height) / meta.width),
   }
 })
 

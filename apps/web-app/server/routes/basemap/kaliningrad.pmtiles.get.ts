@@ -5,7 +5,7 @@ import { byteSpan } from '../../utils/basemap-range'
 export default defineEventHandler(async (event) => {
   // The map asks for this path only after GET /api/public/basemap has checked the sha256.
   const file = useRuntimeConfig().basemapFile || '/app/basemap/kaliningrad.pmtiles'
-  let info: { size: number, mtimeMs: number }
+  let info: { size: number; mtimeMs: number }
   try {
     const found = await stat(file)
     info = { size: found.size, mtimeMs: found.mtimeMs }

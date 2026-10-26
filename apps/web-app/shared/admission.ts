@@ -18,7 +18,11 @@ export const ADMISSION_MAX_ROWS = 48
 export const ADMISSION_EXTRA_MAX_ROWS = 12
 export const ADMISSION_EXTRA_UNITS = ['person', 'group', 'device'] as const
 export type AdmissionExtraUnit = (typeof ADMISSION_EXTRA_UNITS)[number]
-export const ADMISSION_UNIT_LABELS: Record<AdmissionExtraUnit, string> = { person: 'за человека', group: 'за группу', device: 'за устройство' }
+export const ADMISSION_UNIT_LABELS: Record<AdmissionExtraUnit, string> = {
+  person: 'за человека',
+  group: 'за группу',
+  device: 'за устройство',
+}
 export const ADMISSION_CONDITION_MAX = 200
 export const ADMISSION_LABEL_MAX = 80
 export const PRACTICAL_SLOT = /^[a-z0-9-]{1,40}$/
@@ -54,13 +58,16 @@ export type AdmissionStoredRow = Omit<AdmissionRow, 'kind' | 'audience' | 'unit'
 export function partitionAdmission(rows: AdmissionStoredRow[]) {
   return {
     rows: sortAdmission(rows.filter((row): row is AdmissionRow => row.kind !== 'extra' && row.audience !== null)),
-    extras: rows.filter((row): row is AdmissionExtraRow => row.kind === 'extra' && row.audience === null && row.label !== null)
+    extras: rows
+      .filter((row): row is AdmissionExtraRow => row.kind === 'extra' && row.audience === null && row.label !== null)
       .sort((a, b) => a.sortOrder - b.sortOrder || a.slot.localeCompare(b.slot)),
   }
 }
 
 /** Field rules for one row. The slot shape and repeats are checked over the whole list. */
-export function admissionRowProblem(row: Pick<AdmissionRow, 'audience' | 'priceRub' | 'condition' | 'label'>): string | null {
+export function admissionRowProblem(
+  row: Pick<AdmissionRow, 'audience' | 'priceRub' | 'condition' | 'label'>,
+): string | null {
   if (!Number.isInteger(row.priceRub)) {
     return 'Цена билета: целое число рублей'
   }
@@ -88,7 +95,10 @@ function audienceRank(audience: AdmissionAudience) {
 }
 
 export function sortAdmission<T extends Pick<AdmissionRow, 'audience' | 'sortOrder' | 'slot'>>(rows: T[]): T[] {
-  return [...rows].sort((a, b) => audienceRank(a.audience) - audienceRank(b.audience) || a.sortOrder - b.sortOrder || a.slot.localeCompare(b.slot))
+  return [...rows].sort(
+    (a, b) =>
+      audienceRank(a.audience) - audienceRank(b.audience) || a.sortOrder - b.sortOrder || a.slot.localeCompare(b.slot),
+  )
 }
 
 export interface AdmissionLine {
@@ -126,7 +136,11 @@ export function admissionView(rows: AdmissionStoredRow[], now = new Date()): Adm
   const stored = partitionAdmission(rows)
   const fresh = stored.rows.filter((row) => row.checkedAt >= cutoff)
   const extras = stored.extras.filter((row) => row.checkedAt >= cutoff)
-  const provenance = (row: AdmissionStoredRow) => ({ sourceUrl: row.sourceUrl, sourceTitle: row.sourceTitle, checkedAt: row.checkedAt })
+  const provenance = (row: AdmissionStoredRow) => ({
+    sourceUrl: row.sourceUrl,
+    sourceTitle: row.sourceTitle,
+    checkedAt: row.checkedAt,
+  })
   return {
     stored: stored.rows.length > 0,
     rows: fresh,

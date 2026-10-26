@@ -14,7 +14,15 @@ describe('collection_save module page', () => {
     })
     const modules = [
       { type: 'text', variant: 'lead', text: 'Лид модульной страницы.' },
-      { type: 'month-stats', title: 'Месяц', tiles: [{ label: 'А', value: '1' }, { label: 'Б', value: '2' }], rows: [] },
+      {
+        type: 'month-stats',
+        title: 'Месяц',
+        tiles: [
+          { label: 'А', value: '1' },
+          { label: 'Б', value: '2' },
+        ],
+        rows: [],
+      },
       { type: 'picker', questions: ['interest'] },
       { type: 'ideas', title: 'Идеи', items: [{ title: 'Одна', text: 'Текст идеи.', tags: ['eda'] }] },
       { type: 'plans', title: 'План', items: [{ title: 'День', text: 'Текст плана.', tags: [] }] },

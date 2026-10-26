@@ -203,7 +203,10 @@ function parseIdList(raw: string, allowed: Set<string>) {
   if (raw === 'none' || raw === '0') {
     return []
   }
-  const ids = raw.split(',').map((item) => item.trim()).filter((item) => allowed.has(item))
+  const ids = raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => allowed.has(item))
   return [...new Set(ids)]
 }
 
@@ -221,16 +224,17 @@ export function parseMapQuery(query: Record<string, unknown>): MapQueryState {
   const foodTokens = queryValue(query.f)
   const foodRaw = foodTokens
     ? parseIdList(
-        foodTokens.split(',').map((token) => FOOD_BY_PATH.get(token.trim()) || token.trim()).join(','),
+        foodTokens
+          .split(',')
+          .map((token) => FOOD_BY_PATH.get(token.trim()) || token.trim())
+          .join(','),
         foodAllowed,
       )
     : null
   const route = queryValue(query.r).trim()
   const q = queryValue(query.q).replace(/\s+/g, ' ').trim().slice(0, 80)
   const categoryRaw = queryValue(query.c).trim()
-  const category = BROWSE_CATEGORIES.some((item) => item.id === categoryRaw)
-    ? categoryRaw as BrowseCategory
-    : null
+  const category = BROWSE_CATEGORIES.some((item) => item.id === categoryRaw) ? (categoryRaw as BrowseCategory) : null
   return {
     sights: sightRaw as SightId[] | null,
     food: foodRaw,
@@ -259,7 +263,7 @@ export function routeFocusSlug(focus: string | null) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : null
 }
 
-export function focusMatch(point: { id: string, slug: string, href: string }, focus: string | null) {
+export function focusMatch(point: { id: string; slug: string; href: string }, focus: string | null) {
   if (!focus) {
     return false
   }
@@ -278,7 +282,12 @@ function sameSet(list: string[] | null, all: readonly string[]) {
 }
 
 export function canonicalSights(sights: SightId[] | null): SightId[] | null {
-  return sameSet(sights, SIGHT_FACETS.map((item) => item.id)) ? null : sights
+  return sameSet(
+    sights,
+    SIGHT_FACETS.map((item) => item.id),
+  )
+    ? null
+    : sights
 }
 
 export function canonicalFood(food: string[] | null, all: readonly string[]): string[] | null {
@@ -445,11 +454,10 @@ export function queriesEqual(a: Record<string, string>, b: Record<string, unknow
 const EMPTY_QUERY: MapQueryState = { sights: null, food: null, route: null, q: '', category: null, focus: null }
 
 export function distanceKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
-  const toRad = (value: number) => value * Math.PI / 180
+  const toRad = (value: number) => (value * Math.PI) / 180
   const dLat = toRad(toLat - fromLat)
   const dLng = toRad(toLng - fromLng)
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLng / 2) ** 2
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLng / 2) ** 2
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
@@ -481,12 +489,13 @@ export function stopsLabel(count: number) {
 }
 
 export function routeLengthKm(route: MapRoute) {
-  const line = route.path && route.path.length >= 2
-    ? route.path
-    : [...route.stops]
-        .filter((stop) => Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude))
-        .sort((a, b) => a.position - b.position)
-        .map((stop) => [stop.longitude, stop.latitude] as [number, number])
+  const line =
+    route.path && route.path.length >= 2
+      ? route.path
+      : [...route.stops]
+          .filter((stop) => Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude))
+          .sort((a, b) => a.position - b.position)
+          .map((stop) => [stop.longitude, stop.latitude] as [number, number])
   let km = 0
   for (let index = 1; index < line.length; index += 1) {
     const prev = line[index - 1]
@@ -520,11 +529,13 @@ export function routeThumb(route: MapRoute) {
   return route.stops.find((stop) => stop.photo)?.photo ?? null
 }
 
-export function inBounds(point: { latitude: number, longitude: number }, bounds: MapBounds) {
-  return point.longitude >= bounds.west
-    && point.longitude <= bounds.east
-    && point.latitude >= bounds.south
-    && point.latitude <= bounds.north
+export function inBounds(point: { latitude: number; longitude: number }, bounds: MapBounds) {
+  return (
+    point.longitude >= bounds.west &&
+    point.longitude <= bounds.east &&
+    point.latitude >= bounds.south &&
+    point.latitude <= bounds.north
+  )
 }
 
 export function boundsCenter(bounds: MapBounds): MapOrigin {
@@ -662,9 +673,11 @@ export function curatedSights(points: MapPoint[], limit = 6) {
   const picked: MapPoint[] = []
   const used = new Set<string>()
   for (const category of CURATED_ORDER) {
-    const pool = sights.filter((point) => !used.has(point.id) && (category === 'tserkvi'
-      ? point.church || point.category === 'tserkvi'
-      : point.category === category))
+    const pool = sights.filter(
+      (point) =>
+        !used.has(point.id) &&
+        (category === 'tserkvi' ? point.church || point.category === 'tserkvi' : point.category === category),
+    )
     const best = byPhoto(pool)[0]
     if (best) {
       picked.push(best)
@@ -700,9 +713,11 @@ export function pointsNear(points: MapPoint[], origins: MapOrigin[], radiusKm = 
   if (!origins.length) {
     return []
   }
-  return points.filter((point) => origins.some((origin) => (
-    distanceKm(origin.latitude, origin.longitude, point.latitude, point.longitude) <= radiusKm
-  )))
+  return points.filter((point) =>
+    origins.some(
+      (origin) => distanceKm(origin.latitude, origin.longitude, point.latitude, point.longitude) <= radiusKm,
+    ),
+  )
 }
 
 function withFocus(list: MapPoint[], points: MapPoint[], state: MapQueryState) {
@@ -716,14 +731,11 @@ function withFocus(list: MapPoint[], points: MapPoint[], state: MapQueryState) {
 
 export function shownPoints(points: MapPoint[], state: MapQueryState) {
   const category = activeCategory(state)
-  const matched = state.q.trim()
-    ? points.filter((point) => textHit(point, state.q))
-    : points
+  const matched = state.q.trim() ? points.filter((point) => textHit(point, state.q)) : points
   let list: MapPoint[]
   if (state.q.trim()) {
-    list = !category || category === 'routes'
-      ? matched
-      : matched.filter((point) => pointInCategory(point, category, state))
+    list =
+      !category || category === 'routes' ? matched : matched.filter((point) => pointInCategory(point, category, state))
   } else if (category === 'routes') {
     list = []
   } else if (category) {

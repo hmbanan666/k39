@@ -45,7 +45,9 @@ h2 {
   font-size: clamp(1.7rem, 1.3rem + 0.8vw, 2rem);
   letter-spacing: -0.02em;
 }
-.slot { display: grid; }
+.slot {
+  display: grid;
+}
 .slot.fits :deep(> *) {
   outline: 2px solid var(--color-brick);
   outline-offset: 2px;

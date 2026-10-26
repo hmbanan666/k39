@@ -4,7 +4,14 @@ import type { ScheduleRecord } from '../../../shared/schedule'
 import type { VenueModule } from '../../../shared/venue-modules'
 import { db, normalizeHours, VenueInputError } from '@k39/database'
 import { createError } from 'h3'
-import { mergeWeeklyRules, rulesWithNote, verifiedDate, weeklyTableFits, weeklyTableKey, weeklyTableRules } from '../../../shared/schedule'
+import {
+  mergeWeeklyRules,
+  rulesWithNote,
+  verifiedDate,
+  weeklyTableFits,
+  weeklyTableKey,
+  weeklyTableRules,
+} from '../../../shared/schedule'
 import { contentScope, requireEditorContent } from '../access'
 import { contentGate, contentWarnings, createVenueContent, syncSavedPage, updateVenueContent } from '../content/save'
 import { hoursConflict, syncCoordinates, syncVenueContact } from '../facts/sync'
@@ -16,7 +23,7 @@ import { stageVenueFields } from './pending'
 import { recomputePriceBandsAfterStatus } from './price-band'
 
 /** Editor token only. A published or closed venue stays; the repository refuses those. */
-export async function deleteVenue(input: { id?: string, slug?: string }) {
+export async function deleteVenue(input: { id?: string; slug?: string }) {
   requireEditorContent('delete a venue')
   if (!input.id && !input.slug) {
     throw createError({ statusCode: 400, statusMessage: 'Нужен id или slug' })
@@ -75,7 +82,7 @@ export function venueWriteFromInput(input: {
   hours?: unknown
   phone?: string | null
   website?: string | null
-  socials?: Array<{ network: string, url: string }>
+  socials?: Array<{ network: string; url: string }>
   vkCommunityId?: number | string | null
   bookingUrl?: string | null
   orderUrl?: string | null
@@ -88,7 +95,7 @@ export function venueWriteFromInput(input: {
   modules?: unknown[]
   contactEmail?: string | null
   description?: string
-  sources?: Array<{ title: string, url: string }>
+  sources?: Array<{ title: string; url: string }>
   status?: 'draft' | 'published' | 'closed' | 'archived'
   lastVerifiedAt?: string | null
   osmId?: string | null
@@ -102,18 +109,27 @@ export function venueWriteFromInput(input: {
   }
 }
 
-export async function createVenue(input: Parameters<typeof venueWriteFromInput>[0] & { regionSlug?: string | null }, userId?: string | null) {
+export async function createVenue(
+  input: Parameters<typeof venueWriteFromInput>[0] & { regionSlug?: string | null },
+  userId?: string | null,
+) {
   if (contentScope() === 'draft' && input.status && input.status !== 'draft') {
     throw createError({ statusCode: 403, statusMessage: 'Draft token cannot publish' })
   }
   try {
     const regionId = await regionIdForSlug(input.regionSlug)
-    const modules = input.modules ? await normalizeDishModules(null, input.modules as VenueModule[], 'editorial') : undefined
+    const modules = input.modules
+      ? await normalizeDishModules(null, input.modules as VenueModule[], 'editorial')
+      : undefined
     const actor: FactActor = userId ? 'editor' : 'mcp'
-    const { row, writingWarnings } = await createVenueContent({
-      ...venueWriteFromInput({ ...input, modules }),
-      regionId: regionId === undefined ? input.regionId : regionId,
-    }, userId, contentGate('venue', { ...input, modules }, input.status === 'published'))
+    const { row, writingWarnings } = await createVenueContent(
+      {
+        ...venueWriteFromInput({ ...input, modules }),
+        regionId: regionId === undefined ? input.regionId : regionId,
+      },
+      userId,
+      contentGate('venue', { ...input, modules }, input.status === 'published'),
+    )
     await saveVenueSchedule(row, await planVenueSchedule({ id: row.id, lastVerifiedAt: null }, input), actor)
     await syncVenueContact({
       venueId: row.id,
@@ -140,12 +156,15 @@ export async function createVenue(input: Parameters<typeof venueWriteFromInput>[
   }
 }
 
-export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[0] & { id?: string, regionSlug?: string | null, pendingDraft?: unknown }, userId?: string | null) {
-  const current = input.id
-    ? await db.venues.byId(input.id)
-    : input.slug
-      ? await db.venues.bySlug(input.slug)
-      : null
+export async function updateVenue(
+  input: Parameters<typeof venueWriteFromInput>[0] & {
+    id?: string
+    regionSlug?: string | null
+    pendingDraft?: unknown
+  },
+  userId?: string | null,
+) {
+  const current = input.id ? await db.venues.byId(input.id) : input.slug ? await db.venues.bySlug(input.slug) : null
   if (!current) {
     throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
   }
@@ -157,43 +176,57 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
       return stageVenueFields(current.id, input).catch(venueError)
     }
     if (current.status === 'archived' || (input.status && input.status !== 'draft')) {
-      throw createError({ statusCode: 409, statusMessage: 'Draft token cannot edit this venue. The live page was not changed.' })
+      throw createError({
+        statusCode: 409,
+        statusMessage: 'Draft token cannot edit this venue. The live page was not changed.',
+      })
     }
   }
   try {
     const saved = await db.venues.withLocked(current.id, async (tx, current) => {
       if (contentScope() === 'draft' && current.status !== 'draft') {
-        throw createError({ statusCode: 409, statusMessage: 'The live page was not changed. Reload the venue before saving.' })
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'The live page was not changed. Reload the venue before saving.',
+        })
       }
       const pending = await db.editor.contentDraft('venue', current.id, tx)
       if (userId && pending && input.pendingDraft !== 'discard') {
         throw createError({ statusCode: 409, statusMessage: 'Есть черновик. Примените его или отбросьте.' })
       }
       const regionId = await regionIdForSlug(input.regionSlug)
-      const modules = input.modules ? await normalizeDishModules(current.id, input.modules as VenueModule[], 'editorial') : undefined
+      const modules = input.modules
+        ? await normalizeDishModules(current.id, input.modules as VenueModule[], 'editorial')
+        : undefined
       const status = input.status ?? current.status
-      const gate = contentGate('venue', {
-        name: input.name === undefined ? current.name : input.name,
-        description: input.description === undefined ? current.description : input.description,
-        address: input.address === undefined ? current.address : input.address,
-        phone: input.phone === undefined ? current.phone : input.phone,
-        seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
-        seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
-        signatureDishes: input.signatureDishes === undefined ? current.signatureDishes : input.signatureDishes,
-        modules: modules === undefined ? current.modules : modules,
-        sources: input.sources === undefined ? current.sources : input.sources,
-        website: input.website === undefined ? current.website : input.website,
-        socials: input.socials === undefined ? current.socials : input.socials,
-        bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : input.bookingUrl,
-        orderUrl: input.orderUrl === undefined ? current.orderUrl : input.orderUrl,
-        deliveryUrl: input.deliveryUrl === undefined ? current.deliveryUrl : input.deliveryUrl,
-        menuUrl: input.menuUrl === undefined ? current.menuUrl : input.menuUrl,
-        contactEmail: input.contactEmail === undefined ? current.contactEmail : input.contactEmail,
-      }, status === 'published')
+      const gate = contentGate(
+        'venue',
+        {
+          name: input.name === undefined ? current.name : input.name,
+          description: input.description === undefined ? current.description : input.description,
+          address: input.address === undefined ? current.address : input.address,
+          phone: input.phone === undefined ? current.phone : input.phone,
+          seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
+          seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
+          signatureDishes: input.signatureDishes === undefined ? current.signatureDishes : input.signatureDishes,
+          modules: modules === undefined ? current.modules : modules,
+          sources: input.sources === undefined ? current.sources : input.sources,
+          website: input.website === undefined ? current.website : input.website,
+          socials: input.socials === undefined ? current.socials : input.socials,
+          bookingUrl: input.bookingUrl === undefined ? current.bookingUrl : input.bookingUrl,
+          orderUrl: input.orderUrl === undefined ? current.orderUrl : input.orderUrl,
+          deliveryUrl: input.deliveryUrl === undefined ? current.deliveryUrl : input.deliveryUrl,
+          menuUrl: input.menuUrl === undefined ? current.menuUrl : input.menuUrl,
+          contactEmail: input.contactEmail === undefined ? current.contactEmail : input.contactEmail,
+        },
+        status === 'published',
+      )
       contentWarnings(gate)
       const actor: FactActor = userId ? 'editor' : 'mcp'
       const schedule = await planVenueSchedule(current, input, tx)
-      const hoursQueue = schedule ? (await hoursConflict('venue', current.id, schedule, actor, tx))?.queueId ?? null : null
+      const hoursQueue = schedule
+        ? ((await hoursConflict('venue', current.id, schedule, actor, tx))?.queueId ?? null)
+        : null
       const contact = await syncVenueContact({
         venueId: current.id,
         actor,
@@ -214,30 +247,45 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
         tx,
         previous: { latitude: current.latitude, longitude: current.longitude },
       })
-      const updated = await updateVenueContent(current.id, {
-        ...venueWriteFromInput({
-          ...input,
-          modules,
-          phone: contact.skipped.phone ? undefined : input.phone,
-          address: contact.skipped.address ? undefined : input.address,
-          status: contact.skipped.status ? undefined : input.status,
-          latitude: point.skipped ? undefined : input.latitude,
-          longitude: point.skipped ? undefined : input.longitude,
-          hours: hoursQueue ? undefined : input.hours,
-        }),
-        regionId: regionId === undefined ? undefined : regionId,
-        slug: input.slug && input.id ? input.slug : input.id ? undefined : current.slug,
-      }, userId, gate, tx)
+      const updated = await updateVenueContent(
+        current.id,
+        {
+          ...venueWriteFromInput({
+            ...input,
+            modules,
+            phone: contact.skipped.phone ? undefined : input.phone,
+            address: contact.skipped.address ? undefined : input.address,
+            status: contact.skipped.status ? undefined : input.status,
+            latitude: point.skipped ? undefined : input.latitude,
+            longitude: point.skipped ? undefined : input.longitude,
+            hours: hoursQueue ? undefined : input.hours,
+          }),
+          regionId: regionId === undefined ? undefined : regionId,
+          slug: input.slug && input.id ? input.slug : input.id ? undefined : current.slug,
+        },
+        userId,
+        gate,
+        tx,
+      )
       const saved = updated.row
       const writingWarnings = updated.writingWarnings
       if (!saved) {
         throw createError({ statusCode: 404, statusMessage: 'Заведение не найдено' })
       }
-      const hoursBlocked = hoursQueue || await saveVenueSchedule(saved, schedule, actor, tx)
-      const draftDropped = pending && contentScope() === 'editor' && (!saved.unchanged || (schedule && !hoursBlocked))
-        ? await db.editor.deleteContentDraftIfUnchanged(pending.id, pending.updatedAt, tx)
-        : false
-      return { ...saved, pendingReview: false as const, writingWarnings, draftDropped: Boolean(draftDropped), ownerConflicts: [...contact.conflicts, ...(hoursBlocked ? [hoursBlocked] : [])], previousStatus: current.status, previousRegionId: current.regionId }
+      const hoursBlocked = hoursQueue || (await saveVenueSchedule(saved, schedule, actor, tx))
+      const draftDropped =
+        pending && contentScope() === 'editor' && (!saved.unchanged || (schedule && !hoursBlocked))
+          ? await db.editor.deleteContentDraftIfUnchanged(pending.id, pending.updatedAt, tx)
+          : false
+      return {
+        ...saved,
+        pendingReview: false as const,
+        writingWarnings,
+        draftDropped: Boolean(draftDropped),
+        ownerConflicts: [...contact.conflicts, ...(hoursBlocked ? [hoursBlocked] : [])],
+        previousStatus: current.status,
+        previousRegionId: current.regionId,
+      }
     })
     await syncSavedPage('venue', current.id)
     await recomputePriceBandsAfterStatus(
@@ -252,7 +300,8 @@ export async function updateVenue(input: Parameters<typeof venueWriteFromInput>[
   }
 }
 
-export const SCHEDULE_ONLY_HOURS = 'Часы этого заведения заданы расписанием (сезоны, перерывы или особый режим). Таблица их не покажет целиком, поэтому меняйте их через schedule_set.'
+export const SCHEDULE_ONLY_HOURS =
+  'Часы этого заведения заданы расписанием (сезоны, перерывы или особый режим). Таблица их не покажет целиком, поэтому меняйте их через schedule_set.'
 
 export const HOURS_NOT_SAVED = 'Часы не сохранены: проверьте время по дням и заметку'
 
@@ -269,14 +318,14 @@ export const HOURS_NOT_SAVED = 'Часы не сохранены: проверь
  * a `VenueInputError` (400).
  */
 export async function planVenueSchedule(
-  venue: { id: string, lastVerifiedAt: Date | string | null },
-  input: { hours?: unknown, lastVerifiedAt?: string | null },
+  venue: { id: string; lastVerifiedAt: Date | string | null },
+  input: { hours?: unknown; lastVerifiedAt?: string | null },
   tx?: ContentTx,
 ): Promise<ScheduleRecord | null> {
   const current = await loadSchedule('venue', venue.id, tx)
   let rules = current?.rules ?? null
   let hoursChanged = false
-  const sent = input.hours && typeof input.hours === 'object' ? input.hours as { days?: unknown } : null
+  const sent = input.hours && typeof input.hours === 'object' ? (input.hours as { days?: unknown }) : null
   const sendsDays = Array.isArray(sent?.days)
   const sendsNote = Boolean(sent && 'note' in sent)
   if (sent && (sendsDays || sendsNote)) {
@@ -312,11 +361,14 @@ export async function planVenueSchedule(
       }
     }
   }
-  const checkChanged = input.lastVerifiedAt !== undefined && verifiedDate(input.lastVerifiedAt) !== verifiedDate(venue.lastVerifiedAt)
+  const checkChanged =
+    input.lastVerifiedAt !== undefined && verifiedDate(input.lastVerifiedAt) !== verifiedDate(venue.lastVerifiedAt)
   if (!rules || (!hoursChanged && !checkChanged)) {
     return null
   }
-  const checkedOn = checkChanged ? verifiedDate(input.lastVerifiedAt) : current?.verifiedAt ?? verifiedDate(venue.lastVerifiedAt)
+  const checkedOn = checkChanged
+    ? verifiedDate(input.lastVerifiedAt)
+    : (current?.verifiedAt ?? verifiedDate(venue.lastVerifiedAt))
   return {
     rules,
     sourceUrl: current?.sourceUrl ?? null,
@@ -329,12 +381,18 @@ export async function planVenueSchedule(
  * whose hours are invalid input never stops the rest: its osmId is returned
  * and the draft keeps unknown hours. Any other error fails the import.
  */
-export async function saveImportedHours(created: Array<{ id: string, draft: { osmId: string, hours: unknown, sources: Array<{ url: string }> } }>) {
+export async function saveImportedHours(
+  created: Array<{ id: string; draft: { osmId: string; hours: unknown; sources: Array<{ url: string }> } }>,
+) {
   const hoursSkipped: string[] = []
   for (const { id, draft } of created) {
     try {
       const schedule = await planVenueSchedule({ id, lastVerifiedAt: null }, { hours: draft.hours })
-      await saveVenueSchedule({ id, status: 'draft' }, schedule && { ...schedule, sourceUrl: draft.sources[0]?.url ?? null, verifiedAt: null }, 'mcp')
+      await saveVenueSchedule(
+        { id, status: 'draft' },
+        schedule && { ...schedule, sourceUrl: draft.sources[0]?.url ?? null, verifiedAt: null },
+        'mcp',
+      )
     } catch (error) {
       if (!(error instanceof VenueInputError)) {
         throw error
@@ -346,7 +404,12 @@ export async function saveImportedHours(created: Array<{ id: string, draft: { os
 }
 
 /** Store a planned venue schedule. Returns the queue id when an owner fact blocked it. */
-export async function saveVenueSchedule(venue: { id: string, status?: string }, record: ScheduleRecord | null, actor: FactActor = 'mcp', tx?: ContentTx) {
+export async function saveVenueSchedule(
+  venue: { id: string; status?: string },
+  record: ScheduleRecord | null,
+  actor: FactActor = 'mcp',
+  tx?: ContentTx,
+) {
   if (!record) {
     return null
   }

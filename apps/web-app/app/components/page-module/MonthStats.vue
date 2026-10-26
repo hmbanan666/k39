@@ -89,7 +89,9 @@ dd small {
   color: var(--muted);
   font-size: 0.8rem;
 }
-.rows { margin-top: 0.9rem; }
+.rows {
+  margin-top: 0.9rem;
+}
 .rows summary {
   color: var(--color-sea);
   font-weight: 600;
@@ -101,12 +103,15 @@ table {
   margin-top: 0.6rem;
   border-collapse: collapse;
 }
-th, td {
+th,
+td {
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--color-line);
   text-align: left;
 }
-th { font-weight: 400; }
+th {
+  font-weight: 400;
+}
 td {
   font-weight: 600;
   text-align: right;

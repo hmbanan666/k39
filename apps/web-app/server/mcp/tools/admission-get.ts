@@ -6,7 +6,8 @@ import { practicalTarget } from '../../utils/practical/target'
 
 export default defineStrictMcpTool({
   name: 'admission_get',
-  description: 'Load entry rows and separate extras (ADRs 0046, 0050); shownExtras/extrasStored describe extras, and extrasWriteEnabled reports rollout availability. Extras never change entry fallback or markup. Load the ticket list (ADR 0046) of a place, venue, or route: every stored row, and the slots the page shows. A row whose checkedAt is older than 365 days is stored but hidden. When rows exist and none is fresh, the page says «Стоимость билета уточняйте» instead of places.price.',
+  description:
+    'Load entry rows and separate extras (ADRs 0046, 0050); shownExtras/extrasStored describe extras, and extrasWriteEnabled reports rollout availability. Extras never change entry fallback or markup. Load the ticket list (ADR 0046) of a place, venue, or route: every stored row, and the slots the page shows. A row whose checkedAt is older than 365 days is stored but hidden. When rows exist and none is fresh, the page says «Стоимость билета уточняйте» instead of places.price.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     subjectType: z.enum(['place', 'venue', 'route']).default('place'),

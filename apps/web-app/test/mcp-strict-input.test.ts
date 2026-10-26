@@ -20,7 +20,11 @@ describe('strict MCP tool registration', () => {
     const { registerToolFromDefinition } = await import(path.href)
     const server = new McpServer({ name: 'strict-input-test', version: '1.0.0' })
     const handler = vi.fn(() => ({ content: [{ type: 'text', text: 'ok' }] }))
-    const definitions = await Promise.all(Object.values(modules).map(async (load) => (await load() as { default: ReturnType<typeof defineStrictMcpTool> }).default))
+    const definitions = await Promise.all(
+      Object.values(modules).map(
+        async (load) => ((await load()) as { default: ReturnType<typeof defineStrictMcpTool> }).default,
+      ),
+    )
     expect(definitions.length).toBeGreaterThan(80)
     for (const definition of definitions) {
       registerToolFromDefinition(server, { ...definition, cache: undefined, handler })

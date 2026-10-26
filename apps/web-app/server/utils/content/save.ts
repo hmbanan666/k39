@@ -72,7 +72,12 @@ export async function syncSavedPage(pageType: string, entityId: string | undefin
   await afterPage(pageType, entityId)
 }
 
-export async function savePlaceContent(input: PlaceWrite, userId: string | null | undefined, gate: ContentGate, tx?: EditorTx) {
+export async function savePlaceContent(
+  input: PlaceWrite,
+  userId: string | null | undefined,
+  gate: ContentGate,
+  tx?: EditorTx,
+) {
   const writingWarnings = contentWarnings(gate)
   try {
     const row = await db.editor.savePlace(input, userId, tx)
@@ -85,7 +90,12 @@ export async function savePlaceContent(input: PlaceWrite, userId: string | null 
   }
 }
 
-export async function saveRouteContent(input: RouteWrite, userId: string | null | undefined, gate: ContentGate, tx?: EditorTx) {
+export async function saveRouteContent(
+  input: RouteWrite,
+  userId: string | null | undefined,
+  gate: ContentGate,
+  tx?: EditorTx,
+) {
   const writingWarnings = contentWarnings(gate)
   const row = await db.editor.saveRoute(input, userId, tx)
   if (!tx) {
@@ -94,7 +104,12 @@ export async function saveRouteContent(input: RouteWrite, userId: string | null 
   return { row, writingWarnings }
 }
 
-export async function saveCollectionContent(input: CollectionWrite, userId: string | null | undefined, gate: ContentGate, tx?: EditorTx) {
+export async function saveCollectionContent(
+  input: CollectionWrite,
+  userId: string | null | undefined,
+  gate: ContentGate,
+  tx?: EditorTx,
+) {
   const writingWarnings = contentWarnings(gate)
   try {
     const row = await db.editor.saveCollection(input, userId, tx)
@@ -130,7 +145,13 @@ export async function createVenueContent(input: VenueWrite, userId: string | nul
   return { row, writingWarnings }
 }
 
-export async function updateVenueContent(id: string, input: VenueWrite, userId: string | null | undefined, gate: ContentGate, tx?: EditorTx) {
+export async function updateVenueContent(
+  id: string,
+  input: VenueWrite,
+  userId: string | null | undefined,
+  gate: ContentGate,
+  tx?: EditorTx,
+) {
   const writingWarnings = contentWarnings(gate)
   const row = await db.venues.update(id, input, userId, tx)
   if (!tx) {
@@ -153,7 +174,11 @@ export async function savePendingDraftContent(input: DraftWrite, gate: ContentGa
   return { row, writingWarnings }
 }
 
-async function applyPending<T extends { id: string }>(pageType: string, gate: ContentGate, apply: () => Promise<T | null>) {
+async function applyPending<T extends { id: string }>(
+  pageType: string,
+  gate: ContentGate,
+  apply: () => Promise<T | null>,
+) {
   const writingWarnings = contentWarnings(gate)
   try {
     const row = await apply()
@@ -164,7 +189,11 @@ async function applyPending<T extends { id: string }>(pageType: string, gate: Co
   }
 }
 
-export async function applyPendingPlaceContent(id: string, gate: ContentGate, hooks?: Parameters<typeof db.editor.applyPendingPlace>[1]) {
+export async function applyPendingPlaceContent(
+  id: string,
+  gate: ContentGate,
+  hooks?: Parameters<typeof db.editor.applyPendingPlace>[1],
+) {
   return applyPending('place', gate, () => db.editor.applyPendingPlace(id, hooks))
 }
 

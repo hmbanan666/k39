@@ -2,13 +2,9 @@
   <article class="page page-wide home">
     <header class="home-hero">
       <div>
-        <p class="kicker">
-          Путеводитель K39
-        </p>
+        <p class="kicker"> Путеводитель K39 </p>
         <h1>{{ page.doc.h1 }}</h1>
-        <p class="lede">
-          Форты, замки, пляжи и курорты. У каждого места свой адрес, статус и источник.
-        </p>
+        <p class="lede"> Форты, замки, пляжи и курорты. У каждого места свой адрес, статус и источник. </p>
       </div>
       <div
         class="collage"
@@ -65,7 +61,7 @@
           alt=""
           width="260"
           height="140"
-        >
+        />
       </div>
     </header>
     <div class="sh">
@@ -111,17 +107,13 @@
         <b>K39<small>квест</small></b>
       </div>
       <div>
-        <p class="kicker">
-          Квест
-        </p>
+        <p class="kicker"> Квест </p>
         <h2>{{ page.quest.title }}</h2>
         <p v-if="page.quest.summary">
           {{ page.quest.summary }}
         </p>
       </div>
-      <UiButton :href="page.quest.href">
-        Открыть квест
-      </UiButton>
+      <UiButton :href="page.quest.href"> Открыть квест </UiButton>
     </section>
   </article>
 </template>
@@ -135,9 +127,9 @@ import { lcpPreload } from '~~/shared/media'
 const romans = ['I', 'II', 'III', 'IV', 'V', 'VI']
 const page = await fetchPublic<{
   doc: SeoDocument
-  hubs: Array<{ href: string, title: string, summary: string }>
-  route: { href: string, title: string, summary: string, steps: Array<{ href: string, text: string }> } | null
-  quest: { href: string, title: string, summary: string } | null
+  hubs: Array<{ href: string; title: string; summary: string }>
+  route: { href: string; title: string; summary: string; steps: Array<{ href: string; text: string }> } | null
+  quest: { href: string; title: string; summary: string } | null
   photo: PublicMedia | null
 }>('/api/public/home')
 const heroSizes = '(min-width: 980px) 440px, 100vw'
@@ -182,10 +174,27 @@ onMounted(() => useTrack().track('page_view'))
   position: relative;
   height: 32rem;
 }
-.shot { position: absolute; }
-.a { top: 3.6rem; left: 0; z-index: 2; width: 68%; }
-.b { top: 0; right: 0; z-index: 1; width: 54%; }
-.c { right: 0.2rem; bottom: 0; z-index: 3; width: 48%; }
+.shot {
+  position: absolute;
+}
+.a {
+  top: 3.6rem;
+  left: 0;
+  z-index: 2;
+  width: 68%;
+}
+.b {
+  top: 0;
+  right: 0;
+  z-index: 1;
+  width: 54%;
+}
+.c {
+  right: 0.2rem;
+  bottom: 0;
+  z-index: 3;
+  width: 48%;
+}
 .float-stamp {
   position: absolute;
   top: 0.2rem;
@@ -206,8 +215,13 @@ onMounted(() => useTrack().track('page_view'))
   transform: rotate(-10deg);
   opacity: 0.85;
 }
-.sh { margin: 3.2rem 0 1.2rem; }
-.sh h2 { margin: 0; font-size: clamp(1.8rem, 1.3rem + 1vw, 2.4rem); }
+.sh {
+  margin: 3.2rem 0 1.2rem;
+}
+.sh h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 1.3rem + 1vw, 2.4rem);
+}
 .hub-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -225,9 +239,18 @@ onMounted(() => useTrack().track('page_view'))
   background-color: var(--color-amber-soft);
   background-image: var(--noise);
 }
-.quest h2 { margin: 0.3rem 0 0.45rem; font-size: clamp(1.6rem, 1.2rem + 1vw, 2.15rem); }
-.quest p { max-width: 52ch; margin: 0; color: var(--color-quest-ink); }
-.quest .kicker { margin-bottom: 0.2rem; }
+.quest h2 {
+  margin: 0.3rem 0 0.45rem;
+  font-size: clamp(1.6rem, 1.2rem + 1vw, 2.15rem);
+}
+.quest p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--color-quest-ink);
+}
+.quest .kicker {
+  margin-bottom: 0.2rem;
+}
 .seal {
   display: grid;
   width: 7.5rem;
@@ -235,12 +258,14 @@ onMounted(() => useTrack().track('page_view'))
   place-items: center;
   border-radius: 50%;
   background: var(--color-brick);
-  box-shadow: inset 0 0 0 6px var(--color-brick), inset 0 0 0 8px var(--color-seal-line);
+  box-shadow:
+    inset 0 0 0 6px var(--color-brick),
+    inset 0 0 0 8px var(--color-seal-line);
   isolation: isolate;
   position: relative;
 }
 .seal::before {
-  content: "";
+  content: '';
   position: absolute;
   z-index: -1;
   inset: -8px;
@@ -263,7 +288,9 @@ onMounted(() => useTrack().track('page_view'))
   text-transform: uppercase;
 }
 @media (min-width: 720px) {
-  .hub-grid { grid-template-columns: 1fr 1fr; }
+  .hub-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 @media (max-width: 980px) {
   .collage {
@@ -282,12 +309,29 @@ onMounted(() => useTrack().track('page_view'))
     left: auto;
     width: auto;
   }
-  .float-stamp { justify-self: end; width: 5.2rem; margin-top: -1.4rem; }
-  .pm { width: 8.5rem; margin-top: -2.2rem; }
+  .float-stamp {
+    justify-self: end;
+    width: 5.2rem;
+    margin-top: -1.4rem;
+  }
+  .pm {
+    width: 8.5rem;
+    margin-top: -2.2rem;
+  }
 }
 @media (min-width: 981px) {
-  .home-hero { grid-template-columns: 1fr 1.05fr; gap: 2rem; padding: 1.2rem 0 0.4rem; }
-  .hub-grid { grid-template-columns: 1fr 1fr 1fr; }
-  .quest { grid-template-columns: 9rem 1fr auto; gap: 2rem; padding: 2rem 2.4rem; }
+  .home-hero {
+    grid-template-columns: 1fr 1.05fr;
+    gap: 2rem;
+    padding: 1.2rem 0 0.4rem;
+  }
+  .hub-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .quest {
+    grid-template-columns: 9rem 1fr auto;
+    gap: 2rem;
+    padding: 2rem 2.4rem;
+  }
 }
 </style>

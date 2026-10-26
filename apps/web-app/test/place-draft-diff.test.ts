@@ -33,14 +33,18 @@ function side(patch: Partial<PlaceDraftSide> = {}): PlaceDraftSide {
 
 describe('place draft diff', () => {
   it('lists only fields that would change, in reading order', () => {
-    const changes = placeDraftChanges(side(), side({
-      title: 'Форт № 11',
-      body: 'Новый текст про вал и ров.',
-      hours: '10:00–18:00',
-      faq: [{ question: 'Где вход?', answer: 'Со стороны шоссе.' }],
-    }), {
-      category: new Map([['cat-fort', 'Форты']]),
-    })
+    const changes = placeDraftChanges(
+      side(),
+      side({
+        title: 'Форт № 11',
+        body: 'Новый текст про вал и ров.',
+        hours: '10:00–18:00',
+        faq: [{ question: 'Где вход?', answer: 'Со стороны шоссе.' }],
+      }),
+      {
+        category: new Map([['cat-fort', 'Форты']]),
+      },
+    )
     expect(changes.map((item) => item.field)).toEqual(['title', 'body', 'hours', 'faq'])
     expect(changes[0]).toEqual({ field: 'title', label: 'Название', live: 'Форт', draft: 'Форт № 11' })
     expect(changes.find((item) => item.field === 'hours')).toMatchObject({ live: 'пусто', draft: '10:00–18:00' })
@@ -49,14 +53,19 @@ describe('place draft diff', () => {
 
   it('treats an empty string and null as the same empty field', () => {
     expect(placeDraftChanges(side({ hours: null }), side({ hours: '' }))).toEqual([])
-    expect(placeDraftChanges(side({ latitude: 54.7 }), side({ latitude: 54.70 }))).toEqual([])
+    expect(placeDraftChanges(side({ latitude: 54.7 }), side({ latitude: 54.7 }))).toEqual([])
   })
 
   it('names a category and a publication change', () => {
     const changes = placeDraftChanges(
       side({ categoryId: 'cat-fort', publicationStatus: 'archived' }),
       side({ categoryId: 'cat-beach', publicationStatus: 'published' }),
-      { category: new Map([['cat-fort', 'Форты'], ['cat-beach', 'Пляжи']]) },
+      {
+        category: new Map([
+          ['cat-fort', 'Форты'],
+          ['cat-beach', 'Пляжи'],
+        ]),
+      },
     )
     expect(changes.map((item) => item.field)).toEqual(['categoryId', 'publicationStatus'])
     expect(changes[0]).toMatchObject({ live: 'Форты', draft: 'Пляжи' })

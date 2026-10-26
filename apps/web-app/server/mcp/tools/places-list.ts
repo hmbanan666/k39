@@ -7,7 +7,8 @@ const PUBLICATION = new Set(['draft', 'review', 'published'])
 
 export default defineStrictMcpTool({
   name: 'places_list',
-  description: 'List places. Filter by hub slug, publication or visit status, region slug, or a title query. Paginated.',
+  description:
+    'List places. Filter by hub slug, publication or visit status, region slug, or a title query. Paginated.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     category: z.string().optional().describe('Hub slug such as forty'),
@@ -18,8 +19,8 @@ export default defineStrictMcpTool({
     pageSize: z.number().int().min(1).max(50).optional(),
   },
   handler: async ({ category, status, region, query, page, pageSize }) => {
-    const publicationStatus = status && PUBLICATION.has(status) ? status as PublicationStatus : undefined
-    const visitStatus = status && !publicationStatus ? status as VisitStatus : undefined
+    const publicationStatus = status && PUBLICATION.has(status) ? (status as PublicationStatus) : undefined
+    const visitStatus = status && !publicationStatus ? (status as VisitStatus) : undefined
     const result = await db.editor.searchPlaces({
       categorySlug: category,
       regionSlug: region,

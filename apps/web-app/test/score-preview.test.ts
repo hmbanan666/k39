@@ -73,33 +73,63 @@ function catalog(patch: Partial<ContentCatalog> = {}): ContentCatalog {
 }
 
 describe('content score preview', () => {
-  it.each((['live', 'pending', 'draft'] as const).flatMap((source) => [
-    { source, mode: 'always', prose: 'Ресторан местной пивоварни принимает по записи.', check: 'status warning: appointment wording needs context review' },
-    { source, mode: 'appointment', prose: 'Уточните условия посещения по телефону.', check: 'status warning: appointment instructions need editorial review' },
-    { source, mode: null, prose: 'Дом стоит у самой Куршской косы.', check: 'writing advisory: самой' },
-  ]))('keeps zero-point editorial advisories consistent in $source preview ($mode)', ({ source, mode, prose, check }) => {
+  it.each(
+    (['live', 'pending', 'draft'] as const).flatMap((source) => [
+      {
+        source,
+        mode: 'always',
+        prose: 'Ресторан местной пивоварни принимает по записи.',
+        check: 'status warning: appointment wording needs context review',
+      },
+      {
+        source,
+        mode: 'appointment',
+        prose: 'Уточните условия посещения по телефону.',
+        check: 'status warning: appointment instructions need editorial review',
+      },
+      { source, mode: null, prose: 'Дом стоит у самой Куршской косы.', check: 'writing advisory: самой' },
+    ]),
+  )('keeps zero-point editorial advisories consistent in $source preview ($mode)', ({ source, mode, prose, check }) => {
     for (const inFaq of [false, true]) {
       const subject = place({
-        title: 'Полесск', scheduleMode: mode,
+        title: 'Полесск',
+        scheduleMode: mode,
         body: inFaq ? 'Живой текст страницы.' : prose,
         faq: inFaq ? [{ question: 'Как посетить?', answer: prose }] : [],
         faqCount: inFaq ? 1 : 0,
       })
-      const rows = source === 'pending'
-        ? catalogWithPendingPlace(catalog({ places: [place({ scheduleMode: mode })] }), subject.id, { ...subject, lastVerifiedAt: null }, {
-            categorySlug: 'forty', categoryTitle: 'Форты', regionTitle: null,
-          })
-        : catalog({ places: [{ ...subject, publicationStatus: source === 'draft' ? 'draft' : 'published' }] })
-      const baseline = { ...rows, places: rows.places.map((row) => ({
-        ...row,
-        scheduleMode: null,
-        body: row.body.replaceAll('самой', 'такой'),
-        faq: row.faq.map((item) => ({ ...item, answer: item.answer.replaceAll('самой', 'такой') })),
-      })) }
+      const rows =
+        source === 'pending'
+          ? catalogWithPendingPlace(
+              catalog({ places: [place({ scheduleMode: mode })] }),
+              subject.id,
+              { ...subject, lastVerifiedAt: null },
+              {
+                categorySlug: 'forty',
+                categoryTitle: 'Форты',
+                regionTitle: null,
+              },
+            )
+          : catalog({ places: [{ ...subject, publicationStatus: source === 'draft' ? 'draft' : 'published' }] })
+      const baseline = {
+        ...rows,
+        places: rows.places.map((row) => ({
+          ...row,
+          scheduleMode: null,
+          body: row.body.replaceAll('самой', 'такой'),
+          faq: row.faq.map((item) => ({ ...item, answer: item.answer.replaceAll('самой', 'такой') })),
+        })),
+      }
       const include = { include: [{ kind: 'place' as const, id: subject.id }] }
       const stored = toStored(scoresFromCatalog(rows, [], [], false, NOW, undefined, include)[0]!)
       const baselineStored = toStored(scoresFromCatalog(baseline, [], [], false, NOW, undefined, include)[0]!)
-      const input = { pageType: 'place' as const, entityId: subject.id, source, publicationStatus: source === 'draft' ? 'draft' as const : 'published' as const, now: NOW }
+      const input = {
+        pageType: 'place' as const,
+        entityId: subject.id,
+        source,
+        publicationStatus: source === 'draft' ? ('draft' as const) : ('published' as const),
+        now: NOW,
+      }
       const preview = scorePreview({ ...input, catalog: rows })
       const baselinePreview = scorePreview({ ...input, catalog: baseline })
       expect(preview).not.toBeNull()
@@ -113,25 +143,43 @@ describe('content score preview', () => {
     }
   })
 
-  it.each(['live', 'pending'] as const)('uses the same visible length in %s preview, catalog scoring and stored signals', (source) => {
-    const live = place({ body: 'Живой текст.' })
-    const rows = catalog({ places: [live] })
-    const body = `${'ы'.repeat(5995)} [факт](/${'target'.repeat(100)})`
-    const working = source === 'live'
-      ? catalog({ places: [place({ body })] })
-      : catalogWithPendingPlace(rows, live.id, { ...live, body, lastVerifiedAt: null }, {
-          categorySlug: 'forty', categoryTitle: 'Форты', regionTitle: null,
-        })
-    const scored = scoresFromCatalog(working, [], [], false, NOW)[0]!
-    const stored = toStored(scored)
-    const preview = scorePreview({ catalog: working, pageType: 'place', entityId: live.id, source, publicationStatus: 'published', now: NOW })
-    expect(preview?.signals.bodyChars).toBe(6000)
-    expect(stored.signals.bodyChars).toBe(6000)
-    expect(preview?.checks.quality).toEqual(stored.checks.quality)
-    expect(preview?.quality).toBe(stored.quality)
-    expect(preview?.checks.quality.some((check) => check.includes('above 6000'))).toBe(false)
-    expect(rows.places[0]?.body).toBe('Живой текст.')
-  })
+  it.each(['live', 'pending'] as const)(
+    'uses the same visible length in %s preview, catalog scoring and stored signals',
+    (source) => {
+      const live = place({ body: 'Живой текст.' })
+      const rows = catalog({ places: [live] })
+      const body = `${'ы'.repeat(5995)} [факт](/${'target'.repeat(100)})`
+      const working =
+        source === 'live'
+          ? catalog({ places: [place({ body })] })
+          : catalogWithPendingPlace(
+              rows,
+              live.id,
+              { ...live, body, lastVerifiedAt: null },
+              {
+                categorySlug: 'forty',
+                categoryTitle: 'Форты',
+                regionTitle: null,
+              },
+            )
+      const scored = scoresFromCatalog(working, [], [], false, NOW)[0]!
+      const stored = toStored(scored)
+      const preview = scorePreview({
+        catalog: working,
+        pageType: 'place',
+        entityId: live.id,
+        source,
+        publicationStatus: 'published',
+        now: NOW,
+      })
+      expect(preview?.signals.bodyChars).toBe(6000)
+      expect(stored.signals.bodyChars).toBe(6000)
+      expect(preview?.checks.quality).toEqual(stored.checks.quality)
+      expect(preview?.quality).toBe(stored.quality)
+      expect(preview?.checks.quality.some((check) => check.includes('above 6000'))).toBe(false)
+      expect(rows.places[0]?.body).toBe('Живой текст.')
+    },
+  )
 
   it('scores a published row the same way as the stored scorer and marks it live', () => {
     const rows = catalog({ places: [place()] })
@@ -163,7 +211,9 @@ describe('content score preview', () => {
   it('scores a draft row that the stored scorer skips, without a traffic block', () => {
     const rows = catalog({ places: [place({ publicationStatus: 'draft', body: 'Короткий черновик.' })] })
     expect(scoresFromCatalog(rows, [], [], false, NOW).map((row) => row.path)).not.toContain('/fort-a')
-    const included = scoresFromCatalog(rows, [], [], false, NOW, undefined, { include: [{ kind: 'place', id: 'place-1' }] })
+    const included = scoresFromCatalog(rows, [], [], false, NOW, undefined, {
+      include: [{ kind: 'place', id: 'place-1' }],
+    })
     const preview = scorePreview({
       catalog: rows,
       pageType: 'place',
@@ -184,10 +234,9 @@ describe('content score preview', () => {
       linking: included[0]!.linking,
       indexing,
     })
-    expect(preview?.checks.indexing).toEqual(expect.arrayContaining([
-      'not 200: not applicable',
-      'not in sitemap: not applicable',
-    ]))
+    expect(preview?.checks.indexing).toEqual(
+      expect.arrayContaining(['not 200: not applicable', 'not in sitemap: not applicable']),
+    )
     expect(preview?.checks.indexing).not.toContain('not 200')
     expect(preview?.checks.indexing).not.toContain('not in sitemap')
     expect(preview?.notApplicable).toEqual(expect.arrayContaining(['results', 'not 200', 'not in sitemap']))
@@ -199,7 +248,9 @@ describe('content score preview', () => {
 
   it('keeps the sitemap penalty when a draft is noindex', () => {
     const rows = catalog({ places: [place({ publicationStatus: 'draft', noindex: true })] })
-    const included = scoresFromCatalog(rows, [], [], false, NOW, undefined, { include: [{ kind: 'place', id: 'place-1' }] })
+    const included = scoresFromCatalog(rows, [], [], false, NOW, undefined, {
+      include: [{ kind: 'place', id: 'place-1' }],
+    })
     const preview = scorePreview({
       catalog: rows,
       pageType: 'place',
@@ -210,7 +261,9 @@ describe('content score preview', () => {
     })
     expect(included[0]!.checks.indexing).toEqual(expect.arrayContaining(['noindex', 'not in sitemap', 'not 200']))
     expect(preview?.indexing).toBe(included[0]!.indexing + 20)
-    expect(preview?.checks.indexing).toEqual(expect.arrayContaining(['noindex', 'not in sitemap', 'not 200: not applicable']))
+    expect(preview?.checks.indexing).toEqual(
+      expect.arrayContaining(['noindex', 'not in sitemap', 'not 200: not applicable']),
+    )
     expect(preview?.notApplicable).toContain('not 200')
     expect(preview?.notApplicable).not.toContain('not in sitemap')
   })
@@ -218,7 +271,9 @@ describe('content score preview', () => {
   it('scores a review route from that row', () => {
     const rows = catalog({ routes: [route()] })
     expect(scoresFromCatalog(rows, [], [], false, NOW)).toEqual([])
-    const included = scoresFromCatalog(rows, [], [], false, NOW, undefined, { include: [{ kind: 'route', id: 'route-1' }] })
+    const included = scoresFromCatalog(rows, [], [], false, NOW, undefined, {
+      include: [{ kind: 'route', id: 'route-1' }],
+    })
     const preview = scorePreview({
       catalog: rows,
       pageType: 'route',
@@ -235,38 +290,42 @@ describe('content score preview', () => {
       results: null,
       indexing: Math.min(100, included[0]!.indexing + 40),
     })
-    expect(preview?.checks.indexing).toEqual(expect.arrayContaining([
-      'not 200: not applicable',
-      'not in sitemap: not applicable',
-    ]))
+    expect(preview?.checks.indexing).toEqual(
+      expect.arrayContaining(['not 200: not applicable', 'not in sitemap: not applicable']),
+    )
   })
 
   it('scores a pending payload instead of the live body and leaves the catalog score untouched', () => {
     const live = place({ body: 'Живой текст.' })
     const rows = catalog({ places: [live] })
     const pendingBody = 'Черновик правки. '.repeat(40)
-    const overlaid = catalogWithPendingPlace(rows, 'place-1', {
-      slug: 'fort-a',
-      title: 'Форт А',
-      summary: 'Коротко.',
-      body: pendingBody,
-      howToGet: 'Автобус 40 до кольца.',
-      hours: null,
-      price: null,
-      latitude: null,
-      longitude: null,
-      regionId: null,
-      noindex: false,
-      seoTitle: null,
-      seoDescription: null,
-      sources: [{ title: 'Музей', url: 'https://example.com/fort' }],
-      faq: [{ question: 'Можно ли войти?', answer: 'Да, в часы музея.' }],
-      lastVerifiedAt: null,
-    }, {
-      categorySlug: 'forty',
-      categoryTitle: 'Форты',
-      regionTitle: null,
-    })
+    const overlaid = catalogWithPendingPlace(
+      rows,
+      'place-1',
+      {
+        slug: 'fort-a',
+        title: 'Форт А',
+        summary: 'Коротко.',
+        body: pendingBody,
+        howToGet: 'Автобус 40 до кольца.',
+        hours: null,
+        price: null,
+        latitude: null,
+        longitude: null,
+        regionId: null,
+        noindex: false,
+        seoTitle: null,
+        seoDescription: null,
+        sources: [{ title: 'Музей', url: 'https://example.com/fort' }],
+        faq: [{ question: 'Можно ли войти?', answer: 'Да, в часы музея.' }],
+        lastVerifiedAt: null,
+      },
+      {
+        categorySlug: 'forty',
+        categoryTitle: 'Форты',
+        regionTitle: null,
+      },
+    )
     const stored = scoresFromCatalog(rows, [], [], false, NOW)
     const overlaidScore = scoresFromCatalog(overlaid, [], [], false, NOW)
     const preview = scorePreview({

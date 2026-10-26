@@ -4,7 +4,8 @@ import { defineStrictMcpTool } from '../../utils/mcp/tool'
 
 export default defineStrictMcpTool({
   name: 'schedules_list',
-  description: 'List schedules with their verification state, so unverified or needsCheck rows can be checked against an allowed source: the official site, or, for an operating venue, Yandex Maps, 2GIS, or OSM for a fact the site does not state.',
+  description:
+    'List schedules with their verification state, so unverified or needsCheck rows can be checked against an allowed source: the official site, or, for an operating venue, Yandex Maps, 2GIS, or OSM for a fact the site does not state.',
   annotations: { readOnlyHint: true },
   inputSchema: {
     entityType: z.enum(['place', 'venue']).optional(),

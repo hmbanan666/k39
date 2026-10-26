@@ -4,7 +4,10 @@ import { contentScope } from '../access'
 
 const STATUSES = new Set(['draft', 'review', 'published'])
 
-export function normalizePublication(requested: string | undefined, current?: string | null): 'draft' | 'review' | 'published' | 'archived' {
+export function normalizePublication(
+  requested: string | undefined,
+  current?: string | null,
+): 'draft' | 'review' | 'published' | 'archived' {
   if (requested) {
     if (!STATUSES.has(requested)) {
       throw createError({ statusCode: 400, statusMessage: 'Неизвестный статус публикации' })
@@ -24,7 +27,11 @@ export type ResolvedPublication = 'draft' | 'review' | 'published' | 'archived' 
  * Draft scope never returns published. A write against a live row is `pending`:
  * the caller stores a review draft and leaves the published row alone.
  */
-export function resolvePublication(requested: string | undefined, current?: string | null, scope: ContentScope = contentScope()): ResolvedPublication {
+export function resolvePublication(
+  requested: string | undefined,
+  current?: string | null,
+  scope: ContentScope = contentScope(),
+): ResolvedPublication {
   if (scope !== 'draft') {
     return normalizePublication(requested, current)
   }
@@ -46,7 +53,10 @@ export function resolvePublication(requested: string | undefined, current?: stri
   return 'draft'
 }
 
-export function refusePendingLiveEdit(status: ResolvedPublication, label: string): asserts status is Exclude<ResolvedPublication, 'pending'> {
+export function refusePendingLiveEdit(
+  status: ResolvedPublication,
+  label: string,
+): asserts status is Exclude<ResolvedPublication, 'pending'> {
   if (status === 'pending') {
     throw createError({
       statusCode: 409,
@@ -56,7 +66,11 @@ export function refusePendingLiveEdit(status: ResolvedPublication, label: string
 }
 
 /** Draft scope on a live row. The caller has not written yet. */
-export function refuseDraftLivePage(action: string, status: string | null | undefined, live: readonly string[] = ['published', 'archived']) {
+export function refuseDraftLivePage(
+  action: string,
+  status: string | null | undefined,
+  live: readonly string[] = ['published', 'archived'],
+) {
   if (contentScope() !== 'draft' || !status || !live.includes(status)) {
     return
   }

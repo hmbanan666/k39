@@ -7,7 +7,10 @@ describe('review invalidation', () => {
       pageType: 'place',
       entityId: 'prune-fixture',
       reviewer: 'test',
-      sections: [{ path: 'summary', hash: 'keep' }, { path: 'old', hash: 'drop' }],
+      sections: [
+        { path: 'summary', hash: 'keep' },
+        { path: 'old', hash: 'drop' },
+      ],
     })
     const pruned = await Facts.retainReviewSections('place', 'prune-fixture', ['keep'])
     expect(pruned?.sections).toEqual([{ path: 'summary', hash: 'keep' }])

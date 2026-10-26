@@ -12,8 +12,9 @@ export default defineStrictMcpTool({
     period: z.string().optional(),
     type: z.string().optional(),
   },
-  handler: async ({ period, type }) => auditedAnalytics('analytics_events', async () => {
-    const range = resolvePeriod(period || '28d')
-    return { period: range.label, events: await db.analytics.events(range.from, range.to, type) }
-  }),
+  handler: async ({ period, type }) =>
+    auditedAnalytics('analytics_events', async () => {
+      const range = resolvePeriod(period || '28d')
+      return { period: range.label, events: await db.analytics.events(range.from, range.to, type) }
+    }),
 })
