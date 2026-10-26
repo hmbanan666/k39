@@ -2,11 +2,13 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const root = [process.cwd(), resolve(process.cwd(), '../..')].find((dir) => existsSync(resolve(dir, 'pnpm-workspace.yaml')))!
+const root = [process.cwd(), resolve(process.cwd(), '../..')].find((dir) =>
+  existsSync(resolve(dir, 'pnpm-workspace.yaml')),
+)!
 const app = `${root}/apps/web-app/app/`
 const css = readFileSync(`${app}assets/css/tokens.css`, 'utf8')
 const light = css.match(/:root\s*\{([^}]+)\}/)![1]!
-const dark = css.match(/\[data-theme="dark"\]\s*\{([^}]+)\}/)![1]!
+const dark = css.match(/\[data-theme=['"]dark['"]\]\s*\{([^}]+)\}/)![1]!
 
 function tokens(block: string) {
   return Object.fromEntries([...block.matchAll(/(--[\w-]+):\s*(#[\da-f]{6});/g)].map((match) => [match[1]!, match[2]!]))
@@ -30,14 +32,23 @@ function sources(dir: string): string[] {
 describe('design tokens', () => {
   it('defines every color token used by a component or base rule', () => {
     const defined = new Set([...css.matchAll(/(--color-[\w-]+):/g)].map((match) => match[1]))
-    const used = new Set(sources(app).flatMap((text) => [...text.matchAll(/var\((--color-[\w-]+)/g)].map((match) => match[1]!)))
+    const used = new Set(
+      sources(app).flatMap((text) => [...text.matchAll(/var\((--color-[\w-]+)/g)].map((match) => match[1]!)),
+    )
     expect([...used].filter((name) => !defined.has(name))).toEqual([])
   })
 
-  it.each([['light', tokens(light)], ['dark', { ...tokens(light), ...tokens(dark) }]] as const)('keeps documented text pairs at AA in %s tokens', (_theme, palette) => {
+  it.each([
+    ['light', tokens(light)],
+    ['dark', { ...tokens(light), ...tokens(dark) }],
+  ] as const)('keeps documented text pairs at AA in %s tokens', (_theme, palette) => {
     for (const [text, background] of [
-      ['ink', 'paper'], ['muted', 'paper'], ['ink', 'surface'], ['muted', 'surface'],
-      ['sea', 'paper'], ['surface', 'brick'],
+      ['ink', 'paper'],
+      ['muted', 'paper'],
+      ['ink', 'surface'],
+      ['muted', 'surface'],
+      ['sea', 'paper'],
+      ['surface', 'brick'],
     ]) {
       const a = luminance(palette[`--color-${text}`]!)
       const b = luminance(palette[`--color-${background}`]!)

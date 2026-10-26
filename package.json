@@ -13,51 +13,64 @@
     "pnpm": ">=12.15.0 <13"
   },
   "scripts": {
-    "build": "pnpm -r run build",
+    "build": "corepack pnpm -r run build",
     "release": "bumpp conventional -y -r",
-    "lint": "eslint .",
-    "lint:fix": "eslint --fix .",
-    "clean": "pnpm -r run clean",
-    "clean:modules": "pnpm -r run clean:modules && rm -rf node_modules",
-    "typecheck": "pnpm -r run typecheck",
+    "lint": "vp lint . && corepack pnpm run lint:vue",
+    "lint:fix": "vp lint --fix . && corepack pnpm run lint:vue --fix && corepack pnpm run format",
+    "clean": "corepack pnpm -r run clean",
+    "clean:modules": "corepack pnpm -r run clean:modules && rm -rf node_modules",
+    "typecheck": "corepack pnpm -r run typecheck",
     "check:repo": "node scripts/check-repo.mjs",
     "check:toolchain": "node scripts/env/check-toolchain.mjs",
     "dev:editor-session": "node scripts/dev-editor-session.mjs",
-    "test": "vitest run",
-    "media:rebuild": "pnpm --filter @k39/web-app media:rebuild",
-    "db:seed:fixtures": "pnpm --filter @k39/web-app db:seed:fixtures",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "vp test run",
+    "media:rebuild": "corepack pnpm --filter @k39/web-app media:rebuild",
+    "db:seed:fixtures": "corepack pnpm --filter @k39/web-app db:seed:fixtures",
+    "test:watch": "vp test",
+    "test:coverage": "vp test run --coverage",
     "check:quick": "node scripts/check-quick.mjs",
-    "check:full": "pnpm run check:repo && pnpm run lint && pnpm run typecheck && pnpm vitest run",
+    "check:full": "corepack pnpm run check:repo && corepack pnpm run format:check && corepack pnpm run lint && corepack pnpm run typecheck && corepack pnpm run test",
     "prepare": "husky && node scripts/git/chain-hooks.mjs",
-    "prepare:cert": "mkdir -p .cert && mkcert -key-file ./.cert/localhost-key.pem -cert-file ./.cert/localhost.pem 'app.local'"
+    "prepare:cert": "mkdir -p .cert && mkcert -key-file ./.cert/localhost-key.pem -cert-file ./.cert/localhost.pem 'app.local'",
+    "lint:vue": "eslint apps/web-app --no-warn-ignored",
+    "format": "vp fmt .",
+    "format:check": "vp fmt --check ."
   },
   "devDependencies": {
-    "@antfu/eslint-config": "catalog:dev",
     "@commitlint/cli": "catalog:dev",
     "@commitlint/config-conventional": "catalog:dev",
     "@testcontainers/postgresql": "catalog:test",
+    "@typescript-eslint/parser": "catalog:dev",
     "@vitejs/plugin-vue": "catalog:test",
-    "@vitest/browser-playwright": "catalog:test",
     "@vitest/coverage-v8": "catalog:test",
     "@vue/test-utils": "catalog:test",
     "bumpp": "catalog:dev",
     "eslint": "catalog:dev",
+    "eslint-plugin-vue": "catalog:dev",
     "happy-dom": "catalog:test",
     "husky": "catalog:dev",
     "lint-staged": "catalog:dev",
     "playwright": "catalog:test",
     "typescript": "catalog:dev",
     "vite": "catalog:dev",
+    "vite-plus": "catalog:dev",
     "vitest": "catalog:test",
-    "vitest-browser-vue": "catalog:test",
+    "vue-eslint-parser": "catalog:dev",
     "vue-tsc": "catalog:dev",
     "yaml": "catalog:dev"
   },
   "lint-staged": {
-    "*.{js,ts,tsx,vue,md,json}": [
-      "eslint --cache --fix"
+    "*.{js,mjs,cjs,ts,mts,cts,tsx}": [
+      "vp lint --fix",
+      "vp fmt"
+    ],
+    "*.vue": [
+      "vp lint --fix",
+      "eslint --fix",
+      "vp fmt"
+    ],
+    "*.{md,json,jsonc,yaml,yml,css,html}": [
+      "vp fmt"
     ]
   }
 }

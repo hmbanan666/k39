@@ -37,35 +37,35 @@ Install with `corepack pnpm install --frozen-lockfile`. Verify that `node` and `
 
 Follow the relevant row, trace the existing reader/writer and its callers, then select related tests. Paths in links are repository-relative; unlinked `server/` paths below are under `apps/web-app/`.
 
-| Task | Start here | Existing checks / notes |
-| --- | --- | --- |
-| Public page, route, hub or SEO | [pages](apps/web-app/app/pages), [public readers](apps/web-app/server/utils/public-pages.ts), [SEO](apps/web-app/shared/seo.ts) | [SEO tests](apps/web-app/test/seo.test.ts), [render tests](apps/web-app/test/render-page.test.ts); [page reference](docs/content-system.md#pages) |
-| Visitor or embedded map | [scene core](packages/map/src), [map components](apps/web-app/app/components/map), [map reader](apps/web-app/server/utils/map) | [core tests](packages/map/test), [availability regression](apps/web-app/test/map-availability.test.ts); [map reference](docs/content-system.md#map-rendering) |
-| Venue, menu prices or listings | [venue readers/writers](apps/web-app/server/utils/venues), [venue page](apps/web-app/app/components/VenuePage.vue) | [venue tests](apps/web-app/test/venues.test.ts), [price tests](packages/database/src/repository/test/prices.test.ts); venue/price skills |
-| Facts, schedules or notices | [facts](apps/web-app/server/utils/facts), [schedules](apps/web-app/server/utils/schedule.ts), [notices](apps/web-app/server/utils/notices) | [fact reference](docs/facts.md), [facts and verification](docs/content-system.md#facts-and-verification), [notice tests](apps/web-app/test/notices.test.ts) |
-| Admin editing, publishing or MCP | [save entry](apps/web-app/server/utils/content/save.ts), [admin API](apps/web-app/server/api/admin), [MCP helpers](apps/web-app/server/utils/mcp) | [save tests](apps/web-app/test/content-save.test.ts), [writer tests](packages/database/src/repository/test); [editing conventions](docs/content-system.md#editing-conventions) |
-| Auth, owner cabinet or guest materials | [cabinet flow](apps/web-app/server/utils/cabinet), [guest writers](apps/web-app/server/utils/guests), [cabinet pages](apps/web-app/app/pages/kabinet) | [auth tests](apps/web-app/test/auth.test.ts), [claim tests](packages/database/src/repository/test/claims.test.ts); relevant ownership/guest section in application reference |
-| Shared types, SQL or migrations | [types](packages/types/src), [tables](packages/database/src/tables.ts), [repositories](packages/database/src/repository) | [DB tests](packages/database/src/repository/test), migration registry; [test DB rules](docs/development.md#checks) |
-| Analytics, scoring or search | [analytics](apps/web-app/server/utils/analytics), [scoring](apps/web-app/server/utils/scoring), [search API](apps/web-app/server/api/search) | [analytics tests](packages/database/src/repository/test/analytics.test.ts), [search tests](packages/database/src/repository/test/search.test.ts), [score tests](apps/web-app/test/scoring.test.ts) |
-| Agent setup, checks, CI or image | [scripts](scripts), [Cursor adapter](.cursor), [CI](.github/workflows/ci.yml), [web image](docker/web-app/Dockerfile) | [tooling tests](apps/web-app/test/agent-tooling.test.ts), [quick-check tests](apps/web-app/test/check-quick.test.ts); development guide |
+| Task                                   | Start here                                                                                                                                            | Existing checks / notes                                                                                                                                                                            |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public page, route, hub or SEO         | [pages](apps/web-app/app/pages), [public readers](apps/web-app/server/utils/public-pages.ts), [SEO](apps/web-app/shared/seo.ts)                       | [SEO tests](apps/web-app/test/seo.test.ts), [render tests](apps/web-app/test/render-page.test.ts); [page reference](docs/content-system.md#pages)                                                  |
+| Visitor or embedded map                | [scene core](packages/map/src), [map components](apps/web-app/app/components/map), [map reader](apps/web-app/server/utils/map)                        | [core tests](packages/map/test), [availability regression](apps/web-app/test/map-availability.test.ts); [map reference](docs/content-system.md#map-rendering)                                      |
+| Venue, menu prices or listings         | [venue readers/writers](apps/web-app/server/utils/venues), [venue page](apps/web-app/app/components/VenuePage.vue)                                    | [venue tests](apps/web-app/test/venues.test.ts), [price tests](packages/database/src/repository/test/prices.test.ts); venue/price skills                                                           |
+| Facts, schedules or notices            | [facts](apps/web-app/server/utils/facts), [schedules](apps/web-app/server/utils/schedule.ts), [notices](apps/web-app/server/utils/notices)            | [fact reference](docs/facts.md), [facts and verification](docs/content-system.md#facts-and-verification), [notice tests](apps/web-app/test/notices.test.ts)                                        |
+| Admin editing, publishing or MCP       | [save entry](apps/web-app/server/utils/content/save.ts), [admin API](apps/web-app/server/api/admin), [MCP helpers](apps/web-app/server/utils/mcp)     | [save tests](apps/web-app/test/content-save.test.ts), [writer tests](packages/database/src/repository/test); [editing conventions](docs/content-system.md#editing-conventions)                     |
+| Auth, owner cabinet or guest materials | [cabinet flow](apps/web-app/server/utils/cabinet), [guest writers](apps/web-app/server/utils/guests), [cabinet pages](apps/web-app/app/pages/kabinet) | [auth tests](apps/web-app/test/auth.test.ts), [claim tests](packages/database/src/repository/test/claims.test.ts); relevant ownership/guest section in application reference                       |
+| Shared types, SQL or migrations        | [types](packages/types/src), [tables](packages/database/src/tables.ts), [repositories](packages/database/src/repository)                              | [DB tests](packages/database/src/repository/test), migration registry; [test DB rules](docs/development.md#checks)                                                                                 |
+| Analytics, scoring or search           | [analytics](apps/web-app/server/utils/analytics), [scoring](apps/web-app/server/utils/scoring), [search API](apps/web-app/server/api/search)          | [analytics tests](packages/database/src/repository/test/analytics.test.ts), [search tests](packages/database/src/repository/test/search.test.ts), [score tests](apps/web-app/test/scoring.test.ts) |
+| Agent setup, checks, CI or image       | [scripts](scripts), [Cursor adapter](.cursor), [CI](.github/workflows/ci.yml), [web image](docker/web-app/Dockerfile)                                 | [tooling tests](apps/web-app/test/agent-tooling.test.ts), [quick-check tests](apps/web-app/test/check-quick.test.ts); development guide                                                            |
 
 ## Skills
 
 Read the skill before its matching task. `.agents/skills/<name>/SKILL.md` is the single skill directory for Codex and Cursor; do not keep tool-specific copies. Repository paths in skills are root-relative, bundled paths skill-relative. AGENTS, ADRs and `k39-ui` take precedence over general `frontend-design` advice.
 
-| Skill | Read for |
-| --- | --- |
-| `k39-writing` | Russian place, venue, route, collection, quest or hub copy |
-| `k39-sources-and-facts` | A source, photo, hour, price or other fact |
-| `k39-price-anchors` | Matching a menu line to the price catalog |
-| `k39-venue-page` | Venue modules, passport and links |
-| `k39-publish-review` | Author checklist, then a separate reviewer pass before publication |
-| `k39-ui` | Any UI change; read it before `frontend-design`, including its screenshot requirements |
-| `frontend-design` | UI craft after `k39-ui`; `.cursor/rules/frontend-design.mdc` points to the same entry point |
+| Skill                   | Read for                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| `k39-writing`           | Russian place, venue, route, collection, quest or hub copy                                  |
+| `k39-sources-and-facts` | A source, photo, hour, price or other fact                                                  |
+| `k39-price-anchors`     | Matching a menu line to the price catalog                                                   |
+| `k39-venue-page`        | Venue modules, passport and links                                                           |
+| `k39-publish-review`    | Author checklist, then a separate reviewer pass before publication                          |
+| `k39-ui`                | Any UI change; read it before `frontend-design`, including its screenshot requirements      |
+| `frontend-design`       | UI craft after `k39-ui`; `.cursor/rules/frontend-design.mdc` points to the same entry point |
 
 ## Verify and hand off
 
-During changes use `pnpm run check:quick`. Before opening a PR run `pnpm run check:full` and `pnpm --filter @k39/web-app build`. The full check already includes repository validation, read-only lint, all typechecks and the full test suite. Use `pnpm run lint:fix` explicitly when formatting is needed, then inspect the diff. Do not repeat its individual checks without a new failure or change that justifies it.
+During changes use `pnpm run check:quick`. Before opening a PR run `pnpm run check:full` and `pnpm --filter @k39/web-app build`. The full check already includes repository validation, read-only lint, all typechecks and the full test suite. The root `vite.config.ts` owns Vite+ lint, format and tests; ESLint remains Vue-only until Oxc supports templates. Use `pnpm run format` for formatting or `pnpm run lint:fix` for explicit fixes, then inspect the diff. Keep Nuxt build/dev scripts and package typechecks; built-in `vp build`/`vp dev` do not run Nuxt. Do not repeat its individual checks without a new failure or change that justifies it.
 
 Database tests use a local database ending in `_test`, or Postgres 18 through Testcontainers when no URL is configured. Preserve the remote/test-database guards. Quick-check package selection, fixture setup and individual diagnostic commands are explained in [checks](docs/development.md#checks).
 

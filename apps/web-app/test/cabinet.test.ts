@@ -5,7 +5,15 @@ import { describe, expect, it } from 'vitest'
 import { postClaimCode } from '../server/utils/cabinet/deliver'
 import { limitClaimStart, resetCabinetSlots } from '../server/utils/cabinet/rate'
 import { asOwnerPrices, venuePricesWriteSchema } from '../server/utils/venues/prices'
-import { claimChannelPlan, maskEmail, maskPhone, ownerVenueSchema, pickOwnerFields, safeInternalPath, venueClaimPath } from '../shared/cabinet'
+import {
+  claimChannelPlan,
+  maskEmail,
+  maskPhone,
+  ownerVenueSchema,
+  pickOwnerFields,
+  safeInternalPath,
+  venueClaimPath,
+} from '../shared/cabinet'
 import { describeSchedule, rulesFromVenueHours } from '../shared/schedule'
 import { HOURS_DAY_STATES, hoursDaysPayload, hoursFormState } from '../shared/venue-hours-form'
 
@@ -35,14 +43,16 @@ describe('cabinet claim helpers', () => {
   })
 
   it('drops editorial fields before an owner save', () => {
-    expect(pickOwnerFields({
-      status: 'archived',
-      slug: 'hijack',
-      contactEmail: 'thief@example.com',
-      seoTitle: 'куплю',
-      phone: '+7 900 000-00-00',
-      modules: [{ type: 'prices' }],
-    })).toEqual({
+    expect(
+      pickOwnerFields({
+        status: 'archived',
+        slug: 'hijack',
+        contactEmail: 'thief@example.com',
+        seoTitle: 'куплю',
+        phone: '+7 900 000-00-00',
+        modules: [{ type: 'prices' }],
+      }),
+    ).toEqual({
       phone: '+7 900 000-00-00',
       modules: [{ type: 'prices' }],
     })
@@ -56,28 +66,36 @@ describe('cabinet claim helpers', () => {
       modules: [{ type: 'text', variant: 'plain', text: 'Своими словами.' }, { type: 'prices' }],
     })
     expect(modules.success).toBe(true)
-    expect(ownerVenueSchema.safeParse({
-      modules: [{ type: 'prices' }, { type: 'prices' }],
-    }).success).toBe(false)
-    const price = venuePricesWriteSchema.safeParse([{
-      item: 'cappuccino',
-      priceRub: 180,
-      checkedAt: '2026-10-15',
-      sourceKind: 'owner',
-      sourceTitle: 'Сообщено заведением',
-      sourceUrl: null,
-    }])
-    expect(price.success).toBe(true)
-    if (price.success) {
-      expect(asOwnerPrices([{ ...price.data[0]!, sourceKind: 'official', sourceUrl: 'https://aggregator.example/menu' }])).toEqual([{
+    expect(
+      ownerVenueSchema.safeParse({
+        modules: [{ type: 'prices' }, { type: 'prices' }],
+      }).success,
+    ).toBe(false)
+    const price = venuePricesWriteSchema.safeParse([
+      {
         item: 'cappuccino',
-        variant: undefined,
         priceRub: 180,
         checkedAt: '2026-10-15',
         sourceKind: 'owner',
         sourceTitle: 'Сообщено заведением',
         sourceUrl: null,
-      }])
+      },
+    ])
+    expect(price.success).toBe(true)
+    if (price.success) {
+      expect(
+        asOwnerPrices([{ ...price.data[0]!, sourceKind: 'official', sourceUrl: 'https://aggregator.example/menu' }]),
+      ).toEqual([
+        {
+          item: 'cappuccino',
+          variant: undefined,
+          priceRub: 180,
+          checkedAt: '2026-10-15',
+          sourceKind: 'owner',
+          sourceTitle: 'Сообщено заведением',
+          sourceUrl: null,
+        },
+      ])
     }
   })
 
@@ -96,9 +114,24 @@ describe('cabinet claim helpers', () => {
   })
 
   it('matches a claim code without accepting a different one', () => {
-    const hash = hashClaimCode({ pepper: 'pepper-pepper-pepper-pepper-pepper', venueId: 'v', userId: 'u', code: '123456' })
-    expect(claimCodesMatch(hash, hashClaimCode({ pepper: 'pepper-pepper-pepper-pepper-pepper', venueId: 'v', userId: 'u', code: '123456' }))).toBe(true)
-    expect(claimCodesMatch(hash, hashClaimCode({ pepper: 'pepper-pepper-pepper-pepper-pepper', venueId: 'v', userId: 'u', code: '000000' }))).toBe(false)
+    const hash = hashClaimCode({
+      pepper: 'pepper-pepper-pepper-pepper-pepper',
+      venueId: 'v',
+      userId: 'u',
+      code: '123456',
+    })
+    expect(
+      claimCodesMatch(
+        hash,
+        hashClaimCode({ pepper: 'pepper-pepper-pepper-pepper-pepper', venueId: 'v', userId: 'u', code: '123456' }),
+      ),
+    ).toBe(true)
+    expect(
+      claimCodesMatch(
+        hash,
+        hashClaimCode({ pepper: 'pepper-pepper-pepper-pepper-pepper', venueId: 'v', userId: 'u', code: '000000' }),
+      ),
+    ).toBe(false)
     expect(hash).not.toContain('123456')
   })
 
@@ -118,20 +151,28 @@ describe('cabinet claim helpers', () => {
       token: 'secret-token',
       body: { channel: 'email', to: 'desk@cafe.test', code: '445566', venue: 'Маяк' },
       fetchImpl: async (url, init) => {
-        seen.push({ url: String(url), body: init?.body, authorization: (init?.headers as Record<string, string>).authorization })
+        seen.push({
+          url: String(url),
+          body: init?.body,
+          authorization: (init?.headers as Record<string, string> | undefined)?.authorization,
+        })
         return new Response('ok', { status: 204 })
       },
     })
-    expect(seen).toEqual([{
-      url: 'https://mail.example/send',
-      body: JSON.stringify({ channel: 'email', to: 'desk@cafe.test', code: '445566', venue: 'Маяк' }),
-      authorization: 'Bearer secret-token',
-    }])
-    await expect(postClaimCode({
-      url: 'http://mail.example/send',
-      body: { channel: 'email', to: 'a@b.c', code: '1', venue: 'X' },
-      fetchImpl: async () => new Response('no'),
-    })).rejects.toThrow(/delivery_url/)
+    expect(seen).toEqual([
+      {
+        url: 'https://mail.example/send',
+        body: JSON.stringify({ channel: 'email', to: 'desk@cafe.test', code: '445566', venue: 'Маяк' }),
+        authorization: 'Bearer secret-token',
+      },
+    ])
+    await expect(
+      postClaimCode({
+        url: 'http://mail.example/send',
+        body: { channel: 'email', to: 'a@b.c', code: '1', venue: 'X' },
+        fetchImpl: async () => new Response('no'),
+      }),
+    ).rejects.toThrow(/delivery_url/)
   })
 })
 
@@ -139,7 +180,12 @@ describe('cabinet hours keep days whose hours are unknown (ADR 0044)', () => {
   const stored = normalizeHours({
     note: null,
     days: [
-      ...['mon', 'tue', 'wed', 'thu', 'fri'].map((weekday) => ({ weekday, closed: false, opens: '10:00', closes: '19:00' })),
+      ...['mon', 'tue', 'wed', 'thu', 'fri'].map((weekday) => ({
+        weekday,
+        closed: false,
+        opens: '10:00',
+        closes: '19:00',
+      })),
       { weekday: 'sat', unknown: true },
       { weekday: 'sun', unknown: true },
     ],
@@ -147,18 +193,37 @@ describe('cabinet hours keep days whose hours are unknown (ADR 0044)', () => {
 
   it('loads an unknown day as its own state, not as an empty open day', () => {
     const { days } = hoursFormState(rulesFromVenueHours(stored), '2026-10-22')
-    expect(days.find((day) => day.weekday === 'sat')).toEqual({ weekday: 'sat', state: 'unknown', opens: '', closes: '' })
-    expect(days.find((day) => day.weekday === 'mon')).toEqual({ weekday: 'mon', state: 'open', opens: '10:00', closes: '19:00' })
+    expect(days.find((day) => day.weekday === 'sat')).toEqual({
+      weekday: 'sat',
+      state: 'unknown',
+      opens: '',
+      closes: '',
+    })
+    expect(days.find((day) => day.weekday === 'mon')).toEqual({
+      weekday: 'mon',
+      state: 'open',
+      opens: '10:00',
+      closes: '19:00',
+    })
     expect(HOURS_DAY_STATES.map((option) => option.label)).toEqual(['часы', 'выходной', 'часы уточняйте'])
   })
 
   it('keeps unknownDays through an owner save that edits an unrelated field', () => {
-    const body = { name: 'Новое название', hours: { note: null, days: hoursDaysPayload(hoursFormState(rulesFromVenueHours(stored), '2026-10-22').days, { openEnded: false }) } }
+    const body = {
+      name: 'Новое название',
+      hours: {
+        note: null,
+        days: hoursDaysPayload(hoursFormState(rulesFromVenueHours(stored), '2026-10-22').days, { openEnded: false }),
+      },
+    }
     const parsed = ownerVenueSchema.parse(pickOwnerFields(body))
     const saved = normalizeHours(parsed.hours)
     expect(saved.days.filter((day) => day.unknown).map((day) => day.weekday)).toEqual(['sat', 'sun'])
     const rules = rulesFromVenueHours(saved)
-    expect(rules?.seasons[0]).toEqual({ week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }], unknownDays: [6, 0] })
+    expect(rules?.seasons[0]).toEqual({
+      week: [{ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '19:00', breaks: [] }],
+      unknownDays: [6, 0],
+    })
     expect(describeSchedule(rules)).toEqual(['Пн–пт 10:00–19:00; сб, вс: часы уточняйте'])
   })
 
@@ -166,31 +231,51 @@ describe('cabinet hours keep days whose hours are unknown (ADR 0044)', () => {
     const openEnded = normalizeHours({
       note: null,
       days: [
-        ...['mon', 'tue', 'wed', 'thu', 'fri'].map((weekday) => ({ weekday, closed: false, opens: '10:00', closes: '19:00' })),
+        ...['mon', 'tue', 'wed', 'thu', 'fri'].map((weekday) => ({
+          weekday,
+          closed: false,
+          opens: '10:00',
+          closes: '19:00',
+        })),
         { weekday: 'sat', closed: false, opens: '12:00', closes: null },
         { weekday: 'sun', closed: true },
       ],
     })
     const form = hoursFormState(rulesFromVenueHours(openEnded), '2026-10-22').days
-    expect(form.find((day) => day.weekday === 'sat')).toEqual({ weekday: 'sat', state: 'open', opens: '12:00', closes: '', openEnded: true })
+    expect(form.find((day) => day.weekday === 'sat')).toEqual({
+      weekday: 'sat',
+      state: 'open',
+      opens: '12:00',
+      closes: '',
+      openEnded: true,
+    })
     const body = { name: 'Новое название', hours: { note: null, days: hoursDaysPayload(form, { openEnded: false }) } }
     const saved = normalizeHours(ownerVenueSchema.parse(pickOwnerFields(body)).hours)
-    expect(saved.days.find((day) => day.weekday === 'sat')).toMatchObject({ closed: false, opens: '12:00', closes: null })
+    expect(saved.days.find((day) => day.weekday === 'sat')).toMatchObject({
+      closed: false,
+      opens: '12:00',
+      closes: null,
+    })
     expect(rulesFromVenueHours(saved)?.seasons[0]?.week).toContainEqual({ days: [6], opens: '12:00', breaks: [] })
   })
 
   it('closes a new open day without both times in the cabinet, but keeps a loaded open-ended day', () => {
-    const days = hoursDaysPayload([
-      { weekday: 'mon', state: 'open', opens: '10:00', closes: '' },
-      { weekday: 'tue', state: 'closed', opens: '10:00', closes: '19:00' },
-      { weekday: 'sat', state: 'open', opens: '12:00', closes: '', openEnded: true },
-    ], { openEnded: false })
+    const days = hoursDaysPayload(
+      [
+        { weekday: 'mon', state: 'open', opens: '10:00', closes: '' },
+        { weekday: 'tue', state: 'closed', opens: '10:00', closes: '19:00' },
+        { weekday: 'sat', state: 'open', opens: '12:00', closes: '', openEnded: true },
+      ],
+      { openEnded: false },
+    )
     expect(days).toEqual([
       { weekday: 'mon', closed: true, opens: null, closes: null },
       { weekday: 'tue', closed: true, opens: null, closes: null },
       { weekday: 'sat', closed: false, opens: '12:00', closes: null },
     ])
-    expect(hoursDaysPayload([{ weekday: 'mon', state: 'open', opens: '12:00', closes: '' }], { openEnded: true })).toEqual([{ weekday: 'mon', closed: false, opens: '12:00', closes: null }])
+    expect(
+      hoursDaysPayload([{ weekday: 'mon', state: 'open', opens: '12:00', closes: '' }], { openEnded: true }),
+    ).toEqual([{ weekday: 'mon', closed: false, opens: '12:00', closes: null }])
   })
 })
 

@@ -44,12 +44,20 @@ describe('ui fixtures', () => {
     expect(schedule?.sourceUrl).toBe('https://fixture.k39.test/hours')
     const openEnded = await Venues.bySlug(FIXTURE_SLUGS.cafeOpenEnded)
     const openEndedSchedule = await Schedules.get('venue', openEnded!.id)
-    expect((openEndedSchedule?.rules as { seasons: Array<{ week: Array<Record<string, unknown>> }> }).seasons[0]?.week[0]).toEqual({ days: [0, 1, 2, 3, 4, 5, 6], opens: '12:00', breaks: [] })
+    expect(
+      (openEndedSchedule!.rules as { seasons: Array<{ week: Array<Record<string, unknown>> }> }).seasons[0]?.week[0],
+    ).toEqual({ days: [0, 1, 2, 3, 4, 5, 6], opens: '12:00', breaks: [] })
     const unknownDays = await Venues.bySlug(FIXTURE_SLUGS.cafeUnknownDays)
     const unknownDaysSchedule = await Schedules.get('venue', unknownDays!.id)
-    expect((unknownDaysSchedule?.rules as { seasons: Array<{ unknownDays?: number[] }> }).seasons[0]?.unknownDays).toEqual([6, 0])
+    expect(
+      (unknownDaysSchedule!.rules as { seasons: Array<{ unknownDays?: number[] }> }).seasons[0]?.unknownDays,
+    ).toEqual([6, 0])
     const seasons = await Venues.bySlug(FIXTURE_SLUGS.cafeSeasons)
-    const seasonsRules = (await Schedules.get('venue', seasons!.id))?.rules as { seasons: unknown[], closures: unknown[], exceptions: unknown[] }
+    const seasonsRules = (await Schedules.get('venue', seasons!.id))?.rules as {
+      seasons: unknown[]
+      closures: unknown[]
+      exceptions: unknown[]
+    }
     expect(seasonsRules.seasons).toHaveLength(2)
     expect(seasonsRules.closures).toHaveLength(1)
     expect(seasonsRules.exceptions).toHaveLength(1)
@@ -77,7 +85,12 @@ describe('ui fixtures', () => {
     expect(rows).toHaveLength(1)
 
     const museum = await Editor.placeBySlug(FIXTURE_SLUGS.placeTickets)
-    expect((await Admission.forSubject('place', museum!.id)).map((row) => row.audience)).toEqual(['general', 'reduced', 'family', 'free'])
+    expect((await Admission.forSubject('place', museum!.id)).map((row) => row.audience)).toEqual([
+      'general',
+      'reduced',
+      'family',
+      'free',
+    ])
     const stored = await CalendarEvents.forSubject('place', museum!.id)
     expect(stored).toHaveLength(4)
     const upcoming = await CalendarEvents.upcomingFor('place', [museum!.id], new Date().toISOString(), 8)

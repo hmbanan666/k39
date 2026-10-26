@@ -7,7 +7,16 @@ import { limitGuestPhoto, limitGuestSubmit, resetCabinetSlots } from '../server/
 import { license } from '../server/utils/mcp/schemas'
 import { GUEST_CONSENT_PATH, GUEST_CONSENT_VERSION } from '../shared/consent'
 import { priorityFor } from '../shared/facts'
-import { guestByline, guestDay, guestParts, guestReviewNodes, inspectGuestText, inspectGuestUrl, memberGuestBlock, normalizeGuestBody } from '../shared/guest'
+import {
+  guestByline,
+  guestDay,
+  guestParts,
+  guestReviewNodes,
+  inspectGuestText,
+  inspectGuestUrl,
+  memberGuestBlock,
+  normalizeGuestBody,
+} from '../shared/guest'
 import { LEGAL_LINKS } from '../shared/links'
 import { schemaProblems } from '../shared/seo'
 import { renderPage } from './helpers/render-page'
@@ -32,8 +41,12 @@ describe('guest byline and text', () => {
     if (!phone.ok) {
       expect(phone.message).toBe('Уберите номер телефона из текста: «+7 401 234-56-78».')
     }
-    expect(inspectGuestText('Смотрите https://kremlin.ru/a и https://kremlin.ru/b это длинный отзыв о визите в форт.').ok).toBe(false)
-    expect(inspectGuestText('Смотрите http://kremlin.ru/a это длинный отзыв о визите во двор форта сегодня.').ok).toBe(false)
+    expect(
+      inspectGuestText('Смотрите https://kremlin.ru/a и https://kremlin.ru/b это длинный отзыв о визите в форт.').ok,
+    ).toBe(false)
+    expect(inspectGuestText('Смотрите http://kremlin.ru/a это длинный отзыв о визите во двор форта сегодня.').ok).toBe(
+      false,
+    )
     expect(inspectGuestUrl('https://user:pass@kremlin.ru/a').ok).toBe(false)
     expect(inspectGuestUrl('https://kgdmore.ru/post').ok).toBe(false)
     expect(inspectGuestUrl('https://localhost/a').ok).toBe(false)
@@ -64,12 +77,14 @@ describe('guest byline and text', () => {
       text: 'kremlin.ru',
       href: 'https://kremlin.ru/visit',
     })
-    const nodes = guestReviewNodes('https://k39.online/fort#place', [{
-      kind: 'review',
-      byline: 'Анна К.',
-      body: 'Двор тихий, касса у ворот.',
-      acceptedAt: '2026-10-16T12:00:00.000Z',
-    }])
+    const nodes = guestReviewNodes('https://k39.online/fort#place', [
+      {
+        kind: 'review',
+        byline: 'Анна К.',
+        body: 'Двор тихий, касса у ворот.',
+        acceptedAt: '2026-10-16T12:00:00.000Z',
+      },
+    ])
     expect(nodes[0]).toMatchObject({
       '@type': 'Review',
       'author': { '@type': 'Person', 'name': 'Анна К.' },
@@ -111,17 +126,19 @@ describe('guest pages', () => {
       subjectType: 'venue',
       subjectSlug: 'fixture-cafe-photo',
       subjectPath: '/zavedeniya/fixture-cafe-photo',
-      items: [{
-        id: 'fixture-note',
-        kind: 'review',
-        byline: 'Анна К.',
-        acceptedAt: '2026-10-16T10:00:00.000Z',
-        dateLabel: '16 октября 2026 г.',
-        body: 'Фикстура: тихий зал и окно во двор.',
-        parts: [{ type: 'text', text: 'Фикстура: тихий зал и окно во двор.' }],
-        alt: '',
-        media: null,
-      }],
+      items: [
+        {
+          id: 'fixture-note',
+          kind: 'review',
+          byline: 'Анна К.',
+          acceptedAt: '2026-10-16T10:00:00.000Z',
+          dateLabel: '16 октября 2026 г.',
+          body: 'Фикстура: тихий зал и окно во двор.',
+          parts: [{ type: 'text', text: 'Фикстура: тихий зал и окно во двор.' }],
+          alt: '',
+          media: null,
+        },
+      ],
     })
     expect(html).toContain('От гостей')
     expect(html).toContain('Анна К.')
@@ -157,7 +174,7 @@ describe('guest pages', () => {
     expect(consent).toContain('Трансграничная передача данных не осуществляется')
     expect(consent).toContain('operatorIdLine()')
     expect(terms).toContain('неисключительную безвозмездную лицензию')
-    expect(terms).toContain('узнаваемого человека')
+    expect(terms.replace(/\s+/g, ' ')).toContain('узнаваемого человека')
     expect(terms).toContain('не оплачивается')
     expect(terms).not.toContain('/soglasie')
   })

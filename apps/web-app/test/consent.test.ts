@@ -1,7 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CONSENT_VERSION, consentDeniedLocation, consentParamAccepted, isOAuthCallback, oauthCallbackAllowed, oauthStartAllowed } from '../shared/consent'
+import {
+  CONSENT_VERSION,
+  consentDeniedLocation,
+  consentParamAccepted,
+  isOAuthCallback,
+  oauthCallbackAllowed,
+  oauthStartAllowed,
+} from '../shared/consent'
 import { LEGAL_LINKS } from '../shared/links'
 import { operatorIdLine } from '../shared/operator'
 
@@ -66,7 +73,9 @@ describe('consent document placement', () => {
     expect(consent).toContain('регистрация и авторизация на Сайте')
     expect(consent).toContain('работа личного кабинета')
     expect(consent).toContain('связь с пользователем')
-    expect(consent).toContain('сбор, запись, систематизация, накопление, хранение, уточнение, извлечение, использование, удаление, уничтожение')
+    expect(consent.replace(/\s+/g, ' ')).toContain(
+      'сбор, запись, систематизация, накопление, хранение, уточнение, извлечение, использование, удаление, уничтожение',
+    )
     expect(consent).toContain('Трансграничная передача данных не осуществляется')
     expect(consent).toContain('href="/privacy"')
     expect(privacy).toContain('href="/soglasie"')
@@ -79,7 +88,7 @@ describe('consent document placement', () => {
     expect(signIn).toContain('href="/privacy"')
     expect(signIn).toContain('Политику конфиденциальности</a>.')
     expect(signIn).not.toMatch(/<\/a>\s+\./)
-    expect(signIn).toContain('consent: \'1\'')
+    expect(signIn).toContain("consent: '1'")
     expect(signIn).toContain('version: CONSENT_VERSION')
     expect(signIn).not.toContain('type="checkbox"')
     expect(signIn).not.toContain('agreed')

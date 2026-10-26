@@ -45,23 +45,26 @@ function ensurePmtilesProtocol() {
   flag.__k39Pmtiles = true
 }
 
-export async function mountK39Map(el: HTMLElement, options: {
-  layers: MapLayer[]
-  cooperative: boolean
-  pmtilesUrl?: string
-  padding?: MapFramePadding
-  onSelect: (id: string) => void
-  onEmpty: () => void
-  onBounds?: (bounds: MapBounds) => void
-  onLocate?: (point: { latitude: number, longitude: number }) => void
-}): Promise<K39MapHandle> {
+export async function mountK39Map(
+  el: HTMLElement,
+  options: {
+    layers: MapLayer[]
+    cooperative: boolean
+    pmtilesUrl?: string
+    padding?: MapFramePadding
+    onSelect: (id: string) => void
+    onEmpty: () => void
+    onBounds?: (bounds: MapBounds) => void
+    onLocate?: (point: { latitude: number; longitude: number }) => void
+  },
+): Promise<K39MapHandle> {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const duration = reduce ? 0 : 450
   let known = new Set<string>()
   let padding: MapFramePadding = options.padding || { top: 16, right: 64, bottom: 24, left: 16 }
   let layers = options.layers
   let selected: string | null = null
-  let hovered: { source: string, id: string } | null = null
+  let hovered: { source: string; id: string } | null = null
   const mounted = new Map<string, MapLayer>()
 
   const pmtilesUrl = options.pmtilesUrl?.trim() || ''
@@ -110,7 +113,7 @@ export async function mountK39Map(el: HTMLElement, options: {
 
   function sync(next: MapLayer[]) {
     const keep = new Set(next.map((layer) => layer.id))
-    for (const [id, previous] of [...mounted]) {
+    for (const [id, previous] of mounted) {
       if (!keep.has(id)) {
         eraseMapLayer(map, previous)
         mounted.delete(id)
@@ -118,7 +121,8 @@ export async function mountK39Map(el: HTMLElement, options: {
     }
     for (const layer of next) {
       const previous = mounted.get(layer.id)
-      const clusterChanged = previous?.type === 'points' && layer.type === 'points' && previous.cluster !== layer.cluster
+      const clusterChanged =
+        previous?.type === 'points' && layer.type === 'points' && previous.cluster !== layer.cluster
       if (previous && (previous.type !== layer.type || clusterChanged)) {
         eraseMapLayer(map, previous)
         mounted.delete(layer.id)
@@ -150,10 +154,11 @@ export async function mountK39Map(el: HTMLElement, options: {
     if (!id) {
       return
     }
-    const source = layers.find((layer) => (
-      (layer.type === 'points' && layer.points.some((point) => point.id === id))
-      || (layer.type === 'stops' && layer.stops.some((stop) => stop.id === id))
-    ))?.id
+    const source = layers.find(
+      (layer) =>
+        (layer.type === 'points' && layer.points.some((point) => point.id === id)) ||
+        (layer.type === 'stops' && layer.stops.some((stop) => stop.id === id)),
+    )?.id
     if (source && map.getSource(source)) {
       map.setFeatureState({ source, id }, { selected: true })
     }
@@ -187,9 +192,12 @@ export async function mountK39Map(el: HTMLElement, options: {
     if (clusterId != null && hit.geometry.type === 'Point' && layerId.endsWith('-clusters')) {
       const source = geoSource(map, sourceId)
       const center = hit.geometry.coordinates as [number, number]
-      void source?.getClusterExpansionZoom(Number(clusterId)).then((zoom) => {
-        map.easeTo({ center, zoom, duration })
-      }).catch(() => {})
+      void source
+        ?.getClusterExpansionZoom(Number(clusterId))
+        .then((zoom) => {
+          map.easeTo({ center, zoom, duration })
+        })
+        .catch(() => {})
       return
     }
     const id = hit.properties?.id
@@ -334,17 +342,21 @@ export async function mountK39Map(el: HTMLElement, options: {
         return Promise.resolve('unavailable')
       }
       return new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition((position) => {
-          const point = { latitude: position.coords.latitude, longitude: position.coords.longitude }
-          options.onLocate?.(point)
-          map.easeTo({
-            center: [point.longitude, point.latitude],
-            zoom: Math.max(map.getZoom(), 14),
-            padding,
-            duration,
-          })
-          resolve('ok')
-        }, () => resolve('denied'), { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 })
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const point = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+            options.onLocate?.(point)
+            map.easeTo({
+              center: [point.longitude, point.latitude],
+              zoom: Math.max(map.getZoom(), 14),
+              padding,
+              duration,
+            })
+            resolve('ok')
+          },
+          () => resolve('denied'),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+        )
       })
     },
     resize() {
