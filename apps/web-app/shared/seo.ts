@@ -11,6 +11,8 @@ import { scheduleMarkup } from './schedule'
 
 export const SITE_ORIGIN = 'https://k39.online'
 export const SITE_NAME = 'K39'
+/** Official K39 Telegram channel. Footer, article note, and schema.org sameAs. */
+export const TELEGRAM_CHANNEL_URL = 'https://t.me/k39_online'
 export const DEFAULT_OG_IMAGE = {
   url: `${SITE_ORIGIN}/og-default.jpg`,
   width: 1200,
@@ -252,6 +254,7 @@ export function organizationNode() {
       'width': ORGANIZATION_LOGO.width,
       'height': ORGANIZATION_LOGO.height,
     },
+    'sameAs': [TELEGRAM_CHANNEL_URL],
   }
 }
 
@@ -262,6 +265,7 @@ export function websiteNode() {
     'url': SITE_ORIGIN,
     'inLanguage': 'ru',
     'publisher': { '@id': `${SITE_ORIGIN}/#organization` },
+    'sameAs': [TELEGRAM_CHANNEL_URL],
   }
 }
 

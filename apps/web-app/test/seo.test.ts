@@ -16,6 +16,8 @@ import {
   countH1,
   headFromDocument,
   homeDocument,
+  organizationNode,
+  TELEGRAM_CHANNEL_URL,
   imageCredit,
   jsonLdTypes,
   pageTitle,
@@ -706,6 +708,7 @@ describe('default social image', () => {
     expect(metaContent(homeHead.meta, 'geo.region')).toBe('RU-KGD')
     expect(metaContent(homeHead.meta, 'robots')).toContain('max-image-preview:large')
     expect(home.jsonLd[0]).toMatchObject({
+      sameAs: [TELEGRAM_CHANNEL_URL],
       logo: {
         '@type': 'ImageObject',
         'url': 'https://k39.online/logo/moose-head-512.webp',
@@ -713,6 +716,8 @@ describe('default social image', () => {
         'height': 512,
       },
     })
+    expect(home.jsonLd[1]).toMatchObject({ sameAs: [TELEGRAM_CHANNEL_URL] })
+    expect(organizationNode().sameAs).toEqual([TELEGRAM_CHANNEL_URL])
 
     const cover = {
       url: 'https://k39.online/media/fort.jpg',

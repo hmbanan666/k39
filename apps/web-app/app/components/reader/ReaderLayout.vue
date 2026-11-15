@@ -24,6 +24,7 @@
         class="reader-html"
         :html="parts.after"
       />
+      <TelegramChannel />
       <slot name="after" />
     </div>
     <aside
