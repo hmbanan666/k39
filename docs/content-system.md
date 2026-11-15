@@ -192,6 +192,8 @@ For any UI change, read `.agents/skills/k39-ui/SKILL.md` first. It points at `.a
 - `/admin`: editors and admins. `/preview/{slug}` shows a draft to those users and is `noindex`. A place, route, or collection with a `content_drafts` row shows that pending draft on its edit form: each changed field, live beside draft. Apply publishes through the same writer as `content_set_publication`. Discard deletes the row. A save is refused until the editor chooses to drop the draft. Published or closed venues stage fields, opening schedule, menu prices, and notices in `content_drafts` (ADR 0047). Quests and listings stay on the refusal.
 - `/sign-in`, `/about`, `/privacy`, `/terms`. `/cookies` redirects to `/privacy#cookies`. `/legal/privacy-policy` redirects to `/privacy`.
 
+The default layout footer links to the official Telegram channel (`TELEGRAM_CHANNEL_URL` in `shared/seo.ts`). Place, route, collection, venue, hub and quest pages also render `TelegramChannel` after the article text. Organization and WebSite JSON-LD list that URL in `sameAs`.
+
 Sitemap source: `server/routes/sitemap-urls.get.ts` (published, indexable rows only). Robots: `public/robots.txt`, served as-is so the Yandex `Host` line stays.
 
 ## Catalogue areas

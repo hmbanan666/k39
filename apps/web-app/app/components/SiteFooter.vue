@@ -8,6 +8,7 @@
           >K39</a
         >
         <p>Путеводитель по Калининградской области: места, маршруты и квесты.</p>
+        <TelegramChannel variant="link" />
       </div>
       <nav aria-label="Разделы">
         <p class="label"> Разделы </p>

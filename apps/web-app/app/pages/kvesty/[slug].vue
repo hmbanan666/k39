@@ -17,6 +17,7 @@
         {{ page.route.title }}
       </UiLink>
     </p>
+    <TelegramChannel />
     <MapEmbed
       v-if="page.steps.length"
       label="Карта квеста"
